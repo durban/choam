@@ -37,10 +37,7 @@ private final class DroppingQueue[A](
 ) extends ArrayQueue[A](capacity, arr, head, tail)
   with Queue.UnsealedWithSize[A] {
 
-  final override def offer(a: A): Rxn[Boolean] =
-    super[ArrayQueue].tryEnqueue(a)
-
-  final override def enqueue(a: A): Rxn[Unit] =
+  final override def add(a: A): Rxn[Unit] =
     this.offer(a).void
 }
 

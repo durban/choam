@@ -117,7 +117,7 @@ trait UnboundedQueueSpec[F[_]]
       _ <- this.tickAll
       f3 <- s.deque.start
       _ <- this.tickAll
-      rxn = s.enqueue("a") * s.enqueue("b") * s.enqueue("c")
+      rxn = s.add("a") * s.add("b") * s.add("c")
       _ <- rxn.run[F]
       // since `rxn` awakes all fibers in its post-commit actions, their order is non-deterministic:
       v1 <- f1.joinWithNever
@@ -134,7 +134,7 @@ trait UnboundedQueueSpec[F[_]]
       _ <- this.tickAll
       f2 <- s.deque.start
       _ <- this.tickAll
-      rxn = (s.enqueue("a") * s.enqueue("b") * s.enqueue("c")) *> (
+      rxn = (s.add("a") * s.add("b") * s.add("c")) *> (
         s.poll
       )
       deqRes <- rxn.run[F]

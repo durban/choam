@@ -94,9 +94,9 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
   }
 
   final override def offer(a: A): Rxn[Boolean] =
-    this.enqueue(a).as(true)
+    this.add(a).as(true)
 
-  final override def enqueue(a: A): Rxn[Unit] = {
+  final override def add(a: A): Rxn[Unit] = {
     Ref.unpadded[Elem[A]](End[A]()).flatMap { nextRef =>
       Ref.unpadded(a).flatMap { dataRef =>
         findAndEnqueue(Node(dataRef, nextRef))

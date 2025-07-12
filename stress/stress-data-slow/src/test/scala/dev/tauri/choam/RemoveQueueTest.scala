@@ -56,12 +56,12 @@ class RemoveQueueTest extends RemoveQueueStressTestBase {
 
   @Actor
   def enq1(): Unit = {
-    queue.enqueue("x").unsafePerform(this.impl)
+    queue.add("x").unsafePerform(this.impl)
   }
 
   @Actor
   def enq2(): Unit = {
-    queue.enqueue("y").unsafePerform(this.impl)
+    queue.add("y").unsafePerform(this.impl)
   }
 
   @Actor

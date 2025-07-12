@@ -41,9 +41,9 @@ private final class RingBuffer[A](
   require(capacity === arr.size)
 
   final override def offer(a: A): Rxn[Boolean] =
-    this.enqueue(a).as(true)
+    this.add(a).as(true)
 
-  final override def enqueue(newVal: A): Rxn[Unit] = {
+  final override def add(newVal: A): Rxn[Unit] = {
     tail.getAndUpdate(incrIdx).flatMap { idx =>
       arr.unsafeGet(idx).updateWith { oldVal =>
         if (isEmpty(oldVal)) {

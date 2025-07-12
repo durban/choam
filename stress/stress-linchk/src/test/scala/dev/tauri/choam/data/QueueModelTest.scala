@@ -53,7 +53,7 @@ private[data] object QueueModelTest {
 
     @Operation
     def enq(s: String): Unit = {
-      q.enqueue(s).unsafePerform(emcas)
+      q.add(s).unsafePerform(emcas)
     }
 
     @Operation

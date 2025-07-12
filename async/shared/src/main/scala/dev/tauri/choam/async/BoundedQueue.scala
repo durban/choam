@@ -50,7 +50,7 @@ object BoundedQueue {
             else Rxn.pure(res)
           },
           a => size.modifyWith { s =>
-            if (s < bound) q.enqueue(a).as((s + 1, true))
+            if (s < bound) q.add(a).as((s + 1, true))
             else Rxn.pure((s, false))
           },
         ).map { gwl =>

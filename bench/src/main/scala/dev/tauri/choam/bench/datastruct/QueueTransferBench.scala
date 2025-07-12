@@ -106,7 +106,7 @@ object QueueTransferBench {
 
     def transfer(idx: Int): Rxn[Unit] = {
       def transferOne(circle: List[Queue[String]]): Rxn[Unit] = {
-        circle(idx % circleSize).poll.map(_.get).flatMap(circle((idx + 1) % circleSize).enqueue)
+        circle(idx % circleSize).poll.map(_.get).flatMap(circle((idx + 1) % circleSize).add)
       }
 
       this.queues.map(transferOne(_)).reduce(_ *> _)

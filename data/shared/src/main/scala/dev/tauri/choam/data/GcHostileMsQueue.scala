@@ -56,14 +56,14 @@ private final class GcHostileMsQueue[A] private[this] (sentinel: Node[A], initRi
     }
   }
 
-  final override def enqueue(a: A): Rxn[Unit] = {
+  final override def add(a: A): Rxn[Unit] = {
     Ref.padded[Elem[A]](End()).flatMap { newRef =>
       findAndEnqueue(Node(a, newRef))
     }
   }
 
   final override def offer(a: A): Rxn[Boolean] =
-    this.enqueue(a).as(true)
+    this.add(a).as(true)
 
   private[this] def findAndEnqueue(node: Node[A]): Rxn[Unit] = {
     def go(n: Node[A]): Rxn[Unit] = {

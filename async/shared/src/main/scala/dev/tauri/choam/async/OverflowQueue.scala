@@ -52,7 +52,7 @@ object OverflowQueue {
   }
 
   private[this] final def makeRingBuffer[A](capacity: Int, underlying: data.Queue.WithSize[A]): Rxn[OverflowQueue[A]] = {
-    WaitList(underlying.poll, underlying.enqueue).map { wl =>
+    WaitList(underlying.poll, underlying.add).map { wl =>
       new RingBuffer(capacity, underlying, wl)
     }
   }
@@ -70,9 +70,9 @@ object OverflowQueue {
       new AsyncQueue.CatsQueueAdapter(this)
 
     final override def offer(a: A): Rxn[Boolean] =
-      this.enqueue(a).as(true)
+      this.add(a).as(true)
 
-    final override def enqueue(a: A): Rxn[Unit] =
+    final override def add(a: A): Rxn[Unit] =
       wl.set0(a).void
 
     final override def poll: Rxn[Option[A]] =
@@ -97,7 +97,7 @@ object OverflowQueue {
     final override def offer(a: A): Rxn[Boolean] =
       gwl.trySet0(a)
 
-    final override def enqueue(a: A): Rxn[Unit] =
+    final override def add(a: A): Rxn[Unit] =
       this.offer(a).void
 
     final override def poll: Rxn[Option[A]] =

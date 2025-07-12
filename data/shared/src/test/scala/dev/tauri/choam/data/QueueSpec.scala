@@ -56,10 +56,10 @@ trait QueueWithSizeSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
       _ <- assertResultF(q.size.run[F], 0)
       rxn = for {
         s0 <- q.size
-        _ <- q.enqueue("a")
-        _ <- q.enqueue("b")
+        _ <- q.add("a")
+        _ <- q.add("b")
         s1 <- q.size
-        _ <- q.enqueue("c")
+        _ <- q.add("c")
         _ <- q.poll
         s2 <- q.size
         _ <- q.poll
@@ -184,7 +184,7 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
       _ <- assertResultF(q.poll.run[F], None)
       r42 <- q.enqueueWithRemover(42).run[F]
       _ <- r42.run[F] // removes 42
-      _ <- q.enqueue(33).run[F]
+      _ <- q.add(33).run[F]
       _ <- assertResultF(q.poll.run[F], Some(33))
       _ <- assertResultF(q.poll.run[F], None)
     } yield ()
@@ -256,11 +256,11 @@ trait QueueMsSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
     for {
       q <- newQueueFromList[Int](Nil)
       _ <- assertResultF(q.tailLag.run[F], 0)
-      _ <- q.enqueue(1).run[F]
+      _ <- q.add(1).run[F]
       _ <- assertResultF(q.tailLag.run[F], 0)
-      _ <- q.enqueue(2).run[F]
+      _ <- q.add(2).run[F]
       _ <- assertResultF(q.tailLag.run[F], 0)
-      _ <- q.enqueue(3).run[F]
+      _ <- q.add(3).run[F]
       _ <- assertResultF(q.tailLag.run[F], 0)
       _ <- assertResultF(q.poll.run[F], Some(1))
       _ <- assertResultF(q.tailLag.run[F], 0)
@@ -270,7 +270,7 @@ trait QueueMsSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
       _ <- assertResultF(q.tailLag.run[F], 0)
       _ <- assertResultF(q.poll.run[F], None)
       _ <- assertResultF(q.tailLag.run[F], 0)
-      _ <- (q.enqueue(1) *> q.enqueue(2) *> q.enqueue(3) *> q.enqueue(4)).run[F]
+      _ <- (q.add(1) *> q.add(2) *> q.add(3) *> q.add(4)).run[F]
       _ <- assertResultF(q.tailLag.run[F], 0)
       _ <- assertResultF(
         (q.poll * q.poll * q.poll * q.poll).run[F],
@@ -308,7 +308,7 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       q1 <- newQueueFromList(1 :: 2 :: 3 :: Nil)
       q2 <- newQueueFromList(List.empty[Int])
-      r = q1.poll.map(_.getOrElse(0)).flatMap(q2.enqueue)
+      r = q1.poll.map(_.getOrElse(0)).flatMap(q2.add)
       _ <- r.run[F]
       _ <- r.run[F]
       _ <- assertResultF(q1.drainOnce, List(3))
@@ -326,16 +326,16 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(q.poll.run, None)
       _ <- assertResultF(q.poll.run[F], None)
 
-      _ <- q.enqueue("a").run
+      _ <- q.add("a").run
       _ <- assertResultF(q.poll.run, Some("a"))
       _ <- assertResultF(q.poll.run, None)
 
-      _ <- q.enqueue("a").run
-      _ <- q.enqueue("b").run
-      _ <- q.enqueue("c").run
+      _ <- q.add("a").run
+      _ <- q.add("b").run
+      _ <- q.add("c").run
       _ <- assertResultF(q.poll.run, Some("a"))
 
-      _ <- q.enqueue("x").run
+      _ <- q.add("x").run
       _ <- assertResultF(q.drainOnce, List("b", "c", "x"))
       _ <- assertResultF(q.poll.run, None)
     } yield ()
@@ -346,12 +346,12 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       q <- newQueueFromList(List.empty[String])
       _ <- assertResultF(q.poll.run[F], None)
       rxn = for {
-        _ <- q.enqueue("a")
-        _ <- q.enqueue("b")
-        _ <- q.enqueue("c")
+        _ <- q.add("a")
+        _ <- q.add("b")
+        _ <- q.add("c")
         a <- q.poll
         b <- q.poll
-        _ <- q.enqueue("d")
+        _ <- q.add("d")
         c <- q.poll
         d <- q.poll
       } yield (a, b, c, d)
@@ -369,7 +369,7 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       val shifted = idx << 8
       require(shifted >= idx) // ensure no overflow
       val items = (1 to RxnSize).toList.map(_ | shifted)
-      val rxn: Rxn[Unit] = items.traverse_ { item => q.enqueue(item) }
+      val rxn: Rxn[Unit] = items.traverse_ { item => q.add(item) }
       rF.run(rxn)
     }
     def deqTask(q: QueueType[Int]): F[Int] = {

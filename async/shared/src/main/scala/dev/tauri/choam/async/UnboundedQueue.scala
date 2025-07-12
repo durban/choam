@@ -28,7 +28,7 @@ sealed trait UnboundedQueue[A]
   with AsyncQueue.UnsealedBoundedQueueSink[A] {
 
   final override def enqueueAsync[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
-    F.apply(this.enqueue(a))
+    F.apply(this.add(a))
 }
 
 object UnboundedQueue {
@@ -45,11 +45,11 @@ object UnboundedQueue {
 
   final def apply[A]: Rxn[UnboundedQueue[A]] = {
     data.Queue.unbounded[A].flatMap { q =>
-      WaitList[A](q.poll, q.enqueue).map { wl =>
+      WaitList[A](q.poll, q.add).map { wl =>
         new UnboundedQueue[A] {
           final override def offer(a: A): Rxn[Boolean] =
-            this.enqueue(a).as(true)
-          final override def enqueue(a: A): Rxn[Unit] =
+            this.add(a).as(true)
+          final override def add(a: A): Rxn[Unit] =
             wl.set0(a).void
           final override def poll: Rxn[Option[A]] =
             wl.tryGet
@@ -62,11 +62,11 @@ object UnboundedQueue {
 
   final def withSize[A]: Rxn[UnboundedQueue.WithSize[A]] = {
     data.Queue.unboundedWithSize[A].flatMap { q =>
-      WaitList[A](q.poll, q.enqueue).map { wl =>
+      WaitList[A](q.poll, q.add).map { wl =>
         new UnboundedQueue.WithSize[A] {
           final override def offer(a: A): Rxn[Boolean] =
-            this.enqueue(a).as(true)
-          final override def enqueue(a: A): Rxn[Unit] =
+            this.add(a).as(true)
+          final override def add(a: A): Rxn[Unit] =
             wl.set0(a).void
           final override def poll: Rxn[Option[A]] =
             wl.tryGet

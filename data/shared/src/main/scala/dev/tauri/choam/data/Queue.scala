@@ -46,7 +46,7 @@ sealed trait QueueSourceSink[A]
   with  QueueSink[A]
 
 sealed trait UnboundedQueueSink[-A] extends QueueSink[A] {
-  def enqueue(a: A): Rxn[Unit]
+  def add(a: A): Rxn[Unit]
 }
 
 sealed trait Queue[A]
@@ -54,7 +54,7 @@ sealed trait Queue[A]
   with UnboundedQueueSink[A]
 
 /**
- * Various synchronous queues
+ * Various queues
  *
  * The operations that may fail (e.g., trying to remove
  * an element form an empty queue) return either a `Boolean`
@@ -63,11 +63,11 @@ sealed trait Queue[A]
  *
  * Method summary of the various operations:
  *
- * |         | `Rxn` (may fail)   | `Rxn` (succeeds) |
- * |---------|--------------------|------------------|
- * | insert  | `QueueSink#offer`  | `add`            |
- * | remove  | `QueueSource#poll` | `remove`         |
- * | examine | `peek`             | -                |
+ * |         | `Rxn` (may fail)   | `Rxn` (succeeds)         |
+ * |---------|--------------------|--------------------------|
+ * | insert  | `QueueSink#offer`  | `UnboundedQueueSink#add` |
+ * | remove  | `QueueSource#poll` | `remove`                 |
+ * | examine | `peek`             | -                        |
  *
  * @see [[dev.tauri.choam.async.AsyncQueue]]
  *      for asynchronous (possibly fiber-blocking)
@@ -125,11 +125,11 @@ object Queue {
             }
           }
 
-          final override def enqueue(a: A): Rxn[Unit] =
-            s.update(_ + 1) *> q.enqueue(a)
+          final override def add(a: A): Rxn[Unit] =
+            s.update(_ + 1) *> q.add(a)
 
           final override def offer(a: A): Rxn[Boolean] =
-            this.enqueue(a).as(true)
+            this.add(a).as(true)
 
           final override def size: Rxn[Int] =
             s.get
@@ -141,7 +141,7 @@ object Queue {
   private[data] final def fromList[F[_] : Reactive, Q[a] <: Queue[a], A](mkEmpty: Rxn[Q[A]])(as: List[A]): F[Q[A]] = {
     implicit val m: Monad[F] = Reactive[F].monad
     mkEmpty.run[F].flatMap { q =>
-      as.traverse(a => q.enqueue(a).run[F]).as(q)
+      as.traverse(a => q.add(a).run[F]).as(q)
     }
   }
 }

@@ -47,7 +47,7 @@ class MsQueueComposedTest3 extends MsQueueStressTestBase {
     queue.poll * (dummy.update { _ + 1 }.flatMap { _ => latch.getAndUpdate(_ => true) })
 
   private[this] val enq =
-    (queue.enqueue("a") * latch.getAndUpdate(_ => true)).map(_._2)
+    (queue.add("a") * latch.getAndUpdate(_ => true)).map(_._2)
 
   @Actor
   def deq(r: LL_Result): Unit = {

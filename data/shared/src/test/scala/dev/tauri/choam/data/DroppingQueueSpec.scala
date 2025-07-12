@@ -77,13 +77,13 @@ trait DroppingQueueSpec[F[_]]
     for {
       q <- newDq[Int](4)
       _ <- assertResultF(q.size.run[F], 0)
-      _ <- q.enqueue(1).run[F]
+      _ <- q.add(1).run[F]
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- (q.enqueue(2) * q.enqueue(3)).run[F]
+      _ <- (q.add(2) * q.add(3)).run[F]
       _ <- assertResultF(q.size.run[F], 3)
       _ <- assertResultF(q.offer(4).run[F], true)
       _ <- assertResultF(q.size.run[F], 4)
-      _ <- q.enqueue(5).run[F]
+      _ <- q.add(5).run[F]
       _ <- assertResultF(q.size.run[F], 4)
       _ <- assertResultF(q.offer(5).run[F], false)
       _ <- assertResultF(q.poll.run[F], Some(1))
@@ -102,7 +102,7 @@ trait DroppingQueueSpec[F[_]]
     for {
       q <- newDq[Int](3)
       _ <- assertResultF(q.size.run[F], 0)
-      rxn = (q.enqueue(1) * q.enqueue(2)) *> (
+      rxn = (q.add(1) * q.add(2)) *> (
         q.poll
       )
       deqRes <- rxn.run[F]

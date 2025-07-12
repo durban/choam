@@ -72,12 +72,12 @@ private final class MsQueue[A] private[this] (
     }
   }
 
-  final override def enqueue(a: A): Rxn[Unit] = Rxn.unsafe.suspendContext { ctx =>
+  final override def add(a: A): Rxn[Unit] = Rxn.unsafe.suspendContext { ctx =>
     findAndEnqueue(newNode(a, ctx))
   }
 
   final override def offer(a: A): Rxn[Boolean] =
-    this.enqueue(a).as(true)
+    this.add(a).as(true)
 
   private[this] def newNode(a: A, ctx: Mcas.ThreadContext): Node[A] = {
     val newRef: Ref[Elem[A]] = if (this.padded) {

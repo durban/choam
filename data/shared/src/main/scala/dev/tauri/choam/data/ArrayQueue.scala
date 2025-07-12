@@ -31,7 +31,8 @@ private abstract class ArrayQueue[A](
   arr: Ref.Array[A],
   head: Ref[Int], // index for next element to deque
   tail: Ref[Int], // index for next element to enqueue
-) extends Queue.UnsealedQueueSource[A] {
+) extends Queue.UnsealedQueueSource[A]
+  with Queue.UnsealedQueueSink[A] {
 
   require(capacity === arr.size)
 
@@ -53,7 +54,8 @@ private abstract class ArrayQueue[A](
     }
   }
 
-  def tryEnqueue(newVal: A): Rxn[Boolean] = {
+  // Note: not final, because `RingBuffer` needs to override it
+  override def offer(newVal: A): Rxn[Boolean] = {
     tail.get.flatMap { idx =>
       val ref = arr.unsafeGet(idx)
       ref.get.flatMap { oldVal =>
