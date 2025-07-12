@@ -69,7 +69,7 @@ trait EliminatorSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   test("EliminationStack2 (basic)") {
     for {
-      s <- EliminationStack[Int]().run[F]
+      s <- EliminationStack[Int].run[F]
       _ <- assertResultF(s.tryPop.run[F], None)
       _ <- s.push(1).run[F]
       _ <- (s.push(2) *> s.push(3)).run[F]

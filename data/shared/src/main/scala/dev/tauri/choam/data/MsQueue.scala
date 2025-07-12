@@ -34,7 +34,7 @@ import MsQueue._
  */
 private final class MsQueue[A] private[this] (
   sentinel: Node[A],
-  padded: Boolean, // TODO:0.5: use AllocationStrategy instead
+  padded: Boolean,
   initRig: RefIdGen,
 ) extends Queue.UnsealedQueue[A] {
 
@@ -145,14 +145,12 @@ private object MsQueue {
       _end.asInstanceOf[End[A]]
   }
 
-  def apply[A]: Rxn[MsQueue[A]] =
-    padded[A]
+  final def apply[A]: Rxn[MsQueue[A]] =
+    apply[A](Ref.AllocationStrategy.Default)
 
-  def padded[A]: Rxn[MsQueue[A]] =
-    applyInternal(padded = true)
-
-  def unpadded[A]: Rxn[MsQueue[A]] =
-    applyInternal(padded = false)
+  final def apply[A](str: Ref.AllocationStrategy): Rxn[MsQueue[A]] = {
+    applyInternal(padded = str.padded)
+  }
 
   private[data] def fromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[MsQueue[A]] = {
     Queue.fromList[F, MsQueue, A](this.apply[A])(as)

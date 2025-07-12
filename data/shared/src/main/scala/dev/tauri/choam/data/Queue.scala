@@ -75,7 +75,10 @@ object Queue {
     extends WithSize[A]
 
   final def unbounded[A]: Rxn[Queue[A]] =
-    MsQueue[A]
+    unbounded(Ref.AllocationStrategy.Default)
+
+  final def unbounded[A](str: Ref.AllocationStrategy): Rxn[Queue[A]] =
+    MsQueue[A](str)
 
   final def bounded[A](bound: Int): Rxn[QueueSourceSink[A]] =
     dropping(bound)
@@ -114,9 +117,6 @@ object Queue {
       }
     }
   }
-
-  private[data] final def unpadded[A]: Rxn[Queue[A]] =
-    MsQueue.unpadded[A]
 
   private[data] final def fromList[F[_] : Reactive, Q[a] <: Queue[a], A](mkEmpty: Rxn[Q[A]])(as: List[A]): F[Q[A]] = {
     implicit val m: Monad[F] = Reactive[F].monad

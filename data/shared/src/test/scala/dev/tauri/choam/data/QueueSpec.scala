@@ -250,7 +250,7 @@ trait QueueMsSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
   private[data] override type QueueType[A] = MsQueue[A]
 
   protected override def newQueueFromList[A](as: List[A]): F[this.QueueType[A]] =
-    Queue.fromList(MsQueue.unpadded[A])(as)
+    Queue.fromList(MsQueue[A])(as)
 
   test("MS-queue lagging tail") {
     for {

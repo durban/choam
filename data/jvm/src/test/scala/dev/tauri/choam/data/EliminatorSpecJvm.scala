@@ -89,7 +89,7 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
 
   test("EliminationStack (elimination)") {
     val t = for {
-      s <- EliminationStack[Int]().run[F]
+      s <- EliminationStack[Int].run[F]
       _ <- concurrentPushPopTest(s.tryPop, s.push)
     } yield ()
     t.replicateA_(50000)
@@ -97,7 +97,7 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
 
   test("EliminationStack (overlapping descriptors)") {
     for {
-      s <- EliminationStack[Int]().run[F]
+      s <- EliminationStack[Int].run[F]
       ref <- Ref(0).run[F]
       _ <- concurrentPushPopTest(
         // these 2 operations can never exchange
@@ -135,11 +135,11 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
   }
 
   test("EliminationStack.tagged") {
-    testTaggedEliminationStack(EliminationStack.tagged[Int](), 50000)
+    testTaggedEliminationStack(EliminationStack.tagged[Int], 50000)
   }
 
   test("EliminationStack.taggedFlaky") {
-    testTaggedEliminationStack(EliminationStack.taggedFlaky[Int](), 25000)
+    testTaggedEliminationStack(EliminationStack.taggedFlaky[Int], 25000)
   }
 
   private def testTaggedEliminationStack(

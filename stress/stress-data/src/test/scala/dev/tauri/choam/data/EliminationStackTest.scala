@@ -36,7 +36,7 @@ import EliminationStack.TaggedEliminationStack
 class EliminationStackTest extends StressTestBase {
 
   private[this] val stack: TaggedEliminationStack[String] =
-    EliminationStack.taggedFlaky[String]().unsafePerform(this.impl)
+    EliminationStack.taggedFlaky[String].unsafePerform(this.impl)
 
   private[this] final def _push(s: String): Rxn[Either[Unit, Unit]] =
     stack.push(s)

@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import core.{ Rxn, Reactive }
+import core.{ Rxn, Ref, Reactive }
 
 /**
  * Public access to package-private utilities
@@ -30,10 +30,10 @@ object QueueHelper {
     Queue.fromList(mkEmpty)(as)
 
   def msQueueFromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[Queue[A]] =
-    F.monad.widen(this.fromList(MsQueue.padded[A])(as))
+    F.monad.widen(this.fromList(MsQueue[A](Ref.AllocationStrategy(padded = true)))(as))
 
   def msQueueUnpaddedFromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[Queue[A]] =
-    F.monad.widen(this.fromList(MsQueue.unpadded[A])(as))
+    F.monad.widen(this.fromList(MsQueue[A](Ref.AllocationStrategy(padded = false)))(as))
 
   def gcHostileMsQueueFromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[Queue[A]] =
     F.monad.widen(GcHostileMsQueue.fromList(as))

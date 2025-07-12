@@ -36,7 +36,7 @@ import EliminationStack.TaggedEliminationStack
 class EliminationStackConflictTest extends StressTestBase {
 
   private[this] val stack: TaggedEliminationStack[String] =
-    EliminationStack.taggedFlaky[String]().unsafePerform(this.impl)
+    EliminationStack.taggedFlaky[String].unsafePerform(this.impl)
 
   private[this] val ref: Ref[Int] =
     Ref(0).unsafePerform(this.impl)
