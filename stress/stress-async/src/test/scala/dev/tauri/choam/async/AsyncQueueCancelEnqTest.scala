@@ -50,7 +50,7 @@ class AsyncQueueCancelEnqTest {
 
   private[this] val offerer: Fiber[IO, Throwable, Unit] = {
     val tsk = IO.uncancelable { poll =>
-      poll(q.enqueueAsync[IO]("a")).flatTap { _ => IO { this.result = true } }
+      poll(q.put[IO]("a")).flatTap { _ => IO { this.result = true } }
     }
     tsk.start.unsafeRunSync()(using runtime)
   }

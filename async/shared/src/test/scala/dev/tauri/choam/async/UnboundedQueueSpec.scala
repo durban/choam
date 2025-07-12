@@ -52,7 +52,7 @@ trait UnboundedQueueImplWithSize[F[_]] extends UnboundedQueueSpec[F] { this: Mca
       _ <- assertResultF(cq.size, 0)
       f <- cq.take.start
       _ <- this.tickAll
-      _ <- q.enqueueAsync[F]("a")
+      _ <- q.put[F]("a")
       _ <- assertResultF(f.joinWithNever, "a")
       _ <- assertResultF(cq.size, 0)
       _ <- assertResultF(cq.tryTake, None)
@@ -78,9 +78,9 @@ trait UnboundedQueueSpec[F[_]]
   test("UnboundedQueue non-empty take") {
     for {
       s <- newQueue[F, String]
-      _ <- s.enqueueAsync[F]("a")
-      _ <- s.enqueueAsync[F]("b")
-      _ <- s.enqueueAsync[F]("c")
+      _ <- s.put[F]("a")
+      _ <- s.put[F]("b")
+      _ <- s.put[F]("c")
       _ <- assertResultF(s.take, "a")
       _ <- assertResultF(s.take, "b")
       _ <- assertResultF(s.take, "c")
@@ -96,11 +96,11 @@ trait UnboundedQueueSpec[F[_]]
       _ <- this.tickAll
       f3 <- s.take.start
       _ <- this.tickAll
-      _ <- s.enqueueAsync[F]("a")
+      _ <- s.put[F]("a")
       _ <- this.tickAll
-      _ <- s.enqueueAsync[F]("b")
+      _ <- s.put[F]("b")
       _ <- this.tickAll
-      _ <- s.enqueueAsync[F]("c")
+      _ <- s.put[F]("c")
       _ <- this.tickAll
       _ <- assertResultF(f1.joinWithNever, "a")
       _ <- assertResultF(f2.joinWithNever, "b")

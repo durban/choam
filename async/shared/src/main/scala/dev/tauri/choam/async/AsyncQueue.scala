@@ -28,7 +28,7 @@ sealed trait AsyncQueueSource[+A] extends data.Queue.UnsealedQueueSource[A] {
 }
 
 sealed trait BoundedQueueSink[-A] extends data.Queue.UnsealedQueueSink[A] {
-  def enqueueAsync[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] // TODO: better name
+  def put[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit]
 }
 
 /**
@@ -46,7 +46,7 @@ sealed trait BoundedQueueSink[-A] extends data.Queue.UnsealedQueueSink[A] {
  *
  * |         | `Rxn` (may fail)   | `Rxn` (succeeds)         | `F` (may block)         |
  * |---------|--------------------|--------------------------|-------------------------|
- * | insert  | `QueueSink#offer`  | `UnboundedQueueSink#add` | `put`                   |
+ * | insert  | `QueueSink#offer`  | `UnboundedQueueSink#add` | `BoundedQueueSink#put`  |
  * | remove  | `QueueSource#poll` | -                        | `AsyncQueueSource#take` |
  * | examine | `peek`             | -                        | -                       |
  *
@@ -115,7 +115,7 @@ object AsyncQueue {
     final override def size: F[Int] =
       self.size.run
     final override def offer(a: A): F[Unit] =
-      self.enqueueAsync[F](a)
+      self.put[F](a)
     final override def tryOffer(a: A): F[Boolean] =
       self.offer(a).run[F]
   }

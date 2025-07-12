@@ -27,7 +27,7 @@ sealed trait UnboundedQueue[A]
   with AsyncQueue.UnsealedAsyncQueueSource[A]
   with AsyncQueue.UnsealedBoundedQueueSink[A] {
 
-  final override def enqueueAsync[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
+  final override def put[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
     F.apply(this.add(a))
 }
 

@@ -56,7 +56,7 @@ class AsyncQueueLinearizableTest {
 
   @Actor
   def offer2(): Unit = {
-    (q.enqueueAsync[IO]("a") *> q.enqueueAsync[IO]("b")).unsafeRunSync()(using this.runtime)
+    (q.put[IO]("a") *> q.put[IO]("b")).unsafeRunSync()(using this.runtime)
   }
 
   @Actor

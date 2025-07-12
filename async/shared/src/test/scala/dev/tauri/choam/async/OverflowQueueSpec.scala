@@ -92,7 +92,7 @@ trait OverflowQueueSpec[F[_]]
             }
           } else {
             // enq:
-            q.enqueueAsync[F](i) *> qc.offer(i) *> s.offer(i) *> (
+            q.put[F](i) *> qc.offer(i) *> s.offer(i) *> (
               checkSize(q, qc, s)
             )
           }
@@ -154,14 +154,14 @@ trait OverflowQueueSpec[F[_]]
       f1 <- q.take.start
       _ <- this.tickAll
       _ <- assertResultF(q.size.run[F], 0)
-      _ <- q.enqueueAsync[F](1)
+      _ <- q.put[F](1)
       _ <- this.tickAll
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(f1.joinWithNever, 1)
       _ <- assertResultF(q.size.run[F], 0)
-      _ <- q.enqueueAsync[F](2)
+      _ <- q.put[F](2)
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- q.enqueueAsync[F](3)
+      _ <- q.put[F](3)
       _ <- assertResultF(q.size.run[F], 2)
       _ <- assertResultF(q.take, 2)
       _ <- assertResultF(q.size.run[F], 1)
@@ -171,13 +171,13 @@ trait OverflowQueueSpec[F[_]]
     } yield ()
     def part2(q: OverflowQueue[Int]): F[Unit] = for {
       _ <- assertResultF(q.size.run[F], 0)
-      _ <- q.enqueueAsync[F](4)
+      _ <- q.put[F](4)
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- q.enqueueAsync[F](5)
+      _ <- q.put[F](5)
       _ <- assertResultF(q.size.run[F], 2)
-      _ <- q.enqueueAsync[F](6)
+      _ <- q.put[F](6)
       _ <- assertResultF(q.size.run[F], 3)
-      _ <- q.enqueueAsync[F](7) // full
+      _ <- q.put[F](7) // full
       _ <- assertResultF(q.size.run[F], 4)
       _ <- assertResultF(q.take, 4)
       _ <- assertResultF(q.size.run[F], 3)
@@ -197,23 +197,23 @@ trait OverflowQueueSpec[F[_]]
       _ <- this.tickAll
       f3 <- q.take.start
       _ <- this.tickAll
-      _ <- q.enqueueAsync[F](8)
+      _ <- q.put[F](8)
       _ <- this.tickAll
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(f1.joinWithNever, 8)
-      _ <- q.enqueueAsync[F](9)
+      _ <- q.put[F](9)
       _ <- this.tickAll
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(f2.joinWithNever, 9)
-      _ <- q.enqueueAsync[F](10)
+      _ <- q.put[F](10)
       _ <- this.tickAll
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(f3.joinWithNever, 10)
-      _ <- q.enqueueAsync[F](11)
+      _ <- q.put[F](11)
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- q.enqueueAsync[F](12)
+      _ <- q.put[F](12)
       _ <- assertResultF(q.size.run[F], 2)
-      _ <- q.enqueueAsync[F](13)
+      _ <- q.put[F](13)
       _ <- assertResultF(q.size.run[F], 3)
       _ <- assertResultF(q.take, 11)
       _ <- assertResultF(q.size.run[F], 2)
@@ -224,25 +224,25 @@ trait OverflowQueueSpec[F[_]]
     } yield ()
     def part4(q: OverflowQueue[Int]): F[Unit] = for {
       _ <- assertResultF(q.size.run[F], 0)
-      _ <- q.enqueueAsync[F](14)
+      _ <- q.put[F](14)
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- q.enqueueAsync[F](15)
+      _ <- q.put[F](15)
       _ <- assertResultF(q.size.run[F], 2)
-      _ <- q.enqueueAsync[F](16)
+      _ <- q.put[F](16)
       _ <- assertResultF(q.size.run[F], 3)
-      _ <- q.enqueueAsync[F](17) // full
+      _ <- q.put[F](17) // full
       _ <- assertResultF(q.size.run[F], 4)
-      _ <- q.enqueueAsync[F](18) // overwrites 14
+      _ <- q.put[F](18) // overwrites 14
       _ <- assertResultF(q.size.run[F], 4)
       _ <- assertResultF(q.take, 15)
       _ <- assertResultF(q.size.run[F], 3)
       _ <- assertResultF(q.take, 16)
       _ <- assertResultF(q.size.run[F], 2)
-      _ <- q.enqueueAsync[F](19)
+      _ <- q.put[F](19)
       _ <- assertResultF(q.size.run[F], 3)
-      _ <- q.enqueueAsync[F](20) // full
+      _ <- q.put[F](20) // full
       _ <- assertResultF(q.size.run[F], 4)
-      _ <- q.enqueueAsync[F](21) // overwrites 17
+      _ <- q.put[F](21) // overwrites 17
       _ <- assertResultF(q.size.run[F], 4)
       _ <- assertResultF(q.take, 18)
       _ <- assertResultF(q.size.run[F], 3)
@@ -273,19 +273,19 @@ trait OverflowQueueSpec[F[_]]
       _ <- assertResultF(q.poll.run[F], None)
       f1 <- q.take.start
       _ <- this.tickAll
-      _ <- q.enqueueAsync[F](1)
+      _ <- q.put[F](1)
       _ <- this.tickAll
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(f1.joinWithNever, 1)
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(q.poll.run[F], None)
-      _ <- q.enqueueAsync[F](2)
+      _ <- q.put[F](2)
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- q.enqueueAsync[F](3)
+      _ <- q.put[F](3)
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- q.enqueueAsync[F](4)
+      _ <- q.put[F](4)
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- q.enqueueAsync[F](5)
+      _ <- q.put[F](5)
       _ <- assertResultF(q.size.run[F], 1)
       _ <- assertResultF(q.take, 5)
       _ <- assertResultF(q.size.run[F], 0)
@@ -294,11 +294,11 @@ trait OverflowQueueSpec[F[_]]
       _ <- this.tickAll
       f3 <- q.take.start
       _ <- this.tickAll
-      _ <- q.enqueueAsync[F](6)
+      _ <- q.put[F](6)
       _ <- this.tickAll
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(f2.joinWithNever, 6)
-      _ <- q.enqueueAsync[F](7)
+      _ <- q.put[F](7)
       _ <- this.tickAll
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(f3.joinWithNever, 7)
@@ -318,11 +318,11 @@ trait OverflowQueueSpec[F[_]]
       _ <- this.tickAll
       _ <- f2.cancel
       _ <- this.tickAll
-      _ <- q.enqueueAsync(1)
+      _ <- q.put(1)
       _ <- this.tickAll
-      _ <- q.enqueueAsync(2)
+      _ <- q.put(2)
       _ <- this.tickAll
-      _ <- q.enqueueAsync(3)
+      _ <- q.put(3)
       _ <- this.tickAll
       _ <- assertResultF(f1.joinWithNever, 1)
       _ <- assertResultF(f3.joinWithNever, 2)

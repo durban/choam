@@ -68,7 +68,7 @@ class AsyncQueueCancelDeqTest {
 
   @Actor
   def offer(): Unit = {
-    q.enqueueAsync[IO]("a").unsafeRunSync()(using this.runtime)
+    q.put[IO]("a").unsafeRunSync()(using this.runtime)
   }
 
   @Actor
@@ -78,7 +78,7 @@ class AsyncQueueCancelDeqTest {
 
   @Arbiter
   def arbiter(r: LLLLLL_Result): Unit = {
-    q.enqueueAsync[IO]("b").unsafeRunSync()(using this.runtime)
+    q.put[IO]("b").unsafeRunSync()(using this.runtime)
     val oc1: String = taker1.join.flatMap { oc =>
       oc.fold(
         IO.pure("cancelled1"),

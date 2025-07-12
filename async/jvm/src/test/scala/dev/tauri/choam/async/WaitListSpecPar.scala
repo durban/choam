@@ -74,7 +74,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         r <- F.ref("")
         fib <- deqAndSave(q, r).start
         _ <- F.sleep(0.01.seconds)
-        _ <- F.both(fib.cancel, q.enqueueAsync("foo"))
+        _ <- F.both(fib.cancel, q.put("foo"))
         _ <- fib.join
         s <- r.get
         _ <- if (s.nonEmpty) { // deque completed
@@ -98,9 +98,9 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         fib2 <- q.take[F, String].start
         _ <- F.sleep(1.seconds) // wait for fibers to suspend
         // to be fair(er), the item should be received by the suspended fiber, and NOT `poll`
-        _ <- assertResultF(F.both(F.cede *> q.poll.run[F], q.enqueueAsync("foo")), (None, ()))
+        _ <- assertResultF(F.both(F.cede *> q.poll.run[F], q.put("foo")), (None, ()))
         // ok, now unblock one of the fibers (the other one is already unblocked, but we don't know which):
-        _ <- q.enqueueAsync("bar")
+        _ <- q.put("bar")
         item1 <- fib1.joinWithNever
         item2 <- fib2.joinWithNever
         _ <- assertEqualsF(Set(item1, item2), Set("foo", "bar"))
@@ -130,7 +130,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
     def enqAndSave(q: BoundedQueueSink[String], ref: Ref[F, Boolean], item: String): F[Unit] = {
       F.uncancelable { poll =>
-        poll(q.enqueueAsync(item)).flatMap { _ =>
+        poll(q.put(item)).flatMap { _ =>
           // if enqueue completes, we will certainly set it to true:
           ref.set(true)
         }
@@ -152,7 +152,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       val t = for {
         _ <- assertF(bound > 0)
         q <- newEmptyQ
-        _ <- (1 to bound).toList.traverse_(i => q.enqueueAsync(i.toString)) // make it full
+        _ <- (1 to bound).toList.traverse_(i => q.put(i.toString)) // make it full
         r <- F.ref(false)
         d <- F.deferred[String]
         enqFib <- enqAndSave(q, r, "foo").start
@@ -175,7 +175,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       val t = for {
         _ <- assertF(bound > 0)
         q <- newEmptyQ
-        _ <- (1 to bound).toList.traverse_(i => q.enqueueAsync(i.toString)) // make it full
+        _ <- (1 to bound).toList.traverse_(i => q.put(i.toString)) // make it full
         r1 <- F.ref(false)
         r2 <- F.ref(false)
         d <- F.deferred[String]

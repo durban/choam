@@ -86,7 +86,7 @@ object BoundedQueue {
     final override def offer(a: A): Rxn[Boolean] =
       gwl.trySet0(a)
 
-    final override def enqueueAsync[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
+    final override def put[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
       gwl.asyncSet(a)
 
     final override def bound: Int =
@@ -115,7 +115,7 @@ object BoundedQueue {
     final override def offer(a: A): Rxn[Boolean] =
       gwl.trySet0(a)
 
-    final override def enqueueAsync[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
+    final override def put[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
       gwl.asyncSet(a)
 
     final override def bound: Int =
@@ -139,7 +139,7 @@ object BoundedQueue {
     final override def size: F[Int] =
       F.run(self.size)
     final override def offer(a: A): F[Unit] =
-      self.enqueueAsync(a)
+      self.put(a)
     final override def tryOffer(a: A): F[Boolean] =
       F.apply(self.offer(a))
   }

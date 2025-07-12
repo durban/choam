@@ -33,7 +33,7 @@ private final class Fs2QueueWrapper[F[_], A](
   final override def size: F[Int] =
     F.asyncInst.raiseError(new AssertionError) // FS2 doesn't really need `size`, so we cheat
   final override def offer(a: A): F[Unit] =
-    self.enqueueAsync[F](a)
+    self.put[F](a)
   final override def tryOffer(a: A): F[Boolean] =
     F.apply(self.offer(a))
 }
