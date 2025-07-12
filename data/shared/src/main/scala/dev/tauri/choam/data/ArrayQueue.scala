@@ -31,8 +31,8 @@ private abstract class ArrayQueue[A](
   arr: Ref.Array[A],
   head: Ref[Int], // index for next element to deque
   tail: Ref[Int], // index for next element to enqueue
-) extends Queue.UnsealedQueueSource[A]
-  with Queue.UnsealedQueueSink[A] {
+) extends Queue.UnsealedQueuePoll[A]
+  with Queue.UnsealedQueueOffer[A] {
 
   require(capacity === arr.size)
 

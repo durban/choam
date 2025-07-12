@@ -23,35 +23,9 @@ import cats.syntax.all._
 
 import core.{ Rxn, Ref, Reactive }
 
-sealed trait QueueSource[+A] {
-
-  def poll: Rxn[Option[A]]
-
-  private[choam] final def drainOnce[F[_], AA >: A](implicit F: Reactive[F]): F[List[AA]] = {
-    F.monad.tailRecM(List.empty[AA]) { acc =>
-      F.monad.map(F.run(this.poll)) {
-        case Some(a) => Left(a :: acc)
-        case None => Right(acc.reverse)
-      }
-    }
-  }
-}
-
-sealed trait QueueSink[-A] {
-  def offer(a: A): Rxn[Boolean]
-}
-
-sealed trait QueueSourceSink[A]
-  extends QueueSource[A]
-  with  QueueSink[A]
-
-sealed trait UnboundedQueueSink[-A] extends QueueSink[A] {
-  def add(a: A): Rxn[Unit]
-}
-
 sealed trait Queue[A]
-  extends QueueSourceSink[A]
-  with UnboundedQueueSink[A]
+  extends Queue.SourceSink[A]
+  with Queue.Add[A]
 
 /**
  * Various queues
@@ -66,8 +40,10 @@ sealed trait Queue[A]
  * |         | `Rxn` (may fail)   | `Rxn` (succeeds)         |
  * |---------|--------------------|--------------------------|
  * | insert  | `QueueSink#offer`  | `UnboundedQueueSink#add` |
- * | remove  | `QueueSource#poll` | -                        |
+ * | remove  | `Queue.Poll#poll`  | -                        |
  * | examine | `peek`             | -                        |
+ *
+ * TODO: implement `peek`
  *
  * @see [[dev.tauri.choam.async.AsyncQueue]]
  *      for asynchronous (possibly fiber-blocking)
@@ -75,33 +51,33 @@ sealed trait Queue[A]
  */
 object Queue {
 
-  private[choam] trait UnsealedQueueSource[+A]
-    extends QueueSource[A]
+  sealed trait Poll[+A] {
+    def poll: Rxn[Option[A]]
+  }
 
-  private[choam] trait UnsealedQueueSink[-A]
-    extends QueueSink[A]
+  sealed trait Offer[-A] {
+    def offer(a: A): Rxn[Boolean]
+  }
 
-  private[choam] trait UnsealedQueueSourceSink[A]
-    extends QueueSourceSink[A]
+  sealed trait Add[-A] extends Queue.Offer[A] {
+    def add(a: A): Rxn[Unit]
+  }
 
-  private[choam] trait UnsealedQueue[A]
-    extends Queue[A]
+  sealed trait SourceSink[A]
+    extends Queue.Poll[A]
+    with  Queue.Offer[A]
 
   sealed trait WithSize[A] extends Queue[A] {
     def size: Rxn[Int]
   }
 
-  private[choam] trait UnsealedWithSize[A]
-    extends WithSize[A]
-
   final def unbounded[A]: Rxn[Queue[A]] =
     unbounded(Ref.AllocationStrategy.Default)
 
-  final def unbounded[A](str: Ref.AllocationStrategy): Rxn[Queue[A]] =
-    MsQueue[A](str)
-
-  final def bounded[A](bound: Int): Rxn[QueueSourceSink[A]] =
+  final def bounded[A](bound: Int): Rxn[Queue.SourceSink[A]] =
     dropping(bound)
+
+  // TODO: boundedWithSize : Queue.SourceSinkWithSize (?)
 
   final def dropping[A](capacity: Int): Rxn[Queue.WithSize[A]] =
     DroppingQueue.apply[A](capacity)
@@ -109,39 +85,47 @@ object Queue {
   final def ringBuffer[A](capacity: Int): Rxn[Queue.WithSize[A]] =
     RingBuffer.apply[A](capacity)
 
+  final def unboundedWithSize[A]: Rxn[Queue.WithSize[A]] = {
+    MsQueue.withSize[A]
+  }
+
+  private[choam] final def unbounded[A](str: Ref.AllocationStrategy): Rxn[Queue[A]] =
+    MsQueue[A](str)
+
+  private[choam] trait UnsealedQueuePoll[+A]
+    extends Queue.Poll[A]
+
+  private[choam] trait UnsealedQueueOffer[-A]
+    extends Queue.Offer[A]
+
+  private[choam] trait UnsealedQueueSourceSink[A]
+    extends Queue.SourceSink[A]
+
+  private[choam] trait UnsealedQueue[A]
+    extends Queue[A]
+
+  private[choam] trait UnsealedQueueWithSize[A]
+    extends WithSize[A]
+
   // TODO: do we need this?
   private[choam] def lazyRingBuffer[A](capacity: Int): Rxn[Queue.WithSize[A]] =
     RingBuffer.lazyRingBuffer[A](capacity)
-
-  final def unboundedWithSize[A]: Rxn[Queue.WithSize[A]] = {
-    Queue.unbounded[A].flatMap { q =>
-      Ref.unpadded[Int](0).map { s =>
-        new WithSize[A] {
-
-          final override def poll: Rxn[Option[A]] = {
-            q.poll.flatMap {
-              case r @ Some(_) => s.update(_ - 1).as(r)
-              case None => Rxn.pure(None)
-            }
-          }
-
-          final override def add(a: A): Rxn[Unit] =
-            s.update(_ + 1) *> q.add(a)
-
-          final override def offer(a: A): Rxn[Boolean] =
-            this.add(a).as(true)
-
-          final override def size: Rxn[Int] =
-            s.get
-        }
-      }
-    }
-  }
 
   private[data] final def fromList[F[_] : Reactive, Q[a] <: Queue[a], A](mkEmpty: Rxn[Q[A]])(as: List[A]): F[Q[A]] = {
     implicit val m: Monad[F] = Reactive[F].monad
     mkEmpty.run[F].flatMap { q =>
       as.traverse(a => q.add(a).run[F]).as(q)
+    }
+  }
+
+  private[choam] implicit final class DrainOnceSyntax[A](private val self: Queue.Poll[A]) extends AnyVal {
+    private[choam] final def drainOnce[F[_], AA >: A](implicit F: Reactive[F]): F[List[AA]] = {
+      F.monad.tailRecM(List.empty[AA]) { acc =>
+        F.monad.map(F.run(self.poll)) {
+          case Some(a) => Left(a :: acc)
+          case None => Right(acc.reverse)
+        }
+      }
     }
   }
 }

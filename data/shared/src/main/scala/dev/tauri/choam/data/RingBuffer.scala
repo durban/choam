@@ -36,7 +36,7 @@ private final class RingBuffer[A](
   head: Ref[Int], // index for next element to deque
   tail: Ref[Int], // index for next element to enqueue
 ) extends ArrayQueue[A](capacity, arr, head, tail)
-  with Queue.UnsealedWithSize[A] {
+  with Queue.UnsealedQueueWithSize[A] {
 
   require(capacity === arr.size)
 

@@ -130,6 +130,48 @@ private final class MsQueue[A] private[this] (
 
 private object MsQueue {
 
+  final def apply[A]: Rxn[MsQueue[A]] =
+    apply[A](Ref.AllocationStrategy.Default)
+
+  final def apply[A](str: Ref.AllocationStrategy): Rxn[MsQueue[A]] = {
+    applyInternal(padded = str.padded)
+  }
+
+  final def withSize[A]: Rxn[Queue.WithSize[A]] = {
+    apply[A].flatMap { q =>
+      Rxn.unsafe.delayContext { ctx =>
+        new Queue.UnsealedQueueWithSize[A] {
+
+          private[this] val s =
+            Ref.unsafePadded[Int](0, ctx.refIdGen)
+
+          final override def poll: Rxn[Option[A]] = {
+            q.poll.flatMap {
+              case r @ Some(_) => s.update(_ - 1).as(r)
+              case None => Rxn.pure(None)
+            }
+          }
+
+          final override def add(a: A): Rxn[Unit] =
+            s.update(_ + 1) *> q.add(a)
+
+          final override def offer(a: A): Rxn[Boolean] =
+            this.add(a).as(true)
+
+          final override def size: Rxn[Int] =
+            s.get
+        }
+      }
+    }
+  }
+
+  private[this] def applyInternal[A](padded: Boolean): Rxn[MsQueue[A]] =
+    Rxn.unsafe.delayContext { ctx => new MsQueue(padded = padded, initRig = ctx.refIdGen) }
+
+  private[data] def fromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[MsQueue[A]] = {
+    Queue.fromList[F, MsQueue, A](this.apply[A])(as)
+  }
+
   private sealed trait Elem[A]
 
   private final case class Node[A](data: A, next: Ref[Elem[A]]) extends Elem[A]
@@ -144,18 +186,4 @@ private object MsQueue {
     final def apply[A](): End[A] =
       _end.asInstanceOf[End[A]]
   }
-
-  final def apply[A]: Rxn[MsQueue[A]] =
-    apply[A](Ref.AllocationStrategy.Default)
-
-  final def apply[A](str: Ref.AllocationStrategy): Rxn[MsQueue[A]] = {
-    applyInternal(padded = str.padded)
-  }
-
-  private[data] def fromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[MsQueue[A]] = {
-    Queue.fromList[F, MsQueue, A](this.apply[A])(as)
-  }
-
-  private[this] def applyInternal[A](padded: Boolean): Rxn[MsQueue[A]] =
-    Rxn.unsafe.delayContext { ctx => new MsQueue(padded = padded, initRig = ctx.refIdGen) }
 }
