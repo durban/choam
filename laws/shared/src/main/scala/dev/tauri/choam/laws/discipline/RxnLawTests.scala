@@ -22,7 +22,7 @@ package discipline
 import cats.kernel.Eq
 import cats.kernel.laws.discipline.catsLawsIsEqToProp
 
-import org.scalacheck.{ Arbitrary, Cogen }
+import org.scalacheck.Arbitrary
 import org.scalacheck.Prop.forAll
 import org.typelevel.discipline.Laws
 
@@ -50,45 +50,29 @@ sealed trait RxnLawTests extends Laws { this: TestInstances =>
   def laws: RxnLaws =
     RxnLaws.newRxnLaws
 
-  def rxn[A, B, C, D, E, F](
+  def rxn[B, C, D, F](
     implicit
-    equA: Eq[A],
     equB: Eq[B],
     equC: Eq[C],
     equD: Eq[D],
     equF: Eq[F],
-    arbA: Arbitrary[A],
     arbB: Arbitrary[B],
     arbC: Arbitrary[C],
     arbD: Arbitrary[D],
-    arbE: Arbitrary[E],
     arbF: Arbitrary[F],
-    cogA: Cogen[A],
-    cogB: Cogen[B],
-    cogC: Cogen[C],
-    cogE: Cogen[E],
   ): RuleSet = new DefaultRuleSet(
     name = "rxn",
     parent = None,
-    "equals itself" -> forAll(laws.equalsItself[A, B]),
-    "as is map" -> forAll(laws.asIsMap[A, B, C]),
-    "void is map" -> forAll(laws.voidIsMap[A, B]),
-    "provide is contramap" -> forAll(laws.provideIsContramap[A, B]),
-    "pure is ret" -> forAll(laws.pureIsRet[A]),
-    "toFunction is provide" -> forAll(laws.toFunctionIsProvide[A, B]),
-    "map is >>> lift" -> forAll(laws.mapIsAndThenLift[A, B, C]),
-    "contramap is lift >>>" -> forAll(laws.contramapIsLiftAndThen[A, B, C]),
-    "* is ×" -> forAll(laws.timesIsAndAlso[A, B, C]),
-    "× is >>>" -> forAll(laws.andAlsoIsAndThen[A, B, C, D]),
-    "distributive (>>> and +) 1" -> forAll(laws.distributiveAndThenChoice1[A, B, C]),
-    "distributive (>>> and +) 2" -> forAll(laws.distributiveAndThenChoice2[A, B, C]),
-    "disributive (× and +) 1" -> forAll(laws.distributiveAndAlsoChoice1[A, B, C, D]),
-    "disributive (× and +) 2" -> forAll(laws.distributiveAndAlsoChoice2[A, B, C, D]),
-    "associative ×" -> forAll(laws.associativeAndAlso[A, B, C, D, E, F]),
-    "flatMapF is >>> and computed" -> forAll(laws.flatMapFIsAndThenComputed[A, B, C]),
-    "flatMap is .second, >>> and computed" -> forAll(laws.flatMapIsSecondAndThenComputed[A, B, C]),
-    "retry is neutral for choice (left)" -> forAll(laws.choiceRetryNeutralLeft[A, B]),
-    "retry is neutral for choice (right)" -> forAll(laws.choiceRetryNeutralRight[A, B]),
+    "equals itself" -> forAll(laws.equalsItself[B]),
+    "as is map" -> forAll(laws.asIsMap[B, C]),
+    "void is map" -> forAll(laws.voidIsMap[B]),
+    "distributive (>>> and +) 1" -> forAll(laws.distributiveAndThenChoice1[B, C]),
+    "distributive (>>> and +) 2" -> forAll(laws.distributiveAndThenChoice2[B, C]),
+    "disributive (× and +) 1" -> forAll(laws.distributiveAndAlsoChoice1[B, D]),
+    "disributive (× and +) 2" -> forAll(laws.distributiveAndAlsoChoice2[B, D]),
+    "associative ×" -> forAll(laws.associativeAndAlso[B, D, F]),
+    "retry is neutral for choice (left)" -> forAll(laws.choiceRetryNeutralLeft[B]),
+    "retry is neutral for choice (right)" -> forAll(laws.choiceRetryNeutralRight[B]),
   )
 }
 

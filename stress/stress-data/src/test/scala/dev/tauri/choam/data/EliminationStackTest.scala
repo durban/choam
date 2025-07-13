@@ -23,7 +23,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
 
-import core.{ Rxn, Axn }
+import core.Rxn
 import EliminationStack.TaggedEliminationStack
 
 @JCStressTest
@@ -36,25 +36,25 @@ import EliminationStack.TaggedEliminationStack
 class EliminationStackTest extends StressTestBase {
 
   private[this] val stack: TaggedEliminationStack[String] =
-    EliminationStack.taggedFlaky[String]().unsafeRun(this.impl)
+    EliminationStack.taggedFlaky[String].unsafePerform(this.impl)
 
-  private[this] val _push: Rxn[String, Either[Unit, Unit]] =
-    stack.push
+  private[this] final def _push(s: String): Rxn[Either[Unit, Unit]] =
+    stack.push(s)
 
-  private[this] val _tryPop: Axn[Either[Option[String], Option[String]]] = {
-    stack.tryPop.flatMapF {
-      case e @ (Left(Some(_)) | Right(Some(_))) => Axn.pure(e)
+  private[this] val _tryPop: Rxn[Either[Option[String], Option[String]]] = {
+    stack.tryPop.flatMap {
+      case e @ (Left(Some(_)) | Right(Some(_))) => Rxn.pure(e)
       case Left(None) | Right(None) => Rxn.unsafe.retry
     }
   }
 
   @Actor
   def push(r: LL_Result): Unit = {
-    r.r1 = _push.unsafePerform("a", this.impl)
+    r.r1 = _push("a").unsafePerform(this.impl)
   }
 
   @Actor
   def pop(r: LL_Result): Unit = {
-    r.r2 = _tryPop.unsafePerform(null, this.impl)
+    r.r2 = _tryPop.unsafePerform(this.impl)
   }
 }

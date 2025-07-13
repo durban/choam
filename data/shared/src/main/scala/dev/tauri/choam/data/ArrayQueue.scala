@@ -22,7 +22,7 @@ import java.lang.Integer.remainderUnsigned
 
 import cats.syntax.all._
 
-import core.{ Rxn, Axn, Ref }
+import core.{ Rxn, Ref }
 import ArrayQueue.{ empty, isEmpty }
 
 /** Common functionality for array-based queues */
@@ -31,7 +31,8 @@ private abstract class ArrayQueue[A](
   arr: Ref.Array[A],
   head: Ref[Int], // index for next element to deque
   tail: Ref[Int], // index for next element to enqueue
-) {
+) extends Queue.UnsealedQueuePoll[A]
+  with Queue.UnsealedQueueOffer[A] {
 
   require(capacity === arr.size)
 
@@ -39,7 +40,7 @@ private abstract class ArrayQueue[A](
     remainderUnsigned(idx + 1, capacity)
   }
 
-  def tryDeque: Axn[Option[A]] = {
+  final override def poll: Rxn[Option[A]] = {
     head.modifyWith { idx =>
       arr.unsafeGet(idx).modify { a =>
         if (isEmpty(a)) {
@@ -53,10 +54,11 @@ private abstract class ArrayQueue[A](
     }
   }
 
-  def tryEnqueue: Rxn[A, Boolean] = Rxn.computed[A, Boolean] { newVal =>
-    tail.get.flatMapF { idx =>
+  // Note: not final, because `RingBuffer` needs to override it
+  override def offer(newVal: A): Rxn[Boolean] = {
+    tail.get.flatMap { idx =>
       val ref = arr.unsafeGet(idx)
-      ref.get.flatMapF { oldVal =>
+      ref.get.flatMap { oldVal =>
         if (isEmpty(oldVal)) {
           // ok, we can enqueue:
           ref.set1(newVal) *> tail.set1(incrIdx(idx)).as(true)
@@ -68,8 +70,8 @@ private abstract class ArrayQueue[A](
     }
   }
 
-  def size: Axn[Int] = {
-    (head.get * tail.get).flatMapF {
+  def size: Rxn[Int] = {
+    (head.get * tail.get).flatMap {
       case (h, t) =>
         if (h < t) {
           Rxn.pure(t - h)

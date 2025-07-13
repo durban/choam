@@ -22,7 +22,7 @@ import cats.kernel.Monoid
 import cats.{ ~>, Applicative, Defer, StackSafeMonad }
 import cats.effect.kernel.Unique
 
-import core.{ Rxn, Axn, RxnImpl }
+import core.{ Rxn, RxnImpl }
 import internal.mcas.Mcas
 
 sealed trait Txn[+B] {
@@ -51,7 +51,7 @@ sealed trait Txn[+B] {
 
   def orElse[Y >: B](that: Txn[Y]): Txn[Y]
 
-  private[choam] def impl: RxnImpl[Any, B]
+  private[choam] def impl: RxnImpl[B]
 }
 
 object Txn extends TxnInstances0 {
@@ -62,7 +62,7 @@ object Txn extends TxnInstances0 {
     Rxn.pureImpl(a)
 
   final def unit: Txn[Unit] =
-    Rxn.unitImpl[Any]
+    Rxn.unitImpl
 
   final def retry[A]: Txn[A] =
     Rxn.StmImpl.retryWhenChanged[A]
@@ -71,10 +71,10 @@ object Txn extends TxnInstances0 {
     if (cond) unit else retry
 
   final def tailRecM[A, B](a: A)(f: A => Txn[Either[A, B]]): Txn[B] =
-    Rxn.tailRecMImpl(a)(f.asInstanceOf[Function1[A, Axn[Either[A, B]]]])
+    Rxn.tailRecMImpl(a)(f.asInstanceOf[Function1[A, Rxn[Either[A, B]]]])
 
   final def defer[A](fa: => Txn[A]): Txn[A] =
-    Axn.unsafe.suspendImpl { fa.impl }
+    Rxn.unsafe.suspendImpl { fa.impl }
 
   final def unique: Txn[Unique.Token] =
     Rxn.uniqueImpl
@@ -91,14 +91,14 @@ object Txn extends TxnInstances0 {
 
     @inline
     private[choam] final def delay[A](uf: => A): Txn[A] =
-      Axn.unsafe.delayImpl[A](uf)
+      Rxn.unsafe.delayImpl[A](uf)
 
     private[choam] final def suspend[A](uf: => Txn[A]): Txn[A] =
       delay(uf).flatten
 
     @inline
     private[choam] final def delayContext[A](uf: Mcas.ThreadContext => A): Txn[A] =
-      Rxn.unsafe.axnDelayContextImpl(uf)
+      Rxn.unsafe.delayContextImpl(uf)
 
     private[choam] final def suspendContext[A](uf: Mcas.ThreadContext => Txn[A]): Txn[A] =
       delayContext(uf).flatten
@@ -112,7 +112,7 @@ object Txn extends TxnInstances0 {
 
     /** Only for testing! */
     private[choam] final def plus[A](t1: Txn[A], t2: Txn[A]): Txn[A] = {
-      t1.asInstanceOf[RxnImpl[Any, A]] + t2.asInstanceOf[RxnImpl[Any, A]]
+      t1.asInstanceOf[RxnImpl[A]] + t2.asInstanceOf[RxnImpl[A]]
     }
   }
 

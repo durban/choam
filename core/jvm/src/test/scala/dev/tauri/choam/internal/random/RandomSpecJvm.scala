@@ -27,7 +27,7 @@ import cats.effect.std.Random
 
 import org.scalacheck.effect.PropF
 
-import core.{ Rxn, Axn }
+import core.Rxn
 
 final class RandomSpecJvm_Emcas_SyncIO
   extends BaseSpecSyncIO
@@ -51,7 +51,7 @@ trait RandomSpecJvm[F[_]] extends RandomSpec[F] { this: McasImplSpec =>
 
   test("Rxn.deterministicRandom should use the same algo as SplittableRandom") {
     PropF.forAllF { (seed: Long) =>
-      def checkLong(label: String, sr: JSplittableRandom, dr: Random[Axn]): F[Unit] = for {
+      def checkLong(label: String, sr: JSplittableRandom, dr: Random[Rxn]): F[Unit] = for {
         n1 <- F.delay(sr.nextLong())
         _ <- assertResultF(dr.nextLong.run[F], n1, label)
         n2 <- F.delay(sr.nextLong())
@@ -65,7 +65,7 @@ trait RandomSpecJvm[F[_]] extends RandomSpec[F] { this: McasImplSpec =>
         n6 <- F.delay(sr.nextLong(Long.MinValue + 5L, Long.MaxValue - 32L))
         _ <- assertResultF(dr.betweenLong(Long.MinValue + 5L, Long.MaxValue - 32L).run[F], n6, label)
       } yield ()
-      def checkInt(sr: JSplittableRandom, dr: Random[Axn]): F[Unit] = for {
+      def checkInt(sr: JSplittableRandom, dr: Random[Rxn]): F[Unit] = for {
         i1 <- F.delay(sr.nextInt())
         _ <- assertResultF(dr.nextInt.run[F], i1)
         i2 <- F.delay(sr.nextInt(32))
@@ -77,7 +77,7 @@ trait RandomSpecJvm[F[_]] extends RandomSpec[F] { this: McasImplSpec =>
         i5 <- F.delay(sr.nextInt(Int.MinValue, 988595849))
         _ <- assertResultF(dr.betweenInt(Int.MinValue, 988595849).run[F], i5)
       } yield ()
-      def checkDouble(sr: JSplittableRandom, dr: Random[Axn]): F[Unit] = for {
+      def checkDouble(sr: JSplittableRandom, dr: Random[Rxn]): F[Unit] = for {
         d1 <- F.delay(sr.nextDouble())
         _ <- assertResultF(dr.nextDouble.run[F], d1)
         d2 <- F.delay(sr.nextDouble())
@@ -96,13 +96,13 @@ trait RandomSpecJvm[F[_]] extends RandomSpec[F] { this: McasImplSpec =>
         d6 <- F.delay(sr.nextDouble(java.lang.Double.MIN_VALUE, java.lang.Math.nextUp(java.lang.Double.MIN_VALUE)))
         _ <- assertResultF(dr.betweenDouble(java.lang.Double.MIN_VALUE, java.lang.Math.nextUp(java.lang.Double.MIN_VALUE)).run[F], d6)
       } yield ()
-      def checkBoolean(sr: JSplittableRandom, dr: Random[Axn]): F[Unit] = for {
+      def checkBoolean(sr: JSplittableRandom, dr: Random[Rxn]): F[Unit] = for {
         b1 <- F.delay(sr.nextBoolean())
         _ <- assertResultF(dr.nextBoolean.run[F], b1)
         b2 <- F.delay(sr.nextBoolean())
         _ <- assertResultF(dr.nextBoolean.run[F], b2)
       } yield ()
-      def checkBytes(sr: JSplittableRandom, dr: Random[Axn]): F[Unit] = for {
+      def checkBytes(sr: JSplittableRandom, dr: Random[Rxn]): F[Unit] = for {
         a1 <- F.delay(new Array[Byte](16))
         _ <- F.delay(sr.nextBytes(a1))
         a1Actual <- dr.nextBytes(16).run[F]
@@ -116,7 +116,7 @@ trait RandomSpecJvm[F[_]] extends RandomSpec[F] { this: McasImplSpec =>
         a3Actual <- dr.nextBytes(3).run[F]
         _ <- assertEqualsF(a3Actual.toList, a3.toList)
       } yield ()
-      def checkSplit(sr: JSplittableRandom, dr: SplittableRandom[Axn]): F[Unit] = for {
+      def checkSplit(sr: JSplittableRandom, dr: SplittableRandom[Rxn]): F[Unit] = for {
         sr1 <- F.delay(sr.split())
         sr2 <- F.delay(sr.split())
         dr1 <- dr.split.run[F]

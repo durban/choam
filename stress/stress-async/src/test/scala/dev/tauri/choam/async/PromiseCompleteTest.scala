@@ -45,15 +45,15 @@ class PromiseCompleteTest {
   private[this] val p2: Promise[String] =
     Promise[String].run[SyncIO].unsafeRunSync()
 
-  private[this] val completeBoth: Rxn[(String, String), (Boolean, Boolean)] =
-    p1.complete0 × p2.complete0
+  private[this] final def completeBoth(s1: String, s2: String): Rxn[(Boolean, Boolean)] =
+    p1.complete(s1) * p2.complete(s2)
 
   private[this] val tryGetBoth: SyncIO[(Option[String], Option[String])] =
     (p1.tryGet.run[SyncIO], p2.tryGet.run[SyncIO]).tupled
 
   @Actor
   def complete(r: ZLL_Result): Unit = {
-    val res = completeBoth.run[SyncIO](("x", "y")).unsafeRunSync()
+    val res = completeBoth("x", "y").run[SyncIO].unsafeRunSync()
     r.r1 = res._1 && res._2
   }
 

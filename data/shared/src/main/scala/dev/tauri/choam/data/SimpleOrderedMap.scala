@@ -24,83 +24,73 @@ import cats.kernel.Order
 import cats.data.Chain
 import cats.collections.AvlMap
 
-import core.{ =#>, Rxn, Axn, Ref, RefLike }
+import core.{ Rxn, Ref, RefLike }
 
 private final class SimpleOrderedMap[K, V] private (
   repr: Ref[AvlMap[K, V]]
 )(implicit K: Order[K]) extends Map.UnsealedMapExtra[K, V] { self =>
 
-  final override def put: Rxn[(K, V), Option[V]] = {
-    repr.upd[(K, V), Option[V]] { (m, kv) =>
-      (m + kv, m.get(kv._1))
+  final override def put(k: K, v: V): Rxn[Option[V]] = {
+    repr.modify[Option[V]] { m =>
+      (m + (k, v), m.get(k))
     }
   }
 
-  final override def putIfAbsent: Rxn[(K, V), Option[V]] = {
-    repr.upd[(K, V), Option[V]] { (m, kv) =>
-      m.get(kv._1) match {
+  final override def putIfAbsent(k: K, v: V): Rxn[Option[V]] = {
+    repr.modify[Option[V]] { m =>
+      m.get(k) match {
         case None =>
-          (m + kv, None)
+          (m + (k, v), None)
         case s @ Some(_) =>
           (m, s)
       }
     }
   }
 
-  final override def replace: Rxn[(K, V, V), Boolean] = {
-    repr.upd[(K, V, V), Boolean] { (m, kvv) =>
-      m.get(kvv._1) match {
+  final override def replace(k: K, ov: V, nv: V): Rxn[Boolean] = {
+    repr.modify[Boolean] { m =>
+      m.get(k) match {
         case None =>
           (m, false)
-        case Some(v) if equ(v, kvv._2) =>
-          (m + ((kvv._1, kvv._3)), true)
+        case Some(v) if equ(v, ov) =>
+          (m + ((k, nv)), true)
         case _ =>
           (m, false)
       }
     }
   }
 
-  final override def get: Rxn[K, Option[V]] = {
-    repr.upd[K, Option[V]] { (m, k) =>
-      (m, m.get(k))
+  final override def get(k: K): Rxn[Option[V]] = {
+    repr.get.map { m =>
+      m.get(k)
     }
   }
 
-  final override def del: Rxn[K, Boolean] = {
-    repr.upd[K, Boolean] { (m, k) =>
+  final override def del(k: K): Rxn[Boolean] = {
+    repr.modify[Boolean] { m =>
       val newM = m.remove(k)
       val existing = m.get(k)
       (newM, existing.isDefined)
     }
   }
 
-  final override def remove: Rxn[(K, V), Boolean] =  {
-    repr.upd[(K, V), Boolean] { (m, kv) =>
-      m.get(kv._1) match {
+  final override def remove(k: K, v: V): Rxn[Boolean] =  {
+    repr.modify[Boolean] { m =>
+      m.get(k) match {
         case None =>
           (m, false)
-        case Some(v) if equ(v, kv._2) =>
-          (m.remove(kv._1), true)
+        case Some(cv) if equ(cv, v) =>
+          (m.remove(k), true)
         case _ =>
           (m, false)
       }
     }
   }
 
-  final override def clear: Axn[Unit] =
+  final override def clear: Rxn[Unit] =
     repr.update(_ => AvlMap.empty[K, V])
 
-  final override def values(implicit V: Order[V]): Axn[Vector[V]] = {
-    repr.get.map { am =>
-      val b = scala.collection.mutable.ArrayBuffer.newBuilder[V]
-      b.sizeHint(am.set.size)
-      am.foldLeft(b) { (b, kv) =>
-        b += kv._2
-      }.result().sortInPlace()(using V.toOrdering).toVector
-    }
-  }
-
-  final override def keys: Axn[Chain[K]] = {
+  final override def keys: Rxn[Chain[K]] = {
     repr.get.map { m =>
       Chain.fromSeq(
         m.foldLeft(Vector.newBuilder[K]) { (vb, kv) =>
@@ -110,7 +100,7 @@ private final class SimpleOrderedMap[K, V] private (
     }
   }
 
-  final override def valuesUnsorted: Axn[Chain[V]] = {
+  final override def values: Rxn[Chain[V]] = {
     repr.get.map { m =>
       Chain.fromSeq(
         m.foldLeft(Vector.newBuilder[V]) { (vb, kv) =>
@@ -120,7 +110,7 @@ private final class SimpleOrderedMap[K, V] private (
     }
   }
 
-  final override def items: Axn[Chain[(K, V)]] = {
+  final override def items: Rxn[Chain[(K, V)]] = {
     repr.get.map { m =>
       Chain.fromSeq(
         m.foldLeft(Vector.newBuilder[(K, V)]) { (vb, kv) =>
@@ -132,20 +122,10 @@ private final class SimpleOrderedMap[K, V] private (
 
   final override def refLike(key: K, default: V): RefLike[V] = new RefLike.UnsealedRefLike[V] {
 
-    final def get: Axn[V] =
-      self.get.provide(key).map(_.getOrElse(default))
+    final def get: Rxn[V] =
+      self.get(key).map(_.getOrElse(default))
 
-    final override def set0: Rxn[V, Unit] = {
-      repr.update2[V] { (am, nv) =>
-        if (equ(nv, default)) {
-          am.remove(key)
-        } else {
-          am + (key, nv)
-        }
-      }
-    }
-
-    final override def set1(nv: V): Axn[Unit] = {
+    final override def set1(nv: V): Rxn[Unit] = {
       if (equ(nv, default)) {
         repr.update { am => am.remove(key) }
       } else {
@@ -153,7 +133,7 @@ private final class SimpleOrderedMap[K, V] private (
       }
     }
 
-    final override def update1(f: V => V): Axn[Unit] = {
+    final override def update1(f: V => V): Rxn[Unit] = {
       repr.update1 { am =>
         val currVal = am.get(key).getOrElse(default)
         val newVal = f(currVal)
@@ -162,41 +142,17 @@ private final class SimpleOrderedMap[K, V] private (
       }
     }
 
-    final override def update2[B](f: (V, B) => V): Rxn[B, Unit] = {
-      repr.update2 { (am, b) =>
+    final override def modify[C](f: V => (V, C)): Rxn[C] = {
+      repr.modify { am =>
         val currVal = am.get(key).getOrElse(default)
-        val newVal = f(currVal, b)
-        if (equ(newVal, default)) am.remove(key)
-        else am + (key, newVal)
-      }
-    }
-
-    final override def upd[B, C](f: (V, B) => (V, C)): B =#> C = {
-      Rxn.computed[B, C] { (b: B) =>
-        repr.modify { am =>
-          val currVal = am.get(key).getOrElse(default)
-          val (newVal, c) = f(currVal, b)
-          if (equ(newVal, default)) (am.remove(key), c)
-          else (am + ((key, newVal)), c)
-        }
-      }
-    }
-
-    final def updWith[B, C](f: (V, B) => Axn[(V, C)]): B =#> C = {
-      Rxn.computed[B, C] { (b: B) =>
-        repr.modifyWith { am =>
-          val currVal = am.get(key).getOrElse(default)
-          f(currVal, b).map {
-            case (newVal, c) =>
-              if (equ(newVal, default)) (am.remove(key), c)
-              else (am + ((key, newVal)), c)
-          }
-        }
+        val (newVal, c) = f(currVal)
+        if (equ(newVal, default)) (am.remove(key), c)
+        else (am + ((key, newVal)), c)
       }
     }
   }
 
-  private[data] final def unsafeSnapshot: Axn[ScalaMap[K, V]] = {
+  private[data] final def unsafeSnapshot: Rxn[ScalaMap[K, V]] = {
     repr.get.map { am =>
       // NB: ScalaMap won't use our
       // Order; this is one reason why
@@ -212,7 +168,7 @@ private final class SimpleOrderedMap[K, V] private (
 
 private object SimpleOrderedMap {
 
-  private[data] final def apply[K: Order, V](str: Ref.AllocationStrategy): Axn[Map.Extra[K, V]] = {
+  private[data] final def apply[K: Order, V](str: Ref.AllocationStrategy): Rxn[Map.Extra[K, V]] = {
     Ref(AvlMap.empty[K, V], str).map(new SimpleOrderedMap(_))
   }
 }

@@ -24,8 +24,8 @@ import org.openjdk.jcstress.infra.results.LLL_Result
 
 import cats.effect.SyncIO
 
-import core.Axn
-import data.RemoveQueue
+import core.Rxn
+import data.{ Queue, RemoveQueue }
 
 @JCStressTest
 @State
@@ -38,33 +38,33 @@ class RemoveQueueRemoveTest1B extends RemoveQueueStressTestBase {
 
   private[this] val queueAndRemover = {
     val q = this.newQueue[String]()
-    val remover = q.enqueueWithRemover.unsafePerform("z", this.impl)
-    q.enqueue.unsafePerform("x", this.impl)
+    val remover = q.enqueueWithRemover("z").unsafePerform(this.impl)
+    q.add("x").unsafePerform(this.impl)
     (q, remover)
   }
 
   private[this] val queue: RemoveQueue[String] =
     queueAndRemover._1
 
-  private[this] val remover: Axn[Boolean] =
+  private[this] val remover: Rxn[Boolean] =
     queueAndRemover._2
 
   private[this] val tryDeque =
-    queue.tryDeque
+    queue.poll
 
   @Actor
   def deq(r: LLL_Result): Unit = {
-    r.r2 = tryDeque.unsafeRun(this.impl)
+    r.r2 = tryDeque.unsafePerform(this.impl)
   }
 
   @Actor
   def rem(r: LLL_Result): Unit = {
-    val wasRemoved: Boolean = remover.unsafePerform(null : Any, this.impl)
+    val wasRemoved: Boolean = remover.unsafePerform(this.impl)
     r.r3 = wasRemoved
   }
 
   @Arbiter
   def arbiter(r: LLL_Result): Unit = {
-    r.r1 = queue.drainOnce[SyncIO, String].unsafeRunSync()
+    r.r1 = Queue.drainOnce[SyncIO, String](queue).unsafeRunSync()
   }
 }

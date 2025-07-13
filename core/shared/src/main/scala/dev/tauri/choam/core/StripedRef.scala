@@ -29,7 +29,7 @@ private[choam] sealed abstract class StripedRef[A] {
 
 private[choam] object StripedRef extends StripedRefCompanionPlatform {
 
-  final def apply[A](initial: A): Axn[StripedRef[A]] = Axn.unsafe.suspendContext { ctx =>
+  final def apply[A](initial: A): Rxn[StripedRef[A]] = Rxn.unsafe.suspendContext { ctx =>
     val size = ctx.stripes
     Ref.array(size, initial, this.strategy).map { arr =>
       new StripedRefImpl(arr)
@@ -58,39 +58,24 @@ private[choam] object StripedRef extends StripedRefCompanionPlatform {
       go(0, z)
     }
 
-    final override def get: Axn[A] = Rxn.unsafe.suspendContext { (_, ctx) =>
+    final override def get: Rxn[A] = Rxn.unsafe.suspendContext { ctx =>
       val ref = stripes.unsafeGet(ctx.stripeId)
       ref.get
     }
 
-    final override def set0: Rxn[A, Unit] = Rxn.unsafe.suspendContext { (nv, ctx) =>
+    final override def modify[B](f: A => (A, B)): Rxn[B] = Rxn.unsafe.suspendContext { ctx =>
       val ref = stripes.unsafeGet(ctx.stripeId)
-      ref.set1(nv)
+      ref.modify(f)
     }
 
-    final override def set1(a: A): Axn[Unit] = Rxn.unsafe.suspendContext { (_, ctx) =>
+    final override def set1(a: A): Rxn[Unit] = Rxn.unsafe.suspendContext { ctx =>
       val ref = stripes.unsafeGet(ctx.stripeId)
       ref.set1(a)
     }
 
-    final override def update1(f: A => A): Axn[Unit] = Rxn.unsafe.suspendContext { (_, ctx) =>
+    final override def update1(f: A => A): Rxn[Unit] = Rxn.unsafe.suspendContext { ctx =>
       val ref = stripes.unsafeGet(ctx.stripeId)
       ref.update1(f)
-    }
-
-    final override def update2[B](f: (A, B) => A): Rxn[B, Unit] = Rxn.unsafe.suspendContext { (_, ctx) =>
-      val ref = stripes.unsafeGet(ctx.stripeId)
-      ref.update2(f)
-    }
-
-    final override def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[B, C] = Rxn.unsafe.suspendContext { (_, ctx) =>
-      val ref = stripes.unsafeGet(ctx.stripeId)
-      ref.updWith(f)
-    }
-
-    final override def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C] = Rxn.unsafe.suspendContext { (_, ctx) =>
-      val ref = stripes.unsafeGet(ctx.stripeId)
-      ref.upd(f)
     }
   }
 }

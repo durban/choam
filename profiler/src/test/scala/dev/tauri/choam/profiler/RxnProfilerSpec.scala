@@ -28,7 +28,7 @@ import munit.CatsEffectSuite
 
 import org.openjdk.jmh.results.Result
 
-import core.{ Rxn, Axn, Ref }
+import core.{ Rxn, Ref }
 import internal.mcas.Consts
 
 final class RxnProfilerSpecIO
@@ -71,7 +71,7 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
     })
   }
 
-  def runInFiber[A](tsk: Axn[A]): F[A] = {
+  def runInFiber[A](tsk: Rxn[A]): F[A] = {
     tsk.run[F].start.flatMap { fib => fib.joinWithNever }
   }
 
@@ -144,13 +144,13 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
 
   test("rxn.retriesPerCommit") {
     this.assume(Consts.statsEnabled)
-    def succeedAfter(after: Int, optRef: Option[Ref[Int]] = None): F[Axn[Int]] = {
+    def succeedAfter(after: Int, optRef: Option[Ref[Int]] = None): F[Rxn[Int]] = {
       F.delay(new AtomicInteger).map { ctr =>
-        Axn.unsafe.delay { ctr.getAndIncrement() }.flatMapF { retries =>
+        Rxn.unsafe.delay { ctr.getAndIncrement() }.flatMap { retries =>
           if (retries >= after) {
             optRef match {
               case Some(ref) => ref.getAndUpdate(_ + 1)
-              case None => Axn.pure(42)
+              case None => Rxn.pure(42)
             }
           } else {
             Rxn.unsafe.retry
@@ -209,8 +209,8 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
     for {
       e <- RxnProfiler.profiledExchanger[String, Int].run[F]
       p <- simulateStart()
-      fib <- e.exchange.run[F]("foo").start
-      _ <- assertResultF(e.dual.exchange.run[F](42), "foo")
+      fib <- e.exchange("foo").run[F].start
+      _ <- assertResultF(e.dual.exchange(42).run[F], "foo")
       _ <- assertResultF(fib.joinWithNever, 42)
       r <- simulateEnd(p)
       _ <- assertEqualsF(r(RxnProfiler.ExchangeCount).getScore, 1.0)

@@ -328,7 +328,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
   .settings(
     libraryDependencies ++= Seq(
       dependencies.catsCore.value,
-      dependencies.catsMtl.value,
+      dependencies.catsMtl.value, // TODO: do we still need this?
       dependencies.catsEffectKernel.value,
       dependencies.catsEffectStd.value,
       // "eu.timepit" %%% "refined" % "0.11.1",
@@ -476,7 +476,7 @@ lazy val internalHelpers = project.in(file("internal-helpers"))
     assertionsEnabled := false, // so that we can test that they're disabled
   )
 
-lazy val laws = crossProject(JVMPlatform, JSPlatform)
+lazy val laws = crossProject(JVMPlatform, JSPlatform) // TODO: don't publish this
   .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
   .in(file("laws"))
@@ -513,7 +513,6 @@ lazy val unidocs = project
       data.jvm,
       async.jvm,
       stream.jvm,
-      laws.jvm,
       ce.jvm,
       zi.jvm,
       profiler,
@@ -930,7 +929,7 @@ lazy val dependencies = new {
       catsLaws.value,
       "org.typelevel" %%% "cats-effect-kernel-testkit" % catsEffectVersion,
       "org.typelevel" %%% "cats-effect-testkit" % catsEffectVersion,
-      catsMtlLaws.value,
+      catsMtlLaws.value, // TODO: do we still need this?
       "org.scalameta" %%% "munit" % "1.1.1", // https://github.com/scalameta/munit
       "org.typelevel" %%% "munit-cats-effect" % "2.1.0", // https://github.com/typelevel/munit-cats-effect
       "org.typelevel" %%% "scalacheck-effect" % scalacheckEffectVersion,

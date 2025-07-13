@@ -39,9 +39,9 @@ class AsyncQueueCancelEnqTest {
   private[this] val runtime =
     cats.effect.unsafe.IORuntime.global
 
-  private[this] val q: BoundedQueue[String] = {
+  private[this] val q: AsyncQueue.SourceSink[String] = {
     val q = AsyncQueue.bounded[String](1).run[SyncIO].unsafeRunSync()
-    assert(q.tryEnqueue.run[SyncIO]("x").unsafeRunSync()) // make it full
+    assert(q.offer("x").run[SyncIO].unsafeRunSync()) // make it full
     q
   }
 
@@ -50,14 +50,14 @@ class AsyncQueueCancelEnqTest {
 
   private[this] val offerer: Fiber[IO, Throwable, Unit] = {
     val tsk = IO.uncancelable { poll =>
-      poll(q.enqueue[IO]("a")).flatTap { _ => IO { this.result = true } }
+      poll(q.put[IO]("a")).flatTap { _ => IO { this.result = true } }
     }
     tsk.start.unsafeRunSync()(using runtime)
   }
 
   @Actor
   def take(r: LLLL_Result): Unit = {
-    r.r2 = q.deque[IO, String].unsafeRunSync()(using this.runtime)
+    r.r2 = q.take[IO, String].unsafeRunSync()(using this.runtime)
   }
 
   @Actor
@@ -76,6 +76,6 @@ class AsyncQueueCancelEnqTest {
     }.unsafeRunSync()(using this.runtime)
     r.r1 = this.result
     r.r3 = oc
-    r.r4 = q.tryDeque.run[SyncIO].unsafeRunSync()
+    r.r4 = q.poll.run[SyncIO].unsafeRunSync()
   }
 }

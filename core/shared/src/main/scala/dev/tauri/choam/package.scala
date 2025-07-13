@@ -17,12 +17,4 @@
 
 package dev.tauri
 
-package object choam extends internal.ChoamUtils {
-
-  private[choam] implicit final class AxnSyntax2[A](private val self: core.Axn[A]) extends AnyVal {
-
-    private[choam] final def unsafeRun(mcas: internal.mcas.Mcas): A = {
-      self.unsafePerform(null : Any, mcas)
-    }
-  }
-}
+package object choam extends internal.ChoamUtils

@@ -35,27 +35,27 @@ trait OrElseRetrySpec[F[_]] extends BaseSpecAsyncF[F] with TestContextSpec[F] { 
   private[this] final def log(msg: String): F[Unit] =
     F.delay { ulog(msg) }
 
-  private[this] final def rlog(msg: String): Axn[Unit] =
-    Axn.unsafe.delay { ulog(msg) }
+  private[this] final def rlog(msg: String): Rxn[Unit] =
+    Rxn.unsafe.delay { ulog(msg) }
 
 
-  private def succeedWith[A](name: String, result: A): Axn[A] = {
-    Axn.unsafe.delay {
+  private def succeedWith[A](name: String, result: A): Rxn[A] = {
+    Rxn.unsafe.delay {
       ulog(s" $name succeeding with $result")
       result
     }
   }
 
-  private def failWith[A](name: String, ex: Throwable): Axn[A] = {
-    Axn.unsafe.delay {
+  private def failWith[A](name: String, ex: Throwable): Rxn[A] = {
+    Rxn.unsafe.delay {
       ulog(s" $name throwing $ex")
       throw ex
     }
   }
 
-  private def retryOnceThenSucceedWith[A](name: String, result: A): Axn[A] = {
+  private def retryOnceThenSucceedWith[A](name: String, result: A): Rxn[A] = {
     val flag = new AtomicBoolean(true)
-    Axn.unsafe.delay { flag.getAndSet(false) }.flatMapF { doRetry =>
+    Rxn.unsafe.delay { flag.getAndSet(false) }.flatMap { doRetry =>
       if (doRetry) {
         // we "simulate" a transient failure
         // with an unconditional retry here
@@ -63,19 +63,19 @@ trait OrElseRetrySpec[F[_]] extends BaseSpecAsyncF[F] with TestContextSpec[F] { 
         // permanent failures)
         rlog(s" $name retrying") *> Rxn.unsafe.retry
       } else {
-        rlog(s" $name succeeding with $result") *> Axn.pure(result)
+        rlog(s" $name succeeding with $result") *> Rxn.pure(result)
       }
     }
   }
 
-  private def succeedIfPositive[A](name: String, ref: Ref[Int], result: A): Axn[A] = {
+  private def succeedIfPositive[A](name: String, ref: Ref[Int], result: A): Rxn[A] = {
     succeedIf(name, ref, result, _ > 0)
   }
 
-  private def succeedIf[A](name: String, ref: Ref[Int], result: A, predicate: Int => Boolean): Axn[A] = {
-    ref.get.flatMapF { i =>
+  private def succeedIf[A](name: String, ref: Ref[Int], result: A, predicate: Int => Boolean): Rxn[A] = {
+    ref.get.flatMap { i =>
       if (predicate(i)) {
-        rlog(s" $name succeeding with $result") *> Axn.pure(result)
+        rlog(s" $name succeeding with $result") *> Rxn.pure(result)
       } else {
         rlog(s" $name retrying") *> Rxn.unsafe.retryWhenChanged
       }
@@ -85,9 +85,9 @@ trait OrElseRetrySpec[F[_]] extends BaseSpecAsyncF[F] with TestContextSpec[F] { 
   // Note: we NEED this semantics for elimination.
   test("Rxn - `t1 + t2`: `t1` transient failure -> try `t2`") {
     log("Rxn - `t1 + t2`: `t1` transient failure") *> {
-      val t1: Axn[Int] = retryOnceThenSucceedWith("t1", 1)
-      val t2: Axn[Int] = succeedWith("t2", 2)
-      val rxn: Axn[Int] = t1 + t2
+      val t1: Rxn[Int] = retryOnceThenSucceedWith("t1", 1)
+      val t2: Rxn[Int] = succeedWith("t2", 2)
+      val rxn: Rxn[Int] = t1 + t2
       assertResultF(rxn.run, 2)
     }
   }
@@ -96,9 +96,9 @@ trait OrElseRetrySpec[F[_]] extends BaseSpecAsyncF[F] with TestContextSpec[F] { 
   // available through `Rxn.unsafe.orElse`.
   test("Rxn - `t1 orElse t2`: `t1` transient failure -> retry `t1`") {
     log("Rxn - `t1 orElse t2`: `t1` transient failure") *> {
-      val t1: Axn[Int] = retryOnceThenSucceedWith("t1", 1)
-      val t2: Axn[Int] = succeedWith("t2", 2)
-      val rxn: Axn[Int] = Rxn.unsafe.orElse(t1, t2)
+      val t1: Rxn[Int] = retryOnceThenSucceedWith("t1", 1)
+      val t2: Rxn[Int] = succeedWith("t2", 2)
+      val rxn: Rxn[Int] = Rxn.unsafe.orElse(t1, t2)
       assertResultF(rxn.run, 1)
     }
   }
@@ -109,9 +109,9 @@ trait OrElseRetrySpec[F[_]] extends BaseSpecAsyncF[F] with TestContextSpec[F] { 
   test("Rxn - `t1 orElse t2`: `t1` permanent failure -> try `t2`") {
     log("Rxn - `t1 orElse t2`: `t1` permanent failure") *> {
       Ref[Int](0).run[F].flatMap { ref =>
-        val t1: Axn[Int] = succeedIfPositive("t1", ref, 1)
-        val t2: Axn[Int] = succeedWith("t2", 2)
-        val rxn: Axn[Int] = Rxn.unsafe.orElse(t1, t2)
+        val t1: Rxn[Int] = succeedIfPositive("t1", ref, 1)
+        val t2: Rxn[Int] = succeedWith("t2", 2)
+        val rxn: Rxn[Int] = Rxn.unsafe.orElse(t1, t2)
         assertResultF(rxn.run, 2)
       }
     }
@@ -120,10 +120,10 @@ trait OrElseRetrySpec[F[_]] extends BaseSpecAsyncF[F] with TestContextSpec[F] { 
   // Note: we NEED this semantics for elimination.
   test("Rxn - `(t1 + t2) <* t3`: `t1` succeeds, `t3` transient failure -> try `t2`") {
     log("Rxn - `(t1 + t2) <* t3`: `t1` succeeds, `t3` transient failure") *> {
-      val t1: Axn[Int] = succeedWith("t1", 1)
-      val t2: Axn[Int] = succeedWith("t2", 2)
-      val t3: Axn[Int] = retryOnceThenSucceedWith("t3", 3)
-      val rxn: Axn[Int] = (t1 + t2) <* t3
+      val t1: Rxn[Int] = succeedWith("t1", 1)
+      val t2: Rxn[Int] = succeedWith("t2", 2)
+      val t3: Rxn[Int] = retryOnceThenSucceedWith("t3", 3)
+      val rxn: Rxn[Int] = (t1 + t2) <* t3
       assertResultF(rxn.run, 2)
     }
   }
@@ -132,10 +132,10 @@ trait OrElseRetrySpec[F[_]] extends BaseSpecAsyncF[F] with TestContextSpec[F] { 
   // available through `Rxn.unsafe.orElse`.
   test("Rxn - `(t1 orElse t2) <* t3`: `t1` succeeds, `t3` transient failure -> retry `t1`") {
     log("Rxn - `(t1 orElse t2) <* t3`: `t1` succeeds, `t3` transient failure") *> {
-      val t1: Axn[Int] = succeedWith("t1", 1)
-      val t2: Axn[Int] = failWith("t2", new Exception("t2 error"))
-      val t3: Axn[Int] = retryOnceThenSucceedWith("t3", 3)
-      val rxn: Axn[Int] = Rxn.unsafe.orElse(t1, t2) <* t3
+      val t1: Rxn[Int] = succeedWith("t1", 1)
+      val t2: Rxn[Int] = failWith("t2", new Exception("t2 error"))
+      val t3: Rxn[Int] = retryOnceThenSucceedWith("t3", 3)
+      val rxn: Rxn[Int] = Rxn.unsafe.orElse(t1, t2) <* t3
       assertResultF(rxn.run, 1)
     }
   }
@@ -149,10 +149,10 @@ trait OrElseRetrySpec[F[_]] extends BaseSpecAsyncF[F] with TestContextSpec[F] { 
 
   test("Rxn - `(t1 orElse t2) + t3`: `t1` transient failure -> try `t3` (NOT `t2`)") {
     log("Rxn - `(t1 orElse t2) + t3`: `t1` transient failure") *> {
-      val t1: Axn[Int] = retryOnceThenSucceedWith("t1", 1)
-      val t2: Axn[Int] = succeedWith("t2", 2)
-      val t3: Axn[Int] = succeedWith("t3", 3)
-      val rxn: Axn[Int] = Rxn.unsafe.orElse(t1, t2) + t3
+      val t1: Rxn[Int] = retryOnceThenSucceedWith("t1", 1)
+      val t2: Rxn[Int] = succeedWith("t2", 2)
+      val t3: Rxn[Int] = succeedWith("t3", 3)
+      val rxn: Rxn[Int] = Rxn.unsafe.orElse(t1, t2) + t3
       assertResultF(rxn.run, 3)
     }
   }
@@ -160,11 +160,11 @@ trait OrElseRetrySpec[F[_]] extends BaseSpecAsyncF[F] with TestContextSpec[F] { 
   test("Rxn - `(t1 + t2) orElse (t3 + t4)`") {
     log("Rxn - `(t1 + t2) orElse (t3 + t4)`") *> {
       Ref[Int](0).run[F].flatMap { ref =>
-        val t1: Axn[Int] = retryOnceThenSucceedWith("t1", 1)
-        val t2: Axn[Int] = succeedIfPositive("t2", ref, 2)
-        val t3: Axn[Int] = retryOnceThenSucceedWith("t3", 3)
-        val t4: Axn[Int] = succeedWith("t4", 4)
-        val rxn: Axn[Int] = Rxn.unsafe.orElse(t1 + t2, t3 + t4)
+        val t1: Rxn[Int] = retryOnceThenSucceedWith("t1", 1)
+        val t2: Rxn[Int] = succeedIfPositive("t2", ref, 2)
+        val t3: Rxn[Int] = retryOnceThenSucceedWith("t3", 3)
+        val t4: Rxn[Int] = succeedWith("t4", 4)
+        val rxn: Rxn[Int] = Rxn.unsafe.orElse(t1 + t2, t3 + t4)
         assertResultF(rxn.run, 4)
       }
     }
@@ -179,17 +179,17 @@ trait OrElseRetrySpec[F[_]] extends BaseSpecAsyncF[F] with TestContextSpec[F] { 
   test("Rxn - consistency of 2 sides of `orElse`") {
     log("Rxn - race2") *> {
       Ref[Int](0).run[F].flatMap { ref =>
-        val t1: Axn[Int] = succeedIfPositive("t1", ref, 1)
-        val t2: Axn[Int] = succeedIfPositive("t2", ref, 2)
-        val t3: Axn[Int] = succeedWith("t3", 3)
-        val rxn: Axn[Int] = Rxn.unsafe.orElse(Rxn.unsafe.orElse(t1, t2), t3)
+        val t1: Rxn[Int] = succeedIfPositive("t1", ref, 1)
+        val t2: Rxn[Int] = succeedIfPositive("t2", ref, 2)
+        val t3: Rxn[Int] = succeedWith("t3", 3)
+        val rxn: Rxn[Int] = Rxn.unsafe.orElse(Rxn.unsafe.orElse(t1, t2), t3)
         for {
           d <- F.deferred[Unit]
           stepper <- mkStepper
-          fib <- stepper.run(rxn, ()).guarantee(d.complete(()).void).start
+          fib <- stepper.run(rxn).guarantee(d.complete(()).void).start
           _ <- this.tickAll // we're stopping at the `t1` retry (because it read 0)
           // another transaction changes `ref`:
-          _ <- ref.set0.run[F](1)
+          _ <- ref.set(1).run[F]
           // now try `t2`, which MUST read the same 0, and retry:
           _ <- stepper.stepAndTickAll
           _ <- assertResultF(d.tryGet, None)

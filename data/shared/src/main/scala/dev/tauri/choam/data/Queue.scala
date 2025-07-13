@@ -21,107 +21,115 @@ package data
 import cats.Monad
 import cats.syntax.all._
 
-import core.{ Rxn, Axn, Ref, Reactive }
-
-sealed trait QueueSource[+A] {
-
-  def tryDeque: Axn[Option[A]] // TODO:0.5: should be called `tryDequeue`
-
-  private[choam] final def drainOnce[F[_], AA >: A](implicit F: Reactive[F]): F[List[AA]] = {
-    F.monad.tailRecM(List.empty[AA]) { acc =>
-      F.monad.map(F.run(this.tryDeque)) {
-        case Some(a) => Left(a :: acc)
-        case None => Right(acc.reverse)
-      }
-    }
-  }
-}
-
-sealed trait QueueSink[-A] {
-  def tryEnqueue: Rxn[A, Boolean]
-}
-
-sealed trait QueueSourceSink[A]
-  extends QueueSource[A]
-  with  QueueSink[A]
-
-sealed trait UnboundedQueueSink[-A] extends QueueSink[A] {
-  def enqueue: Rxn[A, Unit]
-}
+import core.{ Rxn, Ref, Reactive }
 
 sealed trait Queue[A]
-  extends QueueSourceSink[A]
-  with UnboundedQueueSink[A]
+  extends Queue.SourceSink[A]
+  with Queue.Add[A]
 
+/**
+ * Various queues
+ *
+ * The operations that may fail (e.g., trying to remove
+ * an element form an empty queue) return either a `Boolean`
+ * or an `Option` (e.g., removing from an empty queue returns
+ * `None`).
+ *
+ * Method summary of the various operations:
+ *
+ * |         | `Rxn` (may fail)    | `Rxn` (succeeds) |
+ * |---------|---------------------|------------------|
+ * | insert  | `Queue.Offer#offer` | `Queue.Add#add`  |
+ * | remove  | `Queue.Poll#poll`   | -                |
+ * | examine | `peek`              | -                |
+ *
+ * TODO: implement `peek`
+ *
+ * @see [[dev.tauri.choam.async.AsyncQueue$]]
+ *      for asynchronous (possibly fiber-blocking)
+ *      variants of these methods
+ */
 object Queue {
 
-  private[choam] trait UnsealedQueueSource[+A]
-    extends QueueSource[A]
+  sealed trait Poll[+A] {
+    def poll: Rxn[Option[A]]
+  }
 
-  private[choam] trait UnsealedQueueSink[-A]
-    extends QueueSink[A]
+  sealed trait Offer[-A] {
+    def offer(a: A): Rxn[Boolean]
+  }
+
+  sealed trait Add[-A] extends Queue.Offer[A] {
+    def add(a: A): Rxn[Unit]
+  }
+
+  sealed trait SourceSink[A]
+    extends Queue.Poll[A]
+    with  Queue.Offer[A]
+
+  sealed trait WithSize[A] extends Queue[A] {
+    def size: Rxn[Int]
+  }
+
+  final def unbounded[A]: Rxn[Queue[A]] =
+    unbounded(Ref.AllocationStrategy.Default)
+
+  final def bounded[A](bound: Int): Rxn[Queue.SourceSink[A]] =
+    dropping(bound)
+
+  final def dropping[A](capacity: Int): Rxn[Queue.WithSize[A]] =
+    DroppingQueue.apply[A](capacity)
+
+  final def ringBuffer[A](capacity: Int): Rxn[Queue.WithSize[A]] =
+    RingBuffer.apply[A](capacity)
+
+  final def unboundedWithSize[A]: Rxn[Queue.WithSize[A]] = {
+    MsQueue.withSize[A]
+  }
+
+  // TODO: boundedWithSize : Queue.SourceSinkWithSize (?)
+
+  private[choam] final def unbounded[A](str: Ref.AllocationStrategy): Rxn[Queue[A]] =
+    MsQueue[A](str)
+
+  private[choam] trait UnsealedQueuePoll[+A]
+    extends Queue.Poll[A]
+
+  private[choam] trait UnsealedQueueOffer[-A]
+    extends Queue.Offer[A]
 
   private[choam] trait UnsealedQueueSourceSink[A]
-    extends QueueSourceSink[A]
+    extends Queue.SourceSink[A]
 
   private[choam] trait UnsealedQueue[A]
     extends Queue[A]
 
-  sealed trait WithSize[A] extends Queue[A] {
-    def size: Axn[Int]
-  }
-
-  private[choam] trait UnsealedWithSize[A]
+  private[choam] trait UnsealedQueueWithSize[A]
     extends WithSize[A]
 
-  final def unbounded[A]: Axn[Queue[A]] =
-    MsQueue[A]
-
-  final def bounded[A](bound: Int): Axn[QueueSourceSink[A]] =
-    dropping(bound)
-
-  final def dropping[A](capacity: Int): Axn[Queue.WithSize[A]] =
-    DroppingQueue.apply[A](capacity)
-
-  final def ringBuffer[A](capacity: Int): Axn[Queue.WithSize[A]] =
-    RingBuffer.apply[A](capacity)
-
   // TODO: do we need this?
-  private[choam] def lazyRingBuffer[A](capacity: Int): Axn[Queue.WithSize[A]] =
+  private[choam] def lazyRingBuffer[A](capacity: Int): Rxn[Queue.WithSize[A]] =
     RingBuffer.lazyRingBuffer[A](capacity)
 
-  final def unboundedWithSize[A]: Axn[Queue.WithSize[A]] = {
-    Queue.unbounded[A].flatMapF { q =>
-      Ref.unpadded[Int](0).map { s =>
-        new WithSize[A] {
-
-          final override def tryDeque: Axn[Option[A]] = {
-            q.tryDeque.flatMapF {
-              case r @ Some(_) => s.update(_ - 1).as(r)
-              case None => Rxn.pure(None)
-            }
-          }
-
-          final override def enqueue: Rxn[A, Unit] =
-            s.update(_ + 1) *> q.enqueue
-
-          final override def tryEnqueue: Rxn[A, Boolean] =
-            this.enqueue.as(true)
-
-          final override def size: Axn[Int] =
-            s.get
-        }
-      }
+  private[data] final def fromList[F[_] : Reactive, Q[a] <: Queue[a], A](mkEmpty: Rxn[Q[A]])(as: List[A]): F[Q[A]] = {
+    implicit val m: Monad[F] = Reactive[F].monad
+    mkEmpty.run[F].flatMap { q =>
+      as.traverse(a => q.add(a).run[F]).as(q)
     }
   }
 
-  private[data] final def unpadded[A]: Axn[Queue[A]] =
-    MsQueue.unpadded[A]
+  private[choam] final def drainOnce[F[_], A](queue: Queue.Poll[A])(implicit F: Reactive[F]): F[List[A]] = {
+      F.monad.tailRecM(List.empty[A]) { acc =>
+        F.monad.map(F.run(queue.poll)) {
+          case Some(a) => Left(a :: acc)
+          case None => Right(acc.reverse)
+        }
+      }
+    }
 
-  private[data] final def fromList[F[_] : Reactive, Q[a] <: Queue[a], A](mkEmpty: Axn[Q[A]])(as: List[A]): F[Q[A]] = {
-    implicit val m: Monad[F] = Reactive[F].monad
-    mkEmpty.run[F].flatMap { q =>
-      as.traverse(a => q.enqueue.run[F](a)).as(q)
+  private[choam] implicit final class DrainOnceSyntax[A](private val self: Queue.Poll[A]) extends AnyVal {
+    private[choam] final def drainOnce[F[_]](implicit F: Reactive[F]): F[List[A]] = {
+      Queue.drainOnce(self)
     }
   }
 }

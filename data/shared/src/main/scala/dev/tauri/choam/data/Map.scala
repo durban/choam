@@ -23,7 +23,7 @@ import cats.data.Chain
 import cats.effect.kernel.{ Ref => CatsRef }
 import cats.effect.std.MapRef
 
-import core.{ Rxn, Axn, Ref, RefLike, Reactive }
+import core.{ Rxn, Ref, RefLike, Reactive }
 
 sealed trait Map[K, V] { self =>
 
@@ -31,14 +31,12 @@ sealed trait Map[K, V] { self =>
   // TODO: a variant of `del` could return the old value (if any)
   // TODO: think about a `putIfPresent` (in CSLM this is another overload of `replace`)
 
-  // TODO:0.5: figure out if we really want to take the key as input (instead of as an arg)
-
-  def put: Rxn[(K, V), Option[V]]
-  def putIfAbsent: Rxn[(K, V), Option[V]]
-  def replace: Rxn[(K, V, V), Boolean]
-  def get: Rxn[K, Option[V]]
-  def del: Rxn[K, Boolean]
-  def remove: Rxn[(K, V), Boolean]
+  def put(k: K, v: V): Rxn[Option[V]]
+  def putIfAbsent(k: K, v: V): Rxn[Option[V]]
+  def replace(k: K, ov: V, nv: V): Rxn[Boolean]
+  def get(k: K): Rxn[Option[V]]
+  def del(k: K): Rxn[Boolean]
+  def remove(k: K, v: V): Rxn[Boolean]
   def refLike(key: K, default: V): RefLike[V]
 
   def toCats[F[_]](default: V)(implicit F: Reactive[F]): MapRef[F, K, V] = {
@@ -54,33 +52,31 @@ object Map extends MapPlatform {
   sealed trait Extra[K, V] extends Map[K, V] {
 
     // TODO: type Snapshot
-    // TODO: def snapshot: Axn[Snapshot]
+    // TODO: def snapshot: Rxn[Snapshot]
 
-    def clear: Axn[Unit]
+    def clear: Rxn[Unit]
 
-    def values(implicit V: Order[V]): Axn[Vector[V]] // TODO:0.5: remove this
+    def keys: Rxn[Chain[K]]
 
-    def keys: Axn[Chain[K]]
+    def values: Rxn[Chain[V]]
 
-    def valuesUnsorted: Axn[Chain[V]] // TODO:0.5: rename to `values`
-
-    def items: Axn[Chain[(K, V)]]
+    def items: Rxn[Chain[(K, V)]]
   }
 
   private[data] trait UnsealedMap[K, V] extends Map[K, V]
 
   private[data] trait UnsealedMapExtra[K, V] extends Map.Extra[K, V]
 
-  final override def simpleHashMap[K: Hash, V]: Axn[Extra[K, V]] =
+  final override def simpleHashMap[K: Hash, V]: Rxn[Extra[K, V]] =
     SimpleMap[K, V](Ref.AllocationStrategy.Default)
 
-  final override def simpleHashMap[K: Hash, V](str: Ref.AllocationStrategy): Axn[Extra[K, V]] =
+  final override def simpleHashMap[K: Hash, V](str: Ref.AllocationStrategy): Rxn[Extra[K, V]] =
     SimpleMap[K, V](str)
 
-  final override def simpleOrderedMap[K: Order, V]: Axn[Extra[K, V]] =
+  final override def simpleOrderedMap[K: Order, V]: Rxn[Extra[K, V]] =
     SimpleOrderedMap[K, V](Ref.AllocationStrategy.Default)
 
-  final override def simpleOrderedMap[K: Order, V](str: Ref.AllocationStrategy): Axn[Extra[K, V]] =
+  final override def simpleOrderedMap[K: Order, V](str: Ref.AllocationStrategy): Rxn[Extra[K, V]] =
     SimpleOrderedMap[K, V](str)
 
   private[data] final override def unsafeSnapshot[F[_], K, V](m: Map[K, V])(implicit F: Reactive[F]) = {

@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import core.{ Rxn, Axn, Ref }
+import core.{ Rxn, Ref }
 import internal.mcas.RefIdGen
 import RemoveQueue.{ Elem, Node, End, dequeued, isDequeued, isRemoved }
 
@@ -42,7 +42,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
   def this(initRig: RefIdGen) =
     this(Node(nullOf[Ref[A]], Ref.unsafeUnpadded(End[A](), initRig)), initRig = initRig)
 
-  override val tryDeque: Axn[Option[A]] = {
+  final override val poll: Rxn[Option[A]] = {
     head.modifyWith { node =>
       skipRemoved(from = node.next).flatMap {
         case None =>
@@ -55,14 +55,14 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
     }
   }
 
-  private[this] def skipRemoved(from: Ref[Elem[A]]): Axn[Option[(A, Node[A])]] = {
-    from.get.flatMapF {
+  private[this] final def skipRemoved(from: Ref[Elem[A]]): Rxn[Option[(A, Node[A])]] = {
+    from.get.flatMap {
       case n @ Node(dataRef, nextRef) =>
-        dataRef.get.flatMapF { a =>
+        dataRef.get.flatMap { a =>
           if (isRemoved(a)) {
             skipRemoved(nextRef)
           } else if (isDequeued(a)) {
-            impossible("tryDeque found an already dequeued node")
+            impossible("poll found an already dequeued node")
           } else {
             dataRef.set1(dequeued[A]).as(Some((a, n)))
           }
@@ -72,31 +72,31 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
     }
   }
 
-  val isEmpty: Axn[Boolean] = {
-    def go(from: Ref[Elem[A]]): Axn[Boolean] = {
-      from.get.flatMapF {
+  val isEmpty: Rxn[Boolean] = {
+    def go(from: Ref[Elem[A]]): Rxn[Boolean] = {
+      from.get.flatMap {
         case Node(dataRef, nextRef) =>
-          dataRef.get.flatMapF { a =>
+          dataRef.get.flatMap { a =>
             if (isRemoved(a)) {
               go(nextRef)
             } else if (isDequeued(a)) {
               impossible("isEmpty found an already dequeued node")
             } else {
-              Axn.pure(false)
+              Rxn.pure(false)
             }
           }
         case End() =>
-          Axn.pure(true)
+          Rxn.pure(true)
       }
     }
 
-    head.get.flatMapF { node => go(node.next) }
+    head.get.flatMap { node => go(node.next) }
   }
 
-  final override def tryEnqueue: Rxn[A, Boolean] =
-    this.enqueue.as(true)
+  final override def offer(a: A): Rxn[Boolean] =
+    this.add(a).as(true)
 
-  override def enqueue: Rxn[A, Unit] = Rxn.computed { (a: A) =>
+  final override def add(a: A): Rxn[Unit] = {
     Ref.unpadded[Elem[A]](End[A]()).flatMap { nextRef =>
       Ref.unpadded(a).flatMap { dataRef =>
         findAndEnqueue(Node(dataRef, nextRef))
@@ -104,7 +104,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
     }
   }
 
-  val enqueueWithRemover: Rxn[A, Axn[Boolean]] = Rxn.computed { (a: A) =>
+  final def enqueueWithRemover(a: A): Rxn[Rxn[Boolean]] = {
     Ref.unpadded[Elem[A]](End[A]()).flatMap { nextRef =>
       Ref.unpadded(a).flatMap { dataRef =>
         val newNode = Node(dataRef, nextRef)
@@ -114,25 +114,25 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
   }
 
   // TODO: we could allow tail to lag by a constant
-  private[this] def findAndEnqueue(node: Node[A]): Axn[Unit] = {
-    def go(n: Node[A]): Axn[Unit] = {
-      n.next.get.flatMapF {
+  private[this] final def findAndEnqueue(node: Node[A]): Rxn[Unit] = {
+    def go(n: Node[A]): Rxn[Unit] = {
+      n.next.get.flatMap {
         case End() =>
           // found true tail; will update, and adjust the tail ref:
-          n.next.set1(node) >>> tail.set1(node)
+          n.next.set1(node) *> tail.set1(node)
         case nv @ Node(_, _) =>
           // not the true tail; try to catch up, and continue:
           go(n = nv)
       }
     }
-    tail.get.flatMapF(go)
+    tail.get.flatMap(go)
   }
 }
 
 private[choam] object RemoveQueue {
 
-  def apply[A]: Axn[RemoveQueue[A]] =
-    Axn.unsafe.delayContext { ctx => new RemoveQueue(ctx.refIdGen) }
+  def apply[A]: Rxn[RemoveQueue[A]] =
+    Rxn.unsafe.delayContext { ctx => new RemoveQueue(ctx.refIdGen) }
 
   private sealed trait Elem[A]
 
@@ -143,8 +143,8 @@ private[choam] object RemoveQueue {
   private final case class Node[A](data: Ref[A], next: Ref[Elem[A]])
     extends Elem[A] {
 
-    final def remover: Axn[Boolean] = {
-      this.data.upd[Any, Boolean] { (ov, _) =>
+    final def remover: Rxn[Boolean] = {
+      this.data.modify { ov =>
         if (isDequeued(ov) || isRemoved(ov)) {
           // we can't cancel it, because either
           // it was already dequeued, or someone

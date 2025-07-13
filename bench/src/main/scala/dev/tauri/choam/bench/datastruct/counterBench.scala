@@ -39,17 +39,17 @@ class CounterBench {
 
   @Benchmark
   def rxnSimpleUnpadded(s: ReactSt, k: McasImplState): Unit = {
-    s.rxnSimpleUnpadded.incr.unsafePerform(null, k.mcasImpl)
+    s.rxnSimpleUnpadded.incr.unsafePerform(k.mcasImpl)
   }
 
   @Benchmark
   def rxnSimplePadded(s: ReactSt, k: McasImplState): Unit = {
-    s.rxnSimplePadded.incr.unsafePerform(null, k.mcasImpl)
+    s.rxnSimplePadded.incr.unsafePerform(k.mcasImpl)
   }
 
   @Benchmark
   def rxnStripedPadded(s: ReactSt, k: McasImplState): Unit = {
-    s.rxnStripedPadded.incr.unsafePerform(null, k.mcasImpl)
+    s.rxnStripedPadded.incr.unsafePerform(k.mcasImpl)
   }
 }
 
@@ -68,10 +68,10 @@ object CounterBench {
   @State(Scope.Benchmark)
   class ReactSt extends McasImplStateBase {
     val rxnSimpleUnpadded: Counter =
-      Counter.simple(Ref.AllocationStrategy(padded = false)).unsafeRun(this.mcasImpl)
+      Counter.simple(Ref.AllocationStrategy(padded = false)).unsafePerform(this.mcasImpl)
     val rxnSimplePadded: Counter =
-      Counter.simple(Ref.AllocationStrategy(padded = true)).unsafeRun(this.mcasImpl)
+      Counter.simple(Ref.AllocationStrategy(padded = true)).unsafePerform(this.mcasImpl)
     val rxnStripedPadded: Counter =
-      Counter.striped(Ref.AllocationStrategy.Padded).unsafeRun(this.mcasImpl)
+      Counter.striped(Ref.AllocationStrategy.Padded).unsafePerform(this.mcasImpl)
   }
 }

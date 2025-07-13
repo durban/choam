@@ -24,7 +24,6 @@ import cats.effect.{ IO, SyncIO }
 import cats.effect.syntax.all._
 
 import munit.CatsEffectSuite
-import dev.tauri.choam.stm.Transactive
 
 final class ResourceSpecIO extends ResourceSpec[IO]
 

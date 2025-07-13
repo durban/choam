@@ -22,7 +22,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLL_Result
 
-import core.{ Axn, Ref }
+import core.{ Rxn, Ref }
 
 @JCStressTest
 @State
@@ -36,28 +36,32 @@ class WriteAfterGet extends StressTestBase {
   private[this] val ref: Ref[String] =
     Ref.unsafePadded("a", this.rig)
 
-  private[this] val write1: Axn[String] = {
-    ref.get >>> ref.upd { (old, input) =>
-      if (old eq input) ("1", old)
-      else (old, "ERR")
+  private[this] val write1: Rxn[String] = {
+    ref.get.flatMap { old1 =>
+      ref.modify { old2 =>
+        if (old1 eq old2) ("1", old1)
+        else (old2, "ERR")
+      }
     }
   }
 
-  private[this] val write2: Axn[String] = {
-    ref.get >>> ref.upd { (old, input) =>
-      if (old eq input) ("2", old)
-      else (old, "ERR")
+  private[this] val write2: Rxn[String] = {
+    ref.get.flatMap { old1 =>
+      ref.modify { old2 =>
+        if (old1 eq old2) ("2", old1)
+        else (old2, "ERR")
+      }
     }
   }
 
   @Actor
   def writer1(r: LLL_Result): Unit = {
-    r.r1 = this.write1.unsafePerform(null, this.impl)
+    r.r1 = this.write1.unsafePerform(this.impl)
   }
 
   @Actor
   def writer2(r: LLL_Result): Unit = {
-    r.r2 = this.write2.unsafePerform(null, this.impl)
+    r.r2 = this.write2.unsafePerform(this.impl)
   }
 
   @Arbiter

@@ -20,40 +20,109 @@ package async
 
 import cats.effect.std.{ Queue => CatsQueue }
 
-import core.{ Axn, AsyncReactive }
+import core.{ Rxn, AsyncReactive }
 
-sealed trait AsyncQueueSource[+A] extends data.Queue.UnsealedQueueSource[A] {
-  def deque[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] // TODO:0.5: should be called `dequeue`; also: InvariantSyntax
+sealed trait AsyncQueue[A]
+  extends data.Queue.UnsealedQueue[A]
+  with AsyncQueue.SourceSink[A] {
+
+  final override def put[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
+    F.apply(this.add(a))
 }
 
-sealed trait BoundedQueueSink[-A] extends data.Queue.UnsealedQueueSink[A] {
-  def enqueue[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit]
-}
-
+/**
+ * Various asynchronous queues
+ *
+ * Adds asynchronous variants to the methods of
+ * [[dev.tauri.choam.data.Queue$]] (see the last column
+ * of the table below). These operations have a result
+ * type in an asynchronous `F`, and may be fiber-blocking.
+ * For example, asynchronously removing an element from
+ * an empty queue fiber-blocks until the queue is non-empty
+ * (or until the fiber is cancelled).
+ *
+ * Method summary of the various operations:
+ *
+ * |         | `Rxn` (may fail)    | `Rxn` (succeeds) | `F` (may block)        |
+ * |---------|---------------------|------------------|------------------------|
+ * | insert  | `Queue.Offer#offer` | `Queue.Add#add`  | `AsyncQueue.Put#put`   |
+ * | remove  | `Queue.Poll#poll`   | -                | `AsyncQueue.Take#take` |
+ * | examine | `peek`              | -                | -                      |
+ *
+ * TODO: implement `peek`
+ *
+ * @see [[dev.tauri.choam.data.Queue$]]
+ *      for the synchronous methods (all except
+ *      the last column of this table)
+ */
 object AsyncQueue {
 
-  private[choam] trait UnsealedAsyncQueueSource[+A]
-    extends AsyncQueueSource[A]
+  sealed trait Take[+A] extends data.Queue.UnsealedQueuePoll[A] {
+    // TODO: add InvariantSyntax (to be able to call it like `.take[F]`)
+    def take[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA]
+  }
 
-  private[choam] trait UnsealedBoundedQueueSink[-A]
-    extends BoundedQueueSink[A]
+  sealed trait Put[-A] extends data.Queue.UnsealedQueueOffer[A] {
+    def put[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit]
+  }
 
-  final def unbounded[A]: Axn[UnboundedQueue[A]] =
-    UnboundedQueue[A]
+  sealed trait SourceSink[A]
+    extends data.Queue.UnsealedQueueSourceSink[A]
+    with AsyncQueue.Take[A]
+    with AsyncQueue.Put[A]
 
-  final def bounded[A](bound: Int): Axn[BoundedQueue[A]] =
-    BoundedQueue.array[A](bound)
+  sealed trait WithSize[A]
+    extends AsyncQueue[A] {
 
-  final def dropping[A](capacity: Int): Axn[OverflowQueue[A]] =
-    OverflowQueue.droppingQueue[A](capacity)
+    def size: Rxn[Int]
 
-  final def ringBuffer[A](capacity: Int): Axn[OverflowQueue[A]] =
-    OverflowQueue.ringBuffer[A](capacity)
+    def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A]
+  }
 
-  final def unboundedWithSize[A]: Axn[UnboundedQueue.WithSize[A]] =
-    UnboundedQueue.withSize[A]
+  final def unbounded[A]: Rxn[AsyncQueue[A]] =
+    UnboundedQueueImpl[A]
 
-  // TODO: final def synchronous[A]: Axn[BoundedQueue[A]] = ...
+  final def bounded[A](bound: Int): Rxn[AsyncQueue.SourceSink[A]] =
+    BoundedQueueImpl.array[A](bound) // TODO: technically, this is already "WithSize" (see also below)
+
+  final def dropping[A](capacity: Int): Rxn[AsyncQueue.WithSize[A]] =
+    OverflowQueueImpl.droppingQueue[A](capacity)
+
+  final def ringBuffer[A](capacity: Int): Rxn[AsyncQueue.WithSize[A]] =
+    OverflowQueueImpl.ringBuffer[A](capacity)
+
+  final def unboundedWithSize[A]: Rxn[AsyncQueue.WithSize[A]] =
+    UnboundedQueueImpl.withSize[A]
+
+  // TODO: boundedWithSize : AsyncQueue.SourceSinkWithSize? (see below)
+
+  private[choam] trait UnsealedAsyncQueueTake[+A]
+    extends AsyncQueue.Take[A]
+
+  private[choam] trait UnsealedAsyncQueuePut[-A]
+    extends AsyncQueue.Put[A]
+
+  private[choam] trait UnsealedAsyncQueueSourceSink[A]
+    extends AsyncQueue.SourceSink[A]
+
+  private[choam] trait UnsealedAsyncQueue[A]
+    extends AsyncQueue[A]
+
+  private[choam] trait UnsealedAsyncQueueWithSize[A]
+    extends AsyncQueue.WithSize[A]
+
+  private[choam] sealed trait SourceSinkWithSize[A] // TODO: do we want this public? (see above)
+    extends AsyncQueue.SourceSink[A] {
+
+    def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A]
+
+    def size: Rxn[Int]
+  }
+
+  private[choam] trait UnsealedAsyncQueueSourceSinkWithSize[A]
+    extends AsyncQueue.SourceSinkWithSize[A]
+
+  // TODO: final def synchronous[A]: Rxn[BoundedQueue[A]] = ...
   // TODO:
   // TODO: Providing a synchronous queue which has operations
   // TODO: in `Rxn` seems fundamentally impossible. Let's say
@@ -61,8 +130,8 @@ object AsyncQueue {
   // TODO: trait SynchronousQueue[A] {
   // TODO:   def take[F[_]]: F[A]
   // TODO:   def offer[F[_]](a: A): F[Unit]
-  // TODO:   def tryTake: Axn[Option[A]]
-  // TODO:   def tryOffer(a: A): Axn[Boolean]
+  // TODO:   def tryTake: Rxn[Option[A]]
+  // TODO:   def tryOffer(a: A): Rxn[Boolean]
   // TODO: }
   // TODO: If `tryOffer` returns `true`, that should mean
   // TODO: that someone will definitely receive the item.
@@ -81,18 +150,18 @@ object AsyncQueue {
   // TODO: that have a performance advantage? Maybe if contention
   // TODO: is high (because the CE queue uses an single Ref)?
 
-  private[async] final class CatsQueueAdapter[F[_] : AsyncReactive, A](self: UnboundedQueue.WithSize[A])
+  private[async] final class CatsQueueAdapter[F[_] : AsyncReactive, A](self: AsyncQueue.WithSize[A])
     extends CatsQueue[F, A] {
 
     final override def take: F[A] =
-      self.deque
+      self.take
     final override def tryTake: F[Option[A]] =
-      self.tryDeque.run[F]
+      self.poll.run[F]
     final override def size: F[Int] =
       self.size.run
     final override def offer(a: A): F[Unit] =
-      self.enqueue[F](a)
+      self.put[F](a)
     final override def tryOffer(a: A): F[Boolean] =
-      self.tryEnqueue.run[F](a)
+      self.offer(a).run[F]
   }
 }

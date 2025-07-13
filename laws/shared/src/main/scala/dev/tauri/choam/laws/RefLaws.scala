@@ -44,10 +44,15 @@ sealed trait RefLaws {
   def orderConsistentWithIdentity[A](x: Ref[A], y: Ref[A]): IsEq[Boolean] =
     Order[Ref[A]].eqv(x, y) <-> (x eq y)
 
-  def updWithRetIsUpd[A, B, C](x: Ref[A], f: A => A, g: B => C): IsEq[Rxn[B, C]] = {
-    val uw = x.updWith[B, C] { (a, b) => Rxn.ret((f(a), g(b))) }
-    val u = x.upd[B, C] { (a, b) => (f(a), g(b)) }
-    uw <-> u
+  def modifyWithPureIsModify[A, C](x: Ref[A], f: A => A, g: A => C): IsEq[Rxn[C]] = {
+    val uw = x.modifyWith { a => Rxn.pure((f(a), g(a))) }
+    val u = x.modify { a => (f(a), g(a)) }
+    def restoreRefAtEnd(rxn: Rxn[C]): Rxn[C] = {
+      x.get.flatMap { orig =>
+        rxn.postCommit(x.set(orig))
+      }
+    }
+    restoreRefAtEnd(uw) <-> restoreRefAtEnd(u)
   }
 }
 

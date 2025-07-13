@@ -23,7 +23,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 import org.openjdk.jmh.annotations._
 
-import core.{ Axn, Ref }
+import core.{ Rxn, Ref }
 import bench.util.{ McasImplStateBase, RandomState }
 import RefArrayBench._
 
@@ -95,26 +95,26 @@ object RefArrayBench {
     def setup(): Unit = {
       val a = this.mkArr(this.size)
       (0 until this.size).foreach { idx =>
-        a.unsafeGet(idx).set0.provide(
+        a.unsafeGet(idx).set(
           ThreadLocalRandom.current().nextInt().toString
-        ).unsafePerform(null, this.mcasImpl)
+        ).unsafePerform(this.mcasImpl)
       }
       this._arr = a
     }
 
     final def foldSparse(r: RandomState): Int = {
-      this.foldSparseAxn(r).unsafePerform(null, this.mcasImpl)
+      this.foldSparseAxn(r).unsafePerform(this.mcasImpl)
     }
 
-    final def foldSparseAxn(r: RandomState): Axn[Int] = {
+    final def foldSparseAxn(r: RandomState): Rxn[Int] = {
       val arr = this.arr
       val len = arr.length
       val incr = 16
-      var acc = Axn.pure(0)
+      var acc = Rxn.pure(0)
       var idx = r.nextIntBounded(4)
       while (idx < len) {
         val hs = arr.unsafeGet(idx).get.map(_.##)
-        acc = acc.flatMapF { acc => hs.map(_ ^ acc) }
+        acc = acc.flatMap { acc => hs.map(_ ^ acc) }
         idx += incr
       }
       acc
@@ -122,10 +122,10 @@ object RefArrayBench {
 
     final def swapAndGet(r: RandomState): String = {
       val len = this.size
-      swapAndGetAxn(r.nextIntBounded(len), r.nextIntBounded(len), r.nextIntBounded(len)).unsafePerform(null, this.mcasImpl)
+      swapAndGetAxn(r.nextIntBounded(len), r.nextIntBounded(len), r.nextIntBounded(len)).unsafePerform(this.mcasImpl)
     }
 
-    final def swapAndGetAxn(idx1: Int, idx2: Int, idx3: Int): Axn[String] = {
+    final def swapAndGetAxn(idx1: Int, idx2: Int, idx3: Int): Rxn[String] = {
       val arr = this.arr
       Ref.swap(arr.unsafeGet(idx1), arr.unsafeGet(idx2)) *> arr.unsafeGet(idx3).get
     }
@@ -138,7 +138,7 @@ object RefArrayBench {
         this.size,
         INIT,
         Ref.Array.AllocationStrategy(sparse = false, flat = true, padded = false),
-      ).unsafeRun(this.mcasImpl)
+      ).unsafePerform(this.mcasImpl)
     }
   }
 
@@ -149,7 +149,7 @@ object RefArrayBench {
         this.size,
         INIT,
         Ref.Array.AllocationStrategy(sparse = true, flat = true, padded = false),
-      ).unsafeRun(this.mcasImpl)
+      ).unsafePerform(this.mcasImpl)
     }
   }
 
@@ -160,7 +160,7 @@ object RefArrayBench {
         this.size,
         INIT,
         Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = false),
-      ).unsafeRun(this.mcasImpl)
+      ).unsafePerform(this.mcasImpl)
     }
   }
 
@@ -171,7 +171,7 @@ object RefArrayBench {
         this.size,
         INIT,
         Ref.Array.AllocationStrategy(sparse = true, flat = false, padded = false),
-      ).unsafeRun(this.mcasImpl)
+      ).unsafePerform(this.mcasImpl)
     }
   }
 }

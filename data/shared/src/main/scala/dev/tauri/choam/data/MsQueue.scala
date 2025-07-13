@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import core.{ Rxn, Axn, Ref, Reactive }
+import core.{ Rxn, Ref, Reactive }
 import internal.mcas.{ Mcas, RefIdGen }
 import MsQueue._
 
@@ -34,7 +34,7 @@ import MsQueue._
  */
 private final class MsQueue[A] private[this] (
   sentinel: Node[A],
-  padded: Boolean, // TODO:0.5: use AllocationStrategy instead
+  padded: Boolean,
   initRig: RefIdGen,
 ) extends Queue.UnsealedQueue[A] {
 
@@ -44,9 +44,9 @@ private final class MsQueue[A] private[this] (
   private def this(padded: Boolean, initRig: RefIdGen) =
     this(Node(nullOf[A], if (padded) Ref.unsafePadded(End[A](), initRig) else Ref.unsafeUnpadded(End[A](), initRig)), padded = padded, initRig = initRig)
 
-  override val tryDeque: Axn[Option[A]] = {
+  final override val poll: Rxn[Option[A]] = {
     head.modifyWith { node =>
-      Rxn.unsafe.ticketRead(node.next).flatMapF { ticket =>
+      Rxn.unsafe.ticketRead(node.next).flatMap { ticket =>
         ticket.unsafePeek match {
           case n @ Node(a, _) =>
             // No need to validate `node.next` here, since
@@ -72,12 +72,12 @@ private final class MsQueue[A] private[this] (
     }
   }
 
-  override val enqueue: Rxn[A, Unit] = Rxn.unsafe.suspendContext { (a, ctx) =>
+  final override def add(a: A): Rxn[Unit] = Rxn.unsafe.suspendContext { ctx =>
     findAndEnqueue(newNode(a, ctx))
   }
 
-  final override def tryEnqueue: Rxn[A, Boolean] =
-    this.enqueue.as(true)
+  final override def offer(a: A): Rxn[Boolean] =
+    this.add(a).as(true)
 
   private[this] def newNode(a: A, ctx: Mcas.ThreadContext): Node[A] = {
     val newRef: Ref[Elem[A]] = if (this.padded) {
@@ -88,17 +88,17 @@ private final class MsQueue[A] private[this] (
     Node(a, newRef)
   }
 
-  private[this] def findAndEnqueue(node: Node[A]): Axn[Unit] = {
-    def go(n: Node[A]): Axn[Unit] = {
-      Rxn.unsafe.ticketRead(n.next).flatMapF { ticket =>
+  private[this] def findAndEnqueue(node: Node[A]): Rxn[Unit] = {
+    def go(n: Node[A]): Rxn[Unit] = {
+      Rxn.unsafe.ticketRead(n.next).flatMap { ticket =>
         ticket.unsafePeek match {
           // TODO: if we allow the tail to lag:
           // case null =>
-          //   head.get.flatMapF { h => go(h) }
+          //   head.get.flatMap { h => go(h) }
           case End() =>
             // found true tail; will update, and adjust the tail ref:
             // TODO: we could allow tail to lag by a constant
-            ticket.unsafeSet(node) >>> tail.set1(node)
+            ticket.unsafeSet(node) *> tail.set1(node)
           case nv @ Node(_, _) =>
             // not the true tail, continue;
             // no need to validate `n.next`
@@ -107,13 +107,13 @@ private final class MsQueue[A] private[this] (
         }
       }
     }
-    tail.get.flatMapF(go)
+    tail.get.flatMap(go)
   }
 
   /** For testing */
-  private[data] def tailLag: Axn[Int] = {
-    def go(n: Node[A], acc: Int): Axn[Int] = {
-      Rxn.unsafe.ticketRead(n.next).flatMapF { ticket =>
+  private[data] def tailLag: Rxn[Int] = {
+    def go(n: Node[A], acc: Int): Rxn[Int] = {
+      Rxn.unsafe.ticketRead(n.next).flatMap { ticket =>
         ticket.unsafePeek match {
           case null =>
             Rxn.pure(-1)
@@ -124,11 +124,53 @@ private final class MsQueue[A] private[this] (
         }
       }
     }
-    tail.get.flatMapF { t => go(t, 0) }
+    tail.get.flatMap { t => go(t, 0) }
   }
 }
 
 private object MsQueue {
+
+  final def apply[A]: Rxn[MsQueue[A]] =
+    apply[A](Ref.AllocationStrategy.Default)
+
+  final def apply[A](str: Ref.AllocationStrategy): Rxn[MsQueue[A]] = {
+    applyInternal(padded = str.padded)
+  }
+
+  final def withSize[A]: Rxn[Queue.WithSize[A]] = {
+    apply[A].flatMap { q =>
+      Rxn.unsafe.delayContext { ctx =>
+        new Queue.UnsealedQueueWithSize[A] {
+
+          private[this] val s =
+            Ref.unsafePadded[Int](0, ctx.refIdGen)
+
+          final override def poll: Rxn[Option[A]] = {
+            q.poll.flatMap {
+              case r @ Some(_) => s.update(_ - 1).as(r)
+              case None => Rxn.pure(None)
+            }
+          }
+
+          final override def add(a: A): Rxn[Unit] =
+            s.update(_ + 1) *> q.add(a)
+
+          final override def offer(a: A): Rxn[Boolean] =
+            this.add(a).as(true)
+
+          final override def size: Rxn[Int] =
+            s.get
+        }
+      }
+    }
+  }
+
+  private[this] def applyInternal[A](padded: Boolean): Rxn[MsQueue[A]] =
+    Rxn.unsafe.delayContext { ctx => new MsQueue(padded = padded, initRig = ctx.refIdGen) }
+
+  private[data] def fromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[MsQueue[A]] = {
+    Queue.fromList[F, MsQueue, A](this.apply[A])(as)
+  }
 
   private sealed trait Elem[A]
 
@@ -144,20 +186,4 @@ private object MsQueue {
     final def apply[A](): End[A] =
       _end.asInstanceOf[End[A]]
   }
-
-  def apply[A]: Axn[MsQueue[A]] =
-    padded[A]
-
-  def padded[A]: Axn[MsQueue[A]] =
-    applyInternal(padded = true)
-
-  def unpadded[A]: Axn[MsQueue[A]] =
-    applyInternal(padded = false)
-
-  private[data] def fromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[MsQueue[A]] = {
-    Queue.fromList[F, MsQueue, A](this.apply[A])(as)
-  }
-
-  private[this] def applyInternal[A](padded: Boolean): Axn[MsQueue[A]] =
-    Axn.unsafe.delayContext { ctx => new MsQueue(padded = padded, initRig = ctx.refIdGen) }
 }

@@ -21,19 +21,19 @@ package stream
 import cats.effect.std.{ Queue => CatsQueue }
 
 import core.AsyncReactive
-import async.{ AsyncQueueSource, BoundedQueueSink }
+import async.AsyncQueue
 
 private final class Fs2QueueWrapper[F[_], A](
-  self: AsyncQueueSource[A] & BoundedQueueSink[A],
+  self: AsyncQueue.Take[A] & AsyncQueue.Put[A],
 )(implicit F: AsyncReactive[F]) extends CatsQueue[F, A] {
   final override def take: F[A] =
-    self.deque
+    self.take
   final override def tryTake: F[Option[A]] =
-    self.tryDeque.run[F]
+    self.poll.run[F]
   final override def size: F[Int] =
     F.asyncInst.raiseError(new AssertionError) // FS2 doesn't really need `size`, so we cheat
   final override def offer(a: A): F[Unit] =
-    self.enqueue[F](a)
+    self.put[F](a)
   final override def tryOffer(a: A): F[Boolean] =
-    F.apply(self.tryEnqueue, a)
+    F.apply(self.offer(a))
 }

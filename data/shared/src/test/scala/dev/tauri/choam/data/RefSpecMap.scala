@@ -67,7 +67,7 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
       def go(currSize: Int): F[Unit] = {
         if (currSize < size) {
           (genK, genV).mapN { (k, v) =>
-            m.put.run[F](k -> v)
+            m.put(k, v).run[F]
           }.flatten.flatMap {
             case Some(_) => go(currSize)
             case None => go(currSize + 1)
@@ -95,7 +95,7 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
     for {
       m <- newMap[String, Int]
       _ <- (1 to N).toList.traverse { n =>
-        m.put.run[F](n.toString -> n)
+        m.put(n.toString, n).run[F]
       }.void
       refs = (1 to N).toList.reverse.map { n =>
         m.refLike(key = n.toString, default = 0)
@@ -104,15 +104,15 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
         ref.update(_ * 3).run[F]
       }.void
       _ <- (1 to N).toList.traverse { n =>
-        assertResultF(m.get.run[F](n.toString), Some(n * 3)) *> (
-          assertResultF(m.get.run[F]((-n).toString), None)
+        assertResultF(m.get(n.toString).run[F], Some(n * 3)) *> (
+          assertResultF(m.get((-n).toString).run[F], None)
         )
       }.void
       _ <- (1 to N).toList.traverse { n =>
         if ((n % 2) == 0) {
-          assertResultF(m.del.run[F]((n).toString), true)
+          assertResultF(m.del((n).toString).run[F], true)
         } else {
-          assertResultF(m.get.run[F](n.toString), Some(n * 3))
+          assertResultF(m.get(n.toString).run[F], Some(n * 3))
         }
       }.void
     } yield ()
@@ -124,7 +124,7 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
       _ <- assumeF(this.mcasImpl.isThreadSafe)
       m <- newMap[String, Int]
       _ <- (1 to N).toList.parTraverseN(512) { n =>
-        m.put.run[F](n.toString -> n)
+        m.put(n.toString, n).run[F]
       }.void
       refs = (1 to N).toList.reverse.map { n =>
         m.refLike(key = n.toString, default = 0)
@@ -133,15 +133,15 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
         ref.update(_ * 3).run[F]
       }.void
       _ <- (1 to N).toList.parTraverseN(512) { n =>
-        assertResultF(m.get.run[F](n.toString), Some(n * 3)) *> (
-          assertResultF(m.get.run[F]((-n).toString), None)
+        assertResultF(m.get(n.toString).run[F], Some(n * 3)) *> (
+          assertResultF(m.get((-n).toString).run[F], None)
         )
       }.void
       _ <- (1 to N).toList.parTraverseN(512) { n =>
         if ((n % 2) == 0) {
-          assertResultF(m.del.run[F]((n).toString), true)
+          assertResultF(m.del((n).toString).run[F], true)
         } else {
-          assertResultF(m.get.run[F](n.toString), Some(n * 3))
+          assertResultF(m.get(n.toString).run[F], Some(n * 3))
         }
       }.void
     } yield ()
@@ -151,10 +151,10 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
     for {
       m <- newMap[String, Int]
       _ <- assertResultF(Map.unsafeSnapshot(m), ScalaMap.empty[String, Int])
-      _ <- m.put.run[F]("a" -> 1)
-      _ <- m.put.run[F]("b" -> 2)
-      _ <- m.put.run[F]("c" -> 3)
-      _ <- m.put.run[F]("a" -> 42)
+      _ <- m.put("a", 1).run[F]
+      _ <- m.put("b", 2).run[F]
+      _ <- m.put("c", 3).run[F]
+      _ <- m.put("a", 42).run[F]
       _ <- assertResultF(
         Map.unsafeSnapshot(m),
         ScalaMap("a" -> 42, "b" -> 2, "c" -> 3)
@@ -172,11 +172,11 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
       ref = m.refLike(key = "foo", default = "")
       _ <- ref.set1("bar").run[F]
       _ <- assertResultF(ref.get.run[F], "bar")
-      _ <- ref.set1("").run[F]
+      _ <- ref.set("").run[F]
       _ <- assertResultF(Map.unsafeSnapshot(m), ScalaMap.empty[String, String])
-      _ <- ref.set0.run[F]("abc")
+      _ <- ref.set("abc").run[F]
       _ <- assertResultF(Map.unsafeSnapshot(m), ScalaMap("foo" -> "abc"))
-      _ <- ref.set0.run[F]("")
+      _ <- ref.set("").run[F]
       _ <- assertResultF(Map.unsafeSnapshot(m), ScalaMap.empty[String, String])
     } yield ()
   }
@@ -194,8 +194,8 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
         size = S,
       )
       _ <- assertResultF(Map.unsafeGetSize(m), S)
-      doubleGet = (key: String) => (m.get.provide(key) * m.get.provide(key)).run[F]
-      insert = (key: String) => m.put.run[F](key -> "x")
+      doubleGet = (key: String) => (m.get(key) * m.get(key)).run[F]
+      insert = (key: String) => m.put(key, "x").run[F]
       both = (key: String) => F.both(
         F.cede *> doubleGet(key),
         F.cede *> insert(key),
@@ -227,8 +227,8 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
         size = S,
       )
       _ <- assertResultF(Map.unsafeGetSize(m), S)
-      doubleGet = (key: String) => (m.get.provide(key) * m.get.provide(key)).run[F]
-      delete = (key: String) => m.del.run[F](key)
+      doubleGet = (key: String) => (m.get(key) * m.get(key)).run[F]
+      delete = (key: String) => m.del(key).run[F]
       both = (key: String) => F.both(
         F.cede *> doubleGet(key),
         F.cede *> delete(key),
@@ -242,7 +242,7 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
         ks.take(S / 2)
       }
       _ <- keys.traverse { key =>
-        m.get.run[F](key).flatMap { res =>
+        m.get(key).run[F].flatMap { res =>
           assertF(res.isDefined)
         }
       }

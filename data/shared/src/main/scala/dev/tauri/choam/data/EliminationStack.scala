@@ -20,53 +20,63 @@ package data
 
 import java.util.concurrent.ThreadLocalRandom
 
-import core.{ Rxn, Axn, Ref, EliminatorImpl, Eliminator }
+import core.{ Rxn, Ref, EliminatorImpl, Eliminator }
 
 private final class EliminationStack[A](underlying: Stack[A])
-  extends EliminatorImpl[A, Unit, Any, Option[A]](underlying.push, Some(_), underlying.tryPop, _ => ())
+  extends EliminatorImpl[A, Unit, Any, Option[A]](underlying.push, Some(_), _ => underlying.tryPop, _ => ())
+  // TODO: ^-- Unit could be Any(?); thus simplifying the conversion lambdas
   with Stack.UnsealedStack[A] {
 
-  final def push: Rxn[A, Unit] =
-    this.leftOp
+  final def push(a: A): Rxn[Unit] =
+    this.leftOp(a)
 
-  final def tryPop: Axn[Option[A]] =
-    this.rightOp
+  final def tryPop: Rxn[Option[A]] =
+    this.rightOp(null)
 
-  final def size: Axn[Int] =
+  final def size: Rxn[Int] =
     this.underlying.size
 }
 
 private object EliminationStack {
 
-  final def apply[A](str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Axn[Stack[A]] = {
-    Stack.treiberStack[A](str).flatMapF { ul =>
-      Axn.unsafe.delay { new EliminationStack[A](ul) }
+  final def apply[A]: Rxn[Stack[A]] =
+    apply[A](Ref.AllocationStrategy.Default)
+
+  final def apply[A](str: Ref.AllocationStrategy): Rxn[Stack[A]] = {
+    Stack.treiberStack[A](str).flatMap { ul =>
+      Rxn.unsafe.delay { new EliminationStack[A](ul) }
     }
   }
 
   sealed trait TaggedEliminationStack[A] {
-    def push: Rxn[A, Either[Unit, Unit]]
-    def tryPop: Axn[Either[Option[A], Option[A]]]
+    def push(a: A): Rxn[Either[Unit, Unit]]
+    def tryPop: Rxn[Either[Option[A], Option[A]]]
   }
 
-  final def tagged[A](str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Axn[TaggedEliminationStack[A]] = {
-    Stack.treiberStack[A](str).flatMapF { ul =>
+  final def tagged[A]: Rxn[TaggedEliminationStack[A]] =
+    tagged(Ref.AllocationStrategy.Default)
+
+  final def tagged[A](str: Ref.AllocationStrategy): Rxn[TaggedEliminationStack[A]] = {
+    Stack.treiberStack[A](str).flatMap { ul =>
       taggedFrom(ul.push, ul.tryPop)
     }
   }
 
-  final def taggedFlaky[A](str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Axn[TaggedEliminationStack[A]] = {
-    Stack.treiberStack[A](str).flatMapF { ul =>
+  final def taggedFlaky[A]: Rxn[TaggedEliminationStack[A]] =
+    taggedFlaky(Ref.AllocationStrategy.Default)
+
+  final def taggedFlaky[A](str: Ref.AllocationStrategy): Rxn[TaggedEliminationStack[A]] = {
+    Stack.treiberStack[A](str).flatMap { ul =>
       taggedFrom(
-        ul.push.flatMapF { x =>
-          if (ThreadLocalRandom.current().nextBoolean()) Axn.pure(x)
+        a => ul.push(a).flatMap { x =>
+          if (ThreadLocalRandom.current().nextBoolean()) Rxn.pure(x)
           else Rxn.unsafe.retry[Unit]
         },
-        ul.tryPop.flatMapF {
+        ul.tryPop.flatMap {
           case None =>
-            Axn.none
+            Rxn.none
           case s @ Some(_) =>
-            if (ThreadLocalRandom.current().nextBoolean()) Axn.pure(s)
+            if (ThreadLocalRandom.current().nextBoolean()) Rxn.pure(s)
             else Rxn.unsafe.retry[Option[A]]
         },
       )
@@ -74,22 +84,22 @@ private object EliminationStack {
   }
 
   private[this] final def taggedFrom[A](
-    push: Rxn[A, Unit],
-    tryPop: Axn[Option[A]],
-  ): Axn[TaggedEliminationStack[A]] = {
+    push: A => Rxn[Unit],
+    tryPop: Rxn[Option[A]],
+  ): Rxn[TaggedEliminationStack[A]] = {
     Eliminator.tagged[A, Unit, Any, Option[A]](
       push,
       Some(_),
-      tryPop,
+      _ => tryPop,
       _ => (),
     ).map { elim =>
       new TaggedEliminationStack[A] {
 
-        final override def push: Rxn[A, Either[Unit, Unit]] =
-          elim.leftOp
+        final override def push(a: A): Rxn[Either[Unit, Unit]] =
+          elim.leftOp(a)
 
-        final override def tryPop: Axn[Either[Option[A], Option[A]]] =
-          elim.rightOp
+        final override def tryPop: Rxn[Either[Option[A], Option[A]]] =
+          elim.rightOp(null)
       }
     }
   }

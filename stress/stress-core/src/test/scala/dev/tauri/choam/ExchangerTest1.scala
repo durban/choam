@@ -37,37 +37,37 @@ import core.{ Rxn, Exchanger, Ref }
 class ExchangerTest1 extends StressTestBase {
 
   private[this] val ex: Exchanger[String, String] =
-    Rxn.unsafe.exchanger[String, String].unsafeRun(this.impl)
+    Rxn.unsafe.exchanger[String, String].unsafePerform(this.impl)
 
   private[this] val leftPc: Ref[Option[Either[String, String]]] =
-    Ref[Option[Either[String, String]]](null).unsafePerform(null, this.impl)
+    Ref[Option[Either[String, String]]](null).unsafePerform(this.impl)
 
   private[this] val rightPc: Ref[Option[Either[String, String]]] =
-    Ref[Option[Either[String, String]]](null).unsafePerform(null, this.impl)
+    Ref[Option[Either[String, String]]](null).unsafePerform(this.impl)
 
-  private[this] val leftSide: Rxn[String, Option[Either[String, String]]] = {
-    val once = ex.exchange
-    (once.map(Left(_)) + once.map(Right(_))).?.postCommit(leftPc.set0)
+  private[this] final def leftSide(s: String): Rxn[Option[Either[String, String]]] = {
+    val once = ex.exchange(s)
+    (once.map(Left(_)) + once.map(Right(_))).?.postCommit(leftPc.set1)
   }
 
-  private[this] val rightSide: Rxn[String, Option[Either[String, String]]] = {
-    val once = ex.dual.exchange
-    (once.map(Left(_)) + once.map(Right(_))).?.postCommit(rightPc.set0)
+  private[this] final def rightSide(s: String): Rxn[Option[Either[String, String]]] = {
+    val once = ex.dual.exchange(s)
+    (once.map(Left(_)) + once.map(Right(_))).?.postCommit(rightPc.set1)
   }
 
   @Actor
   def left(r: LLLL_Result): Unit = {
-    r.r1 = leftSide.unsafePerform("l", this.impl)
+    r.r1 = leftSide("l").unsafePerform(this.impl)
   }
 
   @Actor
   def right(r: LLLL_Result): Unit = {
-    r.r3 = rightSide.unsafePerform("r", this.impl)
+    r.r3 = rightSide("r").unsafePerform(this.impl)
   }
 
   @Arbiter
   def arbiter(r: LLLL_Result): Unit = {
-    r.r2 = leftPc.get.unsafeRun(this.impl)
-    r.r4 = rightPc.get.unsafeRun(this.impl)
+    r.r2 = leftPc.get.unsafePerform(this.impl)
+    r.r4 = rightPc.get.unsafePerform(this.impl)
   }
 }

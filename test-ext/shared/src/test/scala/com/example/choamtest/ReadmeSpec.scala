@@ -24,7 +24,7 @@ final class ReadmeSpec extends CatsEffectSuite {
   ////////////////////////////////
   import dev.tauri.choam.core.{ Rxn, Ref }
 
-  def incrBoth(x: Ref[Int], y: Ref[Int]): Rxn[Any, Unit] = {
+  def incrBoth(x: Ref[Int], y: Ref[Int]): Rxn[Unit] = {
     x.update(_ + 1) *> y.update(_ + 1)
   }
   ////////////////////////////////

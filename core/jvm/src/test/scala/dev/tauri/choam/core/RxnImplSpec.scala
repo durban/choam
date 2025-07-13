@@ -89,73 +89,63 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   }
 
   test("Creating and running deeply nested Rxn's should both be stack-safe") {
-    val one = Rxn.lift[Int, Int](_ + 1)
+    val one = Rxn.pure(43)
     def nest(
       n: Int,
-      combine: (Rxn[Int, Int], Rxn[Int, Int]) => Rxn[Int, Int]
-    ): Rxn[Int, Int] = {
+      combine: (Rxn[Int], Rxn[Int]) => Rxn[Int]
+    ): Rxn[Int] = {
       (1 to n).map(_ => one).reduce(combine)
     }
     val N = computeStackLimit() * 4
-    val r1: Rxn[Int, Int] = nest(N, _ >>> _)
-    val r2: Rxn[Int, Int] = nest(N, (x, y) => (x * y).map(_._1 + 1))
-    val r3: Rxn[Int, Int] = nest(N, (x, y) => x.flatMap { _ => y })
-    val r3left: Rxn[Int, Int] = (1 to N).foldLeft(one) { (acc, _) =>
+    val r1: Rxn[Int] = nest(N, _ *> _)
+    val r2: Rxn[Int] = nest(N, (x, y) => (x * y).map(_._1 + 1))
+    val r3: Rxn[Int] = nest(N, (x, y) => x.flatMap { _ => y })
+    val r3left: Rxn[Int] = (1 to N).foldLeft(one) { (acc, _) =>
       acc.flatMap { _ => one }
     }
-    val r3right: Rxn[Int, Int] = (1 to N).foldLeft(one) { (acc, _) =>
+    val r3right: Rxn[Int] = (1 to N).foldLeft(one) { (acc, _) =>
       one.flatMap { _ => acc }
     }
-    val r4: Rxn[Int, Int] = nest(N, _ >> _)
-    val r5: Rxn[Int, Int] = nest(N, _ + _)
-    val r7: Rxn[Int, Int] = Monad[Rxn[Int, *]].tailRecM(N) { n =>
-      if (n > 0) Rxn.lift[Int, Either[Int, Int]](_ => Left(n - 1))
+    val r4: Rxn[Int] = nest(N, _ >> _)
+    val r5: Rxn[Int] = nest(N, _ + _)
+    val r7: Rxn[Int] = Monad[Rxn].tailRecM(N) { n =>
+      if (n > 0) Rxn.unit.map(_ => Left(n - 1))
       else Rxn.ret(Right(99))
     }
-    assertEquals(r1.unsafePerform(42, this.mcasImpl), 42 + N)
-    assertEquals(r2.unsafePerform(42, this.mcasImpl), 42 + N)
-    assertEquals(r3.unsafePerform(42, this.mcasImpl), 42 + 1)
-    assertEquals(r3left.unsafePerform(42, this.mcasImpl), 42 + 1)
-    assertEquals(r3right.unsafePerform(42, this.mcasImpl), 42 + 1)
-    assertEquals(r4.unsafePerform(42, this.mcasImpl), 42 + 1)
-    assertEquals(r5.unsafePerform(42, this.mcasImpl), 42 + 1)
-    assertEquals(r7.unsafePerform(42, this.mcasImpl), 99)
+    assertEquals(r1.unsafePerform(this.mcasImpl), 43)
+    assertEquals(r2.unsafePerform(this.mcasImpl), 42 + N)
+    assertEquals(r3.unsafePerform(this.mcasImpl), 42 + 1)
+    assertEquals(r3left.unsafePerform(this.mcasImpl), 42 + 1)
+    assertEquals(r3right.unsafePerform(this.mcasImpl), 42 + 1)
+    assertEquals(r4.unsafePerform(this.mcasImpl), 42 + 1)
+    assertEquals(r5.unsafePerform(this.mcasImpl), 42 + 1)
+    assertEquals(r7.unsafePerform(this.mcasImpl), 99)
 
-    def rNegativeTest: Rxn[Int, Int] = {
+    def rNegativeTest: Rxn[Int] = {
       // NOT @tailrec
-      def go(n: Int): Rxn[Int, Int] = {
+      def go(n: Int): Rxn[Int] = {
         if (n < 1) one
         else one *> go(n - 1) // *> is strict
       }
       go(N * 4)
     }
     try {
-      rNegativeTest.unsafePerform(42, this.mcasImpl)
+      rNegativeTest.unsafePerform(this.mcasImpl)
       this.fail("unexpected success")
     } catch {
       case _: StackOverflowError =>
         () // OK
     }
 
-    def rPositiveTest: Rxn[Int, Int] = {
+    def rPositiveTest: Rxn[Int] = {
       // NOT @tailrec
-      def go(n: Int): Rxn[Int, Int] = {
+      def go(n: Int): Rxn[Int] = {
         if (n < 1) one
         else one >> go(n - 1) // >> is lazy
       }
       go(N * 4)
     }
-    assertEquals(rPositiveTest.unsafePerform(42, this.mcasImpl), 42 + 1)
-  }
-
-  test("first and second") {
-    for {
-      _ <- F.unit
-      rea = Rxn.lift[Int, String](_.toString).first[Boolean]
-      _ <- assertResultF(F.delay { rea.unsafePerform((42, true), this.mcasImpl) }, ("42", true))
-      rea = Rxn.lift[Int, String](_.toString).second[Float]
-      _ <- assertResultF(F.delay { rea.unsafePerform((1.5f, 21), this.mcasImpl) }, (1.5f, "21"))
-    } yield ()
+    assertEquals(rPositiveTest.unsafePerform(this.mcasImpl), 42 + 1)
   }
 
   test("postCommit") {

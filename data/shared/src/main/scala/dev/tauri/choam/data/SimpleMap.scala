@@ -20,100 +20,88 @@ package data
 
 import scala.collection.immutable.{ Map => ScalaMap }
 
-import cats.kernel.{ Hash, Order }
+import cats.kernel.Hash
 import cats.data.Chain
 import cats.collections.HashMap
 
-import core.{ =#>, Rxn, Axn, Ref, RefLike }
+import core.{ Rxn, Ref, RefLike }
 
 private final class SimpleMap[K, V] private (
   repr: Ref[HashMap[K, V]],
 )(implicit K: Hash[K]) extends Map.UnsealedMapExtra[K, V] { self =>
 
-  override def put: Rxn[(K, V), Option[V]] = {
-    repr.upd { (m, kv) =>
-      (m.updated(kv._1, kv._2), m.get(kv._1))
+  override def put(k: K, v: V): Rxn[Option[V]] = {
+    repr.modify { m =>
+      (m.updated(k, v), m.get(k))
     }
   }
 
-  override def putIfAbsent: Rxn[(K, V), Option[V]] = {
-    repr.upd[(K, V), Option[V]] { (m, kv) =>
-      m.get(kv._1) match {
+  override def putIfAbsent(k: K, v: V): Rxn[Option[V]] = {
+    repr.modify { m =>
+      m.get(k) match {
         case None =>
-          (m.updated(kv._1, kv._2), None)
+          (m.updated(k, v), None)
         case s @ Some(_) =>
           (m, s)
       }
     }
   }
 
-  override def replace: Rxn[(K, V, V), Boolean] = {
-    repr.upd[(K, V, V), Boolean] { (m, kvv) =>
-      m.get(kvv._1) match {
+  override def replace(k: K, ov: V, nv: V): Rxn[Boolean] = {
+    repr.modify { m =>
+      m.get(k) match {
         case None =>
           (m, false)
-        case Some(v) if equ(v, kvv._2) =>
-          (m.updated(kvv._1, kvv._3), true)
+        case Some(v) if equ(v, ov) =>
+          (m.updated(k, nv), true)
         case _ =>
           (m, false)
       }
     }
   }
 
-  override def get: Rxn[K, Option[V]] = {
-    repr.upd[K, Option[V]] { (m, k) =>
-      (m, m.get(k))
+  override def get(k: K): Rxn[Option[V]] = {
+    repr.get.map { m =>
+      m.get(k)
     }
   }
 
-  override def del: Rxn[K, Boolean] = {
-    repr.upd[K, Boolean] { (m, k) =>
+  override def del(k: K): Rxn[Boolean] = {
+    repr.modify { m =>
       val newM = m.removed(k)
       (newM, newM.size != m.size)
     }
   }
 
-  override def remove: Rxn[(K, V), Boolean] = {
-    repr.upd[(K, V), Boolean] { (m, kv) =>
-      m.get(kv._1) match {
+  override def remove(k: K, v: V): Rxn[Boolean] = {
+    repr.modify { m =>
+      m.get(k) match {
         case None =>
           (m, false)
-        case Some(v) if equ(v, kv._2) =>
-          (m.removed(kv._1), true)
+        case Some(cv) if equ(cv, v) =>
+          (m.removed(k), true)
         case _ =>
           (m, false)
       }
     }
   }
 
-  override def clear: Axn[Unit] =
+  override def clear: Rxn[Unit] =
     repr.update(_ => HashMap.empty[K, V])
 
-  override def values(implicit V: Order[V]): Axn[Vector[V]] = {
-    repr.get.map { hm =>
-      val b = scala.collection.mutable.ArrayBuffer.newBuilder[V]
-      b.sizeHint(hm.size)
-      val it =  hm.valuesIterator
-      while (it.hasNext) {
-        b += it.next()
-      }
-      b.result().sortInPlace()(using V.toOrdering).toVector
-    }
-  }
-
-  final override def keys: Axn[Chain[K]] = {
+  final override def keys: Rxn[Chain[K]] = {
     repr.get.map { hm =>
       Chain.fromIterableOnce(hm.keysIterator)
     }
   }
 
-  final override def valuesUnsorted: Axn[Chain[V]] = {
+  final override def values: Rxn[Chain[V]] = {
     repr.get.map { hm =>
       Chain.fromIterableOnce(hm.valuesIterator)
     }
   }
 
-  final override def items: Axn[Chain[(K, V)]] = {
+  final override def items: Rxn[Chain[(K, V)]] = {
     repr.get.map { hm =>
       Chain.fromIterableOnce(hm.iterator)
     }
@@ -121,20 +109,10 @@ private final class SimpleMap[K, V] private (
 
   final override def refLike(key: K, default: V): RefLike[V] = new RefLike.UnsealedRefLike[V] {
 
-    final def get: Axn[V] =
-      self.get.provide(key).map(_.getOrElse(default))
+    final def get: Rxn[V] =
+      self.get(key).map(_.getOrElse(default))
 
-    final override def set0: Rxn[V, Unit] = {
-      repr.update2[V] { (hm, nv) =>
-        if (equ(nv, default)) {
-          hm.removed(key)
-        } else {
-          hm.updated(key, nv)
-        }
-      }
-    }
-
-    final override def set1(nv: V): Axn[Unit] = {
+    final override def set1(nv: V): Rxn[Unit] = {
       if (equ(nv, default)) {
         repr.update { hm => hm.removed(key) }
       } else {
@@ -142,7 +120,7 @@ private final class SimpleMap[K, V] private (
       }
     }
 
-    final override def update1(f: V => V): Axn[Unit] = {
+    final override def update1(f: V => V): Rxn[Unit] = {
       repr.update1 { hm =>
         val currVal = hm.getOrElse(key, default)
         val newVal = f(currVal)
@@ -151,41 +129,17 @@ private final class SimpleMap[K, V] private (
       }
     }
 
-    final override def update2[B](f: (V, B) => V): Rxn[B, Unit] = {
-      repr.update2 { (hm, b) =>
+    final override def modify[C](f: V => (V, C)): Rxn[C] = {
+      repr.modify { hm =>
         val currVal = hm.getOrElse(key, default)
-        val newVal = f(currVal, b)
-        if (equ(newVal, default)) hm.removed(key)
-        else hm.updated(key, newVal)
-      }
-    }
-
-    final override def upd[B, C](f: (V, B) => (V, C)): B =#> C = {
-      Rxn.computed[B, C] { (b: B) =>
-        repr.modify { hm =>
-          val currVal = hm.getOrElse(key, default)
-          val (newVal, c) = f(currVal, b)
-          if (equ(newVal, default)) (hm.removed(key), c)
-          else (hm.updated(key, newVal), c)
-        }
-      }
-    }
-
-    final def updWith[B, C](f: (V, B) => Axn[(V, C)]): B =#> C = {
-      Rxn.computed[B, C] { (b: B) =>
-        repr.modifyWith { hm =>
-          val currVal = hm.getOrElse(key, default)
-          f(currVal, b).map {
-            case (newVal, c) =>
-              if (equ(newVal, default)) (hm.removed(key), c)
-              else (hm.updated(key, newVal), c)
-          }
-        }
+        val (newVal, c) = f(currVal)
+        if (equ(newVal, default)) (hm.removed(key), c)
+        else (hm.updated(key, newVal), c)
       }
     }
   }
 
-  private[data] final def unsafeSnapshot: Axn[ScalaMap[K, V]] = {
+  private[data] final def unsafeSnapshot: Rxn[ScalaMap[K, V]] = {
     repr.get.map { hm =>
       // NB: ScalaMap won't use a custom
       // Hash; this is one reason why
@@ -200,6 +154,6 @@ private final class SimpleMap[K, V] private (
 }
 
 private object SimpleMap {
-  private[data] final def apply[K: Hash, V](str: Ref.AllocationStrategy): Axn[Map.Extra[K, V]] =
+  private[data] final def apply[K: Hash, V](str: Ref.AllocationStrategy): Rxn[Map.Extra[K, V]] =
     Ref(HashMap.empty[K, V], str).map(new SimpleMap(_))
 }

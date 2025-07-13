@@ -20,7 +20,7 @@ package stream
 
 import fs2.concurrent.SignallingRef
 
-import core.{ Axn, RefLike, AsyncReactive }
+import core.{ Rxn, RefLike, AsyncReactive }
 
 /**
  * An [[fs2.concurrent.SignallingRef]], which
@@ -40,6 +40,6 @@ object RxnSignallingRef {
   private[choam] abstract class UnsealedRxnSignallingRef[F[_], A]
     extends RxnSignallingRef[F, A]
 
-  final def apply[F[_] : AsyncReactive, A](initial: A): Axn[RxnSignallingRef[F, A]] =
+  final def apply[F[_] : AsyncReactive, A](initial: A): Rxn[RxnSignallingRef[F, A]] =
     Fs2SignallingRefWrapper[F, A](initial)
 }

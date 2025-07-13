@@ -22,7 +22,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
 
-import core.{ Rxn, Axn, Ref }
+import core.{ Rxn, Ref }
 
 @JCStressTest
 @State
@@ -33,16 +33,16 @@ import core.{ Rxn, Axn, Ref }
 class NewRefConsistency extends StressTestBase {
 
   private[this] val holder: Ref[Ref[String]] =
-    Ref[Ref[String]](null).unsafePerform(null, this.impl)
+    Ref[Ref[String]](null).unsafePerform(this.impl)
 
   private[this] val existingRef: Ref[String] =
-    Ref("a").unsafePerform(null, this.impl)
+    Ref("a").unsafePerform(this.impl)
 
-  private[this] val _createNewRef: Axn[Unit] =
-    existingRef.update(_ + "b") *> Ref("x") >>> holder.set0
+  private[this] val _createNewRef: Rxn[Unit] =
+    existingRef.update(_ + "b") *> Ref("x").flatMap(holder.set)
 
-  private[this] val _readNewRef: Axn[(String, String)] = {
-    existingRef.get * holder.get.flatMapF {
+  private[this] val _readNewRef: Rxn[(String, String)] = {
+    existingRef.get * holder.get.flatMap {
       case null => Rxn.unsafe.retry
       case newRef => newRef.get
     }
@@ -50,12 +50,12 @@ class NewRefConsistency extends StressTestBase {
 
   @Actor
   def createNewRef(): Unit = {
-    this._createNewRef.unsafePerform(null, this.impl)
+    this._createNewRef.unsafePerform(this.impl)
   }
 
   @Actor
   def rxn2(r: LL_Result): Unit = {
-    val res = this._readNewRef.unsafePerform(null, this.impl)
+    val res = this._readNewRef.unsafePerform(this.impl)
     r.r1 = res._1
     r.r2 = res._2
   }

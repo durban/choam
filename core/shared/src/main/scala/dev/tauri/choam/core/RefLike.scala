@@ -18,8 +18,6 @@
 package dev.tauri.choam
 package core
 
-import core.{ Rxn, Axn }
-
 import cats.data.State
 import cats.effect.kernel.{ Ref => CatsRef }
 
@@ -27,80 +25,44 @@ sealed trait RefLike[A] {
 
   // primitive:
 
-  def get: Axn[A]
+  def get: Rxn[A]
 
-  def updWith[B, C](f: (A, B) => Axn[(A, C)]): Rxn[B, C]
+  def modify[B](f: A => (A, B)): Rxn[B]
 
   // primitive (for performance):
 
-  def upd[B, C](f: (A, B) => (A, C)): Rxn[B, C]
+  def set1(a: A): Rxn[Unit] // TODO: remove
 
-  def set0: Rxn[A, Unit]
+  def set(a: A): Rxn[Unit] = set1(a)
 
-  def set1(a: A): Axn[Unit] // TODO: create a `set` alias(?)
-
-  def update1(f: A => A): Axn[Unit]
-
-  def update2[B](f: (A, B) => A): Rxn[B, Unit]
+  def update1(f: A => A): Rxn[Unit]
 
   // derived:
 
-  final def getAndSet: Rxn[A, A] =
-    upd[A, A] { (oa, na) => (na, oa) }
+  final def getAndSet(nv: A): Rxn[A] =
+    getAndUpdate { _ => nv }
 
   @inline
-  final def update(f: A => A): Axn[Unit] =
+  final def update(f: A => A): Rxn[Unit] =
     update1(f)
 
-  final def updateWith(f: A => Axn[A]): Axn[Unit] =
-    updWith[Any, Unit] { (oa, _) => f(oa).map(na => (na, ())) }
-
   /** Returns `false` iff the update failed */
-  final def tryUpdate(f: A => A): Axn[Boolean] =
+  final def tryUpdate(f: A => A): Rxn[Boolean] =
     update1(f).maybe
 
   /** Returns previous value */
-  final def getAndUpdate(f: A => A): Axn[A] =
-    upd[Any, A] { (oa, _) => (f(oa), oa) }
-
-  /** Returns previous value */
-  final def getAndUpd[B](f: (A, B) => A): Rxn[B, A] = // TODO: optimize
-    upd[B, A] { (oa, b) => (f(oa, b), oa) }
-
-    /** Returns previous value */
-  final def getAndUpdateWith(f: A => Axn[A]): Axn[A] =
-    updWith[Any, A] { (oa, _) => f(oa).map(na => (na, oa)) }
+  final def getAndUpdate(f: A => A): Rxn[A] =
+    modify { oa => (f(oa), oa) }
 
   /** Returns new value */
-  final def updateAndGet(f: A => A): Axn[A] = {
-    upd[Any, A] { (oa, _) =>
+  final def updateAndGet(f: A => A): Rxn[A] = {
+    modify { oa =>
       val na = f(oa)
       (na, na)
     }
   }
 
-  /** Returns new value */
-  final def updAndGet[B](f: (A, B) => A): Rxn[B, A] = { // TODO: optimize
-    upd[B, A] { (oa, b) =>
-      val na = f(oa, b)
-      (na, na)
-    }
-  }
-
-  /** Returns new value */
-  final def updateAndGetWith(f: A => Axn[A]): Axn[A] = { // TODO: optimize
-    updWith[Any, A] { (oa, _) =>
-      f(oa).map { na => (na, na) }
-    }
-  }
-
-  final def modify[B](f: A => (A, B)): Axn[B] =
-    upd[Any, B] { (a, _) => f(a) }
-
-  final def modifyWith[B](f: A => Axn[(A, B)]): Axn[B] =
-    updWith[Any, B] { (oa, _) => f(oa) }
-
-  final def tryModify[B](f: A => (A, B)): Axn[Option[B]] =
+  final def tryModify[B](f: A => (A, B)): Rxn[Option[B]] =
     modify(f).?
 
   // interop:
@@ -124,7 +86,7 @@ private[choam] object RefLike {
       self.get.run[F]
 
     override def set(a: A): F[Unit] =
-      self.set0.run[F](a)
+      self.set1(a).run[F]
 
     override def access: F[(A, A => F[Boolean])] = {
       F.monad.map(this.get) { ov =>

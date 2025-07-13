@@ -26,17 +26,15 @@ import org.scalacheck.{ Arbitrary, Cogen }
 import org.scalacheck.Prop.forAll
 import org.typelevel.discipline.Laws
 
-import core.{ Rxn, Axn, Ref }
+import core.{ Rxn, Ref }
 
 object RefLawTests {
 
   def apply(ti: TestInstances): RefLawTests = new RefLawTests {
     final override def arbRef[A : Arbitrary] =
       ti.arbRef
-    override implicit def eqAxn[A](implicit equA: Eq[A]): Eq[Axn[A]] =
-      ti.testingEqAxn[A]
-    override implicit def eqRxn[A, B](implicit arbA: Arbitrary[A], equB: Eq[B]): Eq[Rxn[A, B]] =
-      ti.testingEqRxn[A, B]
+    override implicit def eqRxn[B](implicit equB: Eq[B]): Eq[Rxn[B]] =
+      ti.testingEqRxn[B]
   }
 }
 
@@ -44,9 +42,7 @@ sealed trait RefLawTests extends Laws {
 
   implicit def arbRef[A : Arbitrary]: Arbitrary[Ref[A]]
 
-  implicit def eqAxn[A](implicit equA: Eq[A]): Eq[Axn[A]]
-
-  implicit def eqRxn[A, B](implicit arbA: Arbitrary[A], equB: Eq[B]): Eq[Rxn[A, B]]
+  implicit def eqRxn[B](implicit equB: Eq[B]): Eq[Rxn[B]]
 
   def laws: RefLaws =
     RefLaws.newRefLaws
@@ -58,7 +54,6 @@ sealed trait RefLawTests extends Laws {
     arbB: Arbitrary[B],
     arbC: Arbitrary[C],
     cogA: Cogen[A],
-    cogB: Cogen[B],
   ): RuleSet = new DefaultRuleSet(
     name = "ref",
     parent = None,
@@ -67,6 +62,6 @@ sealed trait RefLawTests extends Laws {
     "unique IDs (different type)" -> forAll(laws.uniqueIdsDifferentType[A, B]),
     "hashCode is based on ID" -> forAll(laws.hashCodeBasedOnId[A]),
     "Order consistent with identity" -> forAll(laws.orderConsistentWithIdentity[A]),
-    "updWith and ret is upd" -> forAll(laws.updWithRetIsUpd[A, B, C]),
+    "updWith and ret is upd" -> forAll(laws.modifyWithPureIsModify[A, C]),
   )
 }

@@ -40,7 +40,7 @@ class AsyncQueueCancelDeqTest {
   private[this] val runtime =
     cats.effect.unsafe.IORuntime.global
 
-  private[this] val q: UnboundedQueue[String] =
+  private[this] val q: AsyncQueue[String] =
     AsyncQueue.unbounded[String].run[SyncIO].unsafeRunSync()
 
   private[this] var result1: String =
@@ -54,21 +54,21 @@ class AsyncQueueCancelDeqTest {
 
   private[this] val taker1: Fiber[IO, Throwable, String] = {
     val tsk = IO.uncancelable { poll =>
-      poll(q.deque[IO, String]).flatTap { s => IO { this.result1 = s } }
+      poll(q.take[IO, String]).flatTap { s => IO { this.result1 = s } }
     }
     tsk.start.unsafeRunSync()(using runtime)
   }
 
   private[this] val taker2: Fiber[IO, Throwable, String] = {
     val tsk = IO.uncancelable { poll =>
-      poll(q.deque[IO, String]).flatTap { s => IO { this.result2 = s } }
+      poll(q.take[IO, String]).flatTap { s => IO { this.result2 = s } }
     }
     tsk.start.unsafeRunSync()(using runtime)
   }
 
   @Actor
   def offer(): Unit = {
-    q.enqueue[IO]("a").unsafeRunSync()(using this.runtime)
+    q.put[IO]("a").unsafeRunSync()(using this.runtime)
   }
 
   @Actor
@@ -78,7 +78,7 @@ class AsyncQueueCancelDeqTest {
 
   @Arbiter
   def arbiter(r: LLLLLL_Result): Unit = {
-    q.enqueue[IO]("b").unsafeRunSync()(using this.runtime)
+    q.put[IO]("b").unsafeRunSync()(using this.runtime)
     val oc1: String = taker1.join.flatMap { oc =>
       oc.fold(
         IO.pure("cancelled1"),
@@ -95,9 +95,9 @@ class AsyncQueueCancelDeqTest {
     }.unsafeRunSync()(using this.runtime)
     r.r1 = this.result1
     r.r2 = this.result2
-    r.r3 = q.tryDeque.run[IO].unsafeRunSync()(using this.runtime)
+    r.r3 = q.poll.run[IO].unsafeRunSync()(using this.runtime)
     r.r4 = oc1
     r.r5 = oc2
-    r.r6 = q.tryDeque.run[IO].unsafeRunSync()(using this.runtime)
+    r.r6 = q.poll.run[IO].unsafeRunSync()(using this.runtime)
   }
 }

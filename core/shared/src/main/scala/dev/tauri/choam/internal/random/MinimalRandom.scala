@@ -21,7 +21,7 @@ package random
 
 import cats.effect.std.Random
 
-import core.{ Axn, Ref }
+import core.{ Rxn, Ref }
 import mcas.RefIdGen
 
 /**
@@ -31,11 +31,11 @@ import mcas.RefIdGen
  */
 private object MinimalRandom {
 
-  def unsafe1(initialSeed: Long, rig: RefIdGen): Random[Axn] = {
+  def unsafe1(initialSeed: Long, rig: RefIdGen): Random[Rxn] = {
     new MinimalRandom1(Ref.unsafePadded(initialSeed, rig), RandomBase.GoldenGamma)
   }
 
-  def unsafe2(initialSeed: Long, rig: RefIdGen): Random[Axn] = {
+  def unsafe2(initialSeed: Long, rig: RefIdGen): Random[Rxn] = {
     new MinimalRandom2(Ref.unsafePadded(initialSeed, rig), RandomBase.GoldenGamma)
   }
 }
@@ -45,7 +45,7 @@ private abstract class MinimalRandom protected (
   gamma: Long,
 ) extends RandomBase {
 
-  protected[this] val nextSeed: Axn[Long] =
+  protected[this] val nextSeed: Rxn[Long] =
     seed.updateAndGet(_ + gamma)
 
   private[this] final def mix64(s: Long): Long =
@@ -54,10 +54,10 @@ private abstract class MinimalRandom protected (
   private[this] final def mix32(s: Long): Int =
     (staffordMix04(s) >>> 32).toInt
 
-  protected[this] final def nextLongInternal: Axn[Long] =
+  protected[this] final def nextLongInternal: Rxn[Long] =
     nextSeed.map(mix64)
 
-  final override def nextInt: Axn[Int] =
+  final override def nextInt: Rxn[Int] =
     nextSeed.map(mix32)
 }
 
@@ -67,7 +67,7 @@ private final class MinimalRandom1(
   gamma: Long,
 ) extends MinimalRandom(seed, gamma) {
 
-  final override def nextLong: Axn[Long] =
+  final override def nextLong: Rxn[Long] =
     nextLongInternal
 }
 
@@ -77,6 +77,6 @@ private final class MinimalRandom2(
   gamma: Long,
 ) extends MinimalRandom(seed, gamma) {
 
-  final override def nextBytes(n: Int): Axn[Array[Byte]] =
+  final override def nextBytes(n: Int): Rxn[Array[Byte]] =
     nextBytesInternal(n, nextLongInternal)
 }

@@ -41,23 +41,23 @@ final class WaitListSpecPar_DefaultMcas_IO
 
 trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
-  private val common = List[(TestOptions, F[AsyncQueueSource[String] & BoundedQueueSink[String]])](
+  private val common = List[(TestOptions, F[AsyncQueue.Take[String] & AsyncQueue.Put[String]])](
     ("AsyncQueue.unbounded", AsyncQueue.unbounded[String].run[F].widen),
     ("AsyncQueue.unboundedWithSize", AsyncQueue.unboundedWithSize[String].run[F].widen),
     ("AsyncQueue.bounded", AsyncQueue.bounded[String](42).run[F].widen),
-    ("BoundedQueue.linked", BoundedQueue.linked[String](42).run[F].widen),
+    ("BoundedQueue.linked", BoundedQueueImpl.linked[String](42).run[F].widen),
     ("AsyncQueue.dropping", AsyncQueue.dropping[String](42).run[F].widen),
     ("AsyncQueue.ringBuffer", AsyncQueue.ringBuffer[String](42).run[F].widen),
   )
 
   for ((testOpts, newEmptyQ) <- common) {
     testDequeCancel(testOpts, newEmptyQ)
-    testDequeAndTryDequeRace(testOpts, newEmptyQ)
+    testDequeAndPollRace(testOpts, newEmptyQ)
   }
 
-  private def deqAndSave(q: AsyncQueueSource[String], ref: Ref[F, String]): F[Unit] = {
+  private def deqAndSave(q: AsyncQueue.Take[String], ref: Ref[F, String]): F[Unit] = {
     F.uncancelable { poll =>
-      poll(q.deque).flatMap { s =>
+      poll(q.take).flatMap { s =>
         // if deque completes, we will certainly save the item:
         ref.set(s)
       }
@@ -66,7 +66,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   private def testDequeCancel(
     testOpts: TestOptions,
-    newEmptyQ: F[AsyncQueueSource[String] & BoundedQueueSink[String]],
+    newEmptyQ: F[AsyncQueue.Take[String] & AsyncQueue.Put[String]],
   ): Unit = {
     test(testOpts.withName(s"${testOpts.name}: deque cancel race")) {
       val t = for {
@@ -74,33 +74,33 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         r <- F.ref("")
         fib <- deqAndSave(q, r).start
         _ <- F.sleep(0.01.seconds)
-        _ <- F.both(fib.cancel, q.enqueue("foo"))
+        _ <- F.both(fib.cancel, q.put("foo"))
         _ <- fib.join
         s <- r.get
         _ <- if (s.nonEmpty) { // deque completed
-          assertEqualsF(s, "foo") *> assertResultF(q.tryDeque.run[F], None, "item is duplicated")
+          assertEqualsF(s, "foo") *> assertResultF(q.poll.run[F], None, "item is duplicated")
         } else { // deque cancelled
-          assertResultF(q.tryDeque.run[F], Some("foo"), "item is lost")
+          assertResultF(q.poll.run[F], Some("foo"), "item is lost")
         }
       } yield ()
       t.parReplicateA_(100)
     }
   }
 
-  private def testDequeAndTryDequeRace(
+  private def testDequeAndPollRace(
     testOpts: TestOptions,
-    newEmptyQ: F[AsyncQueueSource[String] & BoundedQueueSink[String]],
+    newEmptyQ: F[AsyncQueue.Take[String] & AsyncQueue.Put[String]],
   ): Unit = {
-    test(testOpts.withName(s"${testOpts.name}: deque and tryDeque race")) {
+    test(testOpts.withName(s"${testOpts.name}: deque and poll race")) {
       val t = for {
         q <- newEmptyQ
-        fib1 <- q.deque[F, String].start
-        fib2 <- q.deque[F, String].start
+        fib1 <- q.take[F, String].start
+        fib2 <- q.take[F, String].start
         _ <- F.sleep(1.seconds) // wait for fibers to suspend
-        // to be fair(er), the item should be received by the suspended fiber, and NOT `tryDeque`
-        _ <- assertResultF(F.both(F.cede *> q.tryDeque.run[F], q.enqueue("foo")), (None, ()))
+        // to be fair(er), the item should be received by the suspended fiber, and NOT `poll`
+        _ <- assertResultF(F.both(F.cede *> q.poll.run[F], q.put("foo")), (None, ()))
         // ok, now unblock one of the fibers (the other one is already unblocked, but we don't know which):
-        _ <- q.enqueue("bar")
+        _ <- q.put("bar")
         item1 <- fib1.joinWithNever
         item2 <- fib2.joinWithNever
         _ <- assertEqualsF(Set(item1, item2), Set("foo", "bar"))
@@ -110,11 +110,11 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   }
 
   testEnqueueCancelBounded("AsyncQueue.bounded", AsyncQueue.bounded[String](42).run[F].widen, bounds = List(1, 8))
-  testEnqueueCancelBounded("BoundedQueue.linked", BoundedQueue.linked[String](42).run[F].widen, bounds = List(1, 8))
+  testEnqueueCancelBounded("BoundedQueue.linked", BoundedQueueImpl.linked[String](42).run[F].widen, bounds = List(1, 8))
 
   private def testEnqueueCancelBounded(
     name: String,
-    newEmptyQ: F[AsyncQueueSource[String] & BoundedQueueSink[String]],
+    newEmptyQ: F[AsyncQueue.Take[String] & AsyncQueue.Put[String]],
     bounds: List[Int],
   ): Unit = {
     for (bound <- bounds) {
@@ -124,22 +124,22 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   private def _testEnqueueCancelBounded(
     name: String,
-    newEmptyQ: F[AsyncQueueSource[String] & BoundedQueueSink[String]],
+    newEmptyQ: F[AsyncQueue.Take[String] & AsyncQueue.Put[String]],
     bound: Int,
   ): Unit = {
 
-    def enqAndSave(q: BoundedQueueSink[String], ref: Ref[F, Boolean], item: String): F[Unit] = {
+    def enqAndSave(q: AsyncQueue.Put[String], ref: Ref[F, Boolean], item: String): F[Unit] = {
       F.uncancelable { poll =>
-        poll(q.enqueue(item)).flatMap { _ =>
+        poll(q.put(item)).flatMap { _ =>
           // if enqueue completes, we will certainly set it to true:
           ref.set(true)
         }
       }
     }
 
-    def deqIntoDeferred(q: AsyncQueueSource[String], d: Deferred[F, String]): F[Unit] = {
+    def deqIntoDeferred(q: AsyncQueue.Take[String], d: Deferred[F, String]): F[Unit] = {
       F.uncancelable { poll =>
-        poll(q.deque[F, String]).flatMap { s =>
+        poll(q.take[F, String]).flatMap { s =>
           d.complete(s).flatMap { ok =>
             if (ok) F.unit
             else F.raiseError(new AssertionError)
@@ -152,7 +152,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       val t = for {
         _ <- assertF(bound > 0)
         q <- newEmptyQ
-        _ <- (1 to bound).toList.traverse_(i => q.enqueue(i.toString)) // make it full
+        _ <- (1 to bound).toList.traverse_(i => q.put(i.toString)) // make it full
         r <- F.ref(false)
         d <- F.deferred[String]
         enqFib <- enqAndSave(q, r, "foo").start
@@ -161,11 +161,11 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         _ <- enqFib.join
         flag <- r.get
         _ <- assertResultF(d.get, "1")
-        _ <- (2 to bound).toList.traverse_(i => assertResultF(q.deque, i.toString))
+        _ <- (2 to bound).toList.traverse_(i => assertResultF(q.take, i.toString))
         _ <- if (flag) { // enqueue completed
-          assertResultF(q.tryDeque.run[F], Some("foo"), "item lost")
+          assertResultF(q.poll.run[F], Some("foo"), "item lost")
         } else { // enqueue cancelled
-          assertResultF(q.tryDeque.run[F], None, "item duplicated")
+          assertResultF(q.poll.run[F], None, "item duplicated")
         }
       } yield ()
       t.parReplicateA_(50000)
@@ -175,7 +175,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       val t = for {
         _ <- assertF(bound > 0)
         q <- newEmptyQ
-        _ <- (1 to bound).toList.traverse_(i => q.enqueue(i.toString)) // make it full
+        _ <- (1 to bound).toList.traverse_(i => q.put(i.toString)) // make it full
         r1 <- F.ref(false)
         r2 <- F.ref(false)
         d <- F.deferred[String]
@@ -186,17 +186,17 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         _ <- enqFib1.join
         flag <- r1.get
         _ <- assertResultF(d.get, "1")
-        _ <- (2 to bound).toList.traverse_(i => assertResultF(q.deque, i.toString))
+        _ <- (2 to bound).toList.traverse_(i => assertResultF(q.take, i.toString))
         _ <- if (flag) { // enqueue1 completed
-          q.deque.flatMap { item =>
+          q.take.flatMap { item =>
             if (item == "foo1") { // enqueue1 won
-              assertResultF(q.deque, "foo2")
+              assertResultF(q.take, "foo2")
             } else { // enqueue2 won
-              assertEqualsF(item, "foo2") *> assertResultF(q.deque, "foo1")
+              assertEqualsF(item, "foo2") *> assertResultF(q.take, "foo1")
             }
           } *> enqFib2.joinWithNever
         } else { // enqueue1 cancelled
-          assertResultF(q.deque, "foo2") *> enqFib2.joinWithNever
+          assertResultF(q.take, "foo2") *> enqFib2.joinWithNever
         }
       } yield ()
       t.parReplicateA_(50000)

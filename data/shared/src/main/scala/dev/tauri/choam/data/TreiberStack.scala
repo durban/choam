@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import core.{ Rxn, Axn, Ref, Reactive }
+import core.{ Rxn, Ref, Reactive }
 
 private final class TreiberStack[A] private (
   private[this] val head: Ref[TreiberStack.Lst[A]],
@@ -26,22 +26,22 @@ private final class TreiberStack[A] private (
 
   import TreiberStack._
 
-  final override val push: Rxn[A, Unit] = head.upd { (as, a) =>
+  final override def push(a: A): Rxn[Unit] = head.modify { as =>
     (Cons(a, as), ())
   }
 
-  final override val tryPop: Axn[Option[A]] = head.modify[Option[A]] {
+  final override val tryPop: Rxn[Option[A]] = head.modify[Option[A]] {
     case Cons(h, t) => (t, Some(h))
     case End => (End, None)
   }
 
-  final override val size: Axn[Int] = // TODO: this is O(n)
+  final override val size: Rxn[Int] = // TODO: this is O(n)
     head.get.map(_.length)
 }
 
 private object TreiberStack {
 
-  private[data] final def apply[A](str: Ref.AllocationStrategy): Axn[TreiberStack[A]] =
+  private[data] final def apply[A](str: Ref.AllocationStrategy): Rxn[TreiberStack[A]] =
     Ref[Lst[A]](End, str).map(new TreiberStack[A](_))
 
   private[data] final def fromList[F[_], A](as: List[A], str: Ref.AllocationStrategy)(implicit F: Reactive[F]): F[Stack[A]] = {

@@ -21,79 +21,83 @@ package async
 import scala.collection.immutable.LongMap
 
 import cats.{ Functor, Invariant, Contravariant }
-import cats.effect.kernel.{ Deferred, DeferredSink, DeferredSource }
+import cats.effect.kernel.{ Deferred, DeferredSource }
 
-import core.{ =#>, Rxn, Axn, Ref, Reactive, AsyncReactive }
+import core.{ Rxn, Ref, AsyncReactive }
 import Ref.AllocationStrategy
 
-sealed trait PromiseRead[A] { self =>
-  def get[F[_]](implicit F: AsyncReactive[F]): F[A]
-  def tryGet: Axn[Option[A]]
-  def map[B](f: A => B): PromiseRead[B]
-  def toCats[F[_]](implicit F: AsyncReactive[F]): DeferredSource[F, A]
-}
+sealed trait Promise[A] extends Promise.Get[A] with Promise.Complete[A] {
 
-object PromiseRead {
-
-  implicit final def covariantFunctorForPromiseRead: Functor[PromiseRead] =
-    _covariantFunctorForPromiseRead
-
-  private[this] val _covariantFunctorForPromiseRead: Functor[PromiseRead] = {
-    new Functor[PromiseRead] {
-      final override def map[A, B](p: PromiseRead[A])(f: A => B): PromiseRead[B] =
-        p.map(f)
-    }
-  }
-}
-
-sealed trait PromiseWrite[A] { self =>
-
-  def complete0: A =#> Boolean
-
-  def complete1(a: A): Axn[Boolean]
-
-  private[choam] def unsafeComplete(a: A)(implicit ir: unsafe.InRxn2): Boolean
-
-  final def contramap[B](f: B => A): PromiseWrite[B] = new PromiseWrite[B] {
-    final override def complete0: Rxn[B, Boolean] =
-      self.complete0.contramap(f)
-    final override def complete1(b: B): Axn[Boolean] =
-      self.complete1(f(b))
-    final override def unsafeComplete(b: B)(implicit ir: unsafe.InRxn2): Boolean =
-      self.unsafeComplete(f(b))
-  }
-
-  final def toCats[F[_]](implicit F: Reactive[F]): DeferredSink[F, A] = new DeferredSink[F, A] {
-    final override def complete(a: A): F[Boolean] =
-      self.complete0.run[F](a)
-  }
-}
-
-object PromiseWrite {
-
-  private[this] val _contravariantFunctorForPromiseWrite: Contravariant[PromiseWrite] = {
-    new Contravariant[PromiseWrite] {
-      final override def contramap[A, B](p: PromiseWrite[A])(f: B => A): PromiseWrite[B] =
-        p.contramap(f)
-    }
-  }
-
-  implicit def contravariantFunctorForPromiseWrite: Contravariant[PromiseWrite] =
-    _contravariantFunctorForPromiseWrite
-}
-
-sealed trait Promise[A] extends PromiseRead[A] with PromiseWrite[A] {
   def imap[B](f: A => B)(g: B => A): Promise[B]
-  override def toCats[F[_]](implicit F: AsyncReactive[F]): Deferred[F, A]
+
+  def toCats[F[_]](implicit F: AsyncReactive[F]): Deferred[F, A]
 }
 
 object Promise {
 
-  final def apply[A]: Axn[Promise[A]] =
+  sealed trait Get[+A] { self =>
+
+    /**
+     * Note: this is not called `get`, because a more convenient version
+     * (with one type parameter) is available as an extension method `get`.
+     */
+    def getF[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA]
+
+    def tryGet: Rxn[Option[A]]
+
+    def map[B](f: A => B): Promise.Get[B]
+  }
+
+  object Get {
+
+    implicit final def covariantFunctorForPromiseGet: Functor[Promise.Get] =
+      _covariantFunctorForPromiseGet
+
+    private[this] val _covariantFunctorForPromiseGet: Functor[Promise.Get] = {
+      new Functor[Promise.Get] {
+        final override def map[A, B](p: Promise.Get[A])(f: A => B): Promise.Get[B] =
+          p.map(f)
+      }
+    }
+
+    implicit final class InvariantSyntax[A](private val self: Promise.Get[A]) extends AnyVal {
+      final def get[F[_]](implicit F: AsyncReactive[F]): F[A] =
+        self.getF[F, A](using F)
+    }
+  }
+
+  sealed trait Complete[-A] { self =>
+
+    def complete(a: A): Rxn[Boolean]
+
+    private[choam] def unsafeComplete(a: A)(implicit ir: unsafe.InRxn2): Boolean
+
+    final def contramap[B](f: B => A): Promise.Complete[B] = new Promise.Complete[B] {
+      final override def complete(b: B): Rxn[Boolean] =
+        self.complete(f(b))
+      final override def unsafeComplete(b: B)(implicit ir: unsafe.InRxn2): Boolean =
+        self.unsafeComplete(f(b))
+    }
+  }
+
+  object Complete {
+
+    implicit final def contravariantFunctorForPromiseComplete: Contravariant[Promise.Complete] =
+      _contravariantFunctorForPromiseComplete
+
+    private[this] val _contravariantFunctorForPromiseComplete: Contravariant[Promise.Complete] = {
+      new Contravariant[Promise.Complete] {
+        final override def contramap[A, B](p: Promise.Complete[A])(f: B => A): Promise.Complete[B] =
+          p.contramap(f)
+      }
+    }
+  }
+
+  final def apply[A]: Rxn[Promise[A]] =
     apply[A](AllocationStrategy.Default)
 
-  final def apply[A](str: AllocationStrategy): Axn[Promise[A]] = {
-    Axn.unsafe.delayContext { ctx =>
+  final def apply[A](str: AllocationStrategy): Rxn[Promise[A]] = {
+    Rxn.unsafe.delayContext { ctx =>
       new PromiseImpl[A](Ref.unsafe[State[A]](Waiting.empty, str, ctx.refIdGen))
     }
   }
@@ -142,12 +146,12 @@ object Promise {
   private[this] final class CancelId(val id: Long) extends InsertRes[Nothing]
 
   private[this] abstract class PromiseReadImpl[A]
-    extends PromiseRead[A] { self =>
+    extends Promise.Get[A] { self =>
 
-    final def map[B](f: A => B): PromiseRead[B] = new PromiseReadImpl[B] {
-      final override def get[F[_]](implicit F: AsyncReactive[F]): F[B] =
+    final def map[B](f: A => B): Promise.Get[B] = new PromiseReadImpl[B] {
+      final override def getF[F[_], BB >: B](implicit F: AsyncReactive[F]): F[BB] =
         F.monad.map(self.get)(f)
-      final override def tryGet: Axn[Option[B]] =
+      final override def tryGet: Rxn[Option[B]] =
         self.tryGet.map(_.map(f))
     }
 
@@ -164,15 +168,13 @@ object Promise {
     with Promise[A] { self =>
 
     final def imap[B](f: A => B)(g: B => A): Promise[B] = new PromiseImplBase[B] {
-      final override def complete0: Rxn[B, Boolean] =
-        self.complete0.contramap(g)
-      final override def complete1(b: B): Axn[Boolean] =
-        self.complete1(g(b))
+      final override def complete(b: B): Rxn[Boolean] =
+        self.complete(g(b))
       final override def unsafeComplete(b: B)(implicit ir: unsafe.InRxn2): Boolean =
         self.unsafeComplete(g(b))
-      final override def tryGet: Axn[Option[B]] =
+      final override def tryGet: Rxn[Option[B]] =
         self.tryGet.map(_.map(f))
-      final override def get[F[_]](implicit F: AsyncReactive[F]): F[B] =
+      final override def getF[F[_], BB >: B](implicit F: AsyncReactive[F]): F[BB] =
         F.monad.map(self.get)(f)
     }
 
@@ -182,7 +184,7 @@ object Promise {
       final override def tryGet: F[Option[A]] =
         F.run(self.tryGet)
       final override def complete(a: A): F[Boolean] =
-        F.apply(self.complete0, a)
+        F.apply(self.complete(a))
     }
   }
 
@@ -190,8 +192,8 @@ object Promise {
     ref: Ref[State[A]]
   ) extends PromiseImplBase[A] {
 
-    private[this] final def callCbs(cbs: LongMap[Right[Throwable, A] => Unit], a: A): Axn[Unit] = {
-      Axn.unsafe.delay {
+    private[this] final def callCbs(cbs: LongMap[Right[Throwable, A] => Unit], a: A): Rxn[Unit] = {
+      Rxn.unsafe.delay {
         val ra = Right(a)
         val itr = cbs.valuesIterator
         while (itr.hasNext) {
@@ -200,26 +202,15 @@ object Promise {
       }
     }
 
-    final override def complete0: A =#> Boolean = {
-      ref.updWith[A, Boolean] { (state, a) =>
-        state match {
-          case w: Waiting[_] =>
-            Rxn.postCommit[Any](callCbs(w.cbs, a)).as((new Done(a), true))
-          case d: Done[_] =>
-            Rxn.pure((d, false))
-        }
-      }
-    }
-
-    final override def complete1(a: A): Axn[Boolean] = {
-      ref.upd[Any, LongMap[Right[Throwable, A] => Unit]] { (state, _) =>
+    final override def complete(a: A): Rxn[Boolean] = {
+      ref.modify { state =>
         state match {
           case w: Waiting[_] =>
             (new Done(a), w.cbs)
           case d: Done[_] =>
             (d, null)
         }
-      }.flatMapF { cbs =>
+      }.flatMap { cbs =>
         if (cbs ne null) {
           Rxn.pure(true).postCommit(callCbs(cbs, a))
         } else {
@@ -241,14 +232,14 @@ object Promise {
       }
     }
 
-    final override def tryGet: Axn[Option[A]] = {
+    final override def tryGet: Rxn[Option[A]] = {
       ref.get.map {
         case d: Done[_] => Some(d.a)
         case _: Waiting[_] => None
       }
     }
 
-    final override def get[F[_]](implicit F: AsyncReactive[F]): F[A] = {
+    final override def getF[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] = {
       F.monad.flatMap(Rxn.unsafe.directRead(ref).run[F]) {
         case _: Waiting[_] =>
           F.asyncInst.asyncCheckAttempt { cb =>
@@ -264,7 +255,7 @@ object Promise {
       }
     }
 
-    private[this] final def insertCallback(cb: Either[Throwable, A] => Unit): Axn[InsertRes[A]] = {
+    private[this] final def insertCallback(cb: Either[Throwable, A] => Unit): Rxn[InsertRes[A]] = {
       ref.getAndUpdate {
         case w: Waiting[_] =>
           val nid = w.nextId

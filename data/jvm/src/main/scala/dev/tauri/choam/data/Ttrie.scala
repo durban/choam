@@ -25,10 +25,9 @@ import scala.util.hashing.byteswap32
 import cats.kernel.{ Hash, Order }
 import cats.syntax.all._
 
-import core.{ =#>, Rxn, Axn, Ref, RefLike }
+import core.{ Rxn, Ref, RefLike }
 import internal.skiplist.SkipListMap
 import internal.mcas.Mcas
-import Ttrie._
 
 /**
  * Based on `ttrie` in "Durability and Contention in Software
@@ -61,6 +60,8 @@ private final class Ttrie[K, V] private (
   m: CMap[K, Ref[V]],
   str: Ref.AllocationStrategy,
 ) extends Map.UnsealedMap[K, V] { self =>
+
+  import Ttrie.{ ReplaceResult, ModifyResult, Init, isInit, End, isEnd, TrueNoCleanup, FalseNoCleanup, FalseCleanup }
 
   /*
    * We store refs in a `TrieMap`; the management
@@ -112,12 +113,8 @@ private final class Ttrie[K, V] private (
    * reads it again with `getRef`, but now it will be a
    * *different* ref.
    */
-  private[this] final def getRef: K =#> Ref[V] = {
-    Rxn.computed(getRefWithKey)
-  }
-
-  private[this] final def getRefWithKey(k: K): Axn[Ref[V]] = {
-    Axn.unsafe.suspendContext { ctx =>
+  private[this] final def getRef(k: K): Rxn[Ref[V]] = {
+    Rxn.unsafe.suspendContext { ctx =>
       val newRef = Ref.unsafe[V](Init[V], str, ctx.refIdGen)
       val ref = m.putIfAbsent(k, newRef) match {
         case Some(existingRef) =>
@@ -128,7 +125,7 @@ private final class Ttrie[K, V] private (
       // Note: we need to read here even if
       // we created the ref, because it's
       // already visible to others.
-      Rxn.unsafe.ticketRead(ref).flatMapF { ticket =>
+      Rxn.unsafe.ticketRead(ref).flatMap { ticket =>
         val currVal = ticket.unsafePeek
         if (isEnd[V](currVal) && ticket.unsafeIsReadOnly) {
           // ticket `nv eq End` AND `nv eq ov`
@@ -137,10 +134,10 @@ private final class Ttrie[K, V] private (
           // => it will never change, so ref can be removed,
           //    and we'll retry
           // (NB: in this case, `ref` won't be inserted into the log)
-          Axn.unsafe.delayContext(unsafeDelRef(k, ref, _)) >>> getRefWithKey(k)
+          Rxn.unsafe.delayContext(unsafeDelRef(k, ref, _)) *> getRef(k)
         } else {
           // Make sure `ref` is in the log, then force re-validation:
-          ticket.unsafeValidate >>> Rxn.unsafe.forceValidate.as(ref)
+          ticket.unsafeValidate *> Rxn.unsafe.forceValidate.as(ref)
           // Re-validation is necessary, because otherwise
           // there would be no conflict detected between
           // a new ref and the previous (tombed and removed)
@@ -168,153 +165,134 @@ private final class Ttrie[K, V] private (
     m.remove(k, ref) : Unit
   }
 
-  private[this] final def cleanupLater(key: K, ref: Ref[V]): Axn[Unit] = {
+  private[this] final def cleanupLater(key: K, ref: Ref[V]): Rxn[Unit] = {
     // First we need to check, if `End` was actually
     // committed (into `ref`), since the Rxn
     // which added us as a post-commit action
     // might've chaged it back later (in its log):
-    Rxn.unsafe.directRead(ref).flatMapF { v =>
+    Rxn.unsafe.directRead(ref).flatMap { v =>
       if (isEnd[V](v)) { // OK, we can delete it:
-        Axn.unsafe.delayContext(unsafeDelRef(key, ref, _))
+        Rxn.unsafe.delayContext(unsafeDelRef(key, ref, _))
       } else { // oops, don't delete it:
         Rxn.unit
       }
     }
   }
 
-  private[this] final def cleanupLaterIfNone[A](key: K, ref: Ref[V]): Rxn[Option[A], Unit] = {
-    Rxn.computed { option =>
-      if (option.isEmpty) cleanupLater(key, ref)
-      else Rxn.unit
-    }
+  private[this] final def cleanupLaterIfNone[A](key: K, ref: Ref[V])(option: Option[A]): Rxn[Unit] = {
+    if (option.isEmpty) cleanupLater(key, ref)
+    else Rxn.unit
   }
 
-  private[this] final def cleanupLaterIfNeeded(key: K, ref: Ref[V]): Rxn[ReplaceResult, Unit] = {
-    Rxn.computed { rr =>
-      if (rr.needsCleanup) cleanupLater(key, ref)
-      else Rxn.unit
-    }
+  private[this] final def cleanupLaterIfNeededR(key: K, ref: Ref[V])(rr: ReplaceResult): Rxn[Unit] = {
+    if (rr.needsCleanup) cleanupLater(key, ref)
+    else Rxn.unit
   }
 
-  private[this] final def cleanupLaterIfTrue(key: K, ref: Ref[V]): Rxn[Boolean, Unit] = {
-    Rxn.computed { doCleanup =>
-      if (doCleanup) cleanupLater(key, ref)
-      else Rxn.unit
-    }
+  private[this] final def cleanupLaterIfNeededM[C](key: K, ref: Ref[V])(mr: ModifyResult[C]): Rxn[Unit] = {
+    if (mr.needsCleanup) cleanupLater(key, ref)
+    else Rxn.unit
   }
 
-  final def get: K =#> Option[V] = {
-    Rxn.computed { (key: K) =>
-      getRefWithKey(key).flatMapF { ref =>
-        ref.modify { v =>
-          if (isInit(v) || isEnd(v)) {
-            // it is possible, that we created
-            // the ref with `Init`, so we must
-            // write `End`, to not leak memory:
-            (End[V], None)
-          } else {
-            (v, Some(v))
-          }
-        }.postCommit(cleanupLaterIfNone(key, ref))
-      }
-    }
+  private[this] final def cleanupLaterIfTrue(key: K, ref: Ref[V])(doCleanup: Boolean): Rxn[Unit] = {
+    if (doCleanup) cleanupLater(key, ref)
+    else Rxn.unit
   }
 
-  final def put: (K, V) =#> Option[V] = {
-    getRef.first[V].flatMapF {
-      case (ref, v) =>
-        ref.modify { ov =>
-          if (isInit(ov) || isEnd(ov)) {
-            (v, None)
-          } else {
-            (v, Some(ov))
-          }
+  final def get(key: K): Rxn[Option[V]] = {
+    getRef(key).flatMap { ref =>
+      ref.modify { v =>
+        if (isInit(v) || isEnd(v)) {
+          // it is possible, that we created
+          // the ref with `Init`, so we must
+          // write `End`, to not leak memory:
+          (End[V], None)
+        } else {
+          (v, Some(v))
         }
+      }.postCommit(cleanupLaterIfNone(key, ref))
     }
   }
 
-  final def putIfAbsent: (K, V) =#> Option[V] = {
-    getRef.first[V].flatMapF {
-      case (ref, v) =>
-        ref.modify { ov =>
-          if (isInit(ov) || isEnd(ov)) {
-            (v, None)
-          } else {
-            (ov, Some(ov))
-          }
-        }
-    }
-  }
-
-  final def replace: Rxn[(K, V, V), Boolean] = {
-    Rxn.computed { (kvv: (K, V, V)) =>
-      getRefWithKey(kvv._1).flatMapF { ref =>
-        ref.modify[ReplaceResult] { ov =>
-          if (isInit(ov) || isEnd(ov)) {
-            (End[V], FalseCleanup)
-          } else {
-            if (equ(ov, kvv._2)) (kvv._3, TrueNoCleanup)
-            else (ov, FalseNoCleanup)
-          }
-        }.postCommit(cleanupLaterIfNeeded(kvv._1, ref)).map { rr =>
-          rr.toBoolean
+  final def put(k: K, v: V): Rxn[Option[V]] = {
+    getRef(k).flatMap { ref =>
+      ref.modify { ov =>
+        if (isInit(ov) || isEnd(ov)) {
+          (v, None)
+        } else {
+          (v, Some(ov))
         }
       }
     }
   }
 
-  final def del: Rxn[K, Boolean] = {
-    Rxn.computed { (key: K) =>
-      getRefWithKey(key).flatMapF { ref =>
-        ref.modify { ov =>
-          if (isInit(ov) || isEnd(ov)) {
-            (End[V], false)
-          } else {
-            (End[V], true)
-          }
-        }.postCommit(cleanupLater(key, ref))
+  final def putIfAbsent(k: K, v: V): Rxn[Option[V]] = {
+    getRef(k).flatMap { ref =>
+      ref.modify { ov =>
+        if (isInit(ov) || isEnd(ov)) {
+          (v, None)
+        } else {
+          (ov, Some(ov))
+        }
       }
     }
   }
 
-  final def remove: Rxn[(K, V), Boolean] = {
-    Rxn.computed { (kv: (K, V)) =>
-      getRefWithKey(kv._1).flatMapF { ref =>
-        ref.modify { ov =>
-          if (isInit(ov) || isEnd(ov)) {
-            (End[V], false)
-          } else {
-            if (equ(ov, kv._2)) (End[V], true)
-            else (ov, false)
-          }
-        }.postCommit(cleanupLater(kv._1, ref))
+  final def replace(k: K, ov: V, nv: V): Rxn[Boolean] = {
+    getRef(k).flatMap { ref =>
+      ref.modify[ReplaceResult] { cv =>
+        if (isInit(cv) || isEnd(cv)) {
+          (End[V], FalseCleanup)
+        } else {
+          if (equ(cv, ov)) (nv, TrueNoCleanup)
+          else (cv, FalseNoCleanup)
+        }
+      }.postCommit(cleanupLaterIfNeededR(k, ref)).map { rr =>
+        rr.toBoolean
       }
+    }
+  }
+
+  final def del(key: K): Rxn[Boolean] = {
+    getRef(key).flatMap { ref =>
+      ref.modify { ov =>
+        if (isInit(ov) || isEnd(ov)) {
+          (End[V], false)
+        } else {
+          (End[V], true)
+        }
+      }.postCommit(cleanupLater(key, ref))
+    }
+  }
+
+  final def remove(k: K, v: V): Rxn[Boolean] = {
+    getRef(k).flatMap { ref =>
+      ref.modify { ov =>
+        if (isInit(ov) || isEnd(ov)) {
+          (End[V], false)
+        } else {
+          if (equ(ov, v)) (End[V], true)
+          else (ov, false)
+        }
+      }.postCommit(cleanupLater(k, ref))
     }
   }
 
   final override def refLike(key: K, default: V): RefLike[V] = new RefLike.UnsealedRefLike[V] {
 
-    final def get: Axn[V] =
-      self.get.provide(key).map(_.getOrElse(default))
+    final def get: Rxn[V] =
+      self.get(key).map(_.getOrElse(default))
 
-    final override def set0: Rxn[V, Unit] = {
-      Rxn.computed[V, Unit] { nv =>
-        this.set1(nv)
-      }
-    }
-
-    final override def set1(nv: V): Axn[Unit] = {
+    final override def set1(nv: V): Rxn[Unit] = {
       if (equ(nv, default)) {
-        self.del.provide(key).void
+        self.del(key).void
       } else {
-        self.put.provide((key, nv)).void
+        self.put(key, nv).void
       }
     }
 
-    // TODO: maybe override `getAndSet` if we can make it faster than the default impl.
-
-    final override def update1(f: V => V): Axn[Unit] = {
-      getRefWithKey(key).flatMapF { ref =>
+    final override def update1(f: V => V): Rxn[Unit] = {
+      getRef(key).flatMap { ref =>
         ref.modify { oldVal =>
           val currVal = if (isInit(oldVal) || isEnd(oldVal)) {
             default
@@ -328,67 +306,41 @@ private final class Ttrie[K, V] private (
             // write `End`, to not leak memory:
             (End[V], true) // <- needs cleanup
           } else {
-            (newVal, false) // <- no ned for cleanup
+            (newVal, false) // <- no need for cleanup
           }
         }.postCommit(cleanupLaterIfTrue(key, ref)).void
       }
     }
 
-    final override def update2[B](f: (V, B) => V): Rxn[B, Unit] = {
-      getRefWithKey(key).flatMap { ref =>
-        ref.upd[B, Boolean] { (oldVal, b) =>
+    final override def modify[C](f: V => (V, C)): Rxn[C] = {
+      getRef(key).flatMap {ref =>
+        ref.modify[ModifyResult[C]] { oldVal =>
           val currVal = if (isInit(oldVal) || isEnd(oldVal)) {
             default
           } else {
             oldVal
           }
-          val newVal = f(currVal, b)
+          val (newVal, c) = f(currVal)
           if (equ(newVal, default)) {
             // it is possible, that we created
             // the ref with `Init`, so we must
             // write `End`, to not leak memory:
-            (End[V], true) // <- needs cleanup
+            (End[V], new ModifyResult(c, needsCleanup = true))
           } else {
-            (newVal, false) // <- no ned for cleanup
+            (newVal, new ModifyResult(c, needsCleanup = false))
           }
-        }.postCommit(cleanupLaterIfTrue(key, ref)).void
-      }
-    }
-
-    final override def upd[B, C](f: (V, B) => (V, C)): Rxn[B, C] = // TODO: optimize this
-      this.updWith { (v, b) => Rxn.pure(f(v, b)) }
-
-    final override def updWith[B, C](f: (V, B) => Axn[(V, C)]): B =#> C = {
-      getRefWithKey(key).flatMap { ref =>
-        ref.updWith[B, C] { (oldVal, b) =>
-          val currVal = if (isInit(oldVal) || isEnd(oldVal)) {
-            default
-          } else {
-            oldVal
-          }
-          f(currVal, b).flatMapF {
-            case (newVal, c) =>
-              if (equ(newVal, default)) {
-                // it is possible, that we created
-                // the ref with `Init`, so we must
-                // write `End`, to not leak memory:
-                Rxn.postCommit(cleanupLater(key, ref)).as((End[V], c))
-              } else {
-                Rxn.pure((newVal, c))
-              }
-          }
-        }
+        }.postCommit(cleanupLaterIfNeededM[C](key, ref)).map(_.c)
       }
     }
   }
 
-  private[data] final def unsafeSnapshot: Axn[ScalaMap[K, V]] = {
+  private[data] final def unsafeSnapshot: Rxn[ScalaMap[K, V]] = {
     // NB: this is not composable,
     // as running it twice in one Rxn
     // may return a different set of
     // refs; this is one reason why
     // this method is `unsafe`.
-    Axn.unsafe.delay { m.iterator.toList }.flatMapF { kvs =>
+    Rxn.unsafe.delay { m.iterator.toList }.flatMap { kvs =>
       kvs.traverse { kv =>
         kv._2.get.map { v => (kv._1, v) }
       }.map { kvs =>
@@ -409,9 +361,9 @@ private final class Ttrie[K, V] private (
     }
   }
 
-  private[data] final def unsafeTrieMapSize: Axn[Int] = {
+  private[data] final def unsafeTrieMapSize: Rxn[Int] = {
     // NB: non-composable, sees empty refs, etc.
-    Axn.unsafe.delay { m.size }
+    Rxn.unsafe.delay { m.size }
   }
 }
 
@@ -451,6 +403,11 @@ private object Ttrie {
   @inline private final def isEnd[V](v: V): Boolean =
     equ[V](v, End[V])
 
+  private final class ModifyResult[C](
+    val c: C,
+    val needsCleanup: Boolean,
+  )
+
   private sealed abstract class ReplaceResult {
     def toBoolean: Boolean
     def needsCleanup: Boolean
@@ -471,8 +428,8 @@ private object Ttrie {
     final override def needsCleanup = true
   }
 
-  def apply[K, V](str: Ref.AllocationStrategy)(implicit K: Hash[K]): Axn[Ttrie[K, V]] = {
-    Axn.unsafe.delay {
+  def apply[K, V](str: Ref.AllocationStrategy)(implicit K: Hash[K]): Rxn[Ttrie[K, V]] = {
+    Rxn.unsafe.delay {
       val m = new TrieMap[K, Ref[V]](
         hashf = { k => byteswap32(K.hash(k)) },
         ef = K.eqv(_, _),
@@ -481,8 +438,8 @@ private object Ttrie {
     }
   }
 
-  def skipListBased[K, V](str: Ref.AllocationStrategy)(implicit K: Order[K]): Axn[Ttrie[K, V]] = {
-    Axn.unsafe.delay {
+  def skipListBased[K, V](str: Ref.AllocationStrategy)(implicit K: Order[K]): Rxn[Ttrie[K, V]] = {
+    Rxn.unsafe.delay {
       val m = new SkipListMap[K, Ref[V]]()
       new Ttrie[K, V](m, str)
     }

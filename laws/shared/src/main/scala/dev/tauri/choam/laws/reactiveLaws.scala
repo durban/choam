@@ -23,7 +23,7 @@ import cats.laws.IsEq
 import cats.laws.IsEqArrow
 import cats.syntax.all._
 
-import core.{ =#>, Rxn, Reactive, AsyncReactive }
+import core.{ Rxn, Reactive, AsyncReactive }
 import async.Promise
 
 sealed trait ReactiveLaws[F[_]] {
@@ -36,11 +36,8 @@ sealed trait ReactiveLaws[F[_]] {
   def runPure[A](a: A): IsEq[F[A]] =
     reactive.run(Rxn.pure(a)) <-> monad.pure(a)
 
-  def runLift[A, B](f: A => B, a: A): IsEq[F[B]] =
-    reactive.apply(Rxn.lift(f), a) <-> monad.pure(a).map(f)
-
-  def runToFunction[A, B](rxn: A =#> B, a: A): IsEq[F[B]] =
-    reactive.run(rxn.toFunction(a)) <-> reactive.apply(rxn, a)
+  def mapInRxnAndF[A, B](rxn: Rxn[A], f: A => B): IsEq[F[B]] =
+    reactive.run(rxn.map(f)) <-> monad.map(reactive.run(rxn))(f)
 }
 
 object ReactiveLaws {
@@ -56,7 +53,7 @@ sealed trait AsyncReactiveLaws[F[_]] extends ReactiveLaws[F] {
   def promiseCompleteAndGet[A](a: A): IsEq[F[(Boolean, A)]] = {
     val completeAndGet = for {
       p <- reactive.run(Promise[A])
-      ok <- reactive.apply(p.complete0, a)
+      ok <- reactive.apply(p.complete(a))
       res <- p.get
     } yield (ok, res)
     completeAndGet <-> monad.pure((true, a))

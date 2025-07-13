@@ -45,18 +45,18 @@ class RemoveQueueComposedTest3 extends RemoveQueueStressTestBase {
     Ref.unsafePadded[Int](0, this.rig)
 
   private[this] val deq =
-    queue.tryDeque * (dummy.update { _ + 1 }.flatMap { _ => latch.getAndUpdate(_ => true) })
+    queue.poll * (dummy.update { _ + 1 }.flatMap { _ => latch.getAndUpdate(_ => true) })
 
   private[this] val enq =
-    (queue.enqueue * latch.getAndUpdate(_ => true)).map(_._2)
+    (queue.add("a") * latch.getAndUpdate(_ => true)).map(_._2)
 
   @Actor
   def deq(r: LL_Result): Unit = {
-    r.r1 = deq.unsafePerform((), this.impl)
+    r.r1 = deq.unsafePerform(this.impl)
   }
 
   @Actor
   def enq(r: LL_Result): Unit = {
-    r.r2 = enq.unsafePerform("a", this.impl)
+    r.r2 = enq.unsafePerform(this.impl)
   }
 }

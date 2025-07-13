@@ -41,7 +41,7 @@ class AsyncQueueLinearizableTest {
   private[this] val runtime =
     cats.effect.unsafe.IORuntime.global
 
-  private[this] val q: UnboundedQueue[String] =
+  private[this] val q: AsyncQueue[String] =
     AsyncQueue.unbounded[String].run[SyncIO].unsafeRunSync()
 
   private[this] var result: String =
@@ -49,14 +49,14 @@ class AsyncQueueLinearizableTest {
 
   private[this] val taker: Fiber[IO, Throwable, String] = {
     val tsk = IO.uncancelable { poll =>
-      poll(q.deque[IO, String]).flatTap { s => IO { this.result = s } }
+      poll(q.take[IO, String]).flatTap { s => IO { this.result = s } }
     }
     tsk.start.unsafeRunSync()(using runtime)
   }
 
   @Actor
   def offer2(): Unit = {
-    (q.enqueue[IO]("a") *> q.enqueue[IO]("b")).unsafeRunSync()(using this.runtime)
+    (q.put[IO]("a") *> q.put[IO]("b")).unsafeRunSync()(using this.runtime)
   }
 
   @Actor
@@ -66,7 +66,7 @@ class AsyncQueueLinearizableTest {
 
   @Arbiter
   def arbiter(r: LLLL_Result): Unit = {
-    val ocAndResult2 = (taker.join, q.deque[IO, String]).flatMapN { (oc, result2) =>
+    val ocAndResult2 = (taker.join, q.take[IO, String]).flatMapN { (oc, result2) =>
       oc.fold(
         IO.pure("cancelled"),
         ex => IO.pure("error: " + ex.getClass().getName()),
@@ -77,7 +77,7 @@ class AsyncQueueLinearizableTest {
     val result2: String = ocAndResult2._2
     r.r1 = this.result
     r.r2 = result2
-    r.r3 = q.tryDeque.run[SyncIO].unsafeRunSync()
+    r.r3 = q.poll.run[SyncIO].unsafeRunSync()
     r.r4 = oc
   }
 }

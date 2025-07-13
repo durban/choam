@@ -22,32 +22,32 @@ import java.util.UUID
 
 import cats.effect.std.{ Random, SecureRandom }
 
-import core.{ Axn, Ref }
+import core.{ Rxn, Ref }
 
 package object random {
 
-  private[choam] final def newUuidImpl: core.RxnImpl[Any, UUID] = {
-    core.Rxn.unsafe.axnDelayContextImpl(RxnUuidGen.unsafeRandomUuidInternal)
+  private[choam] final def newUuidImpl: core.RxnImpl[UUID] = {
+    core.Rxn.unsafe.delayContextImpl(RxnUuidGen.unsafeRandomUuidInternal)
   }
 
   private[random] def uuidFromRandomBytes(buff: Array[Byte]): UUID = {
     RxnUuidGen.uuidFromRandomBytes(buff)
   }
 
-  private[choam] final def newFastRandom: Random[Axn] =
+  private[choam] final def newFastRandom: Random[Rxn] =
     new RxnThreadLocalRandom
 
-  private[choam] final def newSecureRandom: SecureRandom[Axn] =
+  private[choam] final def newSecureRandom: SecureRandom[Rxn] =
     new SecureRandomRxn
 
-  private[choam] final def deterministicRandom(initialSeed: Long, str: Ref.AllocationStrategy): Axn[SplittableRandom[Axn]] =
+  private[choam] final def deterministicRandom(initialSeed: Long, str: Ref.AllocationStrategy): Rxn[SplittableRandom[Rxn]] =
     DeterministicRandom(initialSeed, str)
 
   // TODO: do we need this?
-  private[choam] def minimalRandom1(initialSeed: Long): Axn[Random[Axn]] =
-    Axn.unsafe.delayContext { ctx => MinimalRandom.unsafe1(initialSeed, ctx.refIdGen) }
+  private[choam] def minimalRandom1(initialSeed: Long): Rxn[Random[Rxn]] =
+    Rxn.unsafe.delayContext { ctx => MinimalRandom.unsafe1(initialSeed, ctx.refIdGen) }
 
   // TODO: do we need this?
-  private[choam] def minimalRandom2(initialSeed: Long): Axn[Random[Axn]] =
-    Axn.unsafe.delayContext { ctx => MinimalRandom.unsafe2(initialSeed, ctx.refIdGen) }
+  private[choam] def minimalRandom2(initialSeed: Long): Rxn[Random[Rxn]] =
+    Rxn.unsafe.delayContext { ctx => MinimalRandom.unsafe2(initialSeed, ctx.refIdGen) }
 }

@@ -21,17 +21,15 @@ package discipline
 
 import cats.implicits._
 import cats.kernel.laws.discipline.{ SemigroupTests, MonoidTests, OrderTests, HashTests }
-import cats.laws.discipline.{ ArrowChoiceTests, DeferTests, MonadTests, MonoidKTests, AlignTests }
+import cats.laws.discipline.{ DeferTests, MonadTests, AlignTests }
 import cats.effect.kernel.testkit.TestContext
 import cats.effect.laws.{ UniqueTests, ClockTests }
 import cats.effect.{ IO, SyncIO }
 
-import cats.mtl.laws.discipline.LocalTests
-
 import org.scalacheck.Prop
 import munit.DisciplineSuite
 
-import core.{ Rxn, Axn, Ref, Reactive, AsyncReactive }
+import core.{ Rxn, Ref, Reactive, AsyncReactive }
 import internal.mcas.Mcas
 
 final class LawsSpecThreadConfinedMcas
@@ -69,25 +67,22 @@ trait LawsSpec
     checkAll("Rxn", new RxnLawTests.UnsealedRxnLawTests with TestInstances {
       override def mcasImpl: Mcas = self.mcasImpl
       override protected def rigInstance = this.mcasImpl.currentContext().refIdGen
-    }.rxn[String, Int, Float, Double, Boolean, Long])
+    }.rxn[Int, Float, Double, Long])
 
     checkAll("Ref", RefLawTests(self).ref[String, Int, Float])
     checkAll("Reactive", ReactiveLawTests[SyncIO].reactive[String, Int])
     checkAll("AsyncReactive", AsyncReactiveLawTests[IO].asyncReactive[String, Int])
 
-    checkAll("ArrowChoice[Rxn]", ArrowChoiceTests[Rxn].arrowChoice[Int, Int, Int, Int, Int, Int])
-    checkAll("Local[Rxn]", LocalTests[Rxn[String, *], String].local[Int, Float])
-    checkAll("Monad[Rxn]", MonadTests[Rxn[String, *]].monad[Int, String, Int])
-    checkAll("Unique[Rxn]", UniqueTests[Rxn[Any, *]].unique(using { (act: Axn[Boolean]) =>
-      Prop(act.unsafeRun(self.mcasImpl))
+    checkAll("Monad[Rxn]", MonadTests[Rxn].monad[Int, String, Int])
+    checkAll("Unique[Rxn]", UniqueTests[Rxn].unique(using { (act: Rxn[Boolean]) =>
+      Prop(act.unsafePerform(self.mcasImpl))
     }))
-    checkAll("MonoidK[Rxn]", MonoidKTests[λ[a => Rxn[a, a]]].monoidK[String])
-    checkAll("Semigroup[Rxn]", SemigroupTests[Rxn[String, Int]](using Rxn.choiceSemigroup).semigroup)
-    checkAll("Monoid[Rxn]", MonoidTests[Rxn[String, Int]](using Rxn.monoidInstance).monoid)
-    checkAll("Defer[Rxn]", DeferTests[Rxn[String, *]].defer[Int])
-    checkAll("Align[Rxn]", AlignTests[Rxn[String, *]].align[Int, Float, Double, Long])
-    checkAll("Clock[Rxn]", ClockTests[Rxn[String, *]].clock(using { (act: Rxn[String, Boolean]) =>
-      Prop(act.unsafePerform(null : String, self.mcasImpl))
+    checkAll("Semigroup[Rxn]", SemigroupTests[Rxn[Int]](using Rxn.choiceSemigroup).semigroup)
+    checkAll("Monoid[Rxn]", MonoidTests[Rxn[Int]](using Rxn.monoidInstance).monoid)
+    checkAll("Defer[Rxn]", DeferTests[Rxn].defer[Int])
+    checkAll("Align[Rxn]", AlignTests[Rxn].align[Int, Float, Double, Long])
+    checkAll("Clock[Rxn]", ClockTests[Rxn].clock(using { (act: Rxn[Boolean]) =>
+      Prop(act.unsafePerform(self.mcasImpl))
     }))
 
     checkAll("Order[Ref[Int]]", OrderTests[Ref[Int]].order)

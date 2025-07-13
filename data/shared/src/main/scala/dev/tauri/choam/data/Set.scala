@@ -20,39 +20,39 @@ package data
 
 import cats.kernel.{ Hash, Order }
 
-import core.{ =#>, Axn, Ref }
+import core.{ Rxn, Ref }
 
 sealed trait Set[A] {
 
-  def contains: A =#> Boolean
+  def contains(a: A): Rxn[Boolean]
 
   /** @return `true` iff it did not already contain the element */
-  def add: A =#> Boolean
+  def add(a: A): Rxn[Boolean]
 
   /** @return `true` iff it did contain the element */
-  def remove: A =#> Boolean
+  def remove(a: A): Rxn[Boolean]
 }
 
 object Set {
 
-  final def hashSet[A](implicit A: Hash[A]): Axn[Set[A]] =
+  final def hashSet[A](implicit A: Hash[A]): Rxn[Set[A]] =
     Map.hashMap[A, Unit].map(new SetFromMap(_))
 
-  final def hashSet[A](str: Ref.AllocationStrategy)(implicit A: Hash[A]): Axn[Set[A]] =
+  final def hashSet[A](str: Ref.AllocationStrategy)(implicit A: Hash[A]): Rxn[Set[A]] =
     Map.hashMap[A, Unit](str).map(new SetFromMap(_))
 
-  final def orderedSet[A](implicit A: Order[A]): Axn[Set[A]] =
+  final def orderedSet[A](implicit A: Order[A]): Rxn[Set[A]] =
     Map.orderedMap[A, Unit].map(new SetFromMap(_))
 
-  final def orderedSet[A](str: Ref.AllocationStrategy)(implicit A: Order[A]): Axn[Set[A]] =
+  final def orderedSet[A](str: Ref.AllocationStrategy)(implicit A: Order[A]): Rxn[Set[A]] =
     Map.orderedMap[A, Unit](str).map(new SetFromMap(_))
 
   private[this] final class SetFromMap[A](m: Map[A, Unit]) extends Set[A] {
-    final override val contains: A =#> Boolean =
-      m.get.map(_.isDefined)
-    final override val add: A =#> Boolean =
-      m.putIfAbsent.contramap[A](a => (a, ())).map(_.isEmpty)
-    final override val remove: A =#> Boolean =
-      m.del
+    final override def contains(a: A): Rxn[Boolean] =
+      m.get(a).map(_.isDefined)
+    final override def add(a: A): Rxn[Boolean] =
+      m.putIfAbsent(a, ()).map(_.isEmpty)
+    final override def remove(a: A): Rxn[Boolean] =
+      m.del(a)
   }
 }

@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package unsafe
 
-import core.Axn
+import core.Rxn
 import internal.mcas.{ Mcas, MemoryLocation, LogEntry }
 
 sealed trait InRxn  {
@@ -39,7 +39,7 @@ sealed trait InRxn  {
 }
 
 sealed trait InRxn2 extends InRxn { // TODO: this only exists because only embedUnsafe supports post-commit actions
-  private[choam] def imperativePostCommit(pc: Axn[Unit]): Unit
+  private[choam] def imperativePostCommit(pc: Rxn[Unit]): Unit
 }
 
 object InRxn {

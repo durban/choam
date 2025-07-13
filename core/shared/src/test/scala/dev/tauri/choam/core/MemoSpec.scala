@@ -21,8 +21,6 @@ package core
 import cats.effect.IO
 import cats.effect.instances.all._
 
-import core.Memo
-
 final class MemoSpec_DefaultMcas_IO
   extends BaseSpecIO
   with SpecDefaultMcas
@@ -34,12 +32,12 @@ trait MemoSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   private final class GetCtr[A] private (memo: Memo[(A, Ref[Int])]) {
 
-    def get: Axn[A] = memo.getOrInit.flatMapF {
+    def get: Rxn[A] = memo.getOrInit.flatMap {
       case (a, ctr) =>
         ctr.update(_ + 1).as(a)
     }
 
-    def currentCount: Axn[Int] = memo.getOrInit.flatMapF {
+    def currentCount: Rxn[Int] = memo.getOrInit.flatMap {
       case (_ , ctr) =>
         ctr.get
     }
@@ -47,7 +45,7 @@ trait MemoSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   private final object GetCtr {
 
-    final def apply[A](act: Axn[A]): Axn[GetCtr[A]] = {
+    final def apply[A](act: Rxn[A]): Rxn[GetCtr[A]] = {
       Rxn.memoize(act * Ref(0)).map { memo =>
         new GetCtr(memo)
       }
@@ -80,7 +78,7 @@ trait MemoSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Rxn.memoize concurrent access") {
     val t = for {
       ctr <- Ref(0).run[F]
-      act = ctr.update(_ + 1) *> Axn.unsafe.delay { new Token }
+      act = ctr.update(_ + 1) *> Rxn.unsafe.delay { new Token }
       gctr <- GetCtr[Token](act).run[F]
       _ <- assertResultF(ctr.get.run[F], 0)
       rr <- F.both(F.cede *> gctr.get.run[F], F.cede *> gctr.get.run[F])

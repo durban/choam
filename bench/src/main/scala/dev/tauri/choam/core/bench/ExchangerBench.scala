@@ -34,13 +34,13 @@ class ExchangerBench {
   @Benchmark
   @Group("exchanger")
   def exchangerLeft(s: St, bh: Blackhole, k: McasImplState): Unit = {
-    bh.consume(s.left.unsafePerformInternal("foo", ctx = k.mcasCtx))
+    bh.consume(s.left("foo").unsafePerformInternal(ctx = k.mcasCtx))
   }
 
   @Benchmark
   @Group("exchanger")
   def exchangerRight(s: St, bh: Blackhole, k: McasImplState): Unit = {
-    bh.consume(s.right.unsafePerformInternal("bar", ctx = k.mcasCtx))
+    bh.consume(s.right("bar").unsafePerformInternal(ctx = k.mcasCtx))
   }
 
   // @Benchmark
@@ -56,13 +56,13 @@ object ExchangerBench {
   class St extends McasImplStateBase {
 
     private[this] val exchanger: Exchanger[String, String] =
-      RxnProfiler.profiledExchanger[String, String].unsafePerform((), this.mcasImpl)
+      RxnProfiler.profiledExchanger[String, String].unsafePerform(this.mcasImpl)
 
-    val left: Rxn[String, Option[String]] =
-      exchanger.exchange.?
+    final def left(s: String): Rxn[Option[String]] =
+      exchanger.exchange(s).?
 
-    val right: Rxn[String, Option[String]] =
-      exchanger.dual.exchange.?
+    final def right(s: String): Rxn[Option[String]] =
+      exchanger.dual.exchange(s).?
 
     // Exchanger params:
 

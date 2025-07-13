@@ -42,8 +42,8 @@ class SyncUnboundedQueueBench extends BenchUtils {
   @Benchmark
   def msQueue(s: MsSt, t: McasImplState, rnd: RandomState): Unit = {
     val tsk = rnd.nextBooleanIO.flatMap { enq =>
-      if (enq) s.michaelScottQueue.enqueue.run[IO](rnd.nextString())(using t.reactive)
-      else s.michaelScottQueue.tryDeque.run[IO](using t.reactive)
+      if (enq) s.michaelScottQueue.add(rnd.nextString()).run[IO](using t.reactive)
+      else s.michaelScottQueue.poll.run[IO](using t.reactive)
     }
     runRepl(s.runtime, tsk.void, size = N, parallelism = s.concurrentOps)
   }
@@ -52,8 +52,8 @@ class SyncUnboundedQueueBench extends BenchUtils {
   @Benchmark
   def msQueueWithRemove(s: RmSt, t: McasImplState, rnd: RandomState): Unit = {
     val tsk = rnd.nextBooleanIO.flatMap { enq =>
-      if (enq) s.removeQueue.enqueue.run[IO](rnd.nextString())(using t.reactive)
-      else s.removeQueue.tryDeque.run[IO](using t.reactive)
+      if (enq) s.removeQueue.add(rnd.nextString()).run[IO](using t.reactive)
+      else s.removeQueue.poll.run[IO](using t.reactive)
     }
     runRepl(s.runtime, tsk.void, size = N, parallelism = s.concurrentOps)
   }

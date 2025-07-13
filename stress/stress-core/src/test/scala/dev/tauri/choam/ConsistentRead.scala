@@ -22,7 +22,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
 
-import core.{ Axn, Ref }
+import core.{ Rxn, Ref }
 
 @JCStressTest
 @State
@@ -39,31 +39,31 @@ class ConsistentRead extends StressTestBase {
   private[this] val ref2 =
     Ref.unsafePadded("y", this.rig)
 
-  private[this] val upd: Axn[Unit] =
-    ref1.update(_ + "1") >>> ref2.update(_ + "1")
+  private[this] val upd: Rxn[Unit] =
+    ref1.update(_ + "1") *> ref2.update(_ + "1")
 
-  private[this] val get: Axn[(String, String)] =
+  private[this] val get: Rxn[(String, String)] =
     ref1.get * ref2.get
 
   this.init()
 
   private[this] final def init(): Unit = {
     val initRxn = ref1.update(_ => "x")
-    initRxn.unsafeRun(this.impl)
+    initRxn.unsafePerform(this.impl)
   }
 
   @Actor
   def update(): Unit = {
-    upd.unsafeRun(this.impl)
+    upd.unsafePerform(this.impl)
   }
 
   @Actor
   def read(r: LL_Result): Unit = {
-    r.r1 = get.unsafeRun(this.impl)
+    r.r1 = get.unsafePerform(this.impl)
   }
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    r.r2 = (ref1.get.unsafeRun(this.impl), ref2.get.unsafeRun(this.impl))
+    r.r2 = (ref1.get.unsafePerform(this.impl), ref2.get.unsafePerform(this.impl))
   }
 }

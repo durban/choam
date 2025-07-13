@@ -22,7 +22,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLZ_Result
 
-import core.{ Rxn, Axn, Ref }
+import core.{ Rxn, Ref }
 
 @JCStressTest
 @State
@@ -42,24 +42,24 @@ class DirectReadTest extends StressTestBase {
   private[this] val ref2: Ref[String] =
     Ref.unsafePadded("x", this.rig)
 
-  private[this] val read1: Axn[String] =
+  private[this] val read1: Rxn[String] =
     Rxn.unsafe.directRead(ref1)
 
-  private[this] val read2: Axn[String] =
+  private[this] val read2: Rxn[String] =
     Rxn.unsafe.directRead(ref2)
 
   private[this] val write =
-    ref1.update(_ => "b") >>> ref2.update(_ => "y")
+    ref1.update(_ => "b") *> ref2.update(_ => "y")
 
   @Actor
   def writer(): Unit = {
-    write.unsafeRun(this.impl)
+    write.unsafePerform(this.impl)
   }
 
   @Actor
   def reader(r: LLZ_Result): Unit = {
-    r.r1 = read1.unsafeRun(this.impl)
-    r.r2 = read2.unsafeRun(this.impl)
+    r.r1 = read1.unsafePerform(this.impl)
+    r.r2 = read2.unsafePerform(this.impl)
   }
 
   @Arbiter

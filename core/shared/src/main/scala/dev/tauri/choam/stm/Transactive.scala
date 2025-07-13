@@ -53,10 +53,10 @@ object Transactive {
   private[choam] final class TransactiveImpl[F[_] : Async](m: Mcas)
     extends Reactive.SyncReactive[F](m) with Transactive[F] {
     final override def commit[B](txn: Txn[B], str: RetryStrategy): F[B] = {
-      txn.impl.performStm[F, B](null, this.mcasImpl, str)
+      txn.impl.performStm[F, B](this.mcasImpl, str)
     }
     private[choam] final override def commitWithStepper[B](txn: Txn[B], stepper: RetryStrategy.Internal.Stepper[F]): F[B] = {
-      txn.impl.performStmWithStepper(null, this.mcasImpl, stepper)
+      txn.impl.performStmWithStepper(this.mcasImpl, stepper)
     }
   }
 }

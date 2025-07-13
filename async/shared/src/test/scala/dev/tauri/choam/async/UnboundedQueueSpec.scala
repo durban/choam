@@ -33,17 +33,17 @@ final class UnboundedQueueSpec_WithSize_ThreadConfinedMcas_IO
   with UnboundedQueueImplWithSize[IO]
 
 trait UnboundedQueueImplSimple[F[_]] extends UnboundedQueueSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
-  final override type Q[G[_], A] = UnboundedQueue[A]
+  final override type Q[G[_], A] = AsyncQueue[A]
   protected final override def newQueue[G[_] : AsyncReactive, A] =
-    UnboundedQueue[A].run[G]
+    AsyncQueue.unbounded[A].run[G]
 }
 
 trait UnboundedQueueImplWithSize[F[_]] extends UnboundedQueueSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
 
-  final override type Q[G[_], A] = UnboundedQueue.WithSize[A]
+  final override type Q[G[_], A] = AsyncQueue.WithSize[A]
 
   protected final override def newQueue[G[_] : AsyncReactive, A] =
-    UnboundedQueue.withSize[A].run[G]
+    AsyncQueue.unboundedWithSize[A].run[G]
 
   test("UnboundedQueue.WithSize#toCats") {
     for {
@@ -52,17 +52,17 @@ trait UnboundedQueueImplWithSize[F[_]] extends UnboundedQueueSpec[F] { this: Mca
       _ <- assertResultF(cq.size, 0)
       f <- cq.take.start
       _ <- this.tickAll
-      _ <- q.enqueue[F]("a")
+      _ <- q.put[F]("a")
       _ <- assertResultF(f.joinWithNever, "a")
       _ <- assertResultF(cq.size, 0)
       _ <- assertResultF(cq.tryTake, None)
-      f <- q.deque.start
+      f <- q.take.start
       _ <- cq.offer("b")
       _ <- assertResultF(f.joinWithNever, "b")
       _ <- assertResultF(cq.size, 0)
       _ <- assertResultF(cq.tryOffer("c"), true)
       _ <- assertResultF(cq.size, 1)
-      _ <- assertResultF(q.tryDeque.run[F], Some("c"))
+      _ <- assertResultF(q.poll.run[F], Some("c"))
       _ <- assertResultF(cq.size, 0)
     } yield ()
   }
@@ -71,36 +71,36 @@ trait UnboundedQueueImplWithSize[F[_]] extends UnboundedQueueSpec[F] { this: Mca
 trait UnboundedQueueSpec[F[_]]
   extends BaseSpecAsyncF[F] { this: McasImplSpec & TestContextSpec[F] =>
 
-  type Q[G[_], A] <: UnboundedQueue[A]
+  type Q[G[_], A] <: AsyncQueue[A]
 
   protected def newQueue[G[_] : AsyncReactive, A]: G[Q[G, A]]
 
-  test("UnboundedQueue non-empty deque") {
+  test("UnboundedQueue non-empty take") {
     for {
       s <- newQueue[F, String]
-      _ <- s.enqueue[F]("a")
-      _ <- s.enqueue[F]("b")
-      _ <- s.enqueue[F]("c")
-      _ <- assertResultF(s.deque, "a")
-      _ <- assertResultF(s.deque, "b")
-      _ <- assertResultF(s.deque, "c")
+      _ <- s.put[F]("a")
+      _ <- s.put[F]("b")
+      _ <- s.put[F]("c")
+      _ <- assertResultF(s.take, "a")
+      _ <- assertResultF(s.take, "b")
+      _ <- assertResultF(s.take, "c")
     } yield ()
   }
 
-  test("UnboundedQueue empty deque") {
+  test("UnboundedQueue empty take") {
     for {
       s <- newQueue[F, String]
-      f1 <- s.deque.start
+      f1 <- s.take.start
       _ <- this.tickAll
-      f2 <- s.deque.start
+      f2 <- s.take.start
       _ <- this.tickAll
-      f3 <- s.deque.start
+      f3 <- s.take.start
       _ <- this.tickAll
-      _ <- s.enqueue[F]("a")
+      _ <- s.put[F]("a")
       _ <- this.tickAll
-      _ <- s.enqueue[F]("b")
+      _ <- s.put[F]("b")
       _ <- this.tickAll
-      _ <- s.enqueue[F]("c")
+      _ <- s.put[F]("c")
       _ <- this.tickAll
       _ <- assertResultF(f1.joinWithNever, "a")
       _ <- assertResultF(f2.joinWithNever, "b")
@@ -111,13 +111,13 @@ trait UnboundedQueueSpec[F[_]]
   test("UnboundedQueue more enq in one Rxn") {
     for {
       s <- newQueue[F, String]
-      f1 <- s.deque.start
+      f1 <- s.take.start
       _ <- this.tickAll
-      f2 <- s.deque.start
+      f2 <- s.take.start
       _ <- this.tickAll
-      f3 <- s.deque.start
+      f3 <- s.take.start
       _ <- this.tickAll
-      rxn = s.enqueue.provide("a") * s.enqueue.provide("b") * s.enqueue.provide("c")
+      rxn = s.add("a") * s.add("b") * s.add("c")
       _ <- rxn.run[F]
       // since `rxn` awakes all fibers in its post-commit actions, their order is non-deterministic:
       v1 <- f1.joinWithNever
@@ -130,12 +130,12 @@ trait UnboundedQueueSpec[F[_]]
   test("UnboundedQueue enq and deq in one Rxn") {
     for {
       s <- newQueue[F, String]
-      f1 <- s.deque.start
+      f1 <- s.take.start
       _ <- this.tickAll
-      f2 <- s.deque.start
+      f2 <- s.take.start
       _ <- this.tickAll
-      rxn = (s.enqueue.provide("a") * s.enqueue.provide("b") * s.enqueue.provide("c")) *> (
-        s.tryDeque
+      rxn = (s.add("a") * s.add("b") * s.add("c")) *> (
+        s.poll
       )
       deqRes <- rxn.run[F]
       _ <- assertEqualsF(deqRes, Some("a"))

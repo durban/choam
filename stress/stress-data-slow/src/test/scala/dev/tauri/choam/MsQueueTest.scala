@@ -24,6 +24,8 @@ import org.openjdk.jcstress.infra.results.LL_Result
 
 import cats.effect.SyncIO
 
+import data.Queue
+
 @JCStressTest
 @State
 @Description("MsQueue enq/deq should be atomic")
@@ -38,29 +40,27 @@ class MsQueueTest extends MsQueueStressTestBase {
   private[this] val queue =
     this.newQueue[String]()
 
-  private[this] val enqueue =
-    queue.enqueue
 
   private[this] val tryDeque =
-    queue.tryDeque
+    queue.poll
 
   @Actor
   def enq1(): Unit = {
-    enqueue.unsafePerform("x", this.impl)
+    queue.add("x").unsafePerform(this.impl)
   }
 
   @Actor
   def enq2(): Unit = {
-    enqueue.unsafePerform("y", this.impl)
+    queue.add("y").unsafePerform(this.impl)
   }
 
   @Actor
   def deq(r: LL_Result): Unit = {
-    r.r1 = tryDeque.unsafeRun(this.impl)
+    r.r1 = tryDeque.unsafePerform(this.impl)
   }
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    r.r2 = queue.drainOnce[SyncIO, String].unsafeRunSync()
+    r.r2 = Queue.drainOnce[SyncIO, String](queue).unsafeRunSync()
   }
 }

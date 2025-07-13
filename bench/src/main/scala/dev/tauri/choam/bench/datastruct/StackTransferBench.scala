@@ -25,7 +25,7 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 import util._
-import core.Axn
+import core.Rxn
 import data.Stack
 import helpers.StackHelper
 import ce.unsafeImplicits._
@@ -39,9 +39,9 @@ class StackTransferBench {
 
   @Benchmark
   def treiberStack(s: TreiberSt, bh: Blackhole, ct: McasImplState, rnd: RandomState): Unit = {
-    bh.consume(s.treiberStack1.push.unsafePerform(rnd.nextString(), ct.mcasImpl))
-    bh.consume(s.transfer.unsafePerform((), ct.mcasImpl))
-    if (s.treiberStack2.tryPop.unsafePerform((), ct.mcasImpl) eq None) throw Errors.EmptyStack
+    bh.consume(s.treiberStack1.push(rnd.nextString()).unsafePerform(ct.mcasImpl))
+    bh.consume(s.transfer.unsafePerform(ct.mcasImpl))
+    if (s.treiberStack2.tryPop.unsafePerform(ct.mcasImpl) eq None) throw Errors.EmptyStack
     Blackhole.consumeCPU(waitTime)
   }
 
@@ -85,8 +85,8 @@ object StackTransferBench {
       StackHelper.treiberStackFromList[SyncIO, String](Prefill.prefill()).unsafeRunSync()
     val treiberStack2: Stack[String] =
       StackHelper.treiberStackFromList[SyncIO, String](Prefill.prefill()).unsafeRunSync()
-    val transfer: Axn[Unit] =
-      treiberStack1.tryPop.map(_.get) >>> treiberStack2.push
+    val transfer: Rxn[Unit] =
+      treiberStack1.tryPop.map(_.get).flatMap(treiberStack2.push)
   }
 
   @State(Scope.Benchmark)

@@ -24,18 +24,18 @@ package core
  * Note: this is duplicated on JS (where it doesn't do anything).
  */
 private[choam] abstract class EliminatorImpl[-A, +B, -C, +D] private[choam] (
-  underlyingLeft: A =#> B,
+  underlyingLeft: A => Rxn[B],
   transformLeft: A => D,
-  underlyingRight: C =#> D,
+  underlyingRight: C => Rxn[D],
   transformRight: C => B,
 ) extends Eliminator.UnsealedEliminator[A, B, C, D] {
 
   private[this] val exchanger: Exchanger[A, C] =
     Exchanger.unsafe[A, C]
 
-  final override val leftOp: A =#> B =
-    underlyingLeft + exchanger.exchange.map(transformRight)
+  final override def leftOp(a: A): Rxn[B] =
+    underlyingLeft(a) + exchanger.exchange(a).map(transformRight)
 
-  final override val rightOp: C =#> D =
-    underlyingRight + exchanger.dual.exchange.map(transformLeft)
+  final override def rightOp(c: C): Rxn[D] =
+    underlyingRight(c) + exchanger.dual.exchange(c).map(transformLeft)
 }

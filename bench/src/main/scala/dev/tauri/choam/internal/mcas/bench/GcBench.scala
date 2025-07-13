@@ -22,7 +22,7 @@ package bench
 
 import org.openjdk.jmh.annotations._
 
-import core.Axn
+import core.Rxn
 import data.{ Queue, QueueHelper }
 import dev.tauri.choam.bench.util.{ Prefill, McasImplState }
 import ce.unsafeImplicits._
@@ -38,7 +38,7 @@ class GcBench {
     val ctx = m.mcasCtx
     var idx = 0
     while (idx < s.size) {
-      s.transferOne(idx).unsafePerformInternal(a = null : Any, ctx = ctx)
+      s.transferOne(idx).unsafePerformInternal(ctx = ctx)
       idx += 1
     }
   }
@@ -48,7 +48,7 @@ class GcBench {
     val ctx = m.mcasCtx
     var idx = 0
     while (idx < s.size) {
-      s.transferOne(idx).unsafePerformInternal(a = null : Any, ctx = ctx)
+      s.transferOne(idx).unsafePerformInternal(ctx = ctx)
       idx += 1
     }
   }
@@ -65,8 +65,8 @@ object GcBench {
 
     def circle: List[Queue[String]]
 
-    final def transferOne(idx: Int): Axn[Unit] = {
-      circle(idx % circleSize).tryDeque.map(_.get) >>> circle((idx + 1) % circleSize).enqueue
+    final def transferOne(idx: Int): Rxn[Unit] = {
+      circle(idx % circleSize).poll.map(_.get).flatMap(circle((idx + 1) % circleSize).add)
     }
   }
 

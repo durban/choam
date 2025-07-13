@@ -28,7 +28,7 @@ import org.openjdk.jmh.annotations._
 import cats.syntax.all._
 import cats.effect.IO
 
-import core.{ Rxn, Axn, Ref, Reactive }
+import core.{ Rxn, Ref, Reactive }
 import dev.tauri.choam.bench.util.McasImplStateBase
 
 /** This benchmark can only run on JVM >= 21, because it tests virtual threads */
@@ -42,8 +42,8 @@ class VirtualThreadsBench {
   private[this] final val N = 1024
 
   private def doThings(st: AbstractSt, n: Int): IO[Unit] = {
-    val rxn: Axn[String] = st.selectRndRef.flatMapF { r1 =>
-      r1.update(_.##.toString) *> st.selectRndRef.flatMapF { r2 =>
+    val rxn: Rxn[String] = st.selectRndRef.flatMap { r1 =>
+      r1.update(_.##.toString) *> st.selectRndRef.flatMap { r2 =>
         r2.get
       }
     }
@@ -81,7 +81,7 @@ object VirtualThreadsBench {
       Ref.unsafePadded(ThreadLocalRandom.current().nextInt().toString, reactive.mcasImpl.currentContext().refIdGen)
     }
 
-    def selectRndRef: Axn[Ref[String]] = {
+    def selectRndRef: Rxn[Ref[String]] = {
       Rxn.fastRandom.nextIntBounded(K).map(k => this.refs(k))
     }
   }

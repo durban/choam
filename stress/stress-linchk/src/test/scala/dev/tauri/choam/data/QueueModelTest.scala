@@ -53,17 +53,17 @@ private[data] object QueueModelTest {
 
     @Operation
     def enq(s: String): Unit = {
-      q.enqueue.unsafePerform(s, emcas)
+      q.add(s).unsafePerform(emcas)
     }
 
     @Operation
     def tryDeq(): Option[String] = {
-      q.tryDeque.unsafePerform(null, emcas)
+      q.poll.unsafePerform(emcas)
     }
   }
 
   class MsQueueTestState extends AbstractTestState {
     protected[this] override val q: Queue[String] =
-      MsQueue[String].unsafePerform(null, emcas)
+      MsQueue[String].unsafePerform(emcas)
   }
 }

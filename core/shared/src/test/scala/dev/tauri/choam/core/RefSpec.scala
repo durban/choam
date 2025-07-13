@@ -70,10 +70,10 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
   test("Simple CAS should work as expected") {
     for {
       ref <- newRef("ert")
-      rea = lift((_: Int).toString) × (Rxn.unsafe.cas(ref, "ert", "xyz") >>> lift(_ => "boo"))
-      s12 <- rea.run((5, ()))
+      rea = Rxn.pure("foo") * (Rxn.unsafe.cas(ref, "ert", "xyz").map(_ => "boo"))
+      s12 <- rea.run[F]
       (s1, s2) = s12
-      _ <- assertEqualsF(s1, "5")
+      _ <- assertEqualsF(s1, "foo")
       _ <- assertEqualsF(s2, "boo")
       _ <- assertResultF(Rxn.unsafe.directRead(ref).run[F], "xyz")
     } yield ()
@@ -93,6 +93,50 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("updWith should behave correctly when used through getAndUpdateWith") {
+    for {
+      r1 <- newRef("foo")
+      r2 <- newRef("x")
+      r = r1.getAndUpdateWith { ov =>
+        if (ov eq "foo") Rxn.ret("bar")
+        else r2.getAndSet(ov)
+      }
+      _ <- r.run
+      _ <- assertResultF(r1.get.run, "bar")
+      _ <- assertResultF(r2.get.run, "x")
+      _ <- r.run
+      _ <- assertResultF(r1.get.run, "x")
+      _ <- assertResultF(r2.get.run, "bar")
+    } yield ()
+  }
+
+  test("Ref#updateWith et. al.") {
+    for {
+      r <- newRef("a")
+      _ <- assertResultF(r.updateWith(s => Rxn.ret(s + "c")).run[F], ())
+      _ <- assertResultF(r.getAndUpdateWith(s => Rxn.ret(s + "f")).run[F], "ac")
+      _ <- assertResultF(r.get.run, "acf")
+    } yield ()
+  }
+
+  test("Ref#modifyWith et. al.") {
+    for {
+      r <- newRef("a")
+      _ <- assertResultF(r.modifyWith(s => Rxn.ret((s + "c", 43))).run[F], 43)
+      _ <- assertResultF(r.get.run[F], "ac")
+    } yield ()
+  }
+
+  test("Ref#updateAndGetWith") {
+    for {
+      ctr <- newRef(0)
+      r <- newRef("a")
+      _ <- assertResultF(r.updateAndGetWith { ov => ctr.update(_ + 1).as(ov + "b") }.run[F], "ab")
+      _ <- assertResultF(r.get.run[F], "ab")
+      _ <- assertResultF(ctr.get.run[F], 1)
+    } yield ()
+  }
+
   test("MemoryLocation#cast") {
     for {
       r1 <- newRef("a")
@@ -102,9 +146,9 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
         val back: MemoryLocation[String] = bad.cast[String]
         back
       }
-      res <- Rxn.loc.upd[String, Int, Double](r2) { (ov, i) =>
-        (ov + "b", i.toDouble + 0.5)
-      }.run[F](42)
+      res <- Rxn.loc.modify[String, Double](r2) { ov =>
+        (ov + "b", 42.5)
+      }.run[F]
       _ <- assertEqualsF(res, 42.5)
       _ <- assertResultF(r1.get.run[F], "ab")
     } yield ()
@@ -122,10 +166,10 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
   test("Ref.array") {
     for {
       a <- Ref.array[String](size = 4, initial = "x").run[F]
-      _ <- a.unsafeGet(0).getAndSet.run("a")
-      _ <- a.unsafeGet(1).getAndSet.run("b")
-      _ <- a.unsafeGet(2).getAndSet.run("c")
-      _ <- a.unsafeGet(3).getAndSet.run("d")
+      _ <- a.unsafeGet(0).getAndSet("a").run
+      _ <- a.unsafeGet(1).getAndSet("b").run
+      _ <- a.unsafeGet(2).getAndSet("c").run
+      _ <- a.unsafeGet(3).getAndSet("d").run
       sw02 = Ref.swap(a.unsafeGet(0), a.unsafeGet(2))
       sw13 = Ref.swap(a.unsafeGet(1), a.unsafeGet(3))
       _ <- (sw02 * sw13).run[F]
@@ -150,7 +194,7 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
         (tlr.nextInt().abs % (N - 2)) + 1
       }
       _ <- assertResultF(a.unsafeGet(idx).get.run[F], "x")
-      _ <- a.unsafeGet(idx).getAndSet.run[F]("foo")
+      _ <- a.unsafeGet(idx).getAndSet("foo").run
       _ <- assertResultF(a.unsafeGet(0).get.run[F], "x")
       _ <- assertResultF(a.unsafeGet(idx).get.run[F], "foo")
       _ <- assertResultF(a.unsafeGet(N - 1).get.run[F], "x")
@@ -176,23 +220,6 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   def newRef[A](initial: A): F[RefType[A]]
 
-  test("updWith should behave correctly when used through getAndUpdateWith") {
-    for {
-      r1 <- newRef("foo")
-      r2 <- newRef("x")
-      r = r1.getAndUpdateWith { ov =>
-        if (ov eq "foo") Rxn.ret("bar")
-        else r2.upd[Any, String] { (o2, _) => (ov, o2) }
-      }
-      _ <- r.run
-      _ <- assertResultF(r1.get.run, "bar")
-      _ <- assertResultF(r2.get.run, "x")
-      _ <- r.run
-      _ <- assertResultF(r1.get.run, "x")
-      _ <- assertResultF(r2.get.run, "bar")
-    } yield ()
-  }
-
   test("ifM instead of guard/guardNot") {
     for {
       trueRef <- newRef(true)
@@ -211,7 +238,7 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       a <- newRef("foo")
       b <- newRef(42)
       _ <- assertResultF((a.get * b.get).run[F], ("foo", 42))
-      rxn = (a.get * b.get).flatMapF { ab =>
+      rxn = (a.get * b.get).flatMap { ab =>
         a.update(_ + "bar") *> a.get.map(a2 => (ab, a2))
       }
       _ <- assertResultF(rxn.run[F], (("foo", 42), "foobar"))
@@ -222,21 +249,19 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r <- newRef("a")
       _ <- assertResultF(r.update(_ + "b").run[F], ())
-      _ <- assertResultF(r.updateWith(s => Rxn.ret(s + "c")).run[F], ())
       _ <- assertResultF(r.tryUpdate(_ + "d").run[F], true)
-      _ <- assertResultF(r.getAndUpdate(_ + "e").run[F], "abcd")
-      _ <- assertResultF(r.getAndUpdateWith(s => Rxn.ret(s + "f")).run[F], "abcde")
-      _ <- assertResultF(r.updateAndGet(_ + "g").run[F], "abcdefg")
+      _ <- assertResultF(r.getAndUpdate(_ + "e").run[F], "abd")
+      _ <- assertResultF(r.updateAndGet(_ + "g").run[F], "abdeg")
     } yield ()
   }
 
-  test("Ref#update1 and #update2") {
+  test("Ref#update1") {
     for {
       r <- newRef("a")
       _ <- assertResultF(r.update1(_ + "b").run[F], ())
       _ <- assertResultF(r.get.run[F], "ab")
-      _ <- assertResultF(r.update2[String] { (ov, in) => ov + in + "d" }.run[F]("c"), ())
-      _ <- assertResultF(r.get.run[F], "abcd")
+      _ <- assertResultF(r.update1 { (ov) => ov + "c" }.run[F], ())
+      _ <- assertResultF(r.get.run[F], "abc")
     } yield ()
   }
 
@@ -245,7 +270,7 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       x <- newRef[Int](1)
       y <- newRef[Int](2)
       _ <- assertResultF(
-        (x.update(_ + 1) >>> y.update(_ + 1)).run[F],
+        (x.update(_ + 1) *> y.update(_ + 1)).run[F],
         ()
       )
       _ <- assertResultF(x.get.run[F], 2)
@@ -257,20 +282,19 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       r <- newRef("a")
       _ <- assertResultF(r.modify(s => (s + "b", 42)).run[F], 42)
-      _ <- assertResultF(r.modifyWith(s => Rxn.ret((s + "c", 43))).run[F], 43)
       _ <- assertResultF(r.tryModify(s => (s + "d", 44)).run[F], Some(44))
-      _ <- assertResultF(r.get.run[F], "abcd")
+      _ <- assertResultF(r.get.run[F], "abd")
     } yield ()
   }
 
   test("Ref#getAndSet") {
     for {
       r <- newRef("a")
-      _ <- assertResultF(r.getAndSet.run[F]("b"), "a")
+      _ <- assertResultF(r.getAndSet("b").run, "a")
       _ <- assertResultF(r.get.run[F], "b")
-      rxn = r.get.flatMapF { v1 =>
-        r.set0.provide("x").flatMapF { _ =>
-          r.getAndSet.provide("y").map { v2 => (v1, v2) }
+      rxn = r.get.flatMap { v1 =>
+        r.set("x").flatMap { _ =>
+          r.getAndSet("y").map { v2 => (v1, v2) }
         }
       }
       _ <- assertResultF(rxn.run[F], ("b", "x"))
@@ -283,7 +307,7 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       r <- newRef("a")
       s0b = r.set1("b")
       s0c = r.set1("c")
-      _ <- assertResultF(rF.apply(s0b, 42), ())
+      _ <- assertResultF(rF.apply(s0b), ())
       _ <- assertResultF(r.get.run[F], "b")
       _ <- assertResultF(s0c.run[F], ())
       _ <- assertResultF(r.get.run[F], "c")
@@ -297,9 +321,9 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Ref#set0") {
     for {
       r <- newRef("a")
-      s0b = r.set0.provide("b")
-      s0c = r.set0.provide("c")
-      _ <- assertResultF(rF.apply(s0b, 42), ())
+      s0b = r.set("b")
+      s0c = r.set("c")
+      _ <- assertResultF(rF.apply(s0b), ())
       _ <- assertResultF(r.get.run[F], "b")
       _ <- assertResultF(s0c.run[F], ())
       _ <- assertResultF(r.get.run[F], "c")
@@ -313,7 +337,7 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("RefLike#getAndUpd") {
     for {
       r <- newRef("a")
-      _ <- assertResultF(r.getAndUpd[Int] { (ov, i) => ov + i.toString }.run[F](42), "a")
+      _ <- assertResultF(r.getAndUpdate { ov => ov + "42" }.run[F], "a")
       _ <- assertResultF(r.get.run[F], "a42")
     } yield ()
   }
@@ -321,18 +345,8 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("RefLike#updAndGet") {
     for {
       r <- newRef("a")
-      _ <- assertResultF(r.updAndGet[Int] { (ov, i) => ov + i.toString }.run[F](42), "a42")
+      _ <- assertResultF(r.updateAndGet { ov => ov + "42" }.run[F], "a42")
       _ <- assertResultF(r.get.run[F], "a42")
-    } yield ()
-  }
-
-  test("RefLike#updateAndGetWith") {
-    for {
-      ctr <- newRef(0)
-      r <- newRef("a")
-      _ <- assertResultF(r.updateAndGetWith { ov => ctr.update(_ + 1).as(ov + "b") }.run[F], "ab")
-      _ <- assertResultF(r.get.run[F], "ab")
-      _ <- assertResultF(ctr.get.run[F], 1)
     } yield ()
   }
 
@@ -366,10 +380,10 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("CatsRef[Axn, A]") {
+  test("CatsRef[Rxn, A]") {
     for {
-      r <- implicitly[CatsRef.Make[Axn]].refOf("a").run[F]
-      _ <- testCatsRef[Axn](r, initial = "a", run = this.rF)
+      r <- implicitly[CatsRef.Make[Rxn]].refOf("a").run[F]
+      _ <- testCatsRef[Rxn](r, initial = "a", run = this.rF)
     } yield ()
   }
 

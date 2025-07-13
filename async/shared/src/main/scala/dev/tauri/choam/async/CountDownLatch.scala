@@ -21,11 +21,11 @@ package async
 import cats.syntax.all._
 import cats.effect.std.{ CountDownLatch => CatsCountDownLatch }
 
-import core.{ Axn, Ref, AsyncReactive }
+import core.{ Rxn, Ref, AsyncReactive }
 
 sealed abstract class CountDownLatch private () { self =>
 
-  def release: Axn[Unit]
+  def release: Rxn[Unit]
 
   def await[F[_]](implicit F: AsyncReactive[F]): F[Unit]
 
@@ -34,20 +34,20 @@ sealed abstract class CountDownLatch private () { self =>
 
 object CountDownLatch {
 
-  final def apply(count: Int): Axn[CountDownLatch] = {
-    (Ref.padded(count), Promise.apply[Unit]).mapN { (c, p) =>
+  final def apply(count: Int, str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Rxn[CountDownLatch] = {
+    (Ref(count, str), Promise[Unit](str)).mapN { (c, p) =>
       new CountDownLatch { self =>
-        final override val release: Axn[Unit] = {
+        final override val release: Rxn[Unit] = {
           c.getAndUpdate { ov =>
             if (ov > 0) ov - 1
             else ov
-          }.flatMapF { ov =>
-            if (ov == 1) p.complete1(()).void
-            else Axn.unit
+          }.flatMap { ov =>
+            if (ov == 1) p.complete(()).void
+            else Rxn.unit
           }
         }
         final override def await[F[_]](implicit F: AsyncReactive[F]): F[Unit] = {
-          p.get[F]
+          p.getF[F, Unit]
         }
         final override def toCats[F[_]](implicit F: AsyncReactive[F]): CatsCountDownLatch[F] = {
           new CatsCountDownLatch[F] {

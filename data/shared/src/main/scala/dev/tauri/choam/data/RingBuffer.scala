@@ -20,7 +20,7 @@ package data
 
 import cats.syntax.all._
 
-import core.{ =#>, Rxn, Axn, Ref }
+import core.{ Rxn, Ref }
 import ArrayQueue.{ empty, isEmpty }
 
 /**
@@ -36,15 +36,15 @@ private final class RingBuffer[A](
   head: Ref[Int], // index for next element to deque
   tail: Ref[Int], // index for next element to enqueue
 ) extends ArrayQueue[A](capacity, arr, head, tail)
-  with Queue.UnsealedWithSize[A] {
+  with Queue.UnsealedQueueWithSize[A] {
 
   require(capacity === arr.size)
 
-  final override def tryEnqueue: A =#> Boolean =
-    this.enqueue.as(true)
+  final override def offer(a: A): Rxn[Boolean] =
+    this.add(a).as(true)
 
-  final override def enqueue: Rxn[A, Unit] = Rxn.computed[A, Unit] { newVal =>
-    tail.getAndUpdate(incrIdx).flatMapF { idx =>
+  final override def add(newVal: A): Rxn[Unit] = {
+    tail.getAndUpdate(incrIdx).flatMap { idx =>
       arr.unsafeGet(idx).updateWith { oldVal =>
         if (isEmpty(oldVal)) {
           Rxn.pure(newVal)
@@ -60,27 +60,27 @@ private final class RingBuffer[A](
 
 private object RingBuffer {
 
-  def apply[A](capacity: Int): Axn[RingBuffer[A]] = {
+  def apply[A](capacity: Int): Rxn[RingBuffer[A]] = {
     require(capacity > 0)
-    Ref.array[A](size = capacity, initial = empty[A]).flatMapF { arr =>
+    Ref.array[A](size = capacity, initial = empty[A]).flatMap { arr =>
       makeRingBuffer(capacity, arr)
     }
   }
 
   // TODO: do we need this?
-  private[data] def lazyRingBuffer[A](capacity: Int): Axn[RingBuffer[A]] = {
+  private[data] def lazyRingBuffer[A](capacity: Int): Rxn[RingBuffer[A]] = {
     require(capacity > 0)
     val str = Ref.Array.AllocationStrategy.Default.withSparse(true)
     Ref.array[A](
       size = capacity,
       initial = empty[A],
       strategy = str,
-    ).flatMapF { arr =>
+    ).flatMap { arr =>
       makeRingBuffer(capacity, arr)
     }
   }
 
-  private[this] def makeRingBuffer[A](capacity: Int, underlying: Ref.Array[A]): Axn[RingBuffer[A]] = {
+  private[this] def makeRingBuffer[A](capacity: Int, underlying: Ref.Array[A]): Rxn[RingBuffer[A]] = {
     require(capacity > 0)
     require(underlying.size === capacity)
     (Ref.padded(0) * Ref.padded(0)).map {

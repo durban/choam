@@ -46,7 +46,7 @@ trait EmbedUnsafeSpec[F[_]]
     for {
       ref1 <- Ref(0).run[F]
       ref2 <- Ref(0).run[F]
-      rxn = ref1.get.flatMapF { v1 =>
+      rxn = ref1.get.flatMap { v1 =>
         ref1.set1(v1 + 1) *> Rxn.unsafe.embedUnsafe[Unit] { implicit ir =>
           assertEquals(ref1.value, 1)
           assertEquals(ref2.value, 0)
@@ -98,19 +98,6 @@ trait EmbedUnsafeSpec[F[_]]
       _ <- assertResultF(ref1.get.run, 1)
       _ <- assertResultF(ref2.get.run, 1)
       _ <- assertResultF(ref3.get.run, 2)
-    } yield ()
-  }
-
-  test("Using input after embedUnsafe") {
-    def rxn(r: Ref[Int]): Rxn[Int, String] = {
-      (Rxn.lift[Int, String](_.toString) * Rxn.unsafe.embedUnsafe[String] { implicit ir =>
-        getAndSetRef(r, 56).toString
-      }) >>> Rxn.lift[(String, String), String](tup => tup._1 + "," + tup._2)
-    }
-    for {
-      r <- Ref(99).run
-      _ <- assertResultF(rxn(r).run(42), "42,99")
-      _ <- assertResultF(r.get.run, 56)
     } yield ()
   }
 }

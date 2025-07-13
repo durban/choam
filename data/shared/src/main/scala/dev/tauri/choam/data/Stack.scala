@@ -21,12 +21,12 @@ package data
 import cats.Monad
 import cats.syntax.all._
 
-import core.{ Rxn, Axn, Ref, Reactive }
+import core.{ Rxn, Ref, Reactive }
 
 sealed trait Stack[A] {
-  def push: Rxn[A, Unit]
-  def tryPop: Axn[Option[A]]
-  def size: Axn[Int]
+  def push(a: A): Rxn[Unit]
+  def tryPop: Rxn[Option[A]]
+  def size: Rxn[Int]
 }
 
 object Stack {
@@ -34,24 +34,24 @@ object Stack {
   private[choam] trait UnsealedStack[A]
     extends Stack[A]
 
-  final def treiberStack[A]: Axn[Stack[A]] =
+  final def treiberStack[A]: Rxn[Stack[A]] =
     treiberStack[A](Ref.AllocationStrategy.Default)
 
-  final def treiberStack[A](str: Ref.AllocationStrategy): Axn[Stack[A]] =
+  final def treiberStack[A](str: Ref.AllocationStrategy): Rxn[Stack[A]] =
     TreiberStack[A](str)
 
-  final def eliminationStack[A]: Axn[Stack[A]] =
+  final def eliminationStack[A]: Rxn[Stack[A]] =
     eliminationStack(Ref.AllocationStrategy.Default)
 
   // TODO: on JS, we could just return a TreiberStack
-  final def eliminationStack[A](str: Ref.AllocationStrategy): Axn[Stack[A]] =
+  final def eliminationStack[A](str: Ref.AllocationStrategy): Rxn[Stack[A]] =
     EliminationStack(str)
 
-  private[choam] def fromList[F[_], A](mkEmpty: Axn[Stack[A]])(as: List[A])(implicit F: Reactive[F]): F[Stack[A]] = {
+  private[choam] def fromList[F[_], A](mkEmpty: Rxn[Stack[A]])(as: List[A])(implicit F: Reactive[F]): F[Stack[A]] = {
     implicit val monadF: Monad[F] = F.monad
     mkEmpty.run[F].flatMap { stack =>
       as.traverse { a =>
-        stack.push.run[F](a)
+        stack.push(a).run[F]
       }.as(stack)
     }
   }

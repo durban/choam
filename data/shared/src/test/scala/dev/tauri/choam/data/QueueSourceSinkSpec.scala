@@ -30,31 +30,31 @@ trait QueueSourceSinkSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =
   test("QueueSourceSink enq/deq") {
     for {
       q <- Queue.bounded[Int](bound = 3).run[F]
-      _ <- assertResultF(q.tryDeque.run[F], None)
-      _ <- assertResultF(q.tryEnqueue.run[F](1), true)
-      _ <- assertResultF(q.tryEnqueue.run[F](2), true)
-      _ <- assertResultF(q.tryDeque.run[F], Some(1))
-      _ <- assertResultF(q.tryEnqueue.run[F](3), true)
-      _ <- assertResultF(q.tryEnqueue.run[F](4), true)
-      _ <- assertResultF(q.tryEnqueue.run[F](5), false)
-      _ <- assertResultF(q.tryDeque.run[F], Some(2))
-      _ <- assertResultF(q.tryDeque.run[F], Some(3))
-      _ <- assertResultF(q.tryDeque.run[F], Some(4))
-      _ <- assertResultF(q.tryDeque.run[F], None)
+      _ <- assertResultF(q.poll.run[F], None)
+      _ <- assertResultF(q.offer(1).run[F], true)
+      _ <- assertResultF(q.offer(2).run[F], true)
+      _ <- assertResultF(q.poll.run[F], Some(1))
+      _ <- assertResultF(q.offer(3).run[F], true)
+      _ <- assertResultF(q.offer(4).run[F], true)
+      _ <- assertResultF(q.offer(5).run[F], false)
+      _ <- assertResultF(q.poll.run[F], Some(2))
+      _ <- assertResultF(q.poll.run[F], Some(3))
+      _ <- assertResultF(q.poll.run[F], Some(4))
+      _ <- assertResultF(q.poll.run[F], None)
     } yield ()
   }
 
   test("QueueSourceSink multiple ops in one Rxn") {
     for {
       q <- Queue.bounded[Int](bound = 2).run[F]
-      _ <- assertResultF(q.tryDeque.run[F], None)
-      rxn = (q.tryEnqueue.provide(1) *> q.tryEnqueue.provide(2) *> q.tryEnqueue.provide(3)) * (
-        q.tryDeque * q.tryEnqueue.provide(4)
+      _ <- assertResultF(q.poll.run[F], None)
+      rxn = (q.offer(1) *> q.offer(2) *> q.offer(3)) * (
+        q.poll * q.offer(4)
       )
       _ <- assertResultF(rxn.run[F], (false, (Some(1), true)))
-      _ <- assertResultF(q.tryDeque.run[F], Some(2))
-      _ <- assertResultF(q.tryDeque.run[F], Some(4))
-      _ <- assertResultF(q.tryDeque.run[F], None)
+      _ <- assertResultF(q.poll.run[F], Some(2))
+      _ <- assertResultF(q.poll.run[F], Some(4))
+      _ <- assertResultF(q.poll.run[F], None)
     } yield ()
   }
 }

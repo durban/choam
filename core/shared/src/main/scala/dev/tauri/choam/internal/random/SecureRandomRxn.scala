@@ -21,7 +21,7 @@ package random
 
 import cats.effect.std.SecureRandom
 
-import core.Axn
+import core.Rxn
 
 /**
  * Implements [[cats.effect.std.SecureRandom]] by using
@@ -29,9 +29,9 @@ import core.Axn
  * as possible on each platform (see `OsRng`).
  */
 private final class SecureRandomRxn
-  extends RandomBase with SecureRandom[Axn] {
+  extends RandomBase with SecureRandom[Rxn] {
 
-  final override def nextBytes(n: Int): Axn[Array[Byte]] = Axn.unsafe.delayContext { ctx =>
+  final override def nextBytes(n: Int): Rxn[Array[Byte]] = Rxn.unsafe.delayContext { ctx =>
     ctx.impl.osRng.nextBytes(n)
   }
 }

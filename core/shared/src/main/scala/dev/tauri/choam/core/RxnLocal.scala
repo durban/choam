@@ -20,69 +20,58 @@ package core
 
 import java.util.Arrays
 
-import cats.arrow.ArrowChoice
+import cats.arrow.FunctionK
 import cats.Monad
 
-sealed abstract class RxnLocal[G[_, _], A] private () {
-  def get: G[Any, A]
-  def set(a: A): G[Any, Unit]
-  def update(f: A => A): G[Any, Unit]
-  def getAndUpdate(f: A => A): G[Any, A]
+sealed abstract class RxnLocal[G[_], A] private () {
+  def get: G[A]
+  def set(a: A): G[Unit]
+  def update(f: A => A): G[Unit]
+  def getAndUpdate(f: A => A): G[A]
 }
 
 object RxnLocal {
 
-  sealed abstract class Array[G[_, _], A] {
+  sealed abstract class Array[G[_], A] {
     def size: Int
     // TODO: def get(idx: Int): G[Any, Option[A]]
     // TODO: def set(idx: Int, nv: A): G[Any, Boolean]
-    def unsafeGet(idx: Int): G[Any, A]
-    def unsafeSet(idx: Int, nv: A): G[Any, Unit]
+    def unsafeGet(idx: Int): G[A]
+    def unsafeSet(idx: Int, nv: A): G[Unit]
   }
 
-  sealed trait Instances[G[_, _]] {
-    implicit def monadInstance[X]: Monad[G[X, *]]
-    implicit def arrowChoiceInstance: ArrowChoice[G]
+  sealed trait Instances[G[_]] {
+    implicit def monadInstance[X]: Monad[G]
   }
 
   private[this] val _inst: Instances[Rxn] = new Instances[Rxn] {
     final override def monadInstance[X] =
       Rxn.monadInstance
-    final override def arrowChoiceInstance =
-      Rxn.arrowChoiceInstance
   }
 
-  sealed trait Lift[F[_, _], G[_, _]] {
-    def apply[A, B](fab: F[A, B]): G[A, B]
-  }
-
-  private[this] val _idLift: Lift[Rxn, Rxn] = new Lift[Rxn, Rxn] {
-    final override def apply[A, B](r: Rxn[A, B]): Rxn[A, B] = r
-  }
-
-  private[core] final def withLocal[A, I, R](initial: A, body: Rxn.unsafe.WithLocal[A, I, R]): Rxn[I, R] = {
+  private[core] final def withLocal[A, I, R](initial: A, body: Rxn.unsafe.WithLocal[A, I, R]): Rxn[R] = {
     Rxn.unsafe.suspend {
       val local = new RxnLocalImpl[A](initial)
-      Rxn.internal.newLocal(local) *> body[Rxn](local, _idLift, _inst) <* Rxn.internal.endLocal(local)
+      Rxn.internal.newLocal(local) *> body[Rxn](local, FunctionK.id, _inst) <* Rxn.internal.endLocal(local)
     }
   }
 
-  private[core] final def withLocalArray[A, I, R](size: Int, initial: A, body: Rxn.unsafe.WithLocalArray[A, I, R]): Rxn[I, R] = {
+  private[core] final def withLocalArray[A, I, R](size: Int, initial: A, body: Rxn.unsafe.WithLocalArray[A, I, R]): Rxn[R] = {
     Rxn.unsafe.suspend {
       val arr = new scala.Array[AnyRef](size)
       Arrays.fill(arr, box(initial))
       val locArr = new RxnLocalArrayImpl[A](arr)
-      Rxn.internal.newLocal(locArr) *> body[Rxn](locArr, _idLift, _inst) <* Rxn.internal.endLocal(locArr)
+      Rxn.internal.newLocal(locArr) *> body[Rxn](locArr, FunctionK.id, _inst) <* Rxn.internal.endLocal(locArr)
     }
   }
 
   private[this] final class RxnLocalImpl[A](private[this] var a: A)
     extends RxnLocal[Rxn, A]
     with InternalLocal {
-    final override def get: Rxn[Any, A] = Axn.unsafe.delay { this.a }
-    final override def set(a: A): Rxn[Any, Unit] = Axn.unsafe.delay { this.a = a }
-    final override def update(f: A => A): Rxn[Any, Unit] = Axn.unsafe.delay { this.a = f(this.a) }
-    final override def getAndUpdate(f: A => A): Rxn[Any, A] = Axn.unsafe.delay {
+    final override def get: Rxn[A] = Rxn.unsafe.delay { this.a }
+    final override def set(a: A): Rxn[Unit] = Rxn.unsafe.delay { this.a = a }
+    final override def update(f: A => A): Rxn[Unit] = Rxn.unsafe.delay { this.a = f(this.a) }
+    final override def getAndUpdate(f: A => A): Rxn[A] = Rxn.unsafe.delay {
       val ov = this.a
       this.a = f(ov)
       ov
@@ -100,16 +89,16 @@ object RxnLocal {
     final override def size: Int =
       arr.length
 
-    final override def unsafeGet(idx: Int): Rxn[Any, A] = {
+    final override def unsafeGet(idx: Int): Rxn[A] = {
       val arr = this.arr
       internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx = idx, length = arr.length)
-      Axn.unsafe.delay { arr(idx).asInstanceOf[A] }
+      Rxn.unsafe.delay { arr(idx).asInstanceOf[A] }
     }
 
-    final override def unsafeSet(idx: Int, nv: A): Rxn[Any, Unit] = {
+    final override def unsafeSet(idx: Int, nv: A): Rxn[Unit] = {
       val arr = this.arr
       internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx = idx, length = arr.length)
-      Axn.unsafe.delay { arr(idx) = box(nv) }
+      Rxn.unsafe.delay { arr(idx) = box(nv) }
     }
 
     final override def takeSnapshot(): AnyRef = {

@@ -69,14 +69,14 @@ trait RingBufferSpec[F[_]]
         _ <- ints.traverse_ { i =>
           if ((i % 4) == 0) {
             // deq:
-            q.tryDeque.run[F].flatMap { qr =>
+            q.poll.run[F].flatMap { qr =>
               s.tryTake.flatMap { sr =>
                 assertEqualsF(qr, sr) *> checkSize(q, s)
               }
             }
           } else {
             // enq:
-            q.enqueue.run[F](i) *> s.offer(i) *> (
+            q.add(i).run[F] *> s.offer(i) *> (
               checkSize(q, s)
             )
           }
@@ -91,102 +91,102 @@ trait RingBufferSpec[F[_]]
     // we split the test into parts:
     def part1(q: Queue.WithSize[Int]): F[Unit] = for {
       _ <- assertResultF(q.size.run[F], 0)
-      _ <- assertResultF(q.tryDeque.run[F], None)
-      _ <- assertResultF(q.tryDeque.run[F], None)
+      _ <- assertResultF(q.poll.run[F], None)
+      _ <- assertResultF(q.poll.run[F], None)
       _ <- assertResultF(q.size.run[F], 0)
-      _ <- q.enqueue.run[F](1)
+      _ <- q.add(1).run[F]
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- assertResultF(q.tryDeque.run[F], Some(1))
+      _ <- assertResultF(q.poll.run[F], Some(1))
       _ <- assertResultF(q.size.run[F], 0)
-      _ <- assertResultF(q.tryDeque.run[F], None)
-      _ <- assertResultF(q.tryDeque.run[F], None)
+      _ <- assertResultF(q.poll.run[F], None)
+      _ <- assertResultF(q.poll.run[F], None)
       _ <- assertResultF(q.size.run[F], 0)
-      _ <- q.enqueue.run[F](2)
+      _ <- q.add(2).run[F]
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- q.enqueue.run[F](3)
+      _ <- q.add(3).run[F]
       _ <- assertResultF(q.size.run[F], 2)
-      _ <- assertResultF(q.tryDeque.run[F], Some(2))
+      _ <- assertResultF(q.poll.run[F], Some(2))
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- assertResultF(q.tryDeque.run[F], Some(3))
+      _ <- assertResultF(q.poll.run[F], Some(3))
       _ <- assertResultF(q.size.run[F], 0)
-      _ <- assertResultF(q.tryDeque.run[F], None)
-      _ <- assertResultF(q.tryDeque.run[F], None)
+      _ <- assertResultF(q.poll.run[F], None)
+      _ <- assertResultF(q.poll.run[F], None)
     } yield ()
     def part2(q: Queue.WithSize[Int]): F[Unit] = for {
-      _ <- q.enqueue.run[F](4)
+      _ <- q.add(4).run[F]
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- q.enqueue.run[F](5)
+      _ <- q.add(5).run[F]
       _ <- assertResultF(q.size.run[F], 2)
-      _ <- q.enqueue.run[F](6)
+      _ <- q.add(6).run[F]
       _ <- assertResultF(q.size.run[F], 3)
-      _ <- q.enqueue.run[F](7) // full
+      _ <- q.add(7).run[F] // full
       _ <- assertResultF(q.size.run[F], 4)
-      _ <- assertResultF(q.tryDeque.run[F], Some(4))
+      _ <- assertResultF(q.poll.run[F], Some(4))
       _ <- assertResultF(q.size.run[F], 3)
-      _ <- assertResultF(q.tryDeque.run[F], Some(5))
+      _ <- assertResultF(q.poll.run[F], Some(5))
       _ <- assertResultF(q.size.run[F], 2)
-      _ <- assertResultF(q.tryDeque.run[F], Some(6))
+      _ <- assertResultF(q.poll.run[F], Some(6))
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- assertResultF(q.tryDeque.run[F], Some(7))
+      _ <- assertResultF(q.poll.run[F], Some(7))
       _ <- assertResultF(q.size.run[F], 0)
-      _ <- assertResultF(q.tryDeque.run[F], None)
-      _ <- assertResultF(q.tryDeque.run[F], None)
+      _ <- assertResultF(q.poll.run[F], None)
+      _ <- assertResultF(q.poll.run[F], None)
     } yield ()
     def part3(q: Queue.WithSize[Int]): F[Unit] = for {
-      _ <- q.enqueue.run[F](8)
+      _ <- q.add(8).run[F]
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- q.enqueue.run[F](9)
+      _ <- q.add(9).run[F]
       _ <- assertResultF(q.size.run[F], 2)
-      _ <- q.enqueue.run[F](10)
+      _ <- q.add(10).run[F]
       _ <- assertResultF(q.size.run[F], 3)
-      _ <- q.enqueue.run[F](11) // full
+      _ <- q.add(11).run[F] // full
       _ <- assertResultF(q.size.run[F], 4)
-      _ <- q.enqueue.run[F](12) // overwrites 8
+      _ <- q.add(12).run[F] // overwrites 8
       _ <- assertResultF(q.size.run[F], 4)
-      _ <- q.enqueue.run[F](13) // overwrites 9
+      _ <- q.add(13).run[F] // overwrites 9
       _ <- assertResultF(q.size.run[F], 4)
-      _ <- assertResultF(q.tryDeque.run[F], Some(10))
+      _ <- assertResultF(q.poll.run[F], Some(10))
       _ <- assertResultF(q.size.run[F], 3)
-      _ <- assertResultF(q.tryDeque.run[F], Some(11))
+      _ <- assertResultF(q.poll.run[F], Some(11))
       _ <- assertResultF(q.size.run[F], 2)
-      _ <- assertResultF(q.tryDeque.run[F], Some(12))
+      _ <- assertResultF(q.poll.run[F], Some(12))
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- assertResultF(q.tryDeque.run[F], Some(13))
+      _ <- assertResultF(q.poll.run[F], Some(13))
       _ <- assertResultF(q.size.run[F], 0)
-      _ <- assertResultF(q.tryDeque.run[F], None)
-      _ <- assertResultF(q.tryDeque.run[F], None)
+      _ <- assertResultF(q.poll.run[F], None)
+      _ <- assertResultF(q.poll.run[F], None)
     } yield ()
     def part4(q: Queue.WithSize[Int]): F[Unit] = for {
-      _ <- q.enqueue.run[F](14)
+      _ <- q.add(14).run[F]
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- q.enqueue.run[F](15)
+      _ <- q.add(15).run[F]
       _ <- assertResultF(q.size.run[F], 2)
-      _ <- q.enqueue.run[F](16)
+      _ <- q.add(16).run[F]
       _ <- assertResultF(q.size.run[F], 3)
-      _ <- q.enqueue.run[F](17) // full
+      _ <- q.add(17).run[F] // full
       _ <- assertResultF(q.size.run[F], 4)
-      _ <- q.enqueue.run[F](18) // overwrites 14
+      _ <- q.add(18).run[F] // overwrites 14
       _ <- assertResultF(q.size.run[F], 4)
-      _ <- assertResultF(q.tryDeque.run[F], Some(15))
+      _ <- assertResultF(q.poll.run[F], Some(15))
       _ <- assertResultF(q.size.run[F], 3)
-      _ <- assertResultF(q.tryDeque.run[F], Some(16))
+      _ <- assertResultF(q.poll.run[F], Some(16))
       _ <- assertResultF(q.size.run[F], 2)
-      _ <- q.enqueue.run[F](19)
+      _ <- q.add(19).run[F]
       _ <- assertResultF(q.size.run[F], 3)
-      _ <- q.enqueue.run[F](20) // full
+      _ <- q.add(20).run[F] // full
       _ <- assertResultF(q.size.run[F], 4)
-      _ <- q.enqueue.run[F](21) // overwrites 17
+      _ <- q.add(21).run[F] // overwrites 17
       _ <- assertResultF(q.size.run[F], 4)
-      _ <- assertResultF(q.tryDeque.run[F], Some(18))
+      _ <- assertResultF(q.poll.run[F], Some(18))
       _ <- assertResultF(q.size.run[F], 3)
-      _ <- assertResultF(q.tryDeque.run[F], Some(19))
+      _ <- assertResultF(q.poll.run[F], Some(19))
       _ <- assertResultF(q.size.run[F], 2)
-      _ <- assertResultF(q.tryDeque.run[F], Some(20))
+      _ <- assertResultF(q.poll.run[F], Some(20))
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- assertResultF(q.tryDeque.run[F], Some(21))
+      _ <- assertResultF(q.poll.run[F], Some(21))
       _ <- assertResultF(q.size.run[F], 0)
-      _ <- assertResultF(q.tryDeque.run[F], None)
-      _ <- assertResultF(q.tryDeque.run[F], None)
+      _ <- assertResultF(q.poll.run[F], None)
+      _ <- assertResultF(q.poll.run[F], None)
     } yield ()
     for {
       q <- newRingBuffer[Int](4)
@@ -204,34 +204,34 @@ trait RingBufferSpec[F[_]]
       _ <- assertF(r.isLeft)
       q <- newRingBuffer[Int](1)
       _ <- assertResultF(q.size.run[F], 0)
-      _ <- assertResultF(q.tryDeque.run[F], None)
-      _ <- assertResultF(q.tryDeque.run[F], None)
-      _ <- q.enqueue.run[F](1)
+      _ <- assertResultF(q.poll.run[F], None)
+      _ <- assertResultF(q.poll.run[F], None)
+      _ <- q.add(1).run[F]
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- assertResultF(q.tryDeque.run[F], Some(1))
+      _ <- assertResultF(q.poll.run[F], Some(1))
       _ <- assertResultF(q.size.run[F], 0)
-      _ <- assertResultF(q.tryDeque.run[F], None)
-      _ <- assertResultF(q.tryDeque.run[F], None)
-      _ <- q.enqueue.run[F](2)
+      _ <- assertResultF(q.poll.run[F], None)
+      _ <- assertResultF(q.poll.run[F], None)
+      _ <- q.add(2).run[F]
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- q.enqueue.run[F](3)
+      _ <- q.add(3).run[F]
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- q.enqueue.run[F](4)
+      _ <- q.add(4).run[F]
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- q.enqueue.run[F](5)
+      _ <- q.add(5).run[F]
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- assertResultF(q.tryDeque.run[F], Some(5))
+      _ <- assertResultF(q.poll.run[F], Some(5))
       _ <- assertResultF(q.size.run[F], 0)
-      _ <- assertResultF(q.tryDeque.run[F], None)
-      _ <- assertResultF(q.tryDeque.run[F], None)
-      _ <- q.enqueue.run[F](6)
+      _ <- assertResultF(q.poll.run[F], None)
+      _ <- assertResultF(q.poll.run[F], None)
+      _ <- q.add(6).run[F]
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- q.enqueue.run[F](7)
+      _ <- q.add(7).run[F]
       _ <- assertResultF(q.size.run[F], 1)
-      _ <- assertResultF(q.tryDeque.run[F], Some(7))
+      _ <- assertResultF(q.poll.run[F], Some(7))
       _ <- assertResultF(q.size.run[F], 0)
-      _ <- assertResultF(q.tryDeque.run[F], None)
-      _ <- assertResultF(q.tryDeque.run[F], None)
+      _ <- assertResultF(q.poll.run[F], None)
+      _ <- assertResultF(q.poll.run[F], None)
     } yield ()
   }
 
@@ -239,13 +239,13 @@ trait RingBufferSpec[F[_]]
     for {
       q <- newRingBuffer[Int](3)
       _ <- assertResultF(q.size.run[F], 0)
-      rxn = (q.enqueue.provide(1) * q.enqueue.provide(2)) *> (
-        q.tryDeque
+      rxn = (q.add(1) * q.add(2)) *> (
+        q.poll
       )
       deqRes <- rxn.run[F]
       _ <- assertEqualsF(deqRes, Some(1))
-      _ <- assertResultF(q.tryDeque.run[F], Some(2))
-      _ <- assertResultF(q.tryDeque.run[F], None)
+      _ <- assertResultF(q.poll.run[F], Some(2))
+      _ <- assertResultF(q.poll.run[F], None)
     } yield ()
   }
 }

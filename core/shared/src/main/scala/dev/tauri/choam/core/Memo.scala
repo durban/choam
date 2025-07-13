@@ -19,12 +19,12 @@ package dev.tauri.choam
 package core
 
 sealed abstract class Memo[A] {
-  def getOrInit: Axn[A]
+  def getOrInit: Rxn[A]
 }
 
 private object Memo {
 
-  final def apply[A](axn: Axn[A], str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Axn[Memo[A]] = {
+  final def apply[A](axn: Rxn[A], str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Rxn[Memo[A]] = {
     val init = newInitializer[A](axn)
     Ref[A](init, str).map { st => new MemoImpl(st) }
   }
@@ -33,7 +33,7 @@ private object Memo {
     state: Ref[A],
   ) extends Memo[A] {
 
-    final override def getOrInit: Axn[A] = {
+    final override def getOrInit: Rxn[A] = {
       state.updateAndGetWith { ov =>
         if (ov.isInstanceOf[Initializer[?]]) {
           ov.asInstanceOf[Initializer[A]].act
@@ -46,12 +46,12 @@ private object Memo {
 
   /**
    * We need a wrapper (which is not accessible to user code),
-   * so that we can reliably distinguish the `Axn` to memoize
+   * so that we can reliably distinguish the `Rxn` to memoize
    * from its result.
    */
-  private[this] final class Initializer[A](val act: Axn[A])
+  private[this] final class Initializer[A](val act: Rxn[A])
 
-  private[this] final def newInitializer[A](act: Axn[A]): A = {
+  private[this] final def newInitializer[A](act: Rxn[A]): A = {
     (new Initializer(act)).asInstanceOf[A]
   }
 }

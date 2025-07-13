@@ -33,8 +33,8 @@ trait ExchangerSpecJs[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Exchanger always retries on JS") {
     val tsk = for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
-      f1 <- ex.exchange.?.run[F]("foo").start
-      f2 <- ex.dual.exchange.?.run[F](42).start
+      f1 <- ex.exchange("foo").?.run[F].start
+      f2 <- ex.dual.exchange(42).?.run[F].start
       _ <- assertResultF(f1.joinWithNever, None)
       _ <- assertResultF(f2.joinWithNever, None)
     } yield ()

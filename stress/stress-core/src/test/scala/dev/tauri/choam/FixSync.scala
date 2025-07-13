@@ -22,7 +22,7 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LL_Result
 
-import core.{ Rxn, Axn, Ref }
+import core.{ Rxn, Ref }
 
 @JCStressTest
 @State
@@ -34,24 +34,24 @@ import core.{ Rxn, Axn, Ref }
 class FixSync extends StressTestBase {
 
   private[this] val ctr: Ref[Int] =
-    Ref[Int](0).unsafePerform(null, this.impl)
+    Ref[Int](0).unsafePerform(this.impl)
 
-  private[this] val incrCtr: Axn[Int] =
+  private[this] val incrCtr: Rxn[Int] =
     ctr.getAndUpdate(_ + 1)
 
-  private[this] var holder: Rxn[Any, String] =
+  private[this] var holder: Rxn[String] =
     null
 
   @Actor
   def writer(): Unit = {
-    val rxn = Rxn.deferInstance[Any].fix[String] { rec => // Note: if instead of this line,
+    val rxn = Rxn.deferInstance.fix[String] { rec => // Note: if instead of this line,
     // we do this:
     //   val rxn = Rxn.deferFixWithoutFences[String] { rec =>
     // then this test fails on ARM Linux, because a `null`
     // can be read from `ref.elem` in `fix`. This demonstrates
     // that the rel/acq fences in `fix` are really necessary.
-      this.incrCtr.flatMapF { c =>
-        if (c > 0) Axn.pure("foo")
+      this.incrCtr.flatMap { c =>
+        if (c > 0) Rxn.pure("foo")
         else rec
       }
     }
@@ -64,7 +64,7 @@ class FixSync extends StressTestBase {
     if (rxn eq null) {
       () // (null, null)
     } else {
-      r.r2 = rxn.unsafePerform(null, this.impl)
+      r.r2 = rxn.unsafePerform(this.impl)
       r.r1 = "res"
     }
   }

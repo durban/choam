@@ -24,7 +24,7 @@ import cats.effect.IO
 
 import fs2.{ Stream, Chunk }
 
-import async.{ AsyncQueue, UnboundedQueue, BoundedQueue, Promise }
+import async.{ AsyncQueue, BoundedQueueImpl, Promise }
 import syntax._
 
 final class StreamSpec_ThreadConfinedMcas_IO
@@ -36,15 +36,15 @@ trait StreamSpec[F[_]]
   extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   test("UnboundedQueue to stream") {
-    def check(q: UnboundedQueue[String]): F[Unit] = {
+    def check(q: AsyncQueue[String]): F[Unit] = {
       for {
         _ <- assumeF(this.mcasImpl.isThreadSafe)
         fibVec <- q.stream.take(8).compile.toVector.start
-        _ <- (1 to 8).toList.traverse { idx => q.enqueue[F](idx.toString) }
+        _ <- (1 to 8).toList.traverse { idx => q.put[F](idx.toString) }
         _ <- assertResultF(fibVec.joinWithNever, (1 to 8).map(_.toString).toVector)
-        _ <- List(9, 10).traverse { idx => q.enqueue[F](idx.toString) }
-        _ <- assertResultF(q.deque, "9")
-        _ <- assertResultF(q.deque, "10")
+        _ <- List(9, 10).traverse { idx => q.put[F](idx.toString) }
+        _ <- assertResultF(q.take, "9")
+        _ <- assertResultF(q.take, "10")
       } yield ()
     }
     for {
@@ -60,22 +60,22 @@ trait StreamSpec[F[_]]
   }
 
   test("BoundedQueue to stream") {
-    def check(q: BoundedQueue[Option[String]]): F[Unit] = {
+    def check(q: AsyncQueue.SourceSinkWithSize[Option[String]]): F[Unit] = {
       for {
         _ <- assumeF(this.mcasImpl.isThreadSafe)
         fibVec <- Stream.fromQueueNoneTerminated(q.toCats, limit = 4).compile.toVector.start
-        _ <- (1 to 8).toList.traverse { idx => q.enqueue(Some(idx.toString)) }
-        _ <- q.enqueue(None)
+        _ <- (1 to 8).toList.traverse { idx => q.put(Some(idx.toString)) }
+        _ <- q.put(None)
         _ <- assertResultF(fibVec.joinWithNever, (1 to 8).map(_.toString).toVector)
-        fib2 <- List(9, 10).traverse { idx => q.enqueue(Some(idx.toString)) }.start
-        _ <- assertResultF(q.deque, Some("9"))
-        _ <- assertResultF(q.deque, Some("10"))
+        fib2 <- List(9, 10).traverse { idx => q.put(Some(idx.toString)) }.start
+        _ <- assertResultF(q.take, Some("9"))
+        _ <- assertResultF(q.take, Some("10"))
         _ <- fib2.joinWithNever
       } yield ()
     }
     for {
-      q1 <- BoundedQueue.array[Option[String]](bound = 10).run[F]
-      q2 <- BoundedQueue.linked[Option[String]](bound = 10).run[F]
+      q1 <- BoundedQueueImpl.array[Option[String]](bound = 10).run[F]
+      q2 <- BoundedQueueImpl.linked[Option[String]](bound = 10).run[F]
       _ <- check(q1)
       _ <- check(q2)
     } yield ()
@@ -85,22 +85,22 @@ trait StreamSpec[F[_]]
     for {
       // .stream:
       q <- AsyncQueue.unbounded[String].run[F]
-      _ <- q.enqueue[F]("foo")
+      _ <- q.put[F]("foo")
       qr <- q.stream.take(1).compile.toVector
       _ <- assertEqualsF(qr, Vector("foo"))
       // .streamNoneTerminated:
       qOpt <- AsyncQueue.unbounded[Option[String]].run[F]
-      _ <- qOpt.enqueue[F](Some("foo")) >> qOpt.enqueue[F](None)
+      _ <- qOpt.put[F](Some("foo")) >> qOpt.put[F](None)
       qOptR <- qOpt.streamNoneTerminated.compile.toVector
       _ <- assertEqualsF(qOptR, Vector("foo"))
       // .streamFromChunks:
       qChunk <- AsyncQueue.unbounded[Chunk[String]].run[F]
-      _ <- qChunk.enqueue[F](Chunk("foo", "bar"))
+      _ <- qChunk.put[F](Chunk("foo", "bar"))
       qChunkR <- qChunk.streamFromChunks.take(2).compile.toVector
       _ <- assertEqualsF(qChunkR, Vector("foo", "bar"))
       // .streamFromChunksNoneTerminated:
       qOptChunk <- AsyncQueue.unbounded[Option[Chunk[String]]].run[F]
-      _ <- qOptChunk.enqueue[F](Some(Chunk("foo", "bar"))) >> qOptChunk.enqueue[F](None)
+      _ <- qOptChunk.put[F](Some(Chunk("foo", "bar"))) >> qOptChunk.put[F](None)
       qOptChunkR <- qOptChunk.streamFromChunksNoneTerminated.compile.toVector
       _ <- assertEqualsF(qOptChunkR, Vector("foo", "bar"))
     } yield ()
@@ -119,7 +119,7 @@ trait StreamSpec[F[_]]
         .interruptWhen(p.toCats)
         .compile.toVector.start
       _ <- F.sleep(many)
-      _ <- p.complete0.run[F](Right(()))
+      _ <- p.complete(Right(())).run[F]
       vec <- fib.joinWithNever
       _ <- assertEqualsF(
         vec,

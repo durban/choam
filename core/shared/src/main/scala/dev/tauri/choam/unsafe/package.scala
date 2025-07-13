@@ -17,7 +17,7 @@
 
 package dev.tauri.choam
 
-import core.{ Ref, Axn }
+import core.{ Ref, Rxn }
 
 package object unsafe {
 
@@ -80,7 +80,7 @@ package object unsafe {
   }
 
   /** @see [[dev.tauri.choam.core.Rxn.postCommit]] */
-  final def addPostCommit[A](pc: Axn[Unit])(implicit ir: InRxn2): Unit = {
+  final def addPostCommit[A](pc: Rxn[Unit])(implicit ir: InRxn2): Unit = {
     ir.imperativePostCommit(pc)
   }
 

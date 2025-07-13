@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import core.{ Rxn, Axn, Ref, Eliminator }
+import core.{ Rxn, Ref, Eliminator }
 
 /**
  * This is like `EliminationStack2`, but:
@@ -31,23 +31,23 @@ final class EliminationStackForTesting[A] private (
   eliminator: Eliminator[A, Unit, Any, Option[A]],
 ) extends Stack.UnsealedStack[A] {
 
-  override def push: Rxn[A, Unit] =
-    eliminator.leftOp
+  override def push(a: A): Rxn[Unit] =
+    eliminator.leftOp(a)
 
-  override def tryPop: Axn[Option[A]] =
-    eliminator.rightOp
+  override def tryPop: Rxn[Option[A]] =
+    eliminator.rightOp(null)
 
-  override def size: Axn[Int] =
+  override def size: Rxn[Int] =
     underlying.size
 }
 
 final object EliminationStackForTesting {
-  def apply[A]: Axn[EliminationStackForTesting[A]] = {
-    TreiberStack[A](Ref.AllocationStrategy.Default).flatMapF { underlying =>
+  def apply[A]: Rxn[EliminationStackForTesting[A]] = {
+    TreiberStack[A](Ref.AllocationStrategy.Default).flatMap { underlying =>
       Eliminator[A, Unit, Any, Option[A]](
         underlying.push,
         Some(_),
-        underlying.tryPop,
+        _ => underlying.tryPop,
         _ => (),
       ).map { eliminator =>
         new EliminationStackForTesting(underlying, eliminator)

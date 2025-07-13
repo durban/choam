@@ -25,7 +25,8 @@ import org.openjdk.jcstress.infra.results.LL_Result
 import cats.syntax.all._
 import cats.effect.SyncIO
 
-import core.Axn
+import core.Rxn
+import data.Queue
 
 @JCStressTest
 @State
@@ -40,7 +41,7 @@ class RemoveQueueComposedTest1 extends RemoveQueueStressTestBase {
     (for {
       //                0         2    3
       removers <- List("-", "a", "-", "-", "b", "c", "d").traverse { s =>
-        q.enqueueWithRemover.run[SyncIO](s)
+        q.enqueueWithRemover(s).run[SyncIO]
       }
       _ <- removers(0).run[SyncIO]
       _ <- removers(2).run[SyncIO]
@@ -52,22 +53,22 @@ class RemoveQueueComposedTest1 extends RemoveQueueStressTestBase {
   private[this] val queue2 =
     this.newQueue[String]()
 
-  private[this] val tfer: Axn[Unit] =
-    queue1.tryDeque.map(_.getOrElse("x")) >>> queue2.enqueue
+  private[this] val tfer: Rxn[Unit] =
+    queue1.poll.map(_.getOrElse("x")).flatMap(queue2.add)
 
   @Actor
   def transfer1(): Unit = {
-    tfer.unsafePerform((), this.impl)
+    tfer.unsafePerform(this.impl)
   }
 
   @Actor
   def transfer2(): Unit = {
-    tfer.unsafePerform((), this.impl)
+    tfer.unsafePerform(this.impl)
   }
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    r.r1 = queue1.drainOnce[SyncIO, String].unsafeRunSync()
-    r.r2 = queue2.drainOnce[SyncIO, String].unsafeRunSync()
+    r.r1 = Queue.drainOnce[SyncIO, String](queue1).unsafeRunSync()
+    r.r2 = Queue.drainOnce[SyncIO, String](queue2).unsafeRunSync()
   }
 }

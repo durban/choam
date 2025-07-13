@@ -25,7 +25,7 @@ import cats.effect.IO
 
 import org.openjdk.jmh.annotations._
 
-import core.{ Rxn, Axn, RetryStrategy }
+import core.{ Rxn, RetryStrategy }
 import util.McasImplStateBase
 
 @Threads(1)
@@ -36,20 +36,20 @@ class RetryBench {
 
   @Benchmark
   def dontRetry1000(st: StDont): Unit = {
-    st.rxn.perform[IO, String](null, st.choamRuntime, st.str).replicateA_(R * 1000).unsafeRunSync()(using st.rt)
+    st.rxn.perform[IO, String](st.choamRuntime, st.str).replicateA_(R * 1000).unsafeRunSync()(using st.rt)
   }
 
   @Benchmark
   def retry010k(st: St10k): Unit = {
     IO { new AtomicInteger }.flatMap { ctr =>
-      st.rxn.perform[IO, String](ctr, st.choamRuntime, st.str)
+      st.rxn(ctr).perform[IO, String](st.choamRuntime, st.str)
     }.replicateA_(R).unsafeRunSync()(using st.rt)
   }
 
   @Benchmark
   def retry100k(st: St100k): Unit = {
     IO { new AtomicInteger }.flatMap { ctr =>
-      st.rxn.perform[IO, String](ctr, st.choamRuntime, st.str)
+      st.rxn(ctr).perform[IO, String](st.choamRuntime, st.str)
     }.replicateA_(R).unsafeRunSync()(using st.rt)
   }
 }
@@ -64,12 +64,12 @@ object RetryBench {
     private[this] var ctr: Int =
       0
 
-    val rxn: Rxn[Any, String] = {
-      Axn.unsafe.delay {
+    val rxn: Rxn[String] = {
+      Rxn.unsafe.delay {
         this.ctr += 1
         0
-      }.flatMapF { _ =>
-        Axn.pure("foo")
+      }.flatMap { _ =>
+        Rxn.pure("foo")
       }
     }
 
@@ -89,9 +89,9 @@ object RetryBench {
   @State(Scope.Thread)
   abstract class St(N: Int) extends McasImplStateBase {
 
-    val rxn: Rxn[AtomicInteger, String] = Rxn.computed { ctr =>
-      Axn.unsafe.delay { ctr.incrementAndGet() }.flatMapF { c =>
-        if (c > N) Axn.pure("foo")
+    def rxn(ctr: AtomicInteger): Rxn[String] = {
+      Rxn.unsafe.delay { ctr.incrementAndGet() }.flatMap { c =>
+        if (c > N) Rxn.pure("foo")
         else Rxn.unsafe.retry
       }
     }
