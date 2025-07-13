@@ -22,7 +22,7 @@ import scala.concurrent.duration._
 
 import cats.effect.IO
 
-import fs2.Stream
+import fs2.{ Stream, Chunk }
 
 import async.{ AsyncQueue, BoundedQueueImpl, Promise }
 
@@ -38,7 +38,7 @@ trait StreamSpec[F[_]]
     def check(q: AsyncQueue[String]): F[Unit] = {
       for {
         _ <- assumeF(this.mcasImpl.isThreadSafe)
-        fibVec <- fromQueueUnterminated(q).take(8).compile.toVector.start
+        fibVec <- streamFromQueueUnterminated(q).take(8).compile.toVector.start
         _ <- (1 to 8).toList.traverse { idx => q.put[F](idx.toString) }
         _ <- assertResultF(fibVec.joinWithNever, (1 to 8).map(_.toString).toVector)
         _ <- List(9, 10).traverse { idx => q.put[F](idx.toString) }
@@ -77,6 +77,31 @@ trait StreamSpec[F[_]]
       q2 <- BoundedQueueImpl.linked[Option[String]](bound = 10).run[F]
       _ <- check(q1)
       _ <- check(q2)
+    } yield ()
+  }
+
+  test("AsyncQueue converters") {
+    for {
+      // streamFromQueueUnterminated:
+      q <- AsyncQueue.unbounded[String].run[F]
+      _ <- q.put[F]("foo")
+      qr <- streamFromQueueUnterminated(q).take(1).compile.toVector
+      _ <- assertEqualsF(qr, Vector("foo"))
+      // streamFromQueueNoneTerminated:
+      qOpt <- AsyncQueue.unbounded[Option[String]].run[F]
+      _ <- qOpt.put[F](Some("foo")) >> qOpt.put[F](None)
+      qOptR <- streamFromQueueNoneTerminated(qOpt).compile.toVector
+      _ <- assertEqualsF(qOptR, Vector("foo"))
+      // streamFromQueueUnterminatedChunks:
+      qChunk <- AsyncQueue.unbounded[Chunk[String]].run[F]
+      _ <- qChunk.put[F](Chunk("foo", "bar"))
+      qChunkR <- streamFromQueueUnterminatedChunks(qChunk).take(2).compile.toVector
+      _ <- assertEqualsF(qChunkR, Vector("foo", "bar"))
+      // streamFromQueueNoneTerminatedChunks:
+      qOptChunk <- AsyncQueue.unbounded[Option[Chunk[String]]].run[F]
+      _ <- qOptChunk.put[F](Some(Chunk("foo", "bar"))) >> qOptChunk.put[F](None)
+      qOptChunkR <- streamFromQueueNoneTerminatedChunks(qOptChunk).compile.toVector
+      _ <- assertEqualsF(qOptChunkR, Vector("foo", "bar"))
     } yield ()
   }
 
