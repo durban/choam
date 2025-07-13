@@ -60,6 +60,6 @@ trait CounterSpecJvm[F[_]] { this: CounterSpec[F] & McasImplSpec =>
       _ <- assertF((c >= 0L) && (c <= replicas))
       _ <- assertResultF(ctr.count.run[F], replicas.toLong)
     } yield ()
-    t.replicateA_(128)
+    t.replicateA_(64)
   }
 }

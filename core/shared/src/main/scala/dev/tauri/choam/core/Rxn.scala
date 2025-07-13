@@ -470,11 +470,12 @@ object Rxn extends RxnInstances0 {
   final def secureRandom: SecureRandom[Rxn] =
     _secureRandom
 
-  final def deterministicRandom(initialSeed: Long): Rxn[random.SplittableRandom[Rxn]] =
-    deterministicRandom(initialSeed, Ref.AllocationStrategy.Default)
-
-  final def deterministicRandom(initialSeed: Long, str: Ref.AllocationStrategy): Rxn[random.SplittableRandom[Rxn]] =
+  final def deterministicRandom(
+    initialSeed: Long,
+    str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default
+  ): Rxn[random.SplittableRandom[Rxn]] = {
     random.deterministicRandom(initialSeed, str)
+  }
 
   final def memoize[A](rxn: Rxn[A], str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Rxn[Memo[A]] =
     Memo(rxn, str)
@@ -1145,7 +1146,7 @@ object Rxn extends RxnInstances0 {
       this._exParams = null
     }
 
-    private[this] var startRxn: Rxn[Any] = rxn.asInstanceOf[Rxn[Any]]
+    private[this] var startRxn: Rxn[Any] = rxn
 
     private[this] var _desc: AbstractDescriptor =
       null
@@ -2529,8 +2530,8 @@ private sealed abstract class RxnInstances2 extends RxnInstances3 { this: Rxn.ty
   // inherit `StackSafeMonad`, in case someone
   // somewhere uses that as a marker or even a
   // typeclass:
-  implicit final def monadInstance[X]: StackSafeMonad[Rxn] =
-    _monadInstance.asInstanceOf[StackSafeMonad[Rxn]]
+  implicit final def monadInstance: StackSafeMonad[Rxn] =
+    _monadInstance
 
   private[this] val _monadInstance: StackSafeMonad[Rxn] = new StackSafeMonad[Rxn] {
     final override def unit: Rxn[Unit] =
@@ -2560,12 +2561,12 @@ private sealed abstract class RxnInstances2 extends RxnInstances3 { this: Rxn.ty
 
 private sealed abstract class RxnInstances3 extends RxnInstances4 { self: Rxn.type =>
 
-  implicit final def uniqueInstance[X]: Unique[Rxn] =
+  implicit final def uniqueInstance: Unique[Rxn] =
     _uniqueInstance.asInstanceOf[Unique[Rxn]]
 
   private[this] val _uniqueInstance: Unique[Rxn] = new Unique[Rxn] {
     final override def applicative: Applicative[Rxn] =
-      self.monadInstance[Any]
+      self.monadInstance
     final override def unique: Rxn[Unique.Token] =
       self.unique
   }
@@ -2694,8 +2695,8 @@ private sealed abstract class RxnInstances8 extends RxnInstances9 { self: Rxn.ty
 
 private sealed abstract class RxnInstances9 extends RxnInstances10 { self: Rxn.type =>
 
-  implicit final def uuidGenInstance[X]: UUIDGen[Rxn[*]] =
-    self._uuidGen.asInstanceOf[UUIDGen[Rxn]]
+  implicit final def uuidGenInstance: UUIDGen[Rxn] =
+    self._uuidGen
 
   private[this] val _uuidGen: UUIDGen[Rxn] = new UUIDGen[Rxn] {
     final override def randomUUID: Rxn[UUID] =
@@ -2708,7 +2709,7 @@ private sealed abstract class RxnInstances10 extends RxnInstances11 { self: Rxn.
   import scala.concurrent.duration.{ FiniteDuration, NANOSECONDS, MILLISECONDS }
 
   implicit final def clockInstance: Clock[Rxn] =
-    _clockInstance.asInstanceOf[Clock[Rxn]]
+    _clockInstance
 
   private[this] val _clockInstance: Clock[Rxn] = new Clock[Rxn] {
     final override def applicative: Applicative[Rxn] =
@@ -2722,8 +2723,8 @@ private sealed abstract class RxnInstances10 extends RxnInstances11 { self: Rxn.
 
 private sealed abstract class RxnInstances11 extends RxnSyntax0 { self: Rxn.type =>
 
-  implicit final def catsRefMakeInstance[X]: CatsRef.Make[Rxn] =
-    _catsRefMakeInstance.asInstanceOf[CatsRef.Make[Rxn]]
+  implicit final def catsRefMakeInstance: CatsRef.Make[Rxn] =
+    _catsRefMakeInstance
 
   private[this] val _catsRefMakeInstance: CatsRef.Make[Rxn] = new CatsRef.Make[Rxn] {
     final override def refOf[A](a: A): Rxn[CatsRef[Rxn, A]] = {
