@@ -500,6 +500,8 @@ object Rxn extends RxnInstances0 {
 
   final object unsafe {
 
+    import core.unsafe.RxnLocal
+
     trait WithLocal[A, I, R] {
       def apply[G[_]](
         local: RxnLocal[G, A],
