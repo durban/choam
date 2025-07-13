@@ -18,22 +18,17 @@
 package dev.tauri.choam
 package stream
 
-import cats.effect.kernel.{ Unique, Ref => CatsRef }
+import cats.effect.kernel.{ Ref => CatsRef }
 import cats.data.State
-import cats.syntax.traverse._
 
 import fs2.Stream
 import fs2.concurrent.SignallingRef
 
 import core.{ Rxn, Ref, RefLike, AsyncReactive }
-import data.Map
-import async.Promise
-
-import Fs2SignallingRefWrapper.{ Listener, Waiting, Full, Empty }
 
 private final class Fs2SignallingRefWrapper[F[_], A](
   underlying: Ref[A],
-  val listeners: Map.Extra[Unique.Token, Ref[Listener[F, A]]],
+  val pubSub: PubSub[F, A],
 )(implicit F: AsyncReactive[F]) extends SignallingRef[F, A] {
 
   // Rxn API:
@@ -55,23 +50,22 @@ private final class Fs2SignallingRefWrapper[F[_], A](
     }
 
     final override def modify[C](f: A => (A, C)): Rxn[C] = {
-      underlying.modifyWith { (oldVal) =>
-        val ac = f(oldVal)
-        notifyListeners(ac._1).as(ac)
+      underlying.modify[(A, C)] { oldVal =>
+        val tup: (A, C) = f(oldVal)
+        (tup._1, tup)
+      }.flatMap {
+        case (newVal, c) =>
+          notifyListeners(newVal).as(c)
       }
     }
 
     private[this] def notifyListeners(newVal: A): Rxn[Unit] = {
-      listeners.values.flatMap(_.traverse { lRef =>
-        lRef.modify {
-          case Waiting(next) => (Empty(), Some(next))
-          case Full(_) => (Full(newVal), None) // TODO:0.5: here we lose a value
-          case Empty() => (Full(newVal), None)
-        }.flatMap {
-          case Some(next) => next.complete(newVal).void
-          case None => Rxn.unit
-        }
-      }.void)
+      pubSub.publish(newVal).map {
+        case PubSub.Success =>
+          () // ok
+        case otherResult =>
+          impossible(s"notifyListeners got ${otherResult}")
+      }
     }
   }
 
@@ -83,43 +77,8 @@ private final class Fs2SignallingRefWrapper[F[_], A](
   final override def continuous: Stream[F, A] =
     Stream.repeatEval(this.get)
 
-  final override def discrete: Stream[F, A] = {
-
-    val acq: Rxn[(Unique.Token, Ref[Listener[F, A]])] = {
-      (Rxn.unique * underlying.get).flatMap { case (tok, current) =>
-        Ref.unpadded[Listener[F, A]](Full(current)).flatMap { ref =>
-          val tup = (tok, ref)
-          listeners.put(tok, ref).as(tup)
-        }
-      }
-    }
-
-    def rel(tok: Unique.Token): Rxn[Unit] =
-      listeners.del(tok).void
-
-    def nextElement(ref: Ref[Listener[F, A]]): F[A] = {
-      val rxn = Promise[A].flatMap { p =>
-        ref.modify { l =>
-          l match {
-            case Full(a) =>
-              (Empty(), F.monad.pure(a))
-            case Empty() =>
-              (Waiting(p), p.get)
-            case Waiting(_) =>
-              impossible("got Waiting, but shouldn't, because before the Promise is completed, Waiting is removed")
-              // (see `notifyListeners`)
-          }
-        }
-      }
-      F.monad.flatten(F.run(rxn))
-    }
-
-    Stream.bracket(acquire = F.run(acq))(release = { tokRef =>
-      F.apply(rel(tokRef._1))
-    }).flatMap { tokRef =>
-      Stream.repeatEval(nextElement(tokRef._2))
-    }
-  }
+  final override def discrete: Stream[F, A] =
+    this.pubSub.subscribe
 
   // CatsRef:
 
@@ -153,25 +112,14 @@ private final class Fs2SignallingRefWrapper[F[_], A](
 
 private object Fs2SignallingRefWrapper {
 
-  final def apply[F[_] : AsyncReactive, A](initial: A, str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Rxn[Fs2SignallingRefWrapper[F, A]] = {
-    (Ref[A](initial, str) * Map.simpleHashMap[Unique.Token, Ref[Listener[F, A]]](str)).map {
-      case (underlying, listeners) =>
-        new Fs2SignallingRefWrapper[F, A](underlying, listeners)
+  final def apply[F[_] : AsyncReactive, A](
+    initial: A,
+    str: Ref.AllocationStrategy,
+  ): Rxn[Fs2SignallingRefWrapper[F, A]] = {
+    val ofStr = PubSub.OverflowStrategy.unbounded // TODO: make OverflowStrategy configurable
+    (Ref[A](initial, str) * PubSub[F, A](ofStr, str)).map {
+      case (underlying, pubSub) =>
+        new Fs2SignallingRefWrapper[F, A](underlying, pubSub)
     }
   }
-
-  /** Internal state of the `Ref` of each listener */
-  private[stream] sealed abstract class Listener[F[_], A]
-
-  /** The listener is waiting for an item with this `Promise` */
-  private[stream] final case class Waiting[F[_], A](next: Promise[A])
-    extends Listener[F, A]
-
-  /** An item is ready to be taken by the listener */
-  private[stream] final case class Full[F[_], A](value: A)
-    extends Listener[F, A]
-
-  /** An item was taken by the listener, but it's not (yet) waiting for the next */
-  private[stream] final case class Empty[F[_], A]()
-    extends Listener[F, A]
 }

@@ -44,6 +44,9 @@ sealed abstract class PubSub[F[_], A] {
   def close: Rxn[PubSub.Result]
 
   def awaitShutdown: F[Unit]
+
+  /** Only for testing! */
+  private[stream] def numberOfSubscriptions: F[Int]
 }
 
 object PubSub {
@@ -326,6 +329,11 @@ object PubSub {
 
         go
       }
+    }
+
+    /** Only for testing! */
+    private[stream] final override def numberOfSubscriptions: F[Int] = {
+      subscriptions.get.map(_.size).run[F]
     }
   }
 

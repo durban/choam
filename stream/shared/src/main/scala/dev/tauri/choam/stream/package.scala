@@ -40,9 +40,14 @@ package object stream {
    *         are "associated with" each other (i.e., use
    *         the same underlying storage).
    */
-  final def signallingRef[F[_] : AsyncReactive, A](
+  final def signallingRef[F[_] : AsyncReactive, A](initial: A): Rxn[(RefLike[A], SignallingRef[F, A])] = {
+    signallingRef(initial, Ref.AllocationStrategy.Default)
+  }
+
+  // TODO: make this public + also an overload with configurable OverflowStrategy
+  private[stream] final def signallingRef[F[_] : AsyncReactive, A](
     initial: A,
-    str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default,
+    str: Ref.AllocationStrategy,
   ): Rxn[(RefLike[A], SignallingRef[F, A])] = {
     Fs2SignallingRefWrapper[F, A](initial, str).map { sRef => (sRef.refLike, sRef) }
   }

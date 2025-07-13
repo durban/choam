@@ -18,8 +18,9 @@
 package dev.tauri.choam
 package stream
 
+import scala.concurrent.duration._
+
 import cats.effect.IO
-import fs2.Stream
 import fs2.concurrent.SignallingRef
 
 final class SignallingRefSpec_ThreadConfinedMcas_TickedIO
@@ -36,26 +37,14 @@ trait SignallingRefSpec[F[_]]
       if (next > N) {
         F.unit
       } else {
-        (ref.set(next) *> F.cede) >> writer(ref, next + 1)
+        val wait = if ((next % 10) == 0) F.sleep(0.1.seconds) else F.cede
+        (ref.set(next) *> wait) >> writer(ref, next + 1)
       }
-    }
-    def checkList(l: List[Int], max: Int): F[Unit] = {
-      def go(l: List[Int], prev: Int): F[Unit] = l match {
-        case Nil =>
-          F.unit
-        case h :: t =>
-          // list should be increasing:
-          (assertF(clue(prev) < clue(h)) *> assertF(h <= max)) >> (
-            go(t, prev = h)
-          )
-      }
-      // we assume that at least *some* updates are not lost:
-      assertF(clue(l.length).toDouble >= (max.toDouble / 200.0)) *> go(l, -1)
     }
     def checkListeners(ref: SignallingRef[F, Int], min: Int, max: Int): F[Unit] = {
       F.defer {
-        val listeners = ref.asInstanceOf[Fs2SignallingRefWrapper[F, Int]].listeners.values.run[F]
-        listeners.flatMap(n => assertF(clue(n.size) <= clue(max)) *> assertF(clue(n.size) >= clue(min)))
+        val noOfListeners: F[Int] = ref.asInstanceOf[Fs2SignallingRefWrapper[F, Int]].pubSub.numberOfSubscriptions
+        noOfListeners.flatMap(n => assertF(clue(n) <= clue(max)) *> assertF(clue(n) >= clue(min)))
       }
     }
     for {
@@ -63,27 +52,37 @@ trait SignallingRefSpec[F[_]]
       (_, ref) = rr
       listener = ref
         .discrete
-        .evalTap(_ => F.cede)
         .takeThrough(_ < N)
         .compile
         .toList
       f1 <- listener.start
       _ <- this.tickAll
+      _ <- checkListeners(ref, min = 1, max = 1)
       f2 <- listener.start
       _ <- this.tickAll
-      f3 <- (ref.discrete.take(10).evalTap { _ =>
-        // we check the number of listeners during and after the stream
-        checkListeners(ref, min = 1, max = 3)
-      } ++ Stream.exec(checkListeners(ref, min = 0, max = 2))).compile.toList.start
+      _ <- checkListeners(ref, min = 2, max = 2)
+      f3 <- (ref.discrete.takeThrough(_ < N).evalTap { n =>
+        // we check the number of listeners during the stream:
+        if ((n % 10) == 0) {
+          checkListeners(ref, min = 1, max = 3)
+        } else {
+          F.unit
+        }
+      }.compile.toList <* (
+        // and we also check them after the stream:
+        checkListeners(ref, min = 0, max = 2)
+      )).start
       _ <- this.tickAll
       fw <- writer(ref, 1).start
       _ <- this.tickAll
       _ <- fw.joinWithNever
-      _ <- f3.joinWithNever // raises error if not cleaned up properly
+      l3 <- f3.joinWithNever // raises error if not cleaned up properly
       l1 <- f1.joinWithNever
-      _ <- checkList(l1, max = N)
       l2 <- f2.joinWithNever
-      _ <- checkList(l2, max = N)
+      // we mustn't lose elements:
+      _ <- assertEqualsF(l1, (1 to N).toList)
+      _ <- assertEqualsF(l2, (1 to N).toList)
+      _ <- assertEqualsF(l3, (1 to N).toList)
       _ <- checkListeners(ref, min = 0, max = 0)
     } yield ()
   }
