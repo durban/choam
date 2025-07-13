@@ -320,6 +320,27 @@ trait TestContextSpec[F[_]] { self: BaseSpecAsyncF[F] & McasImplSpec =>
     this.testContext.tick()
   }
 
+  final def tickOne: F[Boolean] = F.delay {
+    this.testContext.tickOne()
+  }
+
+  final def tickN(n: Int): F[Int] = F.delay {
+    require(n > 0)
+    def go(done: Int): Int = {
+      if (done >= n) {
+        done
+      } else {
+        if (this.testContext.tickOne()) {
+          go(done + 1)
+        } else {
+          // nothing more to do:
+          done
+        }
+      }
+    }
+    go(done = 0)
+  }
+
   final def advanceAndTick(d: FiniteDuration): F[Unit] = F.delay {
     this.testContext.advanceAndTick(d)
   }

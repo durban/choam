@@ -31,7 +31,56 @@ final class SignallingRefSpec_ThreadConfinedMcas_TickedIO
 trait SignallingRefSpec[F[_]]
   extends BaseSpecAsyncF[F] { this: McasImplSpec & TestContextSpec[F] =>
 
-  test("RxnSignallingRef") {
+  test("SignallingRef#continuous") {
+    def checkContinuous(lst: List[Int]): F[Unit] = F.delay {
+      // it must have (in order):
+      // 0 or more `0`
+      // 0 or more `1`
+      // 0 or more `2`
+      // 0 or more `3`
+      // (and nothing else)
+      val zeros = lst.takeWhile(_ == 0).size
+      val rest1 = lst.dropWhile(_ == 0)
+      assert(!rest1.contains(0))
+      val ones = rest1.takeWhile(_ == 1).size
+      val rest2 = rest1.dropWhile(_ == 1)
+      assert(!rest2.contains(1))
+      val twos = rest2.takeWhile(_ == 2).size
+      val rest3 = rest2.dropWhile(_ == 2)
+      assert(!rest3.contains(2))
+      val threes = rest3.takeWhile(_ == 3).size
+      assertEquals(rest3.dropWhile(_ == 3), Nil)
+      // System.err.println(s"Counted: $zeros '0's; $ones '1's; $twos '2's; $threes '3's")
+      assert((zeros + ones + twos + threes) > 0)
+    }
+    def tickALot: F[Unit] = {
+      val aLot = 1000
+      assertResultF(this.tickN(aLot), aLot)
+    }
+    for {
+      rr <- signallingRef[F, Int](initial = 0).run[F]
+      (_, ref) = rr
+      _ <- assertResultF(ref.continuous.take(3).compile.toList, List(0, 0, 0))
+      fd <- ref.discrete.take(3).compile.toList.start
+      _ <- this.tickAll
+      intrpt <- F.deferred[Either[Throwable, Unit]]
+      fc <- ref.continuous.interruptWhen(intrpt).compile.toList.start
+      _ <- tickALot
+      _ <- ref.set(1)
+      _ <- tickALot
+      _ <- assertResultF(ref.updateAndGet(_ + 1), 2)
+      _ <- tickALot
+      _ <- assertResultF(ref.modify(ov => (ov + 1, 42)), 42)
+      _ <- tickALot
+      _ <- assertResultF(fd.joinWithNever, List(1, 2, 3))
+      _ <- tickALot
+      _ <- intrpt.complete(Right(()))
+      lst <- fc.joinWithNever
+      _ <- checkContinuous(lst)
+    } yield ()
+  }
+
+  test("SignallingRef#discrete") {
     val N = 1000
     def writer(ref: SignallingRef[F, Int], next: Int): F[Unit] = {
       if (next > N) {
