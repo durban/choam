@@ -291,7 +291,7 @@ object PubSub {
         if (wasClosed) {
           _axnClosed
         } else {
-          awaitClosed.complete1(()) *> subscriptions.get.flatMap { subsMap =>
+          awaitClosed.complete(()) *> subscriptions.get.flatMap { subsMap =>
             val itr = subsMap.valuesIterator
             var acc = Rxn.unit
             var cnt = 0L

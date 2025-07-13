@@ -53,7 +53,7 @@ sealed trait AsyncReactiveLaws[F[_]] extends ReactiveLaws[F] {
   def promiseCompleteAndGet[A](a: A): IsEq[F[(Boolean, A)]] = {
     val completeAndGet = for {
       p <- reactive.run(Promise[A])
-      ok <- reactive.apply(p.complete1(a))
+      ok <- reactive.apply(p.complete(a))
       res <- p.get
     } yield (ok, res)
     completeAndGet <-> monad.pure((true, a))

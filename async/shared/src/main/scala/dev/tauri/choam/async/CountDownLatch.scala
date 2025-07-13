@@ -42,7 +42,7 @@ object CountDownLatch {
             if (ov > 0) ov - 1
             else ov
           }.flatMap { ov =>
-            if (ov == 1) p.complete1(()).void
+            if (ov == 1) p.complete(()).void
             else Rxn.unit
           }
         }

@@ -48,23 +48,20 @@ object PromiseRead {
 
 sealed trait PromiseWrite[A] { self =>
 
-  def complete1(a: A): Rxn[Boolean] // TODO: remove this
-
-  def complete(a: A): Rxn[Boolean] =
-    this.complete1(a)
+  def complete(a: A): Rxn[Boolean]
 
   private[choam] def unsafeComplete(a: A)(implicit ir: unsafe.InRxn2): Boolean
 
   final def contramap[B](f: B => A): PromiseWrite[B] = new PromiseWrite[B] {
-    final override def complete1(b: B): Rxn[Boolean] =
-      self.complete1(f(b))
+    final override def complete(b: B): Rxn[Boolean] =
+      self.complete(f(b))
     final override def unsafeComplete(b: B)(implicit ir: unsafe.InRxn2): Boolean =
       self.unsafeComplete(f(b))
   }
 
   final def toCats[F[_]](implicit F: Reactive[F]): DeferredSink[F, A] = new DeferredSink[F, A] {
     final override def complete(a: A): F[Boolean] =
-      self.complete1(a).run[F]
+      self.complete(a).run[F]
   }
 }
 
@@ -163,8 +160,8 @@ object Promise {
     with Promise[A] { self =>
 
     final def imap[B](f: A => B)(g: B => A): Promise[B] = new PromiseImplBase[B] {
-      final override def complete1(b: B): Rxn[Boolean] =
-        self.complete1(g(b))
+      final override def complete(b: B): Rxn[Boolean] =
+        self.complete(g(b))
       final override def unsafeComplete(b: B)(implicit ir: unsafe.InRxn2): Boolean =
         self.unsafeComplete(g(b))
       final override def tryGet: Rxn[Option[B]] =
@@ -179,7 +176,7 @@ object Promise {
       final override def tryGet: F[Option[A]] =
         F.run(self.tryGet)
       final override def complete(a: A): F[Boolean] =
-        F.apply(self.complete1(a))
+        F.apply(self.complete(a))
     }
   }
 
@@ -197,7 +194,7 @@ object Promise {
       }
     }
 
-    final override def complete1(a: A): Rxn[Boolean] = {
+    final override def complete(a: A): Rxn[Boolean] = {
       ref.modify { state =>
         state match {
           case w: Waiting[_] =>

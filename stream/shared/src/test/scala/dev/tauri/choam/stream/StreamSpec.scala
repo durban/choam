@@ -119,7 +119,7 @@ trait StreamSpec[F[_]]
         .interruptWhen(p.toCats)
         .compile.toVector.start
       _ <- F.sleep(many)
-      _ <- p.complete1(Right(())).run[F]
+      _ <- p.complete(Right(())).run[F]
       vec <- fib.joinWithNever
       _ <- assertEqualsF(
         vec,
