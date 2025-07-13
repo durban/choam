@@ -27,7 +27,7 @@ abstract class QueueStressTestBase extends StressTestBase {
 
   protected def newQueue[A](as: A*): Queue[A]
 
-  protected final override def impl: Mcas =
+  protected final override val impl: Mcas =
     QueueStressTestBase._mcasImpl
 
   protected final implicit def reactive: Reactive[SyncIO] =
@@ -36,12 +36,16 @@ abstract class QueueStressTestBase extends StressTestBase {
 
 private object QueueStressTestBase {
 
+  private val _crt: ChoamRuntime = {
+    ChoamRuntime.unsafeBlocking()
+  }
+
   private val _reactiveForSyncIo: Reactive[SyncIO] = {
-    Reactive.forSyncIn[SyncIO, SyncIO].allocated.unsafeRunSync()._1
+    Reactive.fromIn[SyncIO, SyncIO](_crt).allocated.unsafeRunSync()._1
   }
 
   private val _mcasImpl: Mcas = {
-    this._reactiveForSyncIo.mcasImpl
+    this._crt.mcasImpl
   }
 }
 

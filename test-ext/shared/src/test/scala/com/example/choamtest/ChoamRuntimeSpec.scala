@@ -61,7 +61,7 @@ final class ChoamRuntimeSpec extends munit.CatsEffectSuite {
 
   test("It should be possible to create a Reactive and Transactive sharing the same runtime (directly)") {
     val res: Resource[IO, (Reactive[IO], Transactive[IO])] = {
-      ChoamRuntime[IO].flatMap { rt =>
+      ChoamRuntime.make[IO].flatMap { rt =>
         Reactive.from[IO](rt).flatMap { r =>
           Transactive.from[IO](rt).map { t =>
             (r, t)
@@ -78,7 +78,7 @@ final class ChoamRuntimeSpec extends munit.CatsEffectSuite {
 
   test("It should be possible to create an AsyncReactive and Transactive sharing the same runtime (directly)") {
     val res: Resource[IO, (AsyncReactive[IO], Transactive[IO])] = {
-      ChoamRuntime[IO].flatMap { rt =>
+      ChoamRuntime.make[IO].flatMap { rt =>
         AsyncReactive.from[IO](rt).flatMap { r =>
           Transactive.from[IO](rt).map { t =>
             (r, t)
@@ -95,7 +95,7 @@ final class ChoamRuntimeSpec extends munit.CatsEffectSuite {
 
   test("It should be possible to create a Reactive[IO] and a Reactive[SyncIO] sharing the same runtime") {
     val res: Resource[IO, (Reactive[IO], Reactive[SyncIO])] = {
-      ChoamRuntime[IO].flatMap { rt =>
+      ChoamRuntime.make[IO].flatMap { rt =>
         Reactive.from[IO](rt).flatMap { rIo =>
           Reactive.fromIn[IO, SyncIO](rt).map { rSyncIo =>
             (rIo, rSyncIo)

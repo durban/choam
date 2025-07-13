@@ -41,7 +41,7 @@ object ChoamRuntime {
     }
   }
 
-  final def apply[F[_]](implicit F: Sync[F]): Resource[F, ChoamRuntime] = {
+  final def make[F[_]](implicit F: Sync[F]): Resource[F, ChoamRuntime] = {
     Resource.make(F.blocking { this.unsafeBlocking() }) { rt =>
       F.blocking { rt.unsafeCloseBlocking() }
     }

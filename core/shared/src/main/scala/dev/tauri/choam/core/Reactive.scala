@@ -56,12 +56,6 @@ object Reactive {
   final def fromIn[G[_], F[_]](rt: ChoamRuntime)(implicit @unused G: Sync[G], F: Sync[F]): Resource[G, Reactive[F]] =
     Resource.pure(new SyncReactive(rt.mcasImpl))
 
-  final def forSync[F[_]](implicit F: Sync[F]): Resource[F, Reactive[F]] =
-    forSyncIn[F, F]
-
-  final def forSyncIn[G[_], F[_]](implicit G: Sync[G], F: Sync[F]): Resource[G, Reactive[F]] =
-    ChoamRuntime[G].flatMap(rt => fromIn(rt))
-
   private[choam] class SyncReactive[F[_]](
     final override val mcasImpl: Mcas,
   )(implicit F: Sync[F]) extends Reactive[F] {
