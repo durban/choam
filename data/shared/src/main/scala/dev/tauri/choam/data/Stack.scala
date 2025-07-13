@@ -26,7 +26,7 @@ import core.{ Rxn, Ref, Reactive }
 sealed trait Stack[A] {
   def push(a: A): Rxn[Unit]
   def tryPop: Rxn[Option[A]]
-  def size: Rxn[Int]
+  private[choam] def size: Rxn[Int] // TODO: Do we want this? If yes, is it correct even on elim. stack?
 }
 
 object Stack {
@@ -34,18 +34,16 @@ object Stack {
   private[choam] trait UnsealedStack[A]
     extends Stack[A]
 
-  final def treiberStack[A]: Rxn[Stack[A]] =
-    treiberStack[A](Ref.AllocationStrategy.Default)
+  final def apply[A]: Rxn[Stack[A]] =
+    apply[A](Ref.AllocationStrategy.Default)
 
-  final def treiberStack[A](str: Ref.AllocationStrategy): Rxn[Stack[A]] =
+  final def apply[A](str: Ref.AllocationStrategy): Rxn[Stack[A]] =
     TreiberStack[A](str)
 
-  final def eliminationStack[A]: Rxn[Stack[A]] =
-    eliminationStack(Ref.AllocationStrategy.Default)
-
   // TODO: on JS, we could just return a TreiberStack
-  final def eliminationStack[A](str: Ref.AllocationStrategy): Rxn[Stack[A]] =
-    EliminationStack(str)
+  final def eliminationStack[A]: Rxn[Stack[A]] = {
+    EliminationStack[A]
+  }
 
   private[choam] def fromList[F[_], A](mkEmpty: Rxn[Stack[A]])(as: List[A])(implicit F: Reactive[F]): F[Stack[A]] = {
     implicit val monadF: Monad[F] = F.monad

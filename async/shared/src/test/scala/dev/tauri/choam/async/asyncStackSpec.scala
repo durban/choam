@@ -36,7 +36,7 @@ trait AsyncStackSpec_Treiber[F[_]]
   extends AsyncStackSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
 
   protected final override def newStack[G[_] : AsyncReactive, A]: G[AsyncStack[A]] =
-    AsyncStack.treiberStack[A].run[G]
+    AsyncStack.apply[A].run[G]
 }
 
 trait AsyncStackSpec_Elimination[F[_]]

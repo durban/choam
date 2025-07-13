@@ -43,7 +43,7 @@ class AsyncStackPushWaitTest {
     cats.effect.unsafe.IORuntime.global
 
   private[this] val stack: AsyncStack[String] =
-    AsyncStack.treiberStack[String].run[SyncIO].unsafeRunSync()
+    AsyncStack[String].run[SyncIO].unsafeRunSync()
 
   private[this] var popResult: String =
     null

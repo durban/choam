@@ -92,6 +92,6 @@ object AsyncStackBench {
   @State(Scope.Benchmark)
   class StackSt {
     val runtime: IORuntime = cats.effect.unsafe.IORuntime.global
-    val stack3: AsyncStack[String] = AsyncStack.treiberStack[String].run[SyncIO].unsafeRunSync()
+    val stack3: AsyncStack[String] = AsyncStack[String].run[SyncIO].unsafeRunSync()
   }
 }

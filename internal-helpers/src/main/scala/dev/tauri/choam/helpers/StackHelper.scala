@@ -24,7 +24,7 @@ import data.Stack
 object StackHelper {
 
   def treiberStackFromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[Stack[A]] =
-    Stack.fromList[F, A](Stack.treiberStack)(as)
+    Stack.fromList[F, A](Stack.apply)(as)
 
   def eliminationStackFromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[Stack[A]] =
     Stack.fromList[F, A](Stack.eliminationStack)(as)
