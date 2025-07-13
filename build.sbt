@@ -328,7 +328,6 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
   .settings(
     libraryDependencies ++= Seq(
       dependencies.catsCore.value,
-      dependencies.catsMtl.value, // TODO: do we still need this?
       dependencies.catsEffectKernel.value,
       dependencies.catsEffectStd.value,
       // "eu.timepit" %%% "refined" % "0.11.1",
@@ -476,11 +475,12 @@ lazy val internalHelpers = project.in(file("internal-helpers"))
     assertionsEnabled := false, // so that we can test that they're disabled
   )
 
-lazy val laws = crossProject(JVMPlatform, JSPlatform) // TODO: don't publish this
+lazy val laws = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
   .in(file("laws"))
   .settings(name := "choam-laws")
+  .enablePlugins(NoPublishPlugin)
   .disablePlugins(disabledPlugins: _*)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
@@ -873,7 +873,6 @@ lazy val dependencies = new {
 
   val catsVersion = "2.13.0" // https://github.com/typelevel/cats
   val catsEffectVersion = "3.6.2" // https://github.com/typelevel/cats-effect
-  val catsMtlVersion = "1.5.0" // https://github.com/typelevel/cats-mtl
   val catsCollectionsVersion = "0.9.10" // https://github.com/typelevel/cats-collections
   val fs2Version = "3.12.0" // https://github.com/typelevel/fs2
   val scalacheckEffectVersion = "2.0.0-M2" // https://github.com/typelevel/scalacheck-effect
@@ -893,8 +892,6 @@ lazy val dependencies = new {
   val catsEffectAll = Def.setting("org.typelevel" %%% "cats-effect" % catsEffectVersion)
   val catsEffectLaws = Def.setting("org.typelevel" %%% "cats-effect-laws" % catsEffectVersion)
   val catsEffectTestkit = Def.setting("org.typelevel" %%% "cats-effect-testkit" % catsEffectVersion)
-  val catsMtl = Def.setting("org.typelevel" %%% "cats-mtl" % catsMtlVersion)
-  val catsMtlLaws = Def.setting("org.typelevel" %%% "cats-mtl-laws" % catsMtlVersion)
   val catsCollections = Def.setting("org.typelevel" %%% "cats-collections-core" % catsCollectionsVersion)
   val fs2 = Def.setting("co.fs2" %%% "fs2-core" % fs2Version)
   val decline = Def.setting("com.monovore" %%% "decline" % "2.5.0") // https://github.com/bkirwi/decline
@@ -929,7 +926,6 @@ lazy val dependencies = new {
       catsLaws.value,
       "org.typelevel" %%% "cats-effect-kernel-testkit" % catsEffectVersion,
       "org.typelevel" %%% "cats-effect-testkit" % catsEffectVersion,
-      catsMtlLaws.value, // TODO: do we still need this?
       "org.scalameta" %%% "munit" % "1.1.1", // https://github.com/scalameta/munit
       "org.typelevel" %%% "munit-cats-effect" % "2.1.0", // https://github.com/typelevel/munit-cats-effect
       "org.typelevel" %%% "scalacheck-effect" % scalacheckEffectVersion,
