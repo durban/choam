@@ -21,6 +21,7 @@ package data
 import cats.effect.IO
 
 import core.Rxn
+import Queue.DrainOnceSyntax
 
 final class QueueMsSpec_ThreadConfinedMcas_IO
   extends BaseSpecIO

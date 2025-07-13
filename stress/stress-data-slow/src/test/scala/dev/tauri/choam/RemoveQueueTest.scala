@@ -25,7 +25,7 @@ import org.openjdk.jcstress.infra.results.LL_Result
 import cats.syntax.all._
 import cats.effect.SyncIO
 
-import data.RemoveQueue
+import data.{ Queue, RemoveQueue }
 
 @JCStressTest
 @State
@@ -71,6 +71,6 @@ class RemoveQueueTest extends RemoveQueueStressTestBase {
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    r.r2 = queue.drainOnce[SyncIO, String].unsafeRunSync()
+    r.r2 = Queue.drainOnce[SyncIO, String](queue).unsafeRunSync()
   }
 }

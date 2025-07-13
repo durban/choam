@@ -24,6 +24,8 @@ import org.openjdk.jcstress.infra.results.LL_Result
 
 import cats.effect.SyncIO
 
+import data.Queue
+
 @JCStressTest
 @State
 @Description("MsQueue enq/deq should be atomic")
@@ -59,6 +61,6 @@ class MsQueueTest extends MsQueueStressTestBase {
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    r.r2 = queue.drainOnce[SyncIO, String].unsafeRunSync()
+    r.r2 = Queue.drainOnce[SyncIO, String](queue).unsafeRunSync()
   }
 }

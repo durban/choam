@@ -25,6 +25,7 @@ import org.openjdk.jcstress.infra.results.LL_Result
 import cats.effect.SyncIO
 
 import core.Rxn
+import data.Queue
 
 @JCStressTest
 @State
@@ -55,7 +56,7 @@ class MsQueueComposedTest1 extends MsQueueStressTestBase {
 
   @Arbiter
   def arbiter(r: LL_Result): Unit = {
-    r.r1 = queue1.drainOnce[SyncIO, String].unsafeRunSync()
-    r.r2 = queue2.drainOnce[SyncIO, String].unsafeRunSync()
+    r.r1 = Queue.drainOnce[SyncIO, String](queue1).unsafeRunSync()
+    r.r2 = Queue.drainOnce[SyncIO, String](queue2).unsafeRunSync()
   }
 }

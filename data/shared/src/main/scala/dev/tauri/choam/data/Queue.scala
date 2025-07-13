@@ -118,14 +118,18 @@ object Queue {
     }
   }
 
-  private[choam] implicit final class DrainOnceSyntax[A](private val self: Queue.Poll[A]) extends AnyVal {
-    private[choam] final def drainOnce[F[_], AA >: A](implicit F: Reactive[F]): F[List[AA]] = {
-      F.monad.tailRecM(List.empty[AA]) { acc =>
-        F.monad.map(F.run(self.poll)) {
+  private[choam] final def drainOnce[F[_], A](queue: Queue.Poll[A])(implicit F: Reactive[F]): F[List[A]] = {
+      F.monad.tailRecM(List.empty[A]) { acc =>
+        F.monad.map(F.run(queue.poll)) {
           case Some(a) => Left(a :: acc)
           case None => Right(acc.reverse)
         }
       }
+    }
+
+  private[choam] implicit final class DrainOnceSyntax[A](private val self: Queue.Poll[A]) extends AnyVal {
+    private[choam] final def drainOnce[F[_]](implicit F: Reactive[F]): F[List[A]] = {
+      Queue.drainOnce(self)
     }
   }
 }
