@@ -82,9 +82,9 @@ private[choam] object UnboundedDeque {
               first.set(node) *> last.set(node)
             }
           } else {
-            nxt.prev.set1(null) *> first.set1(nxt)
+            nxt.prev.set(null) *> first.set(nxt)
           }
-        }.as(Some(fst.a)).postCommit(fst.next.set1(null)) // postCommit to help GC
+        }.as(Some(fst.a)).postCommit(fst.next.set(null)) // postCommit to help GC
       }
     }
 
@@ -98,9 +98,9 @@ private[choam] object UnboundedDeque {
               last.set(node) *> first.set(node)
             }
           } else {
-            prv.next.set1(null) *> last.set1(prv)
+            prv.next.set(null) *> last.set(prv)
           }
-        }.as(Some(lst.a)).postCommit(lst.prev.set1(null)) // postCommit to help GC
+        }.as(Some(lst.a)).postCommit(lst.prev.set(null)) // postCommit to help GC
       }
     }
   }

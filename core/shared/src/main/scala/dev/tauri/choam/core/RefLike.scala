@@ -31,24 +31,18 @@ sealed trait RefLike[A] {
 
   // primitive (for performance):
 
-  def set1(a: A): Rxn[Unit] // TODO: remove
+  def set(a: A): Rxn[Unit]
 
-  def set(a: A): Rxn[Unit] = set1(a)
-
-  def update1(f: A => A): Rxn[Unit]
+  def update(f: A => A): Rxn[Unit]
 
   // derived:
 
   final def getAndSet(nv: A): Rxn[A] =
     getAndUpdate { _ => nv }
 
-  @inline
-  final def update(f: A => A): Rxn[Unit] =
-    update1(f)
-
   /** Returns `false` iff the update failed */
   final def tryUpdate(f: A => A): Rxn[Boolean] =
-    update1(f).maybe
+    update(f).maybe
 
   /** Returns previous value */
   final def getAndUpdate(f: A => A): Rxn[A] =
@@ -86,7 +80,7 @@ private[choam] object RefLike {
       self.get.run[F]
 
     override def set(a: A): F[Unit] =
-      self.set1(a).run[F]
+      self.set(a).run[F]
 
     override def access: F[(A, A => F[Boolean])] = {
       F.monad.map(this.get) { ov =>
@@ -107,7 +101,7 @@ private[choam] object RefLike {
       self.tryModify(f).run[F]
 
     override def update(f: A => A): F[Unit] =
-      self.update1(f).run[F]
+      self.update(f).run[F]
 
     override def modify[B](f: A => (A, B)): F[B] =
       self.modify(f).run[F]

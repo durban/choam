@@ -45,11 +45,11 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
     final override def get: Rxn[A] =
       underlying.get
 
-    final override def set1(a: A): Rxn[Unit] = {
-      underlying.set1(a) *> notifyListeners(a)
+    final override def set(a: A): Rxn[Unit] = {
+      underlying.set(a) *> notifyListeners(a)
     }
 
-    final override def update1(f: A => A): Rxn[Unit] = {
+    final override def update(f: A => A): Rxn[Unit] = {
       underlying.updateAndGet(f).flatMap(notifyListeners)
     }
 

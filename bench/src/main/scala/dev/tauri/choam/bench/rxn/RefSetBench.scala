@@ -40,7 +40,7 @@ class RefSetBench {
   @Benchmark
   def set1(s: RefSetBench.St, k: McasImplState, rnd: RandomState): Unit = {
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
-    val r: Rxn[Unit] = s.refs(idx).set1(rnd.nextString())
+    val r: Rxn[Unit] = s.refs(idx).set(rnd.nextString())
     r.unsafePerform(k.mcasImpl)
   }
 
@@ -56,7 +56,7 @@ class RefSetBench {
   def update1(s: RefSetBench.St, k: McasImplState, rnd: RandomState): Unit = {
     val idx = Math.abs(rnd.nextInt()) % RefSetBench.size
     val str = rnd.nextString()
-    val r: Rxn[Unit] = s.refs(idx).update1(_ => str)
+    val r: Rxn[Unit] = s.refs(idx).update(_ => str)
     r.unsafePerform(k.mcasImpl)
   }
 

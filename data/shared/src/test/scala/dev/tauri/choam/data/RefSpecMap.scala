@@ -170,7 +170,7 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
     for {
       m <- newMap[String, String]
       ref = m.refLike(key = "foo", default = "")
-      _ <- ref.set1("bar").run[F]
+      _ <- ref.set("bar").run[F]
       _ <- assertResultF(ref.get.run[F], "bar")
       _ <- ref.set("").run[F]
       _ <- assertResultF(Map.unsafeSnapshot(m), ScalaMap.empty[String, String])

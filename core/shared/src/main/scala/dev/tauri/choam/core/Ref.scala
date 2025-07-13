@@ -42,10 +42,10 @@ sealed trait Ref[A] extends RefLike.UnsealedRefLike[A] { this: MemoryLocation[A]
   final override def modify[B](f: A => (A, B)): Rxn[B] =
     Rxn.loc.modify(this)(f)
 
-  final override def set1(a: A): Rxn[Unit] =
+  final override def set(a: A): Rxn[Unit] =
     Rxn.ref.updSet1(this, a)
 
-  final override def update1(f: A => A): Rxn[Unit] =
+  final override def update(f: A => A): Rxn[Unit] =
     Rxn.ref.updUpdate1(this)(f)
 
   // TODO: eventually remove the *With methods, because

@@ -68,10 +68,10 @@ trait RxnSpecJvm_Emcas[F[_]] extends RxnSpecJvm[F] with SpecEmcas {
         latch1.countDown()
         // another commit changes the global version here
         latch2.await()
-        ref1.set1(a + "a")
+        ref1.set(a + "a")
       }
       tsk1 = rxn1.run[F]
-      rxn2 = ref2.set1("y")
+      rxn2 = ref2.set("y")
       tsk2 = F.delay(latch1.await()) *> rxn2.run[F] *> F.delay(latch2.countDown())
       _ <- F.both(tsk1, tsk2)
       _ <- assertResultF(ref1.get.run[F], "aa")
@@ -316,7 +316,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
         Rxn.unsafe.forceValidate.as(v1)
       }
       tsk1 = rxn1.run[F]
-      rxn2 = r2.set1("y")
+      rxn2 = r2.set("y")
       tsk2 = F.delay(latch1.await()) *> rxn2.run[F] *> F.delay(latch2.countDown())
       v1 <- F.both(tsk1, tsk2).map(_._1)
       _ <- assertEqualsF(v1, "b")
@@ -341,7 +341,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
         Rxn.unsafe.forceValidate.as(v1)
       }
       tsk1 = rxn1.run[F]
-      rxn2 = r1.set1("c")
+      rxn2 = r1.set("c")
       tsk2 = F.delay(latch1.await()) *> rxn2.run[F] *> F.delay(latch2.countDown())
       v1 <- F.both(tsk1, tsk2).map(_._1)
       _ <- assertEqualsF(v1, "c")
@@ -542,7 +542,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
         latch2.await()
         // this will NOT need to retry, because we can extend the log:
         r2.get.flatMap { v2 =>
-          r2.set1(99).as((v1, v2))
+          r2.set(99).as((v1, v2))
         }
       }
       rxn2Task = F.delay(latch1.await()) *> r2.update(_ + 1).run[F] *> F.delay(latch2.countDown())
@@ -622,7 +622,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
     val t = for {
       r1 <- Ref("a").run[F]
       r2 <- Ref("x").run[F]
-      rxn1 = r1.get <* r2.set1("y")
+      rxn1 = r1.get <* r2.set("y")
       rxn2 = r2.get * r1.get
       rss <- F.both(rxn1.run[F], rxn2.run[F])
       _ <- assertEqualsF(rss._1, "a")
@@ -636,7 +636,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
     val t = for {
       r1 <- Ref("a").run[F]
       r2 <- Ref("x").run[F]
-      rxn1 = r1.set("b") *> r2.set1("y")
+      rxn1 = r1.set("b") *> r2.set("y")
       rxn2 = r2.get * r1.get
       rss <- F.both(rxn1.run[F], rxn2.run[F])
       _ <- assertF((rss._2 === ("x", "a")) || (rss._2 === ("y", "b")))

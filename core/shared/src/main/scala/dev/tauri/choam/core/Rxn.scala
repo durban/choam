@@ -2732,7 +2732,7 @@ private sealed abstract class RxnInstances11 extends RxnSyntax0 { self: Rxn.type
           final override def get: Rxn[A] =
             underlying.get
           final override def set(a: A): Rxn[Unit] =
-            underlying.set1(a)
+            underlying.set(a)
           final override def access: Rxn[(A, A => Rxn[Boolean])] = {
             underlying.get.map { ov =>
               val setter = { (nv: A) =>
@@ -2747,7 +2747,7 @@ private sealed abstract class RxnInstances11 extends RxnSyntax0 { self: Rxn.type
           final override def tryModify[B](f: A => (A, B)): Rxn[Option[B]] =
             this.modify(f).attempt
           final override def update(f: A => A): Rxn[Unit] =
-            underlying.update1(f)
+            underlying.update(f)
           final override def modify[B](f: A => (A, B)): Rxn[B] =
             underlying.modify(f)
           final override def tryModifyState[B](state: State[A, B]): Rxn[Option[B]] =

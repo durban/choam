@@ -174,7 +174,7 @@ object PubSub {
               new PubSubBuffer[F, A](bufferSize, size.get, wl) {
 
                 protected[this] final override def handleOverflow(newChunk: Chunk[A], missingCapacity: Int): Rxn[Result] =
-                  dropOldestN(missingCapacity) *> size.update1(_ - missingCapacity) *> wl.set0(newChunk).as(Success)
+                  dropOldestN(missingCapacity) *> size.update(_ - missingCapacity) *> wl.set0(newChunk).as(Success)
 
                 private[this] final def dropOldestN(n: Int): Rxn[Unit] = {
                   underlying.tryTakeLast.flatMap {
