@@ -24,7 +24,7 @@ import cats.effect.IO
 
 import fs2.{ Stream, Chunk }
 
-import async.{ AsyncQueue, UnboundedQueue, BoundedQueue, Promise }
+import async.{ AsyncQueue, BoundedQueue, Promise }
 import syntax._
 
 final class StreamSpec_ThreadConfinedMcas_IO
@@ -36,7 +36,7 @@ trait StreamSpec[F[_]]
   extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   test("UnboundedQueue to stream") {
-    def check(q: UnboundedQueue[String]): F[Unit] = {
+    def check(q: AsyncQueue[String]): F[Unit] = {
       for {
         _ <- assumeF(this.mcasImpl.isThreadSafe)
         fibVec <- q.stream.take(8).compile.toVector.start

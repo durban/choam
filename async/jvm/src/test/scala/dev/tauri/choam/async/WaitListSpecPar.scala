@@ -41,7 +41,7 @@ final class WaitListSpecPar_DefaultMcas_IO
 
 trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
-  private val common = List[(TestOptions, F[AsyncQueueSource[String] & BoundedQueueSink[String]])](
+  private val common = List[(TestOptions, F[AsyncQueue.Take[String] & AsyncQueue.Put[String]])](
     ("AsyncQueue.unbounded", AsyncQueue.unbounded[String].run[F].widen),
     ("AsyncQueue.unboundedWithSize", AsyncQueue.unboundedWithSize[String].run[F].widen),
     ("AsyncQueue.bounded", AsyncQueue.bounded[String](42).run[F].widen),
@@ -55,7 +55,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     testDequeAndPollRace(testOpts, newEmptyQ)
   }
 
-  private def deqAndSave(q: AsyncQueueSource[String], ref: Ref[F, String]): F[Unit] = {
+  private def deqAndSave(q: AsyncQueue.Take[String], ref: Ref[F, String]): F[Unit] = {
     F.uncancelable { poll =>
       poll(q.take).flatMap { s =>
         // if deque completes, we will certainly save the item:
@@ -66,7 +66,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   private def testDequeCancel(
     testOpts: TestOptions,
-    newEmptyQ: F[AsyncQueueSource[String] & BoundedQueueSink[String]],
+    newEmptyQ: F[AsyncQueue.Take[String] & AsyncQueue.Put[String]],
   ): Unit = {
     test(testOpts.withName(s"${testOpts.name}: deque cancel race")) {
       val t = for {
@@ -89,7 +89,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   private def testDequeAndPollRace(
     testOpts: TestOptions,
-    newEmptyQ: F[AsyncQueueSource[String] & BoundedQueueSink[String]],
+    newEmptyQ: F[AsyncQueue.Take[String] & AsyncQueue.Put[String]],
   ): Unit = {
     test(testOpts.withName(s"${testOpts.name}: deque and poll race")) {
       val t = for {
@@ -114,7 +114,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   private def testEnqueueCancelBounded(
     name: String,
-    newEmptyQ: F[AsyncQueueSource[String] & BoundedQueueSink[String]],
+    newEmptyQ: F[AsyncQueue.Take[String] & AsyncQueue.Put[String]],
     bounds: List[Int],
   ): Unit = {
     for (bound <- bounds) {
@@ -124,11 +124,11 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   private def _testEnqueueCancelBounded(
     name: String,
-    newEmptyQ: F[AsyncQueueSource[String] & BoundedQueueSink[String]],
+    newEmptyQ: F[AsyncQueue.Take[String] & AsyncQueue.Put[String]],
     bound: Int,
   ): Unit = {
 
-    def enqAndSave(q: BoundedQueueSink[String], ref: Ref[F, Boolean], item: String): F[Unit] = {
+    def enqAndSave(q: AsyncQueue.Put[String], ref: Ref[F, Boolean], item: String): F[Unit] = {
       F.uncancelable { poll =>
         poll(q.put(item)).flatMap { _ =>
           // if enqueue completes, we will certainly set it to true:
@@ -137,7 +137,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       }
     }
 
-    def deqIntoDeferred(q: AsyncQueueSource[String], d: Deferred[F, String]): F[Unit] = {
+    def deqIntoDeferred(q: AsyncQueue.Take[String], d: Deferred[F, String]): F[Unit] = {
       F.uncancelable { poll =>
         poll(q.take[F, String]).flatMap { s =>
           d.complete(s).flatMap { ok =>

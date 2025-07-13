@@ -22,13 +22,12 @@ import cats.effect.std.{ Queue => CatsQueue }
 
 import core.{ Rxn, AsyncReactive }
 
-sealed trait AsyncQueueSource[+A] extends data.Queue.UnsealedQueuePoll[A] {
-  // TODO: add InvariantSyntax (to be able to call it like `.take[F]`)
-  def take[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA]
-}
+sealed trait AsyncQueue[A]
+  extends data.Queue.UnsealedQueue[A]
+  with AsyncQueue.SourceSink[A] {
 
-sealed trait BoundedQueueSink[-A] extends data.Queue.UnsealedQueueOffer[A] {
-  def put[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit]
+  final override def put[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
+    F.apply(this.add(a))
 }
 
 /**
@@ -56,14 +55,30 @@ sealed trait BoundedQueueSink[-A] extends data.Queue.UnsealedQueueOffer[A] {
  */
 object AsyncQueue {
 
-  private[choam] trait UnsealedAsyncQueueSource[+A]
-    extends AsyncQueueSource[A]
+  sealed trait Take[+A] extends data.Queue.UnsealedQueuePoll[A] {
+    // TODO: add InvariantSyntax (to be able to call it like `.take[F]`)
+    def take[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA]
+  }
 
-  private[choam] trait UnsealedBoundedQueueSink[-A]
-    extends BoundedQueueSink[A]
+  sealed trait Put[-A] extends data.Queue.UnsealedQueueOffer[A] {
+    def put[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit]
+  }
 
-  final def unbounded[A]: Rxn[UnboundedQueue[A]] =
-    UnboundedQueue[A]
+  sealed trait SourceSink[A]
+    extends data.Queue.UnsealedQueueSourceSink[A]
+    with AsyncQueue.Take[A]
+    with AsyncQueue.Put[A]
+
+  sealed trait WithSize[A]
+    extends AsyncQueue[A] {
+
+    def size: Rxn[Int]
+
+    def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A]
+  }
+
+  final def unbounded[A]: Rxn[AsyncQueue[A]] =
+    UnboundedQueueImpl[A]
 
   final def bounded[A](bound: Int): Rxn[BoundedQueue[A]] =
     BoundedQueue.array[A](bound)
@@ -74,8 +89,23 @@ object AsyncQueue {
   final def ringBuffer[A](capacity: Int): Rxn[OverflowQueue[A]] =
     OverflowQueue.ringBuffer[A](capacity)
 
-  final def unboundedWithSize[A]: Rxn[UnboundedQueue.WithSize[A]] =
-    UnboundedQueue.withSize[A]
+  final def unboundedWithSize[A]: Rxn[AsyncQueue.WithSize[A]] =
+    UnboundedQueueImpl.withSize[A]
+
+  private[choam] trait UnsealedAsyncQueueTake[+A]
+    extends AsyncQueue.Take[A]
+
+  private[choam] trait UnsealedAsyncQueuePut[-A]
+    extends AsyncQueue.Put[A]
+
+  private[choam] trait UnsealedAsyncQueueSourceSink[A]
+    extends AsyncQueue.SourceSink[A]
+
+  private[choam] trait UnsealedAsyncQueue[A]
+    extends AsyncQueue[A]
+
+  private[choam] trait UnsealedAsyncQueueWithSize[A]
+    extends AsyncQueue.WithSize[A]
 
   // TODO: final def synchronous[A]: Rxn[BoundedQueue[A]] = ...
   // TODO:
@@ -105,7 +135,7 @@ object AsyncQueue {
   // TODO: that have a performance advantage? Maybe if contention
   // TODO: is high (because the CE queue uses an single Ref)?
 
-  private[async] final class CatsQueueAdapter[F[_] : AsyncReactive, A](self: UnboundedQueue.WithSize[A])
+  private[async] final class CatsQueueAdapter[F[_] : AsyncReactive, A](self: AsyncQueue.WithSize[A])
     extends CatsQueue[F, A] {
 
     final override def take: F[A] =

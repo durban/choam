@@ -21,10 +21,10 @@ package stream
 import cats.effect.std.{ Queue => CatsQueue }
 
 import core.AsyncReactive
-import async.{ AsyncQueueSource, BoundedQueueSink }
+import async.AsyncQueue
 
 private final class Fs2QueueWrapper[F[_], A](
-  self: AsyncQueueSource[A] & BoundedQueueSink[A],
+  self: AsyncQueue.Take[A] & AsyncQueue.Put[A],
 )(implicit F: AsyncReactive[F]) extends CatsQueue[F, A] {
   final override def take: F[A] =
     self.take

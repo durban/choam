@@ -24,9 +24,7 @@ import core.{ Rxn, Ref, AsyncReactive }
 import data.Queue
 
 sealed trait BoundedQueue[A]
-  extends AsyncQueue.UnsealedAsyncQueueSource[A]
-  with AsyncQueue.UnsealedBoundedQueueSink[A]
-  with Queue.UnsealedQueueSourceSink[A] {
+  extends AsyncQueue.UnsealedAsyncQueueSourceSink[A] {
 
   def bound: Int
 
@@ -35,10 +33,7 @@ sealed trait BoundedQueue[A]
   def size: Rxn[Int]
 }
 
-object BoundedQueue {
-
-  private[choam] trait UnsealedBoundedQueue[A]
-    extends BoundedQueue[A]
+private[choam] object BoundedQueue {
 
   final def linked[A](bound: Int): Rxn[BoundedQueue[A]] = {
     require(bound > 0)

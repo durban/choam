@@ -23,7 +23,7 @@ import cats.effect.std.{ Queue => CatsQueue }
 import core.{ Rxn, AsyncReactive }
 
 sealed trait OverflowQueue[A]
-  extends UnboundedQueue.UnsealedWithSize[A] {
+  extends AsyncQueue.UnsealedAsyncQueueWithSize[A] {
 
   def capacity: Int
 }

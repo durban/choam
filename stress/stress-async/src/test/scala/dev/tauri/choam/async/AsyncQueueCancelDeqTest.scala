@@ -40,7 +40,7 @@ class AsyncQueueCancelDeqTest {
   private[this] val runtime =
     cats.effect.unsafe.IORuntime.global
 
-  private[this] val q: UnboundedQueue[String] =
+  private[this] val q: AsyncQueue[String] =
     AsyncQueue.unbounded[String].run[SyncIO].unsafeRunSync()
 
   private[this] var result1: String =

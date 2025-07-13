@@ -53,7 +53,7 @@ trait WaitListSpec[F[_]]
   commonTests("WaitList", AsyncQueue.unbounded[String].run[F].widen)
   commonTests("GenWaitList", AsyncQueue.bounded[String](8).run[F].widen)
 
-  private def commonTests(topts: TestOptions, newQueue: F[AsyncQueueSource[String] & data.Queue.Offer[String]]): Unit = {
+  private def commonTests(topts: TestOptions, newQueue: F[AsyncQueue.Take[String] & data.Queue.Offer[String]]): Unit = {
 
     test(topts.withName(s"${topts.name}: deque and poll race")) {
       for {
