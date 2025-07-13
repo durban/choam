@@ -26,64 +26,64 @@ import cats.effect.kernel.{ Deferred, DeferredSink, DeferredSource }
 import core.{ Rxn, Ref, Reactive, AsyncReactive }
 import Ref.AllocationStrategy
 
-sealed trait PromiseRead[A] { self =>
-  def get[F[_]](implicit F: AsyncReactive[F]): F[A]
-  def tryGet: Rxn[Option[A]]
-  def map[B](f: A => B): PromiseRead[B]
-  def toCats[F[_]](implicit F: AsyncReactive[F]): DeferredSource[F, A]
-}
-
-object PromiseRead {
-
-  implicit final def covariantFunctorForPromiseRead: Functor[PromiseRead] =
-    _covariantFunctorForPromiseRead
-
-  private[this] val _covariantFunctorForPromiseRead: Functor[PromiseRead] = {
-    new Functor[PromiseRead] {
-      final override def map[A, B](p: PromiseRead[A])(f: A => B): PromiseRead[B] =
-        p.map(f)
-    }
-  }
-}
-
-sealed trait PromiseWrite[A] { self =>
-
-  def complete(a: A): Rxn[Boolean]
-
-  private[choam] def unsafeComplete(a: A)(implicit ir: unsafe.InRxn2): Boolean
-
-  final def contramap[B](f: B => A): PromiseWrite[B] = new PromiseWrite[B] {
-    final override def complete(b: B): Rxn[Boolean] =
-      self.complete(f(b))
-    final override def unsafeComplete(b: B)(implicit ir: unsafe.InRxn2): Boolean =
-      self.unsafeComplete(f(b))
-  }
-
-  final def toCats[F[_]](implicit F: Reactive[F]): DeferredSink[F, A] = new DeferredSink[F, A] {
-    final override def complete(a: A): F[Boolean] =
-      self.complete(a).run[F]
-  }
-}
-
-object PromiseWrite {
-
-  private[this] val _contravariantFunctorForPromiseWrite: Contravariant[PromiseWrite] = {
-    new Contravariant[PromiseWrite] {
-      final override def contramap[A, B](p: PromiseWrite[A])(f: B => A): PromiseWrite[B] =
-        p.contramap(f)
-    }
-  }
-
-  implicit def contravariantFunctorForPromiseWrite: Contravariant[PromiseWrite] =
-    _contravariantFunctorForPromiseWrite
-}
-
-sealed trait Promise[A] extends PromiseRead[A] with PromiseWrite[A] {
+sealed trait Promise[A] extends Promise.Get[A] with Promise.Complete[A] {
   def imap[B](f: A => B)(g: B => A): Promise[B]
   override def toCats[F[_]](implicit F: AsyncReactive[F]): Deferred[F, A]
 }
 
 object Promise {
+
+  sealed trait Get[A] { self =>
+    def get[F[_]](implicit F: AsyncReactive[F]): F[A]
+    def tryGet: Rxn[Option[A]]
+    def map[B](f: A => B): Promise.Get[B]
+    def toCats[F[_]](implicit F: AsyncReactive[F]): DeferredSource[F, A]
+  }
+
+  object Get {
+
+    implicit final def covariantFunctorForPromiseGet: Functor[Promise.Get] =
+      _covariantFunctorForPromiseGet
+
+    private[this] val _covariantFunctorForPromiseGet: Functor[Promise.Get] = {
+      new Functor[Promise.Get] {
+        final override def map[A, B](p: Promise.Get[A])(f: A => B): Promise.Get[B] =
+          p.map(f)
+      }
+    }
+  }
+
+  sealed trait Complete[A] { self =>
+
+    def complete(a: A): Rxn[Boolean]
+
+    private[choam] def unsafeComplete(a: A)(implicit ir: unsafe.InRxn2): Boolean
+
+    final def contramap[B](f: B => A): Promise.Complete[B] = new Promise.Complete[B] {
+      final override def complete(b: B): Rxn[Boolean] =
+        self.complete(f(b))
+      final override def unsafeComplete(b: B)(implicit ir: unsafe.InRxn2): Boolean =
+        self.unsafeComplete(f(b))
+    }
+
+    final def toCats[F[_]](implicit F: Reactive[F]): DeferredSink[F, A] = new DeferredSink[F, A] {
+      final override def complete(a: A): F[Boolean] =
+        self.complete(a).run[F]
+    }
+  }
+
+  object Complete {
+
+    implicit final def contravariantFunctorForPromiseComplete: Contravariant[Promise.Complete] =
+      _contravariantFunctorForPromiseComplete
+
+    private[this] val _contravariantFunctorForPromiseComplete: Contravariant[Promise.Complete] = {
+      new Contravariant[Promise.Complete] {
+        final override def contramap[A, B](p: Promise.Complete[A])(f: B => A): Promise.Complete[B] =
+          p.contramap(f)
+      }
+    }
+}
 
   final def apply[A]: Rxn[Promise[A]] =
     apply[A](AllocationStrategy.Default)
@@ -138,9 +138,9 @@ object Promise {
   private[this] final class CancelId(val id: Long) extends InsertRes[Nothing]
 
   private[this] abstract class PromiseReadImpl[A]
-    extends PromiseRead[A] { self =>
+    extends Promise.Get[A] { self =>
 
-    final def map[B](f: A => B): PromiseRead[B] = new PromiseReadImpl[B] {
+    final def map[B](f: A => B): Promise.Get[B] = new PromiseReadImpl[B] {
       final override def get[F[_]](implicit F: AsyncReactive[F]): F[B] =
         F.monad.map(self.get)(f)
       final override def tryGet: Rxn[Option[B]] =

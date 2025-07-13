@@ -204,8 +204,8 @@ trait PromiseSpec[F[_]]
     for {
       _ <- assumeF(this.mcasImpl.isThreadSafe)
       p <- Promise[Int].run[F]
-      pw = (p : PromiseWrite[Int])
-      p2 = Contravariant[PromiseWrite[*]].contramap[Int, Int](pw)(_ / 2)
+      pw = (p : Promise.Complete[Int])
+      p2 = Contravariant[Promise.Complete].contramap[Int, Int](pw)(_ / 2)
       f <- p.get.start
       _ <- assertResultF(p2.complete(42).run[F], true)
       _ <- assertResultF(p2.complete(99).run[F], false)
@@ -217,8 +217,8 @@ trait PromiseSpec[F[_]]
     for {
       _ <- assumeF(this.mcasImpl.isThreadSafe)
       p <- Promise[Int].run[F]
-      pr = (p : PromiseRead[Int])
-      p2 = Functor[PromiseRead].map(pr)(_ * 2)
+      pr = (p : Promise.Get[Int])
+      p2 = Functor[Promise.Get].map(pr)(_ * 2)
       f <- p2.get.start
       _ <- assertResultF(p.complete(21).run[F], true)
       _ <- assertResultF(f.joinWithNever, 42)
