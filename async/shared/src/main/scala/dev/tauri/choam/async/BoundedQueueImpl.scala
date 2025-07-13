@@ -23,19 +23,9 @@ import cats.effect.std.{ Queue => CatsQueue }
 import core.{ Rxn, Ref, AsyncReactive }
 import data.Queue
 
-sealed trait BoundedQueue[A]
-  extends AsyncQueue.UnsealedAsyncQueueSourceSink[A] {
+private[choam] object BoundedQueueImpl {
 
-  def bound: Int
-
-  def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A]
-
-  def size: Rxn[Int]
-}
-
-private[choam] object BoundedQueue {
-
-  final def linked[A](bound: Int): Rxn[BoundedQueue[A]] = {
+  private[choam] final def linked[A](bound: Int): Rxn[AsyncQueue.SourceSinkWithSize[A]] = {
     require(bound > 0)
     (Queue.unbounded[A] * Ref.unpadded[Int](0)).flatMap {
       case (q, size) =>
@@ -49,28 +39,27 @@ private[choam] object BoundedQueue {
             else Rxn.pure((s, false))
           },
         ).map { gwl =>
-          new LinkedBoundedQueue[A](bound, size, gwl)
+          new LinkedBoundedQueue[A](size, gwl)
         }
     }
   }
 
-  final def array[A](bound: Int): Rxn[BoundedQueue[A]] = {
+  private[choam] final def array[A](bound: Int): Rxn[AsyncQueue.SourceSinkWithSize[A]] = {
     require(bound > 0)
     Queue.dropping[A](bound).flatMap { q =>
       GenWaitList[A](
         q.poll,
         q.offer,
       ).map { gwl =>
-        new ArrayBoundedQueue[A](bound, q, gwl)
+        new ArrayBoundedQueue[A](q, gwl)
       }
     }
   }
 
   private final class LinkedBoundedQueue[A](
-    _bound: Int,
     s: Ref[Int], // current size
     gwl: GenWaitList[A],
-  ) extends BoundedQueue[A] {
+  ) extends AsyncQueue.UnsealedAsyncQueueSourceSinkWithSize[A] {
 
     final override def poll: Rxn[Option[A]] =
       gwl.tryGet
@@ -83,9 +72,6 @@ private[choam] object BoundedQueue {
 
     final override def put[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
       gwl.asyncSet(a)
-
-    final override def bound: Int =
-      _bound
 
     final override def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A] = {
       new CatsQueueFromBoundedQueue(this)
@@ -96,10 +82,9 @@ private[choam] object BoundedQueue {
   }
 
   private final class ArrayBoundedQueue[A](
-    _bound: Int,
     q: Queue.WithSize[A],
     gwl: GenWaitList[A],
-  ) extends BoundedQueue[A] { self =>
+  ) extends AsyncQueue.UnsealedAsyncQueueSourceSinkWithSize[A] { self =>
 
     final override def poll: Rxn[Option[A]] =
       gwl.tryGet
@@ -113,9 +98,6 @@ private[choam] object BoundedQueue {
     final override def put[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
       gwl.asyncSet(a)
 
-    final override def bound: Int =
-      _bound
-
     final override def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A] = {
       new CatsQueueFromBoundedQueue[F, A](this)(using F)
     }
@@ -125,7 +107,7 @@ private[choam] object BoundedQueue {
   }
 
   private[async] final class CatsQueueFromBoundedQueue[F[_], A](
-    self: BoundedQueue[A]
+    self: AsyncQueue.SourceSinkWithSize[A]
   )(implicit F: AsyncReactive[F]) extends CatsQueue[F, A] {
     final override def take: F[A] =
       self.take

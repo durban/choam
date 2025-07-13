@@ -37,15 +37,15 @@ sealed trait Queue[A]
  *
  * Method summary of the various operations:
  *
- * |         | `Rxn` (may fail)   | `Rxn` (succeeds)         |
- * |---------|--------------------|--------------------------|
- * | insert  | `QueueSink#offer`  | `UnboundedQueueSink#add` |
- * | remove  | `Queue.Poll#poll`  | -                        |
- * | examine | `peek`             | -                        |
+ * |         | `Rxn` (may fail)    | `Rxn` (succeeds) |
+ * |---------|---------------------|------------------|
+ * | insert  | `Queue.Offer#offer` | `Queue.Add#add`  |
+ * | remove  | `Queue.Poll#poll`   | -                |
+ * | examine | `peek`              | -                |
  *
  * TODO: implement `peek`
  *
- * @see [[dev.tauri.choam.async.AsyncQueue]]
+ * @see [[dev.tauri.choam.async.AsyncQueue$]]
  *      for asynchronous (possibly fiber-blocking)
  *      variants of these methods
  */
@@ -77,8 +77,6 @@ object Queue {
   final def bounded[A](bound: Int): Rxn[Queue.SourceSink[A]] =
     dropping(bound)
 
-  // TODO: boundedWithSize : Queue.SourceSinkWithSize (?)
-
   final def dropping[A](capacity: Int): Rxn[Queue.WithSize[A]] =
     DroppingQueue.apply[A](capacity)
 
@@ -88,6 +86,8 @@ object Queue {
   final def unboundedWithSize[A]: Rxn[Queue.WithSize[A]] = {
     MsQueue.withSize[A]
   }
+
+  // TODO: boundedWithSize : Queue.SourceSinkWithSize (?)
 
   private[choam] final def unbounded[A](str: Ref.AllocationStrategy): Rxn[Queue[A]] =
     MsQueue[A](str)

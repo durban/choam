@@ -45,7 +45,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     ("AsyncQueue.unbounded", AsyncQueue.unbounded[String].run[F].widen),
     ("AsyncQueue.unboundedWithSize", AsyncQueue.unboundedWithSize[String].run[F].widen),
     ("AsyncQueue.bounded", AsyncQueue.bounded[String](42).run[F].widen),
-    ("BoundedQueue.linked", BoundedQueue.linked[String](42).run[F].widen),
+    ("BoundedQueue.linked", BoundedQueueImpl.linked[String](42).run[F].widen),
     ("AsyncQueue.dropping", AsyncQueue.dropping[String](42).run[F].widen),
     ("AsyncQueue.ringBuffer", AsyncQueue.ringBuffer[String](42).run[F].widen),
   )
@@ -110,7 +110,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   }
 
   testEnqueueCancelBounded("AsyncQueue.bounded", AsyncQueue.bounded[String](42).run[F].widen, bounds = List(1, 8))
-  testEnqueueCancelBounded("BoundedQueue.linked", BoundedQueue.linked[String](42).run[F].widen, bounds = List(1, 8))
+  testEnqueueCancelBounded("BoundedQueue.linked", BoundedQueueImpl.linked[String](42).run[F].widen, bounds = List(1, 8))
 
   private def testEnqueueCancelBounded(
     name: String,

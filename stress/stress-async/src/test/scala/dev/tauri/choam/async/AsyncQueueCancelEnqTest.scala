@@ -39,7 +39,7 @@ class AsyncQueueCancelEnqTest {
   private[this] val runtime =
     cats.effect.unsafe.IORuntime.global
 
-  private[this] val q: BoundedQueue[String] = {
+  private[this] val q: AsyncQueue.SourceSink[String] = {
     val q = AsyncQueue.bounded[String](1).run[SyncIO].unsafeRunSync()
     assert(q.offer("x").run[SyncIO].unsafeRunSync()) // make it full
     q

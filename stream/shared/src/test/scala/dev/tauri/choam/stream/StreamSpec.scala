@@ -24,7 +24,7 @@ import cats.effect.IO
 
 import fs2.{ Stream, Chunk }
 
-import async.{ AsyncQueue, BoundedQueue, Promise }
+import async.{ AsyncQueue, BoundedQueueImpl, Promise }
 import syntax._
 
 final class StreamSpec_ThreadConfinedMcas_IO
@@ -60,7 +60,7 @@ trait StreamSpec[F[_]]
   }
 
   test("BoundedQueue to stream") {
-    def check(q: BoundedQueue[Option[String]]): F[Unit] = {
+    def check(q: AsyncQueue.SourceSinkWithSize[Option[String]]): F[Unit] = {
       for {
         _ <- assumeF(this.mcasImpl.isThreadSafe)
         fibVec <- Stream.fromQueueNoneTerminated(q.toCats, limit = 4).compile.toVector.start
@@ -74,8 +74,8 @@ trait StreamSpec[F[_]]
       } yield ()
     }
     for {
-      q1 <- BoundedQueue.array[Option[String]](bound = 10).run[F]
-      q2 <- BoundedQueue.linked[Option[String]](bound = 10).run[F]
+      q1 <- BoundedQueueImpl.array[Option[String]](bound = 10).run[F]
+      q2 <- BoundedQueueImpl.linked[Option[String]](bound = 10).run[F]
       _ <- check(q1)
       _ <- check(q2)
     } yield ()

@@ -34,7 +34,7 @@ sealed trait AsyncQueue[A]
  * Various asynchronous queues
  *
  * Adds asynchronous variants to the methods of
- * [[dev.tauri.choam.data.Queue]] (see the last column
+ * [[dev.tauri.choam.data.Queue$]] (see the last column
  * of the table below). These operations have a result
  * type in an asynchronous `F`, and may be fiber-blocking.
  * For example, asynchronously removing an element from
@@ -43,13 +43,15 @@ sealed trait AsyncQueue[A]
  *
  * Method summary of the various operations:
  *
- * |         | `Rxn` (may fail)   | `Rxn` (succeeds)         | `F` (may block)         |
- * |---------|--------------------|--------------------------|-------------------------|
- * | insert  | `QueueSink#offer`  | `UnboundedQueueSink#add` | `BoundedQueueSink#put`  |
- * | remove  | `QueueSource#poll` | -                        | `AsyncQueueSource#take` |
- * | examine | `peek`             | -                        | -                       |
+ * |         | `Rxn` (may fail)    | `Rxn` (succeeds) | `F` (may block)        |
+ * |---------|---------------------|------------------|------------------------|
+ * | insert  | `Queue.Offer#offer` | `Queue.Add#add`  | `AsyncQueue.Put#put`   |
+ * | remove  | `Queue.Poll#poll`   | -                | `AsyncQueue.Take#take` |
+ * | examine | `peek`              | -                | -                      |
  *
- * @see [[dev.tauri.choam.data.Queue]]
+ * TODO: implement `peek`
+ *
+ * @see [[dev.tauri.choam.data.Queue$]]
  *      for the synchronous methods (all except
  *      the last column of this table)
  */
@@ -80,8 +82,8 @@ object AsyncQueue {
   final def unbounded[A]: Rxn[AsyncQueue[A]] =
     UnboundedQueueImpl[A]
 
-  final def bounded[A](bound: Int): Rxn[BoundedQueue[A]] =
-    BoundedQueue.array[A](bound)
+  final def bounded[A](bound: Int): Rxn[AsyncQueue.SourceSink[A]] =
+    BoundedQueueImpl.array[A](bound) // TODO: technically, this is already "WithSize" (see also below)
 
   final def dropping[A](capacity: Int): Rxn[AsyncQueue.WithSize[A]] =
     OverflowQueueImpl.droppingQueue[A](capacity)
@@ -91,6 +93,8 @@ object AsyncQueue {
 
   final def unboundedWithSize[A]: Rxn[AsyncQueue.WithSize[A]] =
     UnboundedQueueImpl.withSize[A]
+
+  // TODO: boundedWithSize : AsyncQueue.SourceSinkWithSize? (see below)
 
   private[choam] trait UnsealedAsyncQueueTake[+A]
     extends AsyncQueue.Take[A]
@@ -106,6 +110,17 @@ object AsyncQueue {
 
   private[choam] trait UnsealedAsyncQueueWithSize[A]
     extends AsyncQueue.WithSize[A]
+
+  private[choam] sealed trait SourceSinkWithSize[A] // TODO: do we want this public? (see above)
+    extends AsyncQueue.SourceSink[A] {
+
+    def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A]
+
+    def size: Rxn[Int]
+  }
+
+  private[choam] trait UnsealedAsyncQueueSourceSinkWithSize[A]
+    extends AsyncQueue.SourceSinkWithSize[A]
 
   // TODO: final def synchronous[A]: Rxn[BoundedQueue[A]] = ...
   // TODO:
