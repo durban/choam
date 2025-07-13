@@ -23,6 +23,7 @@ import cats.data.State
 import cats.syntax.traverse._
 
 import fs2.Stream
+import fs2.concurrent.SignallingRef
 
 import core.{ Rxn, Ref, RefLike, AsyncReactive }
 import data.Map
@@ -30,14 +31,14 @@ import async.Promise
 
 import Fs2SignallingRefWrapper.{ Listener, Waiting, Full, Empty }
 
-private[stream] final class Fs2SignallingRefWrapper[F[_], A](
+private final class Fs2SignallingRefWrapper[F[_], A](
   underlying: Ref[A],
   val listeners: Map.Extra[Unique.Token, Ref[Listener[F, A]]],
-)(implicit F: AsyncReactive[F]) extends RxnSignallingRef.UnsealedRxnSignallingRef[F, A] {
+)(implicit F: AsyncReactive[F]) extends SignallingRef[F, A] {
 
   // Rxn API:
 
-  final override def refLike: RefLike[A] =
+  final def refLike: RefLike[A] =
     _refLike
 
   private[this] val _refLike: RefLike[A] = new RefLike.UnsealedRefLike[A] {
@@ -150,27 +151,27 @@ private[stream] final class Fs2SignallingRefWrapper[F[_], A](
     _refLikeAsCats.modifyState(state)
 }
 
-private[stream] object Fs2SignallingRefWrapper {
+private object Fs2SignallingRefWrapper {
 
-  final def apply[F[_] : AsyncReactive, A](initial: A): Rxn[Fs2SignallingRefWrapper[F, A]] = {
-    (Ref.unpadded[A](initial) * Map.simpleHashMap[Unique.Token, Ref[Listener[F, A]]]).map {
+  final def apply[F[_] : AsyncReactive, A](initial: A, str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Rxn[Fs2SignallingRefWrapper[F, A]] = {
+    (Ref[A](initial, str) * Map.simpleHashMap[Unique.Token, Ref[Listener[F, A]]](str)).map {
       case (underlying, listeners) =>
         new Fs2SignallingRefWrapper[F, A](underlying, listeners)
     }
   }
 
   /** Internal state of the `Ref` of each listener */
-  sealed abstract class Listener[F[_], A]
+  private[stream] sealed abstract class Listener[F[_], A]
 
   /** The listener is waiting for an item with this `Promise` */
-  final case class Waiting[F[_], A](next: Promise[A])
+  private[stream] final case class Waiting[F[_], A](next: Promise[A])
     extends Listener[F, A]
 
   /** An item is ready to be taken by the listener */
-  final case class Full[F[_], A](value: A)
+  private[stream] final case class Full[F[_], A](value: A)
     extends Listener[F, A]
 
   /** An item was taken by the listener, but it's not (yet) waiting for the next */
-  final case class Empty[F[_], A]()
+  private[stream] final case class Empty[F[_], A]()
     extends Listener[F, A]
 }

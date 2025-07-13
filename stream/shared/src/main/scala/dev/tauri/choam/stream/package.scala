@@ -18,19 +18,34 @@
 package dev.tauri.choam
 
 import fs2.{ Chunk, Stream }
+import fs2.concurrent.SignallingRef
 
-import core.{ Rxn, AsyncReactive }
+import core.{ Rxn, Ref, RefLike, AsyncReactive }
 import async.AsyncQueue
 
 package object stream {
 
   // TODO: Channel
-  // TODO: SignallingRef
   // TODO: SignallingMapRef
   // TODO: Topic
 
-  final def signallingRef[F[_] : AsyncReactive, A](initial: A): Rxn[RxnSignallingRef[F, A]] =
-    RxnSignallingRef[F, A](initial)
+  /**
+   * Creates an [[fs2.concurrent.SignallingRef]], which
+   * is also readable/writable in the context of
+   * [[dev.tauri.choam.core.Rxn]] (i.e., it has an
+   * associated [[dev.tauri.choam.core.RefLike]],
+   * which is returned as the first element of the tuple.
+   *
+   * @return a pair of (refLike, signallingRef), which
+   *         are "associated with" each other (i.e., use
+   *         the same underlying storage).
+   */
+  final def signallingRef[F[_] : AsyncReactive, A](
+    initial: A,
+    str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default,
+  ): Rxn[(RefLike[A], SignallingRef[F, A])] = {
+    Fs2SignallingRefWrapper[F, A](initial, str).map { sRef => (sRef.refLike, sRef) }
+  }
 
   // TODO: do we need these? ---v
 

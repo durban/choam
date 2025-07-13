@@ -61,10 +61,10 @@ object PubSub {
   }
 
   sealed abstract class Result
-  sealed abstract class ClosedOrSuccess extends Result
-  final object Closed extends ClosedOrSuccess
+  // TODO: sealed abstract class ClosedOrSuccess extends Result
+  final object Closed extends Result // TODO: extends ClosedOrSuccess
   final object Backpressured extends Result
-  final object Success extends ClosedOrSuccess
+  final object Success extends Result // TODO: extends ClosedOrSuccess
 
   private[this] val _axnClosed = Rxn.pure(Closed)
   private[this] val _axnBackpressured = Rxn.pure(Backpressured)

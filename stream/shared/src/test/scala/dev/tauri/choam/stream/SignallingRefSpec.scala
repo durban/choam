@@ -20,6 +20,7 @@ package stream
 
 import cats.effect.IO
 import fs2.Stream
+import fs2.concurrent.SignallingRef
 
 final class SignallingRefSpec_ThreadConfinedMcas_TickedIO
   extends BaseSpecTickedIO
@@ -29,9 +30,9 @@ final class SignallingRefSpec_ThreadConfinedMcas_TickedIO
 trait SignallingRefSpec[F[_]]
   extends BaseSpecAsyncF[F] { this: McasImplSpec & TestContextSpec[F] =>
 
-  test("RxnSignallingRef".ignore) {
+  test("RxnSignallingRef") {
     val N = 1000
-    def writer(ref: RxnSignallingRef[F, Int], next: Int): F[Unit] = {
+    def writer(ref: SignallingRef[F, Int], next: Int): F[Unit] = {
       if (next > N) {
         F.unit
       } else {
@@ -51,14 +52,15 @@ trait SignallingRefSpec[F[_]]
       // we assume that at least *some* updates are not lost:
       assertF(clue(l.length).toDouble >= (max.toDouble / 200.0)) *> go(l, -1)
     }
-    def checkListeners(ref: RxnSignallingRef[F, Int], min: Int, max: Int): F[Unit] = {
+    def checkListeners(ref: SignallingRef[F, Int], min: Int, max: Int): F[Unit] = {
       F.defer {
         val listeners = ref.asInstanceOf[Fs2SignallingRefWrapper[F, Int]].listeners.values.run[F]
         listeners.flatMap(n => assertF(clue(n.size) <= clue(max)) *> assertF(clue(n.size) >= clue(min)))
       }
     }
     for {
-      ref <- signallingRef[F, Int](initial = 0).run[F]
+      rr <- signallingRef[F, Int](initial = 0).run[F]
+      (_, ref) = rr
       listener = ref
         .discrete
         .evalTap(_ => F.cede)
