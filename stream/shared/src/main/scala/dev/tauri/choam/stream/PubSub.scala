@@ -48,11 +48,15 @@ sealed abstract class PubSub[F[_], A] {
 
 object PubSub {
 
-  final def apply[F[_] : AsyncReactive, A](defaultStrategy: OverflowStrategy): Rxn[PubSub[F, A]] = {
+  final def apply[F[_] : AsyncReactive, A](
+    defaultStrategy: OverflowStrategy,
+    str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default,
+  ): Rxn[PubSub[F, A]] = {
+    // TODO: if `str` is padded, this AtomicLong should also be padded
     Rxn.unsafe.delay { new AtomicLong }.flatMap { nextId =>
-      Ref(LongMap.empty[Subscription[F, A]]).flatMap { subscriptions =>
-        Ref(false).flatMap { isClosed =>
-          Promise[Unit].map { awaitClosed =>
+      Ref(LongMap.empty[Subscription[F, A]], str).flatMap { subscriptions =>
+        Ref(false, str).flatMap { isClosed =>
+          Promise[Unit](str).map { awaitClosed =>
             new PubSubImpl[F, A](nextId, subscriptions, isClosed, awaitClosed, defaultStrategy)
           }
         }
@@ -86,13 +90,14 @@ object PubSub {
       case drn: OverflowStrategy.DropNewest => dropNewest(drn.bufferSize)
     }
 
+    // TODO: add an `str: AllocationStrategy` parameter, and use it
     private[PubSub] def newBuffer[F[_] : AsyncReactive, A]: Rxn[PubSubBuffer[F, A]]
 
     protected[this] final def mkWaitList[A](
       underlying: UnboundedDeque[Chunk[A]],
       size: Ref[Int]
     ): Rxn[WaitList[Chunk[A]]] = {
-      WaitList.apply[Chunk[A]](
+      WaitList.apply[Chunk[A]]( // TODO: pass AllocationStrategy
         underlying.tryTakeLast.flatMap {
           case None =>
             Rxn.none
