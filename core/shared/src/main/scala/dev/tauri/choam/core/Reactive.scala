@@ -28,14 +28,19 @@ import internal.mcas.Mcas
 // TODO: data structure might just run things
 // TODO: with the `Default` (e.g., CDL#toCats).
 
-sealed trait Reactive[F[_]] extends ~>[Rxn, F] { self =>
+sealed trait Reactive[F[_]] extends ~>[Rxn, F] {
+
   def apply[A, B](r: Rxn[B], s: RetryStrategy.Spin = RetryStrategy.Default): F[B]
-  private[choam] def mcasImpl: Mcas
-  def monad: Monad[F]
+
   final def run[A](a: Rxn[A], s: RetryStrategy.Spin = RetryStrategy.Default): F[A] =
     this.apply[Any, A](a, s)
+
   final override def apply[A](a: Rxn[A]): F[A] =
     this.run(a, RetryStrategy.Default)
+
+  private[choam] def mcasImpl: Mcas
+
+  private[choam] def monad: Monad[F]
 }
 
 object Reactive {
