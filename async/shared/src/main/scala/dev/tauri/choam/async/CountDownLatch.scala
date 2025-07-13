@@ -47,7 +47,7 @@ object CountDownLatch {
           }
         }
         final override def await[F[_]](implicit F: AsyncReactive[F]): F[Unit] = {
-          p.get[F]
+          p.getF[F, Unit]
         }
         final override def toCats[F[_]](implicit F: AsyncReactive[F]): CatsCountDownLatch[F] = {
           new CatsCountDownLatch[F] {
