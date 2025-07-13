@@ -83,11 +83,11 @@ object AsyncQueue {
   final def bounded[A](bound: Int): Rxn[BoundedQueue[A]] =
     BoundedQueue.array[A](bound)
 
-  final def dropping[A](capacity: Int): Rxn[OverflowQueue[A]] =
-    OverflowQueue.droppingQueue[A](capacity)
+  final def dropping[A](capacity: Int): Rxn[AsyncQueue.WithSize[A]] =
+    OverflowQueueImpl.droppingQueue[A](capacity)
 
-  final def ringBuffer[A](capacity: Int): Rxn[OverflowQueue[A]] =
-    OverflowQueue.ringBuffer[A](capacity)
+  final def ringBuffer[A](capacity: Int): Rxn[AsyncQueue.WithSize[A]] =
+    OverflowQueueImpl.ringBuffer[A](capacity)
 
   final def unboundedWithSize[A]: Rxn[AsyncQueue.WithSize[A]] =
     UnboundedQueueImpl.withSize[A]

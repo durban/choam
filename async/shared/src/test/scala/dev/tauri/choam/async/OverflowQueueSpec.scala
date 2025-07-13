@@ -39,31 +39,31 @@ final class OverflowQueueSpec_Lazy_ThreadConfinedMcas_IO
 trait StrictOverflowQueueSpec[F[_]]
   extends OverflowQueueSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
 
-  final override def newRingBuffer[A](capacity: Int): F[OverflowQueue[A]] =
-    OverflowQueue.ringBuffer[A](capacity).run[F]
+  final override def newRingBuffer[A](capacity: Int): F[AsyncQueue.WithSize[A]] =
+    AsyncQueue.ringBuffer[A](capacity).run[F]
 }
 
 trait LazyOverflowQueueSpec[F[_]]
   extends OverflowQueueSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
 
-  final override def newRingBuffer[A](capacity: Int): F[OverflowQueue[A]] =
-    OverflowQueue.lazyRingBuffer[A](capacity).run[F]
+  final override def newRingBuffer[A](capacity: Int): F[AsyncQueue.WithSize[A]] =
+    OverflowQueueImpl.lazyRingBuffer[A](capacity).run[F]
 }
 
 trait OverflowQueueSpec[F[_]]
   extends BaseSpecAsyncF[F]
   with ScalaCheckEffectSuite { this: McasImplSpec & TestContextSpec[F] =>
 
-  def newRingBuffer[A](capacity: Int): F[OverflowQueue[A]]
+  def newRingBuffer[A](capacity: Int): F[AsyncQueue.WithSize[A]]
 
-  def newDroppingQueue[A](capacity: Int): F[OverflowQueue[A]] =
-    OverflowQueue.droppingQueue(capacity).run[F]
+  def newDroppingQueue[A](capacity: Int): F[AsyncQueue.WithSize[A]] =
+    AsyncQueue.dropping(capacity).run[F]
 
   final val Max =
     2048
 
   test("RingBuffer property") {
-    def checkSize[A](q: OverflowQueue[A], qc: CatsQueue[F, A], s: CatsQueue[F, A]): F[Unit] = {
+    def checkSize[A](q: AsyncQueue.WithSize[A], qc: CatsQueue[F, A], s: CatsQueue[F, A]): F[Unit] = {
       q.size.run[F].flatMap { qs =>
         qc.size.flatMap { qcs =>
           s.size.flatMap { ss =>
@@ -102,7 +102,7 @@ trait OverflowQueueSpec[F[_]]
   }
 
   test("Dropping property") {
-    def checkSize[A](q: OverflowQueue[A], qc: CatsQueue[F, A], s: CatsQueue[F, A]): F[Unit] = {
+    def checkSize[A](q: AsyncQueue.WithSize[A], qc: CatsQueue[F, A], s: CatsQueue[F, A]): F[Unit] = {
       q.size.run[F].flatMap { qs =>
         qc.size.flatMap { qcs =>
           s.size.flatMap { ss =>
@@ -148,7 +148,7 @@ trait OverflowQueueSpec[F[_]]
     // OK, scalac overflows the stack if
     // a `for` is sufficiently long, so
     // we split the test into parts:
-    def part1(q: OverflowQueue[Int]): F[Unit] = for {
+    def part1(q: AsyncQueue.WithSize[Int]): F[Unit] = for {
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(q.poll.run[F], None)
       f1 <- q.take.start
@@ -169,7 +169,7 @@ trait OverflowQueueSpec[F[_]]
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(q.poll.run[F], None)
     } yield ()
-    def part2(q: OverflowQueue[Int]): F[Unit] = for {
+    def part2(q: AsyncQueue.WithSize[Int]): F[Unit] = for {
       _ <- assertResultF(q.size.run[F], 0)
       _ <- q.put[F](4)
       _ <- assertResultF(q.size.run[F], 1)
@@ -189,7 +189,7 @@ trait OverflowQueueSpec[F[_]]
       _ <- assertResultF(q.size.run[F], 0)
       _ <- assertResultF(q.poll.run[F], None)
     } yield ()
-    def part3(q: OverflowQueue[Int]): F[Unit] = for {
+    def part3(q: AsyncQueue.WithSize[Int]): F[Unit] = for {
       _ <- assertResultF(q.size.run[F], 0)
       f1 <- q.take.start
       _ <- this.tickAll
@@ -222,7 +222,7 @@ trait OverflowQueueSpec[F[_]]
       _ <- assertResultF(q.take, 13)
       _ <- assertResultF(q.size.run[F], 0)
     } yield ()
-    def part4(q: OverflowQueue[Int]): F[Unit] = for {
+    def part4(q: AsyncQueue.WithSize[Int]): F[Unit] = for {
       _ <- assertResultF(q.size.run[F], 0)
       _ <- q.put[F](14)
       _ <- assertResultF(q.size.run[F], 1)

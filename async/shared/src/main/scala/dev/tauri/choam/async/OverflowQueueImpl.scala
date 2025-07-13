@@ -22,46 +22,39 @@ import cats.effect.std.{ Queue => CatsQueue }
 
 import core.{ Rxn, AsyncReactive }
 
-sealed trait OverflowQueue[A]
-  extends AsyncQueue.UnsealedAsyncQueueWithSize[A] {
+private object OverflowQueueImpl {
 
-  def capacity: Int
-}
-
-object OverflowQueue {
-
-  final def ringBuffer[A](capacity: Int): Rxn[OverflowQueue[A]] = {
+  final def ringBuffer[A](capacity: Int): Rxn[AsyncQueue.WithSize[A]] = {
     data.Queue.ringBuffer[A](capacity).flatMap { rb =>
-      makeRingBuffer(capacity, rb)
+      makeRingBuffer(rb)
     }
   }
 
-  final def droppingQueue[A](capacity: Int): Rxn[OverflowQueue[A]] = {
+  final def droppingQueue[A](capacity: Int): Rxn[AsyncQueue.WithSize[A]] = {
     data.Queue.dropping[A](capacity).flatMap { dq =>
       GenWaitList[A](dq.poll, dq.offer).map { gwl =>
-        new DroppingQueue[A](capacity, dq, gwl)
+        new DroppingQueue[A](dq, gwl)
       }
     }
   }
 
   // TODO: do we need this?
-  private[choam] final def lazyRingBuffer[A](capacity: Int): Rxn[OverflowQueue[A]] = {
+  private[choam] final def lazyRingBuffer[A](capacity: Int): Rxn[AsyncQueue.WithSize[A]] = {
     data.Queue.lazyRingBuffer[A](capacity).flatMap { rb =>
-      makeRingBuffer(capacity, rb)
+      makeRingBuffer(rb)
     }
   }
 
-  private[this] final def makeRingBuffer[A](capacity: Int, underlying: data.Queue.WithSize[A]): Rxn[OverflowQueue[A]] = {
+  private[this] final def makeRingBuffer[A](underlying: data.Queue.WithSize[A]): Rxn[AsyncQueue.WithSize[A]] = {
     WaitList(underlying.poll, underlying.add).map { wl =>
-      new RingBuffer(capacity, underlying, wl)
+      new RingBuffer(underlying, wl)
     }
   }
 
   private final class RingBuffer[A](
-    final override val capacity: Int,
     buff: data.Queue.WithSize[A],
     wl: WaitList[A],
-  ) extends OverflowQueue[A] {
+  ) extends AsyncQueue.UnsealedAsyncQueueWithSize[A] {
 
     final override def size: Rxn[Int] =
       buff.size
@@ -83,10 +76,9 @@ object OverflowQueue {
   }
 
   private final class DroppingQueue[A](
-    final override val capacity: Int,
     q: data.Queue.WithSize[A],
     gwl: GenWaitList[A],
-  ) extends OverflowQueue[A] {
+  ) extends AsyncQueue.UnsealedAsyncQueueWithSize[A] {
 
     final override def size: Rxn[Int] =
       q.size
