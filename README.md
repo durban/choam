@@ -117,7 +117,7 @@ _does_ have modular blocking (`Txn.retry`).
     completed as a `Rxn`, and can be waited on as an async `F[_]`:
       ```scala
       trait Promise[A] { // simplified API
-        def complete0: Rxn[A, Boolean]
+        def complete(a: A): Rxn[Boolean]
         def get[F[_]]: F[A]
       }
       ```
