@@ -34,26 +34,21 @@ import internal.mcas.Hamt.IllegalInsertException
 import internal.random
 
 /**
- * An effectful function from `A` to `B`; when executed,
- * it may update any number of [[Ref]]s atomically. (It
+ * A effect with result type `B`; when executed, it
+ * may update any number of [[Ref]]s atomically. (It
  * may also create new [[Ref]]s.)
  *
  * These functions are composable (see below), and composition
  * preserves their atomicity. That is, all affected [[Ref]]s
  * will be updated atomically.
  *
- * TODO: fix this ------v
- * A [[Rxn]] forms an [[cats.arrow.Arrow Arrow]] (more
- * specifically, an [[cats.arrow.ArrowChoice ArrowChoice]]).
- * It also forms a [[cats.Monad Monad]] in `B`; however, consider
- * using the arrow combinators (when possible) instead of `flatMap`
- * (since a static combination of `Rxn`s may be more performant).
- *
+ * A [[Rxn]] forms a [[cats.Monad Monad]], so the usual
+ * monadic combinators can be used to compose `Rxn`s.
  */
 sealed abstract class Rxn[+B] { // short for 'reaction'
 
   /*
-   * An implementation similar to reagents, described in [Reagents: Expressing and
+   * An implementation inspired by reagents, described in [Reagents: Expressing and
    * Composing Fine-grained Concurrency](https://www.ccs.neu.edu/home/turon/reagents.pdf)
    * by Aaron Turon; originally implemented at [aturon/ChemistrySet](
    * https://github.com/aturon/ChemistrySet).
@@ -83,12 +78,7 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
    *
    * Finally (unlike with reagents), two `Rxn`s which touch the same
    * `Ref`s are composable with each other. This allows multiple
-   * reads and writes to the same `Ref` in one `Rxn`. (`Exchanger` is
-   * an exception, this is part of the reason it is `unsafe`).
-   *
-   * Existing reagent implementations:
-   * - https://github.com/aturon/Caper (Racket)
-   * - https://github.com/ocamllabs/reagents (OCaml)
+   * reads and writes to the same `Ref` in one `Rxn`.
    */
 
   def + [Y >: B](that: Rxn[Y]): Rxn[Y]
@@ -133,11 +123,10 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
     this.postCommit { _ => pc }
 
   /**
-   * Execute the [[Rxn]] with the specified input `a`.
+   * Execute the [[Rxn]].
    *
    * This method is `unsafe` because it performs side-effects.
    *
-   * @param a the input to the [[Rxn]].
    * @param rt the [[ChoamRuntime]] which will run the [[Rxn]].
    * @return the result of the executed [[Rxn]].
    */
@@ -146,11 +135,10 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
   ): B = this.unsafePerform(rt.mcasImpl, RetryStrategy.Default)
 
   /**
-   * Execute the [[Rxn]] with the specified input `a`.
+   * Execute the [[Rxn]].
    *
    * This method is `unsafe` because it performs side-effects.
    *
-   * @param a the input to the [[Rxn]].
    * @param rt the [[ChoamRuntime]] which will run the [[Rxn]].
    * @param strategy the retry strategy to use.
    * @return the result of the executed [[Rxn]].
@@ -299,7 +287,7 @@ private[choam] sealed abstract class RxnImpl[+B]
     this.map(Some(_)) + Rxn.pure[Option[B]](None)
 
   final override def maybe: Rxn[Boolean] =
-    this.as(true) + Rxn.pure(false)
+    this.as(true) + Rxn.false_
 
   final override def map[C](f: B => C): RxnImpl[C] =
     new Rxn.Map_(this, f)
@@ -411,10 +399,14 @@ object Rxn extends RxnInstances0 {
   private[this] val _unit: RxnImpl[Unit] =
     pureImpl(())
 
-  private[this] final val _none: Rxn[Option[Nothing]] =
+  private[this] val _none: Rxn[Option[Nothing]] =
     pure(None)
 
-  // TODO: private[this] val _true: RxnImpl[Any, Boolean] = ... // and _false
+  private[this] val _true: RxnImpl[Boolean] =
+    pureImpl(true)
+
+  private[this] val _false: RxnImpl[Boolean] =
+    pureImpl(false)
 
   @inline
   final def unit: Rxn[Unit] =
@@ -425,6 +417,12 @@ object Rxn extends RxnInstances0 {
 
   private[choam] final def none[A]: Rxn[Option[A]] =
     _none
+
+  private[choam] final def true_[A]: Rxn[Boolean] =
+    _true
+
+  private[choam] final def false_[A]: Rxn[Boolean] =
+    _false
 
   final def postCommit(pc: Rxn[Unit]): Rxn[Unit] =
     new Rxn.PostCommit[Unit](unit, _ => pc)

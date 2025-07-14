@@ -64,7 +64,7 @@ private abstract class ArrayQueue[A](
           ref.set(newVal) *> tail.set(incrIdx(idx)).as(true)
         } else {
           // queue is full:
-          Rxn.pure(false)
+          Rxn.false_
         }
       }
     }

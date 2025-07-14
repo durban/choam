@@ -181,7 +181,7 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
               }
           }
         } else {
-          Rxn.pure(false)
+          Rxn.false_
         }
       }
     }
@@ -200,7 +200,7 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
                   Rxn.pure(s)
               }
             case None =>
-              Rxn.pure(None)
+              Rxn.none
           }
         } else {
           // there are already getters waiting

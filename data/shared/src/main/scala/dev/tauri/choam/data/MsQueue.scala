@@ -148,7 +148,7 @@ private object MsQueue {
           final override def poll: Rxn[Option[A]] = {
             q.poll.flatMap {
               case r @ Some(_) => s.update(_ - 1).as(r)
-              case None => Rxn.pure(None)
+              case None => Rxn.none
             }
           }
 

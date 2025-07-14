@@ -212,9 +212,9 @@ object Promise {
         }
       }.flatMap { cbs =>
         if (cbs ne null) {
-          Rxn.pure(true).postCommit(callCbs(cbs, a))
+          Rxn.true_.postCommit(callCbs(cbs, a))
         } else {
-          Rxn.pure(false)
+          Rxn.false_
         }
       }
     }

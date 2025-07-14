@@ -1314,6 +1314,15 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("Rxn constants") {
+    for {
+      _ <- assertResultF(Rxn.none[Int].run, None)
+      _ <- assertResultF(Rxn.true_.run, true)
+      _ <- assertResultF(Rxn.false_.run, false)
+      _ <- assertResultF(Rxn.unit.run, ())
+    } yield ()
+  }
+
   test("Autoboxing") {
     // On the JVM integers between (typically) -128 and
     // 127 are cached. Due to autoboxing, other integers

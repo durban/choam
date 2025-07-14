@@ -68,7 +68,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
           }
         }
       case End() =>
-        Rxn.pure(None)
+        Rxn.none
     }
   }
 
@@ -82,11 +82,11 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
             } else if (isDequeued(a)) {
               impossible("isEmpty found an already dequeued node")
             } else {
-              Rxn.pure(false)
+              Rxn.false_
             }
           }
         case End() =>
-          Rxn.pure(true)
+          Rxn.true_
       }
     }
 
