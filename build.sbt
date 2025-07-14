@@ -109,12 +109,20 @@ val fullCiCond: String =
 val quickCiCond: String =
   s"!(${fullCiCond})"
 
-/** Where to run JCStress and Lincheck tests (need more CPUs) */
+/** Where to run JCStress tests (need more CPUs) */
 val stressCond: String = {
   s"((matrix.os == '${macos}') || " +
   s"(matrix.os == '${linux}') || " +
   s"(matrix.os == '${linux86}')) && " +
   s"(matrix.java == '${jvmLatest.render}')"
+}
+
+/** Where to run Lincheck tests (like above, but need older JVM) */
+val stressLinchkCond: String = {
+  s"((matrix.os == '${macos}') || " +
+  s"(matrix.os == '${linux}') || " +
+  s"(matrix.os == '${linux86}')) && " +
+  s"(matrix.java == '${jvmLts.render}')"
 }
 
 def transformWorkflowStep(step: WorkflowStep): WorkflowStep = {
@@ -181,10 +189,12 @@ ThisBuild / githubWorkflowBuild := List(
     cond = Some(s"(matrix.os == '${linux}') && (matrix.java == '${jvmLatest.render}') && (matrix.scala == '${scala2}')"),
   ),
 ) ++ List(
-  // Lincheck tests (they only run if commit msg contains 'full CI' or 'stressLinchk'):
+  // Lincheck tests (they only run if commit msg contains 'stressLinchk';
+  // note: in 'full CI', we don't need to run them in a separate step,
+  // because they already ran due to `ciFullCommand`):
   WorkflowStep.Sbt(
     List("runLincheckTests"),
-    cond = Some(s"(${stressCond}) && ((${fullCiCond}) || (${commitContains("stressLinchk")}))")
+    cond = Some(s"(${stressLinchkCond}) && (${commitContains("stressLinchk")})")
   )
 ) ++ stressTestNames.map { projName =>
   // JCStress tests (they only run if commit msg contains 'full CI' or the project name):
