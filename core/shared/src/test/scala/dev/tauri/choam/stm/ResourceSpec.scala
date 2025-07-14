@@ -23,11 +23,17 @@ import cats.effect.kernel.Async
 import cats.effect.{ IO, SyncIO }
 import cats.effect.syntax.all._
 
-import munit.CatsEffectSuite
+import internal.ChoamCatsEffectSuite
 
-final class ResourceSpecIO extends ResourceSpec[IO]
+final class ResourceSpecIO extends ChoamCatsEffectSuite with ResourceSpec[IO] {
 
-abstract class ResourceSpec[F[_]]()(implicit F: Async[F]) extends CatsEffectSuite with BaseSpec {
+  final override implicit def F: Async[IO] =
+    IO.asyncForIO
+}
+
+trait ResourceSpec[F[_]] extends BaseSpec {
+
+  implicit def F: Async[F]
 
   private val crt: ChoamRuntime = ChoamRuntime.unsafeBlocking()
 

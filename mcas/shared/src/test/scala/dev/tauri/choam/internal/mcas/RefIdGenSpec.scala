@@ -22,12 +22,10 @@ package mcas
 import cats.effect.IO
 import cats.syntax.all._
 
-import munit.CatsEffectSuite
-
 import RefIdGenBase.GAMMA
 
 @nowarn("cat=lint-constant") // yes, we have overflows
-final class RefIdGenSpec extends CatsEffectSuite with BaseSpec {
+final class RefIdGenSpec extends ChoamCatsEffectSuite with BaseSpec {
 
   private val M = if (isJvm()) {
     1024 * 1024

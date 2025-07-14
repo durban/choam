@@ -718,8 +718,20 @@ lazy val layout = project.in(file("layout"))
   .dependsOn(core.jvm % "compile->compile;test->test")
 
 lazy val commonSettingsJvm = Seq[Setting[_]](
-  Test / run / fork := true,
-  // Test / fork := true, // Note: forked JVM doesn't seem to use the .jvmopts file
+  Test / fork := true,
+  Test / javaOptions ++= Seq(
+    // Note: forked JVM doesn't seem to use the .jvmopts
+    // file, so these are copied from there.
+    "-Xms512M",
+    "-Xmx6G",
+    "-Xss2M",
+    "-XX:+UseG1GC",
+    "-Ddev.tauri.choam.stats=true",
+    // These are to diagnose a mysterious CI error which only happens on graal:
+    "-Djdk.graal.Dump=",
+    "-Djdk.graal.PrintBackendCFG=true",
+    "-Djdk.graal.MethodFilter=AbstractHamt.*",
+  ),
 )
 
 lazy val commonSettingsJs = Seq[Setting[_]](

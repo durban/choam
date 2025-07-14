@@ -29,9 +29,9 @@ import cats.effect.unsafe.{ IORuntime, IORuntimeConfig, Scheduler }
 
 import core.{ Rxn, Reactive, AsyncReactive }
 import core.RetryStrategy.Internal.Stepper
-import internal.LazyIdempotent
+import internal.{ LazyIdempotent, ChoamCatsEffectSuite }
 
-import munit.{ CatsEffectSuite, Location, FunSuite, FailException }
+import munit.{ Location, FunSuite, FailException }
 
 trait BaseSpecF[F[_]]
   extends FunSuite
@@ -127,18 +127,10 @@ trait BaseSpecSyncF[F[_]] extends BaseSpecF[F] { this: McasImplSpec =>
     new Reactive.SyncReactive[F](this.mcasImpl)(using F)
 }
 
-abstract class CatsEffectSuiteIndirection extends CatsEffectSuite {
 
-  final override def munitIOTimeout: Duration =
-    super.munitIOTimeout * 2
-
-  // implicit override def munitIORuntime: IORuntime = {
-  //   // TODO: IORuntimeBuilder().setPollingSystem(cats.effect.unsafe.SleepSystem).build()
-  // }
-}
 
 abstract class BaseSpecIO
-  extends CatsEffectSuiteIndirection
+  extends ChoamCatsEffectSuite
   with BaseSpecAsyncF[IO]
   with BaseSpecIOPlatform { this: McasImplSpec =>
 
@@ -286,7 +278,7 @@ abstract class BaseSpecTickedIO extends BaseSpecIO with TestContextSpec[IO] { th
   }
 }
 
-abstract class BaseSpecSyncIO extends CatsEffectSuite with BaseSpecSyncF[SyncIO] { this: McasImplSpec =>
+abstract class BaseSpecSyncIO extends ChoamCatsEffectSuite with BaseSpecSyncF[SyncIO] { this: McasImplSpec =>
 
   /** Not implicit, so that `rF` is used for sure */
   final override def F: Sync[SyncIO] =

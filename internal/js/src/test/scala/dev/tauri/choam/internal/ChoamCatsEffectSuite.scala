@@ -16,13 +16,17 @@
  */
 
 package dev.tauri.choam
+package internal
 
-import cats.effect.IO
+import scala.concurrent.duration._
 
-import internal.ChoamCatsEffectSuite
+import munit.CatsEffectSuite
 
-trait BaseSpecIOPlatform { this: BaseSpecAsyncF[IO] & McasImplSpec & ChoamCatsEffectSuite =>
+/**
+ * Note: this class is duplicated on JVM/JS
+ */
+abstract class ChoamCatsEffectSuite extends CatsEffectSuite {
 
-  protected final override def absolutelyUnsafeRunSync[A](fa: IO[A]): A =
-    fa.unsafeRunSync()
+  final override def munitIOTimeout: Duration =
+    super.munitIOTimeout * 2
 }

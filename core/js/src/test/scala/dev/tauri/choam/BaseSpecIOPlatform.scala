@@ -19,9 +19,9 @@ package dev.tauri.choam
 
 import cats.effect.IO
 
-import munit.CatsEffectSuite
+import internal.ChoamCatsEffectSuite
 
-trait BaseSpecIOPlatform { this: BaseSpecAsyncF[IO] with McasImplSpec with CatsEffectSuite =>
+trait BaseSpecIOPlatform { this: BaseSpecAsyncF[IO] with McasImplSpec with ChoamCatsEffectSuite =>
 
   protected final override def absolutelyUnsafeRunSync[A](@unused fa: IO[A]): A =
     this.fail("cannot unsafeRunSync on JS")
