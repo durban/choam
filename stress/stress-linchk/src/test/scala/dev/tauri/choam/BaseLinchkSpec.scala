@@ -50,6 +50,10 @@ trait BaseLinchkSpec extends BaseFunSuite with LinchkUtils with MUnitUtils { thi
     // https://github.com/JetBrains/lincheck/blob/lincheck-2.38/src/jvm/main/org/jetbrains/kotlinx/lincheck/strategy/managed/ObjectIdentityHashCodeTracker.kt#L72
     val armAndJvm11 = this.isArm() && (this.getJvmVersion() == 11)
     assume(!armAndJvm11, "this test doesn't run on ARM + JVM 11")
+    // lincheck bytecode transformer doesn't work on newer
+    // JVMs (note: for some reason these tests can be green,
+    // but don't actually seem to run; so we just skip them):
+    assume(this.getJvmVersion() < 24)
   }
 }
 
