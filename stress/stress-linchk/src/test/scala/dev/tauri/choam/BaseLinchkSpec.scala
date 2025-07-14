@@ -30,24 +30,26 @@ trait BaseLinchkSpec extends BaseFunSuite with LinchkUtils with MUnitUtils { thi
 
   final override def test(name: String)(body: => Any)(implicit loc: Location): Unit = {
     super[BaseFunSuite].test(name) {
-      // lincheck tests seem unstable in CI windows:
-      assumeNotWin()
-      // sometimes lincheck tests just hang on certain
-      // ARM JVMs, possibly due to this (UNSAFE.putInt):
-      // https://github.com/JetBrains/lincheck/blob/lincheck-2.38/src/jvm/main/org/jetbrains/kotlinx/lincheck/strategy/managed/ObjectIdentityHashCodeTracker.kt#L72
-      val armAndJvm11 = this.isArm() && (this.getJvmVersion() == 11)
-      assume(!armAndJvm11, "this test doesn't run on ARM + JVM 11")
-      // okay, now we can do the test:
+      checkAssumptions()
       body
     }
   }
 
   final override def test(options: TestOptions)(body: => Any)(implicit loc: Location): Unit = {
     super[BaseFunSuite].test(options) {
-      // lincheck tests seem unstable in CI windows:
-      assumeNotWin()
+      checkAssumptions()
       body
     }
+  }
+
+  private[this] def checkAssumptions(): Unit = {
+    // lincheck tests seem unstable in CI windows:
+    assumeNotWin()
+    // sometimes lincheck tests just hang on certain
+    // ARM JVMs, possibly due to this (UNSAFE.putInt):
+    // https://github.com/JetBrains/lincheck/blob/lincheck-2.38/src/jvm/main/org/jetbrains/kotlinx/lincheck/strategy/managed/ObjectIdentityHashCodeTracker.kt#L72
+    val armAndJvm11 = this.isArm() && (this.getJvmVersion() == 11)
+    assume(!armAndJvm11, "this test doesn't run on ARM + JVM 11")
   }
 }
 
