@@ -31,8 +31,8 @@ package object stream {
 
   /**
    * Creates an [[fs2.concurrent.SignallingRef]], which
-   * is also readable/writable as a [[dev.tauri.choam.core.Rxn]],
-   * because it has an associated [[dev.tauri.choam.core.RefLike]]
+   * is also readable/writable as a [[dev.tauri.choam.core.Rxn Rxn]],
+   * because it has an associated [[dev.tauri.choam.core.RefLike RefLike]]
    * instance, which is returned as the first element of the result
    * tuple.
    *

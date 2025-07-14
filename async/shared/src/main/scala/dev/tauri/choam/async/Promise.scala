@@ -38,7 +38,7 @@ object Promise {
   sealed trait Get[+A] { self =>
 
     /**
-     * Note: this is not called `get`, because a more convenient version
+     * Note: this is ''not'' called `get`, because a more convenient version
      * (with one type parameter) is available as an extension method `get`.
      */
     def getF[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA]

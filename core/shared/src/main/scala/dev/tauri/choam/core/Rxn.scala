@@ -284,7 +284,7 @@ private[choam] sealed abstract class RxnImpl[+B]
     this.attempt
 
   final override def attempt: Rxn[Option[B]] =
-    this.map(Some(_)) + Rxn.pure[Option[B]](None)
+    this.map(Some(_)) + Rxn.none
 
   final override def maybe: Rxn[Boolean] =
     this.as(true) + Rxn.false_
