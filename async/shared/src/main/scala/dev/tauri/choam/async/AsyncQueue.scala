@@ -34,7 +34,7 @@ sealed trait AsyncQueue[A]
  * Various asynchronous queues
  *
  * Adds asynchronous variants to the methods of
- * [[dev.tauri.choam.data.Queue$]] (see the last column
+ * [[dev.tauri.choam.data.Queue$ Queue]] (see the last column
  * of the table below). These operations have a result
  * type in an asynchronous `F`, and may be fiber-blocking.
  * For example, asynchronously removing an element from
@@ -51,7 +51,7 @@ sealed trait AsyncQueue[A]
  *
  * TODO: implement `peek`
  *
- * @see [[dev.tauri.choam.data.Queue$]]
+ * @see [[dev.tauri.choam.data.Queue$ Queue]]
  *      for the synchronous methods (all except
  *      the last column of this table)
  */

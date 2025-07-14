@@ -35,9 +35,9 @@ import stm.Transactive
  * `Transactive` is needed for the duration of
  * the whole `IOApp` program.
  *
- * @see [[dev.tauri.choam.stm.Transactive#forAsync]]
+ * @see [[dev.tauri.choam.stm.Transactive#from]]
  *      for more control over resource acquisition and release,
- *      and for any generic `F[_]` with a [[cats.effect.kernel.Async]]
+ *      and for any generic `F[_]` with an [[cats.effect.kernel.Async Async]]
  *      instance.
  */
 trait TxnAppMixin extends BaseMixin { this: IOApp =>
