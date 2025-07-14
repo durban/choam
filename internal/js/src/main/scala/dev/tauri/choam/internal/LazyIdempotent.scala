@@ -18,8 +18,6 @@
 package dev.tauri.choam
 package internal
 
-import java.util.concurrent.atomic.AtomicReference
-
 import LazyIdempotent.Initializer
 
 // Note: this class is duplicated on JVM/JS
@@ -50,7 +48,7 @@ private[choam] object LazyIdempotent {
     makeFull(() => { newA }, null)
   }
 
-  final def makeFull[A](newA: () => A, cleanup: A => Unit): LazyIdempotent[A] = {
+  final def makeFull[A](newA: () => A, @unused cleanup: A => Unit): LazyIdempotent[A] = {
     new LazyIdempotent[A](new Initializer(newA))
   }
 }
