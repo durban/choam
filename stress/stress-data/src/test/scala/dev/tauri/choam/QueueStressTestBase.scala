@@ -37,6 +37,9 @@ abstract class QueueStressTestBase extends StressTestBase {
 private object QueueStressTestBase {
 
   private val _crt: ChoamRuntime = {
+    // Note: we're never closing this, but
+    // JCStress forks JVMs, so it will be
+    // short-lived.
     ChoamRuntime.unsafeBlocking()
   }
 
