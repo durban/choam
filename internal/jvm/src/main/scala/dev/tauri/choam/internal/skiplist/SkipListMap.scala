@@ -310,14 +310,14 @@ private[choam] final class SkipListMap[K, V]()(implicit K: Order[K])
             unlinkNode(b, n)
             c = 1 // will retry going right
           } else {
-              c = cpr(key, n.key)
-              if (c > 0) {
-                // continue right
-                b = n
-              } else if ((c == 0) && (onlyIfAbsent || n.casValue(v, value))) {
-                // successfully overwritten existing value (or not, if `onlyIfAbsent`)
-                return Some(v) // scalafix:ok
-              } // else: c < 0 for sure
+            c = cpr(key, n.key)
+            if (c > 0) {
+              // continue right
+              b = n
+            } else if ((c == 0) && (onlyIfAbsent || n.casValue(v, value))) {
+              // successfully overwritten existing value (or not, if `onlyIfAbsent`)
+              return Some(v) // scalafix:ok
+            }
           }
         }
 
@@ -810,6 +810,7 @@ private[choam] final class SkipListMap[K, V]()(implicit K: Order[K])
     if ((b ne null) && (n ne null)) {
       // makes sure `n` is marked,
       // returns node after the marker
+      @tailrec
       def mark(): Node = {
         val f = n.getNext()
         if ((f ne null) && f.isMarker) {
