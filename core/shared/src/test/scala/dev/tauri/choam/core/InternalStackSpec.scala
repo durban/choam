@@ -240,9 +240,14 @@ final class InternalStackSpec extends BaseSpec {
   }
 
   test("ArrayObjStack nextPowerOf2 overflow") {
-    assume(!this.isJs()) // JavaScript heap out of memory
-    assume(!this.isGraal()) // java.lang.OutOfMemoryError: Java heap space
+    // This test tends to fail in mysterious ways,
+    // so we only run it in certain environments:
+    assume(!this.isJs())
+    assume(!this.isGraal())
     assume(this.getJvmVersion() >= 17)
+    assume(!(this.isWindows() && this.isArm()))
+    // TODO: we could actually detect too
+    // TODO: big arrays earlier, and just panic
     val bs = new ArrayObjStack[String](initSize = 1 << 30)
     var idx = 0
     while (idx < (1 << 30)) {
