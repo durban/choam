@@ -28,7 +28,7 @@ import munit.FunSuite
 
 import RxnModelTest._
 
-final class RxnModelTest extends FunSuite with BaseLinchkSpec {
+final class RxnModelTest extends FunSuite with RxnLinchkSpec {
 
   test("Model checking Rxn".tag(SLOW)) {
     val opts = fastModelCheckingOptions()
@@ -45,7 +45,7 @@ object RxnModelTest {
   class TestState {
 
     private[this] val emcas =
-      BaseLinchkSpec.defaultMcasForTesting
+      RxnLinchkSpec.defaultMcasForTesting
 
     private[this] val r1 =
       Ref.unsafeUnpadded("a", emcas.currentContext().refIdGen)

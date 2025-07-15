@@ -28,7 +28,7 @@ import internal.mcas.Mcas
 
 import QueueModelTest._
 
-final class QueueModelTest extends FunSuite with BaseLinchkSpec {
+final class QueueModelTest extends FunSuite with RxnLinchkSpec {
 
   test("Model checking MsQueue".tag(SLOW)) {
     queueModelCheck(classOf[MsQueueTestState])
@@ -47,7 +47,7 @@ private[data] object QueueModelTest {
   sealed abstract class AbstractTestState {
 
     protected[this] val emcas: Mcas =
-      BaseLinchkSpec.defaultMcasForTesting
+      RxnLinchkSpec.defaultMcasForTesting
 
     protected[this] val q: Queue[String]
 

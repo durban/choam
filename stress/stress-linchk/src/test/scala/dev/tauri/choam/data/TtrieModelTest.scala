@@ -29,7 +29,7 @@ import internal.mcas.Mcas
 
 import TtrieModelTest._
 
-final class TtrieModelTest extends FunSuite with BaseLinchkSpec {
+final class TtrieModelTest extends FunSuite with RxnLinchkSpec {
 
   test("Model checking Ttrie.apply".tag(SLOW)) {
     ttrieModelCheck(classOf[TrieMapTestState])
@@ -53,7 +53,7 @@ private[data] object TtrieModelTest {
   sealed abstract class AbstractTestState {
 
     protected[this] val emcas: Mcas =
-      BaseLinchkSpec.defaultMcasForTesting
+      RxnLinchkSpec.defaultMcasForTesting
 
     protected[this] val m: Ttrie[String, String]
 
