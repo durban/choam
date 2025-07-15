@@ -69,6 +69,16 @@ private final class ArrayObjStack[A](initSize: Int) extends ObjStack[A] {
   private[this] final def ensureSize(s: Int): Unit = {
     val arr = this.arr
     if (s > arr.length) {
+      if (s > ArrayObjStack.maxSize) {
+        // we're trying to have more than 256M items
+        // on the stack, so something is seriously
+        // wrong; `nextPowerOf2` below would overflow
+        // after 2 more doubling, but we're giving
+        // up earlier (we already have a 256M-long
+        // array, that's 1GiB even with CompressedOops,
+        // there is no way that's normal...)
+        throw new AssertionError
+      }
       val newLength = Consts.nextPowerOf2(s)
       val newArr = Arrays.copyOf(arr, newLength)
       this.arr = newArr
@@ -124,4 +134,9 @@ private final class ArrayObjStack[A](initSize: Int) extends ObjStack[A] {
     r.loadSnapshot(lst)
     r
   }
+}
+
+private object ArrayObjStack {
+
+  private final val maxSize = 256 * 1024 * 1024
 }
