@@ -58,6 +58,7 @@ object RxnLinchkSpec {
 
   private final def gcThreadContexts(): Unit = {
     import scala.language.reflectiveCalls
+    System.gc()
     this.defaultMcasForTesting.asInstanceOf[GlobalContextLike].gcThreadContextsForTesting()
   }
 }
