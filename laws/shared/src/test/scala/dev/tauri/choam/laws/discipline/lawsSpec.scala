@@ -69,7 +69,7 @@ trait LawsSpec
       override protected def rigInstance = this.mcasImpl.currentContext().refIdGen
     }.rxn[Int, Float, Double, Long])
 
-    checkAll("Ref", RefLawTests(self).ref[String, Int, Float])
+    checkAll("Ref", RefLawTests(self).ref[String, Int])
     checkAll("Reactive", ReactiveLawTests[SyncIO].reactive[String, Int])
     checkAll("AsyncReactive", AsyncReactiveLawTests[IO].asyncReactive[String, Int])
 
