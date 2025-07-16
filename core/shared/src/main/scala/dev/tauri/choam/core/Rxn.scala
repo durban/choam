@@ -200,28 +200,10 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
   }
 
   /** Only for tests/benchmarks */
-  private[choam] final def unsafePerformInternal0(
-    ctx: Mcas.ThreadContext,
-  ): B = {
-    new Rxn.InterpreterState[B](
-      this,
-      ctx.impl,
-      strategy = RetryStrategy.Default,
-      isStm = false,
-    ).interpretSyncWithContext(ctx)
-  }
-
-  /** Only for tests/benchmarks */
   private[choam] final def unsafePerformInternal(
     ctx: Mcas.ThreadContext,
-    maxBackoff: Int = BackoffPlatform.maxPauseDefault,
-    randomizeBackoff: Boolean = BackoffPlatform.randomizePauseDefault,
+    str: RetryStrategy.Spin = RetryStrategy.Default,
   ): B = {
-    // TODO: this allocation can hurt us in benchmarks!
-    val str = RetryStrategy
-      .Default
-      .withMaxSpin(maxBackoff)
-      .withRandomizeSpin(randomizeBackoff)
     new Rxn.InterpreterState[B](
       this,
       ctx.impl,
