@@ -92,20 +92,25 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     assertEquals(r5.unsafePerform(this.mcasImpl), 42 + 1)
     assertEquals(r7.unsafePerform(this.mcasImpl), 99)
 
-    def rNegativeTest: Rxn[Int] = {
-      // NOT @tailrec
-      def go(n: Int): Rxn[Int] = {
-        if (n < 1) one
-        else one *> go(n - 1) // *> is strict
+    if (!this.isGraal()) {
+      // graal seems pretty smart at optimizing
+      // non-tail recursion, so we only run
+      // the negative test on other JVMs:
+      def rNegativeTest: Rxn[Int] = {
+        // NOT @tailrec
+        def go(n: Int): Rxn[Int] = {
+          if (n < 1) one
+          else one *> go(n - 1) // *> is strict
+        }
+        go(N)
       }
-      go(N)
-    }
-    try {
-      rNegativeTest.unsafePerform(this.mcasImpl)
-      this.fail("unexpected success")
-    } catch {
-      case _: StackOverflowError =>
-        () // OK
+      try {
+        rNegativeTest.unsafePerform(this.mcasImpl)
+        this.fail("unexpected success")
+      } catch {
+        case _: StackOverflowError =>
+          () // OK
+      }
     }
 
     def rPositiveTest: Rxn[Int] = {
