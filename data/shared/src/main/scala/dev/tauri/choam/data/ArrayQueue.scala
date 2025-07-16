@@ -41,14 +41,14 @@ private abstract class ArrayQueue[A](
   }
 
   final override def poll: Rxn[Option[A]] = {
-    head.modifyWith { idx =>
-      arr.unsafeGet(idx).modify { a =>
+    head.get.flatMap { idx =>
+      arr.unsafeGet(idx).flatModify { a =>
         if (isEmpty(a)) {
           // empty queue
-          (a, (idx, None))
+          (a, Rxn.none)
         } else {
           // successful deque
-          (empty[A], (incrIdx(idx), Some(a)))
+          (empty[A], head.set(incrIdx(idx)).as(Some(a)))
         }
       }
     }

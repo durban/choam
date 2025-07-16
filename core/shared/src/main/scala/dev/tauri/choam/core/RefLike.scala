@@ -59,6 +59,9 @@ sealed trait RefLike[A] {
   final def tryModify[B](f: A => (A, B)): Rxn[Option[B]] =
     modify(f).?
 
+  final def flatModify[B](f: A => (A, Rxn[B])): Rxn[B] =
+    modify(f).flatten
+
   // interop:
 
   def toCats[F[_]](implicit F: Reactive[F]): CatsRef[F, A] =

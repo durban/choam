@@ -34,9 +34,12 @@ private[choam] object BoundedQueueImpl {
             if (res.nonEmpty) size.update(_ - 1).as(res)
             else Rxn.pure(res)
           },
-          a => size.modifyWith { s =>
-            if (s < bound) q.add(a).as((s + 1, true))
-            else Rxn.pure((s, false))
+          a => size.flatModify { s =>
+            if (s < bound) {
+              (s + 1, q.add(a).as(true))
+            } else {
+              (s, Rxn.false_)
+            }
           },
         ).map { gwl =>
           new LinkedBoundedQueue[A](size, gwl)
