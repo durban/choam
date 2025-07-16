@@ -818,25 +818,6 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("updWith") {
-    for {
-      r <- Ref[String]("x").run[F]
-      c <- Ref[Int](0).run[F]
-      rxn = r.updateWith { (s: String) =>
-        c.update(_ + 1).map { _ =>
-          s.toUpperCase(java.util.Locale.ROOT)
-        }
-      }
-      _ <- rxn.run[F]
-      _ <- assertResultF(r.get.run[F], "X")
-      _ <- assertResultF(c.get.run[F], 1)
-      _ <- r.getAndSet("a").run[F]
-      _ <- rxn.run[F]
-      _ <- assertResultF(r.get.run[F], "A")
-      _ <- assertResultF(c.get.run[F], 2)
-    } yield ()
-  }
-
   test("attempt") {
     for {
       r1 <- Ref("a").run[F]
