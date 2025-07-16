@@ -119,10 +119,13 @@ val stressCond: String = {
 
 /** Where to run Lincheck tests (like above, but need older JVM) */
 val stressLinchkCond: String = {
-  s"((matrix.os == '${macos}') || " +
-  s"(matrix.os == '${linux}') || " +
-  s"(matrix.os == '${linux86}')) && " +
-  s"(matrix.java == '${jvmLts.render}')"
+  "(" +
+  s"(matrix.os != '${windows}') && " +
+  s"(matrix.os != '${windowsArm}')" +
+  ") && (" +
+  s"(matrix.java == '${jvmLts.render}') ||" +
+  s"(matrix.java == '${jvmGraalLts.render}')" +
+  ")"
 }
 
 def transformWorkflowStep(step: WorkflowStep): WorkflowStep = {
