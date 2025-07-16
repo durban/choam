@@ -57,7 +57,6 @@ object RxnLinchkSpec {
     Mcas.newDefaultMcas(OsRng.mkNew())
 
   private final def gcThreadContexts(): Unit = {
-    println("Collecting garbage...")
     import scala.language.reflectiveCalls
     this.defaultMcasForTesting.asInstanceOf[GlobalContextLike].gcThreadContextsForTesting()
   }
