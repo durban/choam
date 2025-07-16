@@ -25,14 +25,14 @@ import internal.mcas.Mcas
 
 trait RxnLinchkSpec extends BaseLinchkSpec { this: FunSuite =>
 
-  override def beforeAll(): Unit = {
-    super.beforeAll()
+  override def beforeEach(ctx: BeforeEach): Unit = {
+    super.beforeEach(ctx)
     RxnLinchkSpec.init()
   }
 
-  override def afterAll(): Unit = {
+  override def afterEach(ctx: AfterEach): Unit = {
     RxnLinchkSpec.cleanup()
-    super.afterAll()
+    super.afterEach(ctx)
   }
 }
 
@@ -40,7 +40,7 @@ trait RxnLinchkSpec extends BaseLinchkSpec { this: FunSuite =>
  * We use a single global Emcas instance for
  * running model tests, which is useful, because
  * this way, e.g., version numbers aren't starting
- * from the minimum for every test. However, as
+ * from the minimum for every iteration. However, as
  * newer threads are created by lincheck, the
  * `_threadContexts` skiplist in `GlobalContext`
  * can grow quite large. And this can cause lincheck
@@ -48,8 +48,8 @@ trait RxnLinchkSpec extends BaseLinchkSpec { this: FunSuite =>
  * the skiplist. (Probably.)
  *
  * So we're doing this ugly hack: replacing the
- * global instance with a fresh one (in `beforeAll`),
- * and closing the old one (in `afterAll`).
+ * global instance with a fresh one (in `beforeEach`),
+ * and closing the old one (in `afterEach`).
  */
 object RxnLinchkSpec {
 
