@@ -109,6 +109,21 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("Ref.swap") {
+    for {
+      r1 <- newRef("a")
+      r2 <- newRef("b")
+      _ <- assertResultF(Ref.swap(r1, r2).run, ())
+      _ <- assertResultF((r1.get * r2.get).run, ("b", "a"))
+      _ <- if (this.mcasImpl.isThreadSafe) {
+        assertResultF(F.both(Ref.swap(r1, r2).run, Ref.swap(r2, r1).run), ((), ()))
+      } else {
+        assertResultF((Ref.swap(r1, r2).run, Ref.swap(r2, r1).run).tupled, ((), ()))
+      }
+      _ <- assertResultF((r1.get * r2.get).run, ("b", "a"))
+    } yield ()
+  }
+
   test("MemoryLocation#cast") {
     for {
       r1 <- newRef("a")

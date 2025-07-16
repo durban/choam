@@ -435,10 +435,8 @@ object Ref extends RefInstances0 {
   }
 
   final def swap[A](r1: Ref[A], r2: Ref[A]): Rxn[Unit] = {
-    r1.updateWith { o1 =>
-      r2.modify[A] { o2 =>
-        (o1, o2)
-      }
+    r1.get.flatMap { o1 =>
+      r2.modify { o2 => (o1, o2) }.flatMap(r1.set)
     }
   }
 }
