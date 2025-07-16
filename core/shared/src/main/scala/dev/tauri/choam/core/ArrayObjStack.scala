@@ -24,7 +24,7 @@ import java.util.Arrays
 
 private final class ArrayObjStack[A](initSize: Int) extends ObjStack[A] {
 
-  require((initSize > 0) && ((initSize & (initSize - 1)) == 0)) // power of 2
+  require((initSize > 0) && (initSize <= ArrayObjStack.maxSize) && ((initSize & (initSize - 1)) == 0)) // power of 2
 
   private[this] var arr: Array[AnyRef] =
     new Array[AnyRef](initSize)
@@ -138,5 +138,5 @@ private final class ArrayObjStack[A](initSize: Int) extends ObjStack[A] {
 
 private object ArrayObjStack {
 
-  private final val maxSize = 256 * 1024 * 1024
+  final val maxSize = 256 * 1024 * 1024
 }
