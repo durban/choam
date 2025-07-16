@@ -45,13 +45,13 @@ private final class MsQueue[A] private[this] (
     this(Node(nullOf[A], if (padded) Ref.unsafePadded(End[A](), initRig) else Ref.unsafeUnpadded(End[A](), initRig)), padded = padded, initRig = initRig)
 
   final override val poll: Rxn[Option[A]] = {
-    head.modifyWith { node =>
+    head.get.flatMap { node =>
       Rxn.unsafe.ticketRead(node.next).flatMap { ticket =>
         ticket.unsafePeek match {
           case n @ Node(a, _) =>
             // No need to validate `node.next` here, since
             // it is not the last node (thus it won't change).
-            Rxn.postCommit(
+            head.set(n.copy(data = nullOf[A])).as(Some(a)).postCommit(
               // This is to help the GC; a link from old
               // nodes (e.g., the one we're removing now)
               // to newer nodes (e.g., the new head) can
@@ -64,9 +64,9 @@ private final class MsQueue[A] private[this] (
                 if (ov eq n) null
                 else ov
               }
-            ).as((n.copy(data = nullOf[A]), Some(a)))
+            )
           case End() =>
-            ticket.unsafeValidate.as((node, None))
+            ticket.unsafeValidate.as(None)
         }
       }
     }

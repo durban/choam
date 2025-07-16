@@ -44,13 +44,13 @@ private final class GcHostileMsQueue[A] private[this] (sentinel: Node[A], initRi
     this(Node(nullOf[A], Ref.unsafePadded(End[A](), initRig)), initRig)
 
   final override val poll: Rxn[Option[A]] = {
-    head.modifyWith { node =>
+    head.get.flatMap { node =>
       node.next.get.flatMap { next =>
         next match {
           case n @ Node(a, _) =>
-            Rxn.pure((n.copy(data = nullOf[A]), Some(a)))
+            head.set(n.copy(data = nullOf[A])).as(Some(a))
           case End() =>
-            Rxn.pure((node, None))
+            Rxn.none
         }
       }
     }

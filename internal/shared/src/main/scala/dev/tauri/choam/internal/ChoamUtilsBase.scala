@@ -45,6 +45,6 @@ private[choam] abstract class ChoamUtilsBase {
     box(a) eq null
 
   @inline
-  private[choam] final def impossible(s: String): Nothing =
+  private[choam] final def impossible(s: String): Nothing = // TODO: create a (private) Rxn.impossible(...) : Rxn[Nothing]
     throw new AssertionError(s)
 }

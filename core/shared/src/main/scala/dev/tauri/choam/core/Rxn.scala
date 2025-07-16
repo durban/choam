@@ -375,7 +375,7 @@ object Rxn extends RxnInstances0 {
     new Rxn.Pure[A](a)
 
   /** Old name of `pure` */
-  private[choam] final def ret[A](a: A): Rxn[A] =
+  private[choam] final def ret[A](a: A): Rxn[A] = // TODO: remove this
     pure(a)
 
   private[this] val _unit: RxnImpl[Unit] =

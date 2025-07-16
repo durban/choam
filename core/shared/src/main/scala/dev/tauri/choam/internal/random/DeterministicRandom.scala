@@ -105,14 +105,17 @@ private final class DeterministicRandom(
   }
 
   final def split: Rxn[SplittableRandom[Rxn]] = {
-    seed.modifyWith { (sd: Long) =>
+    seed.modify { (sd: Long) =>
       val s1: Long = sd + gamma
       val otherSeed: Long = mix64(s1)
       val s2 = s1 + gamma
       val otherGamma: Long = mixGamma(s2)
-      Ref[Long](otherSeed, str).map { otherSeedRef =>
-        (s2, new DeterministicRandom(otherSeedRef, otherGamma, str))
-      }
+      (s2, (otherSeed, otherGamma))
+    }.flatMap {
+      case (otherSeed, otherGamma) =>
+        Ref[Long](otherSeed, str).map { otherSeedRef =>
+          new DeterministicRandom(otherSeedRef, otherGamma, str)
+        }
     }
   }
 
