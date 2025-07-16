@@ -1272,7 +1272,6 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       }
       _ <- assertResultF(r2.get.run, 1)
       r3 <- Ref(0).run[F]
-      _ <- assertExc(r3.modifyWith { _ => Rxn.unsafe.panic(exc) })
       _ <- assertResultF(r3.get.run, 0)
       _ <- assertExc(Rxn.unsafe.panic(exc).as(42))
       _ <- assertExc(Rxn.unsafe.panic(exc) *> Rxn.pure(42))

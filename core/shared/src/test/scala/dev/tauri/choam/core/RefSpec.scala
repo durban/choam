@@ -93,14 +93,6 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("Ref#modifyWith et. al.") {
-    for {
-      r <- newRef("a")
-      _ <- assertResultF(r.modifyWith(s => Rxn.ret((s + "c", 43))).run[F], 43)
-      _ <- assertResultF(r.get.run[F], "ac")
-    } yield ()
-  }
-
   test("Ref.swap") {
     for {
       r1 <- newRef("a")

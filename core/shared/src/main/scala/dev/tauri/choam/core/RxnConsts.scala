@@ -26,7 +26,7 @@ private object RxnConsts {
   final val ContPostCommit = 4
   final val ContAfterPostCommit = 5 // TODO: rename?
   final val ContCommitPostCommit = 6
-  final val ContUpdWith = 7
+  // 7 was ContUpdWith
   final val ContAs = 8
   final val ContProductR = 9
   // 10 was ContFlatMapF

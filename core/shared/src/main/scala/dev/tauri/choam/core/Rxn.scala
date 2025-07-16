@@ -467,9 +467,6 @@ object Rxn extends RxnInstances0 {
 
     private[choam] final def updUpdate1[A](r: Ref[A])(f: A => A): Rxn[Unit] =
       new Rxn.UpdUpdate1(r.loc, f)
-
-    private[choam] final def modifyWith[A, B, C](r: Ref[A])(f: A => Rxn[(A, C)]): Rxn[C] =
-      new Rxn.UpdWith[A, C](r.loc, f)
   }
 
   private[choam] final object loc {
@@ -784,10 +781,6 @@ object Rxn extends RxnInstances0 {
 
   private final class Ctx3[B](_uf: unsafe2.InRxn2 => B) extends Ctx[B] {
     final override def uf(ctx: Mcas.ThreadContext, ir: unsafe2.InRxn2): B = _uf(ir)
-  }
-
-  private final class UpdWith[A, C](val ref: MemoryLocation[A], val f: A => Rxn[(A, C)]) extends RxnImpl[C] {
-    final override def toString: String = s"UpdWith(${ref}, <function>)"
   }
 
   private[core] final class As[A, B, C](val rxn: Rxn[B], val c: C) extends RxnImpl[C] {
@@ -1559,9 +1552,7 @@ object Rxn extends RxnInstances0 {
           this.pcErrors = ex :: this.pcErrors
           next() // continue with next PC or final result
         case 7 => // ContUpdWith
-          contK.pop()
-          contK.pop()
-          nextOnPanic(ex)
+          impossible("ContUpdWith")
         case 8 => // ContAs
           contK.pop()
           nextOnPanic(ex)
@@ -1645,20 +1636,7 @@ object Rxn extends RxnInstances0 {
           a = postCommitResultMarker : Any
           commit.asInstanceOf[Rxn[Any]]
         case 7 => // ContUpdWith
-          val ox = contK.pop()
-          val ref = contK.pop().asInstanceOf[MemoryLocation[Any]]
-          val (nx, res) = this.aCastTo[Tuple2[?, ?]]
-          val hwd = desc.getOrElseNull(ref)
-          _assert(hwd ne null)
-          if (equ(hwd.nv, ox)) {
-            this.desc = this.desc.overwrite(hwd.withNv(nx))
-            a = res
-          } else {
-            // TODO: "during" the updWith, we wrote to
-            // TODO: the same ref; what to do?
-            throw new UnsupportedOperationException("wrote during updWith")
-          }
-          next()
+          impossible("ContUpdWith")
         case 8 => // ContAs
           a = contK.pop()
           next()
@@ -2137,19 +2115,6 @@ object Rxn extends RxnInstances0 {
           val b = c.uf(ctx, this)
           a = b
           loop(next())
-        case c: UpdWith[_, _] =>
-          val hwd = readMaybeFromLog(c.ref)
-          if (hwd eq null) {
-            loop(retry())
-          } else {
-            val ox = hwd.nv
-            val rxn = c.f(ox)
-            desc = desc.addOrOverwrite(hwd)
-            contT.push(RxnConsts.ContUpdWith)
-            contK.push2(c.ref, ox)
-            // TODO: if `rxn` writes to the same ref, we'll throw (see above)
-            loop(rxn)
-          }
         case c: As[_, _, _] => // As
           contT.push(RxnConsts.ContAs)
           contK.push(c.c)
