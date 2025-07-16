@@ -247,7 +247,6 @@ final class InternalStackSpec extends BaseSpec {
       bs.push("")
       idx += 1
     }
-    println(s"reached $idx")
     assert(Either.catchOnly[AssertionError] { bs.push("err") }.isLeft)
   }
 }
