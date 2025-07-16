@@ -56,17 +56,6 @@ sealed trait Ref[A] extends RefLike.UnsealedRefLike[A] { this: MemoryLocation[A]
   private[choam] final def updateWith(f: A => Rxn[A]): Rxn[Unit] =
     modifyWith { oa => f(oa).map(na => (na, ())) }
 
-  /** Returns previous value */
-  private[choam] final def getAndUpdateWith(f: A => Rxn[A]): Rxn[A] =
-    modifyWith { oa => f(oa).map(na => (na, oa)) }
-
-  /** Returns new value */
-  private[choam] final def updateAndGetWith(f: A => Rxn[A]): Rxn[A] = { // TODO: optimize
-    modifyWith { oa =>
-      f(oa).map { na => (na, na) }
-    }
-  }
-
   final override def toCats[F[_]](implicit F: core.Reactive[F]): CatsRef[F, A] =
     new Ref.CatsRefFromRef[F, A](this) {}
 

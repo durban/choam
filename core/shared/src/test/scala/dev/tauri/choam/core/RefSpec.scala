@@ -93,29 +93,11 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("updWith should behave correctly when used through getAndUpdateWith") {
-    for {
-      r1 <- newRef("foo")
-      r2 <- newRef("x")
-      r = r1.getAndUpdateWith { ov =>
-        if (ov eq "foo") Rxn.ret("bar")
-        else r2.getAndSet(ov)
-      }
-      _ <- r.run
-      _ <- assertResultF(r1.get.run, "bar")
-      _ <- assertResultF(r2.get.run, "x")
-      _ <- r.run
-      _ <- assertResultF(r1.get.run, "x")
-      _ <- assertResultF(r2.get.run, "bar")
-    } yield ()
-  }
-
   test("Ref#updateWith et. al.") {
     for {
       r <- newRef("a")
       _ <- assertResultF(r.updateWith(s => Rxn.ret(s + "c")).run[F], ())
-      _ <- assertResultF(r.getAndUpdateWith(s => Rxn.ret(s + "f")).run[F], "ac")
-      _ <- assertResultF(r.get.run, "acf")
+      _ <- assertResultF(r.get.run, "ac")
     } yield ()
   }
 
@@ -124,16 +106,6 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
       r <- newRef("a")
       _ <- assertResultF(r.modifyWith(s => Rxn.ret((s + "c", 43))).run[F], 43)
       _ <- assertResultF(r.get.run[F], "ac")
-    } yield ()
-  }
-
-  test("Ref#updateAndGetWith") {
-    for {
-      ctr <- newRef(0)
-      r <- newRef("a")
-      _ <- assertResultF(r.updateAndGetWith { ov => ctr.update(_ + 1).as(ov + "b") }.run[F], "ab")
-      _ <- assertResultF(r.get.run[F], "ab")
-      _ <- assertResultF(ctr.get.run[F], 1)
     } yield ()
   }
 
