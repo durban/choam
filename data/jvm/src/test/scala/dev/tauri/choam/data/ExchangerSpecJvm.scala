@@ -284,14 +284,14 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         leftReceived.set(i)
         ref.get.flatMap { v2 =>
           assertEquals(v2, v1) // it should see it's own write
-          ref.set1(v2 + 1)
+          ref.set(v2 + 1)
         }
       }
       right = (ref.updateAndGet(_ + 99) * ex.dual.exchange(123)).flatMap { case (v1, i) =>
         rightReceived.set(i)
         ref.get.flatMap { v2 =>
           assertEquals(v2, v1) // it should see it's own write
-          ref.set1(v2 + 100)
+          ref.set(v2 + 100)
         }
       }
       taskLeft = left.perform[F, Unit](this.runtime, str)(using this.F)

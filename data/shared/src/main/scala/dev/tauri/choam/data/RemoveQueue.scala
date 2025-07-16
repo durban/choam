@@ -64,11 +64,11 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
           } else if (isDequeued(a)) {
             impossible("poll found an already dequeued node")
           } else {
-            dataRef.set1(dequeued[A]).as(Some((a, n)))
+            dataRef.set(dequeued[A]).as(Some((a, n)))
           }
         }
       case End() =>
-        Rxn.pure(None)
+        Rxn.none
     }
   }
 
@@ -82,11 +82,11 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
             } else if (isDequeued(a)) {
               impossible("isEmpty found an already dequeued node")
             } else {
-              Rxn.pure(false)
+              Rxn.false_
             }
           }
         case End() =>
-          Rxn.pure(true)
+          Rxn.true_
       }
     }
 
@@ -119,7 +119,7 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
       n.next.get.flatMap {
         case End() =>
           // found true tail; will update, and adjust the tail ref:
-          n.next.set1(node) *> tail.set1(node)
+          n.next.set(node) *> tail.set(node)
         case nv @ Node(_, _) =>
           // not the true tail; try to catch up, and continue:
           go(n = nv)

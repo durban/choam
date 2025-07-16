@@ -32,7 +32,7 @@ abstract class BaseSpecMyIO
   with BaseSpecAsyncF[MyIO] {
 
   private[this] val rtAndClose =
-    ChoamRuntime[SyncIO].allocated.unsafeRunSync()
+    ChoamRuntime.make[SyncIO].allocated.unsafeRunSync()
 
   private[this] val arAndClose =
     MyIO.asyncReactiveForMyIO[SyncIO](rtAndClose._1).allocated.unsafeRunSync()

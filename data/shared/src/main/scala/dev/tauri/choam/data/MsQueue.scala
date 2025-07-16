@@ -98,7 +98,7 @@ private final class MsQueue[A] private[this] (
           case End() =>
             // found true tail; will update, and adjust the tail ref:
             // TODO: we could allow tail to lag by a constant
-            ticket.unsafeSet(node) *> tail.set1(node)
+            ticket.unsafeSet(node) *> tail.set(node)
           case nv @ Node(_, _) =>
             // not the true tail, continue;
             // no need to validate `n.next`
@@ -148,7 +148,7 @@ private object MsQueue {
           final override def poll: Rxn[Option[A]] = {
             q.poll.flatMap {
               case r @ Some(_) => s.update(_ - 1).as(r)
-              case None => Rxn.pure(None)
+              case None => Rxn.none
             }
           }
 

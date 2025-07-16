@@ -37,6 +37,9 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
   /**
    * Note: don't nest calls to `atomically`!
    *
+   * Also: don't call `atomicallyInAsync` inside
+   * `atomically` (or the other way around)!
+   *
    * Instead pass the `InRxn` argument implicitly
    * to methods called from the `block`.
    */
@@ -83,11 +86,15 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
   }
 
   // `atomicallyInAsync`: possibly async retries
+
   // TODO: Instead/besides `atomicallyInAsync`, we could have a
   // TODO: coroutine-like API. But which coroutine impl to use?
 
   /**
    * Note: don't nest calls to `atomicallyInAsync`!
+   *
+   * Also: don't call `atomically` inside
+   * `atomicallyInAsync` (or the other way around)!
    *
    * Instead pass the `InRxn` argument implicitly
    * to methods called from the `block`.

@@ -16,30 +16,17 @@
  */
 
 package dev.tauri.choam
-package stream
+package internal
 
-import fs2.concurrent.SignallingRef
+import scala.concurrent.duration._
 
-import core.{ Rxn, RefLike, AsyncReactive }
+import munit.CatsEffectSuite
 
 /**
- * An [[fs2.concurrent.SignallingRef]], which
- * is also readable/writable in the context
- * of [[dev.tauri.choam.core.Rxn]] (i.e., it has
- * an associated [[dev.tauri.choam.core.RefLike]],
- * accessible through the `refLike` method).
+ * Note: this class is duplicated on JVM/JS
  */
-sealed abstract class RxnSignallingRef[F[_], A]
-  extends SignallingRef[F, A] {
+abstract class ChoamCatsEffectSuite extends CatsEffectSuite {
 
-  def refLike: RefLike[A]
-}
-
-object RxnSignallingRef {
-
-  private[choam] abstract class UnsealedRxnSignallingRef[F[_], A]
-    extends RxnSignallingRef[F, A]
-
-  final def apply[F[_] : AsyncReactive, A](initial: A): Rxn[RxnSignallingRef[F, A]] =
-    Fs2SignallingRefWrapper[F, A](initial)
+  final override def munitIOTimeout: Duration =
+    super.munitIOTimeout * 2
 }

@@ -26,16 +26,16 @@ private final class TreiberStack[A] private (
 
   import TreiberStack._
 
-  final override def push(a: A): Rxn[Unit] = head.modify { as =>
-    (Cons(a, as), ())
+  final override def push(a: A): Rxn[Unit] = head.update { as =>
+    new Cons(a, as)
   }
 
   final override val tryPop: Rxn[Option[A]] = head.modify[Option[A]] {
-    case Cons(h, t) => (t, Some(h))
+    case cons: Cons[_] => (cons.t, Some(cons.h))
     case End => (End, None)
   }
 
-  final override val size: Rxn[Int] = // TODO: this is O(n)
+  private[choam] final override val size: Rxn[Int] = // TODO: this is O(n)
     head.get.map(_.length)
 }
 
@@ -54,7 +54,7 @@ private object TreiberStack {
       @tailrec
       def go(l: Lst[A], acc: Int): Int = l match {
         case End => acc
-        case Cons(_, t) => go(t, acc + 1)
+        case cons: Cons[_] => go(cons.t, acc + 1)
       }
       go(this, 0)
     }
@@ -65,16 +65,16 @@ private object TreiberStack {
       def go(l: Lst[A]): Unit = l match {
         case End =>
           ()
-        case Cons(h, t) =>
-          b += h
-          go(t)
+        case cons: Cons[_] =>
+          b += cons.h
+          go(cons.t)
       }
       go(this)
       b.toList
     }
   }
 
-  private final case class Cons[A](h: A, t: Lst[A]) extends Lst[A]
+  private final class Cons[A](val h: A, val t: Lst[A]) extends Lst[A]
 
-  private final case object End extends Lst[Nothing]
+  private final object End extends Lst[Nothing]
 }

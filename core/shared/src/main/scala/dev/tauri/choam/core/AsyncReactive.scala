@@ -38,12 +38,6 @@ object AsyncReactive {
   final def fromIn[G[_], F[_]](rt: ChoamRuntime)(implicit @unused G: Sync[G], F: Async[F]): Resource[G, AsyncReactive[F]] =
     Resource.pure(new AsyncReactiveImpl(rt.mcasImpl))
 
-  final def forAsync[F[_]](implicit F: Async[F]): Resource[F, AsyncReactive[F]] =
-    forAsyncIn[F, F]
-
-  final def forAsyncIn[G[_], F[_]](implicit G: Sync[G], F: Async[F]): Resource[G, AsyncReactive[F]] =
-    ChoamRuntime[G].flatMap(rt => fromIn(rt))
-
   private[choam] class AsyncReactiveImpl[F[_]](mi: Mcas)(implicit F: Async[F])
     extends Reactive.SyncReactive[F](mi)
     with AsyncReactive[F] {

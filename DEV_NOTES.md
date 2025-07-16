@@ -70,10 +70,24 @@ Some of the decisions to change them are documented here.
 - The `choam-mcas` module used to be public, and the MCAS algorithm was configurable.
   Now it is private, as (primarily due to the changes necessary to support opacity)
   it is not anymore a simple and clean MCAS library, but somewhat intertwined with
-  higher-level (`Rxn`) concerns. The algorithm is not selectable, as EMCAS is clearly
-  the best (in speed and scalability). In fact, CASN was removed (`SpinLockMcas` remains,
+  higher-level (`Rxn`) concerns. The algorithm is not selectable now, as EMCAS is clearly
+  the fastest (of the ones we tried). In fact, CASN was removed (`SpinLockMcas` remains,
   because it is so simple, that it's not a burden to maintain it, and might be useful
   for testing).
+- `Rxn` used to have two type parameters (i.e., `Rxn[-A, +B]`), and it formed an arrow
+  (more specifically an [ArrowChoice](https://typelevel.org/cats/typeclasses/arrowchoice.html#arrowchoice)),
+  besides forming a monad in its second type parameter. This was "inherited" from the
+  Reagents paper. It was interesting, and sometimes useful, but rarely used in practice.
+  In theory, using a static structure of `Rxn`s combined with the arrow combinators
+  could have a better performance than using monadic composition (which typically needs
+  to allocate always new `Rxn` instances). In practice though, benchmarking showed
+  that these performance wins are very small in semi-realistic situations (typically
+  2-3%), and it is somewhat non-intuitive whether it's even worth using arrow combinators
+  instead of the monadic ones (in some very similar situations the arrow ones are slower).
+  Moreover, for performance optimization the "unsafe API" (`dev.tauri.choam.unsafe`) proved
+  much more effective (10-15% performance improvement in the same situations). For this reason
+  (and to simplify the API and implementation), the input type parameter of `Rxn` was removed.
+  (Note, that it still forms a monad.)
 
 ### Internals
 

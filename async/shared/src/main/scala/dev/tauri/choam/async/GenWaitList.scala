@@ -45,7 +45,7 @@ private[choam] sealed trait WaitList[A] extends GenWaitList[A] { self =>
     this.set0(a).as(true)
 }
 
-private[choam] object WaitList {
+private[choam] object WaitList { // TODO: should support AllocationStrategy
 
   final def apply[A](
     tryGetUnderlying: Rxn[Option[A]],
@@ -55,7 +55,7 @@ private[choam] object WaitList {
   }
 }
 
-private[choam] object GenWaitList {
+private[choam] object GenWaitList { // TODO: should support AllocationStrategy
 
   private[this] final val RightUnit: Right[Nothing, Unit] =
     Right(())
@@ -181,7 +181,7 @@ private[choam] object GenWaitList {
               }
           }
         } else {
-          Rxn.pure(false)
+          Rxn.false_
         }
       }
     }
@@ -200,7 +200,7 @@ private[choam] object GenWaitList {
                   Rxn.pure(s)
               }
             case None =>
-              Rxn.pure(None)
+              Rxn.none
           }
         } else {
           // there are already getters waiting

@@ -30,6 +30,7 @@ import cats.effect.IO
 import cats.effect.kernel.{ Ref => CatsRef }
 
 import internal.mcas.Mcas
+import core.unsafe.RxnLocal
 
 final class RxnSpec_ThreadConfinedMcas_IO
   extends BaseSpecIO
@@ -524,8 +525,8 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       save2 <- Ref(-1).run
       save3 <- Ref(-1).run
       r = r1.update(_ + 1).postCommit(
-        (r2.update(_ + 1) *> r1.getAndSet(42).flatMap(save1.set1)).postCommit(
-          (r1.get.flatMap(save2.set1)) *> (r2.get.flatMap(save3.set1))
+        (r2.update(_ + 1) *> r1.getAndSet(42).flatMap(save1.set)).postCommit(
+          (r1.get.flatMap(save2.set)) *> (r2.get.flatMap(save3.set))
         )
       )
       _ <- r.run[F]
@@ -861,7 +862,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         final override def apply[G[_]](local: RxnLocal[G, Int], lift: Rxn ~> G, inst: RxnLocal.Instances[G]) = {
           import inst._
           local.get.flatMap { ov =>
-            lift(ref.set1(ov)) *> local.set(99).as("foo")
+            lift(ref.set(ov)) *> local.set(99).as("foo")
           }
         }
       })
@@ -880,10 +881,10 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
           arr.unsafeGet(0).flatMap { ov0 =>
             arr.unsafeGet(1).flatMap { ov1 =>
               arr.unsafeGet(2).flatMap { ov2 =>
-                lift(ref.set1((ov0, ov1, ov2))) *> arr.unsafeSet(1, 99).as("foo")
+                lift(ref.set((ov0, ov1, ov2))) *> arr.unsafeSet(1, 99).as("foo")
               }
             } <* arr.unsafeGet(1).flatMap { nv =>
-              lift(ref2.set1(nv))
+              lift(ref2.set(nv))
             }
           }
         }
@@ -909,7 +910,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
             _ <- scratch.set(i)
             _ <- scratch.update(_ + 1)
             v <- scratch.get
-            _ <- lift(ref.set1(v))
+            _ <- lift(ref.set(v))
           } yield ""
         }
       })
@@ -1008,11 +1009,11 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
                 } <* {
                   lift2(Rxn.fastRandom.nextBoolean.flatMap { retry =>
                     if (retry) Rxn.unsafe.retry[Unit] else Rxn.unit
-                  }) *> local2.get.flatMap(v2 => lift2(ref2.set1(v2)))
+                  }) *> local2.get.flatMap(v2 => lift2(ref2.set(v2)))
                 }
               }
             })).flatMap { r2 =>
-              lift1(Rxn.unsafe.assert(r2 == 45.0f) *> ref1.set1(ov1)) *> local1.set(99).as("foo")
+              lift1(Rxn.unsafe.assert(r2 == 45.0f) *> ref1.set(ov1)) *> local1.set(99).as("foo")
             }.flatMap { _ =>
               local1.get.map(_.toString)
             }
@@ -1310,6 +1311,15 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       _ <- assertResultF(Rxn.unsafe.assert(true).run[F], ())
       _ <- assertResultF(Rxn.unsafe.assert(false).run[F].attempt.map(_.isLeft), true)
+    } yield ()
+  }
+
+  test("Rxn constants") {
+    for {
+      _ <- assertResultF(Rxn.none[Int].run, None)
+      _ <- assertResultF(Rxn.true_.run, true)
+      _ <- assertResultF(Rxn.false_.run, false)
+      _ <- assertResultF(Rxn.unit.run, ())
     } yield ()
   }
 

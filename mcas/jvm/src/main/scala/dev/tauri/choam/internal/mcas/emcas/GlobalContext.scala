@@ -213,6 +213,11 @@ private[mcas] abstract class GlobalContext
     }
     this.getAndAddThreadCtxCount(sum.toLong) : Unit
   }
+
+  /** Only for testing! */
+  private[choam] final def gcThreadContextsForTesting(): Unit = {
+    this.gcThreadContexts()
+  }
 }
 
 private object GlobalContext {

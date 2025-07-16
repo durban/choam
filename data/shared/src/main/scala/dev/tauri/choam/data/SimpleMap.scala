@@ -112,7 +112,7 @@ private final class SimpleMap[K, V] private (
     final def get: Rxn[V] =
       self.get(key).map(_.getOrElse(default))
 
-    final override def set1(nv: V): Rxn[Unit] = {
+    final override def set(nv: V): Rxn[Unit] = {
       if (equ(nv, default)) {
         repr.update { hm => hm.removed(key) }
       } else {
@@ -120,8 +120,8 @@ private final class SimpleMap[K, V] private (
       }
     }
 
-    final override def update1(f: V => V): Rxn[Unit] = {
-      repr.update1 { hm =>
+    final override def update(f: V => V): Rxn[Unit] = {
+      repr.update { hm =>
         val currVal = hm.getOrElse(key, default)
         val newVal = f(currVal)
         if (equ(newVal, default)) hm.removed(key)

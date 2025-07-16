@@ -44,15 +44,22 @@ sealed abstract class PubSub[F[_], A] {
   def close: Rxn[PubSub.Result]
 
   def awaitShutdown: F[Unit]
+
+  /** Only for testing! */
+  private[stream] def numberOfSubscriptions: F[Int]
 }
 
 object PubSub {
 
-  final def apply[F[_] : AsyncReactive, A](defaultStrategy: OverflowStrategy): Rxn[PubSub[F, A]] = {
+  final def apply[F[_] : AsyncReactive, A](
+    defaultStrategy: OverflowStrategy,
+    str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default,
+  ): Rxn[PubSub[F, A]] = {
+    // TODO: if `str` is padded, this AtomicLong should also be padded
     Rxn.unsafe.delay { new AtomicLong }.flatMap { nextId =>
-      Ref(LongMap.empty[Subscription[F, A]]).flatMap { subscriptions =>
-        Ref(false).flatMap { isClosed =>
-          Promise[Unit].map { awaitClosed =>
+      Ref(LongMap.empty[Subscription[F, A]], str).flatMap { subscriptions =>
+        Ref(false, str).flatMap { isClosed =>
+          Promise[Unit](str).map { awaitClosed =>
             new PubSubImpl[F, A](nextId, subscriptions, isClosed, awaitClosed, defaultStrategy)
           }
         }
@@ -61,10 +68,10 @@ object PubSub {
   }
 
   sealed abstract class Result
-  sealed abstract class ClosedOrSuccess extends Result
-  final object Closed extends ClosedOrSuccess
+  // TODO: sealed abstract class ClosedOrSuccess extends Result
+  final object Closed extends Result // TODO: extends ClosedOrSuccess
   final object Backpressured extends Result
-  final object Success extends ClosedOrSuccess
+  final object Success extends Result // TODO: extends ClosedOrSuccess
 
   private[this] val _axnClosed = Rxn.pure(Closed)
   private[this] val _axnBackpressured = Rxn.pure(Backpressured)
@@ -86,13 +93,14 @@ object PubSub {
       case drn: OverflowStrategy.DropNewest => dropNewest(drn.bufferSize)
     }
 
+    // TODO: add an `str: AllocationStrategy` parameter, and use it
     private[PubSub] def newBuffer[F[_] : AsyncReactive, A]: Rxn[PubSubBuffer[F, A]]
 
     protected[this] final def mkWaitList[A](
       underlying: UnboundedDeque[Chunk[A]],
       size: Ref[Int]
     ): Rxn[WaitList[Chunk[A]]] = {
-      WaitList.apply[Chunk[A]](
+      WaitList.apply[Chunk[A]]( // TODO: pass AllocationStrategy
         underlying.tryTakeLast.flatMap {
           case None =>
             Rxn.none
@@ -174,7 +182,7 @@ object PubSub {
               new PubSubBuffer[F, A](bufferSize, size.get, wl) {
 
                 protected[this] final override def handleOverflow(newChunk: Chunk[A], missingCapacity: Int): Rxn[Result] =
-                  dropOldestN(missingCapacity) *> size.update1(_ - missingCapacity) *> wl.set0(newChunk).as(Success)
+                  dropOldestN(missingCapacity) *> size.update(_ - missingCapacity) *> wl.set0(newChunk).as(Success)
 
                 private[this] final def dropOldestN(n: Int): Rxn[Unit] = {
                   underlying.tryTakeLast.flatMap {
@@ -321,6 +329,11 @@ object PubSub {
 
         go
       }
+    }
+
+    /** Only for testing! */
+    private[stream] final override def numberOfSubscriptions: F[Int] = {
+      subscriptions.get.map(_.size).run[F]
     }
   }
 

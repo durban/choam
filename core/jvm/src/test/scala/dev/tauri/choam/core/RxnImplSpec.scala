@@ -56,37 +56,8 @@ final class RxnImplSpec_SpinLockMcas_ZIO
 /** Specific implementation tests, which should also pass with `SpecFlakyEMCAS` */
 trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
-  private def computeStackLimit(): Int = {
-    // NOT @tailrec
-    def factorial(n: Long): Long = {
-      if (n == 0L) 1L
-      else n * factorial(n - 1L)
-    }
-
-    def tryOnce(n: Int): Boolean = {
-      assert(n > 0)
-      try { factorial(n.toLong); true } catch {
-        case _: StackOverflowError =>
-          false
-      }
-    }
-
-    def compute(n: Int = 32): Int = {
-      if (tryOnce(n)) compute(n * 2)
-      else n
-    }
-
-    var _res: Int = -1
-    val t = new Thread(() => {
-      _res = compute()
-    })
-    t.start()
-    t.join()
-    val res = _res
-    assert(res > 0)
-    println(s"STACK_LIMIT <= ${res}")
-    res
-  }
+  // based on experiments, this always seems to be enough to create a stackoverflow:
+  private val STACK_LIMIT = 131072
 
   test("Creating and running deeply nested Rxn's should both be stack-safe") {
     val one = Rxn.pure(43)
@@ -96,7 +67,7 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     ): Rxn[Int] = {
       (1 to n).map(_ => one).reduce(combine)
     }
-    val N = computeStackLimit() * 4
+    val N = STACK_LIMIT * 4
     val r1: Rxn[Int] = nest(N, _ *> _)
     val r2: Rxn[Int] = nest(N, (x, y) => (x * y).map(_._1 + 1))
     val r3: Rxn[Int] = nest(N, (x, y) => x.flatMap { _ => y })
@@ -121,20 +92,25 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     assertEquals(r5.unsafePerform(this.mcasImpl), 42 + 1)
     assertEquals(r7.unsafePerform(this.mcasImpl), 99)
 
-    def rNegativeTest: Rxn[Int] = {
-      // NOT @tailrec
-      def go(n: Int): Rxn[Int] = {
-        if (n < 1) one
-        else one *> go(n - 1) // *> is strict
+    if (!this.isGraal()) {
+      // graal seems pretty smart at optimizing
+      // non-tail recursion, so we only run
+      // the negative test on other JVMs:
+      def rNegativeTest: Rxn[Int] = {
+        // NOT @tailrec
+        def go(n: Int): Rxn[Int] = {
+          if (n < 1) one
+          else one *> go(n - 1) // *> is strict
+        }
+        go(N)
       }
-      go(N * 4)
-    }
-    try {
-      rNegativeTest.unsafePerform(this.mcasImpl)
-      this.fail("unexpected success")
-    } catch {
-      case _: StackOverflowError =>
-        () // OK
+      try {
+        rNegativeTest.unsafePerform(this.mcasImpl)
+        this.fail("unexpected success")
+      } catch {
+        case _: StackOverflowError =>
+          () // OK
+      }
     }
 
     def rPositiveTest: Rxn[Int] = {

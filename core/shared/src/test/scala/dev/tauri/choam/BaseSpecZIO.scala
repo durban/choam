@@ -19,8 +19,6 @@ package dev.tauri.choam
 
 import cats.effect.kernel.Async
 
-import munit.CatsEffectSuite
-
 final class BaseSpecZIOSpec
   extends BaseSpecZIO
   with SpecDefaultMcas {
@@ -47,8 +45,7 @@ final class BaseSpecZIOSpec
 }
 
 abstract class BaseSpecZIO
-  extends CatsEffectSuite
-  with BaseSpecAsyncF[zio.Task]
+  extends BaseSpecAsyncF[zio.Task]
   with UtilsForZIO { this: McasImplSpec =>
 
   private[this] val zioRuntime =

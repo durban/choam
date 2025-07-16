@@ -283,7 +283,7 @@ private final class Ttrie[K, V] private (
     final def get: Rxn[V] =
       self.get(key).map(_.getOrElse(default))
 
-    final override def set1(nv: V): Rxn[Unit] = {
+    final override def set(nv: V): Rxn[Unit] = {
       if (equ(nv, default)) {
         self.del(key).void
       } else {
@@ -291,7 +291,7 @@ private final class Ttrie[K, V] private (
       }
     }
 
-    final override def update1(f: V => V): Rxn[Unit] = {
+    final override def update(f: V => V): Rxn[Unit] = {
       getRef(key).flatMap { ref =>
         ref.modify { oldVal =>
           val currVal = if (isInit(oldVal) || isEnd(oldVal)) {

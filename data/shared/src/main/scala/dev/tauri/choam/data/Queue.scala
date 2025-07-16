@@ -45,7 +45,7 @@ sealed trait Queue[A]
  *
  * TODO: implement `peek`
  *
- * @see [[dev.tauri.choam.async.AsyncQueue$]]
+ * @see [[dev.tauri.choam.async.AsyncQueue$ AsyncQueue]]
  *      for asynchronous (possibly fiber-blocking)
  *      variants of these methods
  */

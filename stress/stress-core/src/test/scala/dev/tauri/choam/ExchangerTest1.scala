@@ -47,12 +47,12 @@ class ExchangerTest1 extends StressTestBase {
 
   private[this] final def leftSide(s: String): Rxn[Option[Either[String, String]]] = {
     val once = ex.exchange(s)
-    (once.map(Left(_)) + once.map(Right(_))).?.postCommit(leftPc.set1)
+    (once.map(Left(_)) + once.map(Right(_))).?.postCommit(leftPc.set)
   }
 
   private[this] final def rightSide(s: String): Rxn[Option[Either[String, String]]] = {
     val once = ex.dual.exchange(s)
-    (once.map(Left(_)) + once.map(Right(_))).?.postCommit(rightPc.set1)
+    (once.map(Left(_)) + once.map(Right(_))).?.postCommit(rightPc.set)
   }
 
   @Actor

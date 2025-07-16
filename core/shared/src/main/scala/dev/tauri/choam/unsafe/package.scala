@@ -32,7 +32,7 @@ package object unsafe {
     final def value(implicit ir: InRxn): A =
       ir.readRef(self.loc)
 
-    /** @see [[dev.tauri.choam.core.Ref.set1]] */
+    /** @see [[dev.tauri.choam.core.Ref.set]] */
     final def value_=(nv: A)(implicit ir: InRxn): Unit =
       ir.writeRef(self.loc, nv)
   }
@@ -63,7 +63,7 @@ package object unsafe {
   }
 
   /**
-   * @see [[dev.tauri.choam.core.Ref.set1]]
+   * @see [[dev.tauri.choam.core.Ref.set]]
    * @see [[dev.tauri.choam.unsafe.RefSyntax.value_=]]
    */
   final def writeRef[A](ref: Ref[A], nv: A)(implicit ir: InRxn): Unit = {

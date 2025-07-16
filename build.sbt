@@ -109,12 +109,23 @@ val fullCiCond: String =
 val quickCiCond: String =
   s"!(${fullCiCond})"
 
-/** Where to run JCStress and Lincheck tests (need more CPUs) */
+/** Where to run JCStress tests (need more CPUs) */
 val stressCond: String = {
   s"((matrix.os == '${macos}') || " +
   s"(matrix.os == '${linux}') || " +
   s"(matrix.os == '${linux86}')) && " +
   s"(matrix.java == '${jvmLatest.render}')"
+}
+
+/** Where to run Lincheck tests (like above, but need older JVM) */
+val stressLinchkCond: String = {
+  "(" +
+  s"(matrix.os != '${windows}') && " +
+  s"(matrix.os != '${windowsArm}')" +
+  ") && (" +
+  s"(matrix.java == '${jvmLts.render}') ||" +
+  s"(matrix.java == '${jvmGraalLts.render}')" +
+  ")"
 }
 
 def transformWorkflowStep(step: WorkflowStep): WorkflowStep = {
@@ -157,7 +168,7 @@ ThisBuild / versionPolicyIgnoredInternalDependencyVersions := Some("^\\d+\\.\\d+
 ThisBuild / versionPolicyIntention := Compatibility.BinaryCompatible
 
 ThisBuild / githubWorkflowUseSbtThinClient := false
-ThisBuild / githubWorkflowBuildTimeoutMinutes := Some(300)
+ThisBuild / githubWorkflowBuildTimeoutMinutes := Some(420)
 ThisBuild / githubWorkflowPublishTargetBranches := Seq()
 ThisBuild / githubWorkflowBuild := List(
   // Tests on non-OpenJ9:
@@ -181,10 +192,12 @@ ThisBuild / githubWorkflowBuild := List(
     cond = Some(s"(matrix.os == '${linux}') && (matrix.java == '${jvmLatest.render}') && (matrix.scala == '${scala2}')"),
   ),
 ) ++ List(
-  // Lincheck tests (they only run if commit msg contains 'full CI' or 'stressLinchk'):
+  // Lincheck tests (they only run if commit msg contains 'stressLinchk';
+  // note: in 'full CI', we don't need to run them in a separate step,
+  // because they already ran due to `ciFullCommand`):
   WorkflowStep.Sbt(
     List("runLincheckTests"),
-    cond = Some(s"(${stressCond}) && ((${fullCiCond}) || (${commitContains("stressLinchk")}))")
+    cond = Some(s"(${stressLinchkCond}) && (${commitContains("stressLinchk")})")
   )
 ) ++ stressTestNames.map { projName =>
   // JCStress tests (they only run if commit msg contains 'full CI' or the project name):
@@ -328,7 +341,6 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
   .settings(
     libraryDependencies ++= Seq(
       dependencies.catsCore.value,
-      dependencies.catsMtl.value, // TODO: do we still need this?
       dependencies.catsEffectKernel.value,
       dependencies.catsEffectStd.value,
       // "eu.timepit" %%% "refined" % "0.11.1",
@@ -476,11 +488,12 @@ lazy val internalHelpers = project.in(file("internal-helpers"))
     assertionsEnabled := false, // so that we can test that they're disabled
   )
 
-lazy val laws = crossProject(JVMPlatform, JSPlatform) // TODO: don't publish this
+lazy val laws = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
   .in(file("laws"))
   .settings(name := "choam-laws")
+  .enablePlugins(NoPublishPlugin)
   .disablePlugins(disabledPlugins: _*)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
@@ -708,8 +721,20 @@ lazy val layout = project.in(file("layout"))
   .dependsOn(core.jvm % "compile->compile;test->test")
 
 lazy val commonSettingsJvm = Seq[Setting[_]](
-  Test / run / fork := true,
-  // Test / fork := true, // Note: forked JVM doesn't seem to use the .jvmopts file
+  Test / fork := true,
+  Test / javaOptions ++= Seq(
+    // Note: forked JVM doesn't seem to use the .jvmopts
+    // file, so these are copied from there.
+    "-Xms512M",
+    "-Xmx6G",
+    "-Xss2M",
+    "-XX:+UseG1GC",
+    "-Ddev.tauri.choam.stats=true",
+    // These are to diagnose a mysterious CI error which only happens on graal:
+    "-Djdk.graal.Dump=",
+    "-Djdk.graal.PrintBackendCFG=true",
+    "-Djdk.graal.MethodFilter=AbstractHamt.*",
+  ),
 )
 
 lazy val commonSettingsJs = Seq[Setting[_]](
@@ -873,7 +898,6 @@ lazy val dependencies = new {
 
   val catsVersion = "2.13.0" // https://github.com/typelevel/cats
   val catsEffectVersion = "3.6.2" // https://github.com/typelevel/cats-effect
-  val catsMtlVersion = "1.5.0" // https://github.com/typelevel/cats-mtl
   val catsCollectionsVersion = "0.9.10" // https://github.com/typelevel/cats-collections
   val fs2Version = "3.12.0" // https://github.com/typelevel/fs2
   val scalacheckEffectVersion = "2.0.0-M2" // https://github.com/typelevel/scalacheck-effect
@@ -893,8 +917,6 @@ lazy val dependencies = new {
   val catsEffectAll = Def.setting("org.typelevel" %%% "cats-effect" % catsEffectVersion)
   val catsEffectLaws = Def.setting("org.typelevel" %%% "cats-effect-laws" % catsEffectVersion)
   val catsEffectTestkit = Def.setting("org.typelevel" %%% "cats-effect-testkit" % catsEffectVersion)
-  val catsMtl = Def.setting("org.typelevel" %%% "cats-mtl" % catsMtlVersion)
-  val catsMtlLaws = Def.setting("org.typelevel" %%% "cats-mtl-laws" % catsMtlVersion)
   val catsCollections = Def.setting("org.typelevel" %%% "cats-collections-core" % catsCollectionsVersion)
   val fs2 = Def.setting("co.fs2" %%% "fs2-core" % fs2Version)
   val decline = Def.setting("com.monovore" %%% "decline" % "2.5.0") // https://github.com/bkirwi/decline
@@ -929,7 +951,6 @@ lazy val dependencies = new {
       catsLaws.value,
       "org.typelevel" %%% "cats-effect-kernel-testkit" % catsEffectVersion,
       "org.typelevel" %%% "cats-effect-testkit" % catsEffectVersion,
-      catsMtlLaws.value, // TODO: do we still need this?
       "org.scalameta" %%% "munit" % "1.1.1", // https://github.com/scalameta/munit
       "org.typelevel" %%% "munit-cats-effect" % "2.1.0", // https://github.com/typelevel/munit-cats-effect
       "org.typelevel" %%% "scalacheck-effect" % scalacheckEffectVersion,

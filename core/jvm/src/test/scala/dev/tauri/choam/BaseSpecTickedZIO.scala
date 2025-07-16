@@ -29,10 +29,8 @@ import scala.concurrent.ExecutionContext
 import cats.effect.kernel.Async
 import cats.effect.kernel.testkit.TestContext
 
-import munit.CatsEffectSuite
-
 abstract class BaseSpecTickedZIO
-  extends CatsEffectSuite
+  extends munit.FunSuite
   with TestContextSpec[zio.Task]
   with BaseSpecAsyncF[zio.Task]
   with UtilsForZIO { this: McasImplSpec =>

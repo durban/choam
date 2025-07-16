@@ -42,6 +42,7 @@ final class EnvironmentSpec extends EnvironmentSpecPlatform {
     println(s"isMac() == ${isMac()}")
     println(s"isJvm() == ${isJvm()}")
     println(s"isJs() == ${isJs()}")
+    println(s"isArm() == ${isArm()}")
     println(s"isVmSupportsLongCas() == ${isVmSupportsLongCas()}")
     println(s"isIntCached(42) == ${isIntCached(42)}")
     println(s"isIntCached(99999999) == ${isIntCached(99999999)}")

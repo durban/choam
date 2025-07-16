@@ -191,6 +191,39 @@ trait PubSubSpecTicked[F[_]]
         _ <- assertResultF(f2.joinWithNever, Vector(1, 3))
       } yield ()
     }
+
+    test(s"$name - numberOfSubscriptions") {
+      for {
+        hub <- PubSub[F, Int](str).run[F]
+        _ <- assertResultF(hub.numberOfSubscriptions, 0)
+        f1 <- hub.subscribe.compile.toVector.start
+        _ <- this.tickAll // wait for subscription to happen
+        _ <- assertResultF(hub.numberOfSubscriptions, 1)
+        f2 <- hub.subscribe.compile.toVector.start
+        _ <- this.tickAll // wait for subscription to happen
+        _ <- assertResultF(hub.numberOfSubscriptions, 2)
+        _ <- assertResultF(hub.publish(1).run[F], PubSub.Success)
+        _ <- this.tickAll
+        _ <- assertResultF(hub.numberOfSubscriptions, 2)
+        f3 <- hub.subscribe.take(2).compile.toVector.start
+        _ <- this.tickAll // wait for subscription to happen
+        _ <- assertResultF(hub.numberOfSubscriptions, 3)
+        _ <- assertResultF(hub.publish(2).run[F], PubSub.Success)
+        _ <- this.tickAll
+        _ <- assertResultF(hub.numberOfSubscriptions, 3)
+        _ <- f1.cancel
+        _ <- this.tickAll
+        _ <- assertResultF(hub.numberOfSubscriptions, 2)
+        _ <- assertResultF(hub.publish(3).run[F], PubSub.Success)
+        _ <- this.tickAll
+        _ <- assertResultF(hub.numberOfSubscriptions, 1)
+        _ <- assertResultF(hub.close.run[F], PubSub.Backpressured)
+        _ <- hub.awaitShutdown
+        _ <- assertResultF(hub.numberOfSubscriptions, 0)
+        _ <- assertResultF(f2.joinWithNever, Vector(1, 2, 3))
+        _ <- assertResultF(f3.joinWithNever, Vector(2, 3))
+      } yield ()
+    }
   }
 
   private def droppingTests(

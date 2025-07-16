@@ -18,7 +18,6 @@
 package dev.tauri.choam
 
 import java.util.concurrent.TimeoutException
-import java.util.concurrent.atomic.AtomicReference
 
 import scala.concurrent.{ Future, ExecutionContext }
 import scala.concurrent.duration._
@@ -30,8 +29,9 @@ import cats.effect.unsafe.{ IORuntime, IORuntimeConfig, Scheduler }
 
 import core.{ Rxn, Reactive, AsyncReactive }
 import core.RetryStrategy.Internal.Stepper
+import internal.{ LazyIdempotent, ChoamCatsEffectSuite }
 
-import munit.{ CatsEffectSuite, Location, FunSuite, FailException }
+import munit.{ Location, FunSuite, FailException }
 
 trait BaseSpecF[F[_]]
   extends FunSuite
@@ -46,28 +46,18 @@ trait BaseSpecF[F[_]]
 
   protected def absolutelyUnsafeRunSync[A](fa: F[A]): A
 
-  private[this] val rtHolder: AtomicReference[ChoamRuntime] =
-    new AtomicReference
+  private[this] val rtHolder: LazyIdempotent[ChoamRuntime] = {
+    // Note: we'll never close this runtime, but
+    // that's fine, because `McasImplSpec` will
+    // close the MCAS in `afterAll`, and the
+    // OsRng we use is a global one which lives
+    // forever in the `BaseSpec` companion object.
+    LazyIdempotent.make { ChoamRuntime.forTesting(this.mcasImpl) }
+  }
 
   /** Lazily initialized `ChoamRuntime` which uses `this.mcasImpl` */
   protected final def runtime: ChoamRuntime = {
-    rtHolder.get() match {
-      case null =>
-        // Note: we'll never close this runtime, but
-        // that's fine, because `McasImplSpec` will
-        // close the MCAS in `afterAll`, and the
-        // OsRng we use is a global one which lives
-        // forever in the `BaseSpec` companion object.
-        val rt = ChoamRuntime.forTesting(this.mcasImpl)
-        val wit = this.compareAndExchange(rtHolder, null, rt)
-        if (wit eq null) {
-          rt
-        } else {
-          wit
-        }
-      case rt =>
-        rt
-    }
+    rtHolder.get()
   }
 
   def assumeF(cond: => Boolean, clue: String = "assumption failed")(implicit loc: Location): F[Unit] =
@@ -137,14 +127,10 @@ trait BaseSpecSyncF[F[_]] extends BaseSpecF[F] { this: McasImplSpec =>
     new Reactive.SyncReactive[F](this.mcasImpl)(using F)
 }
 
-/** Yeah, so this indirection exists so dotty doesn't crash... */
-abstract class CatsEffectSuiteIndirection extends CatsEffectSuite {
-  final override def munitIOTimeout: Duration =
-    super.munitIOTimeout * 2
-}
+
 
 abstract class BaseSpecIO
-  extends CatsEffectSuiteIndirection
+  extends ChoamCatsEffectSuite
   with BaseSpecAsyncF[IO]
   with BaseSpecIOPlatform { this: McasImplSpec =>
 
@@ -292,7 +278,7 @@ abstract class BaseSpecTickedIO extends BaseSpecIO with TestContextSpec[IO] { th
   }
 }
 
-abstract class BaseSpecSyncIO extends CatsEffectSuite with BaseSpecSyncF[SyncIO] { this: McasImplSpec =>
+abstract class BaseSpecSyncIO extends ChoamCatsEffectSuite with BaseSpecSyncF[SyncIO] { this: McasImplSpec =>
 
   /** Not implicit, so that `rF` is used for sure */
   final override def F: Sync[SyncIO] =
@@ -318,6 +304,27 @@ trait TestContextSpec[F[_]] { self: BaseSpecAsyncF[F] & McasImplSpec =>
 
   final def tick: F[Unit] = F.delay {
     this.testContext.tick()
+  }
+
+  final def tickOne: F[Boolean] = F.delay {
+    this.testContext.tickOne()
+  }
+
+  final def tickN(n: Int): F[Int] = F.delay {
+    require(n > 0)
+    def go(done: Int): Int = {
+      if (done >= n) {
+        done
+      } else {
+        if (this.testContext.tickOne()) {
+          go(done + 1)
+        } else {
+          // nothing more to do:
+          done
+        }
+      }
+    }
+    go(done = 0)
   }
 
   final def advanceAndTick(d: FiniteDuration): F[Unit] = F.delay {

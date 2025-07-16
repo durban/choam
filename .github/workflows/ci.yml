@@ -85,7 +85,7 @@ jobs:
           - java: temurin@24
             scala: 2.13
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 300
+    timeout-minutes: 420
     steps:
       - name: Ignore line ending differences in git
         if: contains(runner.os, 'windows')
@@ -205,7 +205,7 @@ jobs:
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' checkScalafix
 
-      - if: (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@24')) && ((contains(github.event.head_commit.message, 'full CI')) || (contains(github.event.head_commit.message, 'stressLinchk')))
+      - if: (((matrix.os != 'windows-2025') && (matrix.os != 'windows-11-arm')) && ((matrix.java == 'temurin@21') ||(matrix.java == 'graalvm@21'))) && (contains(github.event.head_commit.message, 'stressLinchk'))
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' runLincheckTests
 
@@ -365,5 +365,5 @@ jobs:
       - name: Submit Dependencies
         uses: scalacenter/sbt-dependency-submission@f3c0455a87097de07b66c3dc1b8619b5976c1c89
         with:
-          modules-ignore: choam-stress-data-slow_2.13 choam-stress-data-slow_3 choam_2.13 choam_3 choam-internal-helpers_2.13 choam-internal-helpers_3 choam-graal-ni-example_2.13 choam-graal-ni-example_3 choam-stress-mcas-slow_2.13 choam-stress-mcas-slow_3 choam-stress-experiments_2.13 choam-stress-experiments_3 choam-stress-linchk_2.13 choam-stress-linchk_3 choam-stress-mcas_2.13 choam-stress-mcas_3 choam-test-ext_2.13 choam-test-ext_3 choam-test-ext_sjs1_2.13 choam-test-ext_sjs1_3 choam-layout_2.13 choam-layout_3 choam-stress-core_2.13 choam-stress-core_3 choam-stress-data_2.13 choam-stress-data_3 choam-stress-async_2.13 choam-stress-async_3 choam-stress-rng_2.13 choam-stress-rng_3 choam-bench_2.13 choam-bench_3
+          modules-ignore: choam-stress-data-slow_2.13 choam-stress-data-slow_3 choam_2.13 choam_3 choam-internal-helpers_2.13 choam-internal-helpers_3 choam-graal-ni-example_2.13 choam-graal-ni-example_3 choam-laws_2.13 choam-laws_3 choam-stress-mcas-slow_2.13 choam-stress-mcas-slow_3 choam-stress-experiments_2.13 choam-stress-experiments_3 choam-laws_sjs1_2.13 choam-laws_sjs1_3 choam-stress-linchk_2.13 choam-stress-linchk_3 choam-stress-mcas_2.13 choam-stress-mcas_3 choam-test-ext_2.13 choam-test-ext_3 choam-test-ext_sjs1_2.13 choam-test-ext_sjs1_3 choam-layout_2.13 choam-layout_3 choam-stress-core_2.13 choam-stress-core_3 choam-stress-data_2.13 choam-stress-data_3 choam-stress-async_2.13 choam-stress-async_3 choam-stress-rng_2.13 choam-stress-rng_3 choam-bench_2.13 choam-bench_3
           configs-ignore: test scala-tool scala-doc-tool test-internal

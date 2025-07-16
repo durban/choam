@@ -23,37 +23,53 @@ import cats.effect.kernel.Async
 import cats.effect.{ IO, SyncIO }
 import cats.effect.syntax.all._
 
-import munit.CatsEffectSuite
+import internal.ChoamCatsEffectSuite
 
-final class ResourceSpecIO extends ResourceSpec[IO]
+final class ResourceSpecIO extends ChoamCatsEffectSuite with ResourceSpec[IO] {
 
-abstract class ResourceSpec[F[_]]()(implicit F: Async[F]) extends CatsEffectSuite with BaseSpec {
+  final override implicit def F: Async[IO] =
+    IO.asyncForIO
+}
 
-  test("Reactive.forSyncRes") {
-    Reactive.forSync[F].use { reactive =>
+trait ResourceSpec[F[_]] extends BaseSpec {
+
+  implicit def F: Async[F]
+
+  private val crt: ChoamRuntime = ChoamRuntime.unsafeBlocking()
+
+  private val crt2: ChoamRuntime = ChoamRuntime.unsafeBlocking()
+
+  final override def afterAll(): Unit = {
+    crt2.unsafeCloseBlocking()
+    crt.unsafeCloseBlocking()
+    super.afterAll()
+  }
+
+  test("Reactive.from") {
+    Reactive.from[F](crt).use { reactive =>
       reactive(Rxn.pure(42)).flatMap { v =>
         F.delay { assertEquals(v, 42) }
       }
     }
   }
 
-  test("Reactive.forSyncResIn") {
-    val (reactive, close) = Reactive.forSyncIn[SyncIO, F].allocated.unsafeRunSync()
+  test("Reactive.fromIn") {
+    val (reactive, close) = Reactive.fromIn[SyncIO, F](crt).allocated.unsafeRunSync()
     reactive(Rxn.pure(42)).flatMap { v =>
       F.delay { assertEquals(v, 42) }
     }.guarantee(close.to[F])
   }
 
-  test("AsyncReactive.forAsync") {
-    AsyncReactive.forAsync[F].use { reactive =>
+  test("AsyncReactive.from") {
+    AsyncReactive.from[F](crt).use { reactive =>
       reactive.applyAsync(Rxn.pure(42)).flatMap { v =>
         F.delay { assertEquals(v, 42) }
       }
     }
   }
 
-  test("AsyncReactive.forAsyncIn") {
-    val (reactive, close) = AsyncReactive.forAsyncIn[SyncIO, F].allocated.unsafeRunSync()
+  test("AsyncReactive.fromIn") {
+    val (reactive, close) = AsyncReactive.fromIn[SyncIO, F](crt).allocated.unsafeRunSync()
     reactive.applyAsync(Rxn.pure(42)).flatMap { v =>
       F.delay { assertEquals(v, 42) }
     }.guarantee(close.to[F])
@@ -63,8 +79,8 @@ abstract class ResourceSpec[F[_]]()(implicit F: Async[F]) extends CatsEffectSuit
     // This should never happen in normal code!
     // This test is testing that if it happens,
     // there is (likely) at least an exception.
-    Reactive.forSync[F].use { reactive1 =>
-      Reactive.forSync[F].use { reactive2 =>
+    Reactive.from[F](crt).use { reactive1 =>
+      Reactive.from[F](crt2).use { reactive2 =>
         for {
           ref <- reactive1(Ref(42))
           v <- reactive1(ref.updateAndGet(_ + 1))

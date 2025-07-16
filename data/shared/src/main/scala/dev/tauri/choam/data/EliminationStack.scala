@@ -33,17 +33,19 @@ private final class EliminationStack[A](underlying: Stack[A])
   final def tryPop: Rxn[Option[A]] =
     this.rightOp(null)
 
-  final def size: Rxn[Int] =
+  private[choam] final def size: Rxn[Int] =
     this.underlying.size
 }
 
 private object EliminationStack {
 
-  final def apply[A]: Rxn[Stack[A]] =
-    apply[A](Ref.AllocationStrategy.Default)
-
-  final def apply[A](str: Ref.AllocationStrategy): Rxn[Stack[A]] = {
-    Stack.treiberStack[A](str).flatMap { ul =>
+  final def apply[A]: Rxn[Stack[A]] = {
+    // Note: we unconditionally use a Padded alloc.
+    // strategy, because if one uses an elimination
+    // stack, then contention is likely high, so
+    // Padded should be also useful. In other words,
+    // an unpadded elimination stack would be strange.
+    TreiberStack[A](Ref.AllocationStrategy.Padded).flatMap { ul =>
       Rxn.unsafe.delay { new EliminationStack[A](ul) }
     }
   }
@@ -53,20 +55,14 @@ private object EliminationStack {
     def tryPop: Rxn[Either[Option[A], Option[A]]]
   }
 
-  final def tagged[A]: Rxn[TaggedEliminationStack[A]] =
-    tagged(Ref.AllocationStrategy.Default)
-
-  final def tagged[A](str: Ref.AllocationStrategy): Rxn[TaggedEliminationStack[A]] = {
-    Stack.treiberStack[A](str).flatMap { ul =>
+  final def tagged[A]: Rxn[TaggedEliminationStack[A]] = {
+    TreiberStack[A](Ref.AllocationStrategy.Padded).flatMap { ul =>
       taggedFrom(ul.push, ul.tryPop)
     }
   }
 
-  final def taggedFlaky[A]: Rxn[TaggedEliminationStack[A]] =
-    taggedFlaky(Ref.AllocationStrategy.Default)
-
-  final def taggedFlaky[A](str: Ref.AllocationStrategy): Rxn[TaggedEliminationStack[A]] = {
-    Stack.treiberStack[A](str).flatMap { ul =>
+  final def taggedFlaky[A]: Rxn[TaggedEliminationStack[A]] = {
+    TreiberStack[A](Ref.AllocationStrategy.Padded).flatMap { ul =>
       taggedFrom(
         a => ul.push(a).flatMap { x =>
           if (ThreadLocalRandom.current().nextBoolean()) Rxn.pure(x)

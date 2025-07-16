@@ -34,26 +34,21 @@ import internal.mcas.Hamt.IllegalInsertException
 import internal.random
 
 /**
- * An effectful function from `A` to `B`; when executed,
- * it may update any number of [[Ref]]s atomically. (It
+ * A effect with result type `B`; when executed, it
+ * may update any number of [[Ref]]s atomically. (It
  * may also create new [[Ref]]s.)
  *
  * These functions are composable (see below), and composition
  * preserves their atomicity. That is, all affected [[Ref]]s
  * will be updated atomically.
  *
- * TODO: fix this ------v
- * A [[Rxn]] forms an [[cats.arrow.Arrow Arrow]] (more
- * specifically, an [[cats.arrow.ArrowChoice ArrowChoice]]).
- * It also forms a [[cats.Monad Monad]] in `B`; however, consider
- * using the arrow combinators (when possible) instead of `flatMap`
- * (since a static combination of `Rxn`s may be more performant).
- *
+ * A [[Rxn]] forms a [[cats.Monad Monad]], so the usual
+ * monadic combinators can be used to compose `Rxn`s.
  */
 sealed abstract class Rxn[+B] { // short for 'reaction'
 
   /*
-   * An implementation similar to reagents, described in [Reagents: Expressing and
+   * An implementation inspired by reagents, described in [Reagents: Expressing and
    * Composing Fine-grained Concurrency](https://www.ccs.neu.edu/home/turon/reagents.pdf)
    * by Aaron Turon; originally implemented at [aturon/ChemistrySet](
    * https://github.com/aturon/ChemistrySet).
@@ -83,12 +78,7 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
    *
    * Finally (unlike with reagents), two `Rxn`s which touch the same
    * `Ref`s are composable with each other. This allows multiple
-   * reads and writes to the same `Ref` in one `Rxn`. (`Exchanger` is
-   * an exception, this is part of the reason it is `unsafe`).
-   *
-   * Existing reagent implementations:
-   * - https://github.com/aturon/Caper (Racket)
-   * - https://github.com/ocamllabs/reagents (OCaml)
+   * reads and writes to the same `Ref` in one `Rxn`.
    */
 
   def + [Y >: B](that: Rxn[Y]): Rxn[Y]
@@ -133,11 +123,10 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
     this.postCommit { _ => pc }
 
   /**
-   * Execute the [[Rxn]] with the specified input `a`.
+   * Execute the [[Rxn]].
    *
    * This method is `unsafe` because it performs side-effects.
    *
-   * @param a the input to the [[Rxn]].
    * @param rt the [[ChoamRuntime]] which will run the [[Rxn]].
    * @return the result of the executed [[Rxn]].
    */
@@ -146,11 +135,10 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
   ): B = this.unsafePerform(rt.mcasImpl, RetryStrategy.Default)
 
   /**
-   * Execute the [[Rxn]] with the specified input `a`.
+   * Execute the [[Rxn]].
    *
    * This method is `unsafe` because it performs side-effects.
    *
-   * @param a the input to the [[Rxn]].
    * @param rt the [[ChoamRuntime]] which will run the [[Rxn]].
    * @param strategy the retry strategy to use.
    * @return the result of the executed [[Rxn]].
@@ -296,10 +284,10 @@ private[choam] sealed abstract class RxnImpl[+B]
     this.attempt
 
   final override def attempt: Rxn[Option[B]] =
-    this.map(Some(_)) + Rxn.pure[Option[B]](None)
+    this.map(Some(_)) + Rxn.none
 
   final override def maybe: Rxn[Boolean] =
-    this.as(true) + Rxn.pure(false)
+    this.as(true) + Rxn.false_
 
   final override def map[C](f: B => C): RxnImpl[C] =
     new Rxn.Map_(this, f)
@@ -411,10 +399,14 @@ object Rxn extends RxnInstances0 {
   private[this] val _unit: RxnImpl[Unit] =
     pureImpl(())
 
-  private[this] final val _none: Rxn[Option[Nothing]] =
+  private[this] val _none: Rxn[Option[Nothing]] =
     pure(None)
 
-  // TODO: private[this] val _true: RxnImpl[Any, Boolean] = ... // and _false
+  private[this] val _true: RxnImpl[Boolean] =
+    pureImpl(true)
+
+  private[this] val _false: RxnImpl[Boolean] =
+    pureImpl(false)
 
   @inline
   final def unit: Rxn[Unit] =
@@ -425,6 +417,12 @@ object Rxn extends RxnInstances0 {
 
   private[choam] final def none[A]: Rxn[Option[A]] =
     _none
+
+  private[choam] final def true_[A]: Rxn[Boolean] =
+    _true
+
+  private[choam] final def false_[A]: Rxn[Boolean] =
+    _false
 
   final def postCommit(pc: Rxn[Unit]): Rxn[Unit] =
     new Rxn.PostCommit[Unit](unit, _ => pc)
@@ -470,11 +468,12 @@ object Rxn extends RxnInstances0 {
   final def secureRandom: SecureRandom[Rxn] =
     _secureRandom
 
-  final def deterministicRandom(initialSeed: Long): Rxn[random.SplittableRandom[Rxn]] =
-    deterministicRandom(initialSeed, Ref.AllocationStrategy.Default)
-
-  final def deterministicRandom(initialSeed: Long, str: Ref.AllocationStrategy): Rxn[random.SplittableRandom[Rxn]] =
+  final def deterministicRandom(
+    initialSeed: Long,
+    str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default
+  ): Rxn[random.SplittableRandom[Rxn]] = {
     random.deterministicRandom(initialSeed, str)
+  }
 
   final def memoize[A](rxn: Rxn[A], str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Rxn[Memo[A]] =
     Memo(rxn, str)
@@ -498,6 +497,8 @@ object Rxn extends RxnInstances0 {
   }
 
   final object unsafe {
+
+    import core.unsafe.RxnLocal
 
     trait WithLocal[A, I, R] {
       def apply[G[_]](
@@ -1145,7 +1146,7 @@ object Rxn extends RxnInstances0 {
       this._exParams = null
     }
 
-    private[this] var startRxn: Rxn[Any] = rxn.asInstanceOf[Rxn[Any]]
+    private[this] var startRxn: Rxn[Any] = rxn
 
     private[this] var _desc: AbstractDescriptor =
       null
@@ -2529,8 +2530,8 @@ private sealed abstract class RxnInstances2 extends RxnInstances3 { this: Rxn.ty
   // inherit `StackSafeMonad`, in case someone
   // somewhere uses that as a marker or even a
   // typeclass:
-  implicit final def monadInstance[X]: StackSafeMonad[Rxn] =
-    _monadInstance.asInstanceOf[StackSafeMonad[Rxn]]
+  implicit final def monadInstance: StackSafeMonad[Rxn] =
+    _monadInstance
 
   private[this] val _monadInstance: StackSafeMonad[Rxn] = new StackSafeMonad[Rxn] {
     final override def unit: Rxn[Unit] =
@@ -2560,12 +2561,12 @@ private sealed abstract class RxnInstances2 extends RxnInstances3 { this: Rxn.ty
 
 private sealed abstract class RxnInstances3 extends RxnInstances4 { self: Rxn.type =>
 
-  implicit final def uniqueInstance[X]: Unique[Rxn] =
+  implicit final def uniqueInstance: Unique[Rxn] =
     _uniqueInstance.asInstanceOf[Unique[Rxn]]
 
   private[this] val _uniqueInstance: Unique[Rxn] = new Unique[Rxn] {
     final override def applicative: Applicative[Rxn] =
-      self.monadInstance[Any]
+      self.monadInstance
     final override def unique: Rxn[Unique.Token] =
       self.unique
   }
@@ -2694,8 +2695,8 @@ private sealed abstract class RxnInstances8 extends RxnInstances9 { self: Rxn.ty
 
 private sealed abstract class RxnInstances9 extends RxnInstances10 { self: Rxn.type =>
 
-  implicit final def uuidGenInstance[X]: UUIDGen[Rxn[*]] =
-    self._uuidGen.asInstanceOf[UUIDGen[Rxn]]
+  implicit final def uuidGenInstance: UUIDGen[Rxn] =
+    self._uuidGen
 
   private[this] val _uuidGen: UUIDGen[Rxn] = new UUIDGen[Rxn] {
     final override def randomUUID: Rxn[UUID] =
@@ -2708,7 +2709,7 @@ private sealed abstract class RxnInstances10 extends RxnInstances11 { self: Rxn.
   import scala.concurrent.duration.{ FiniteDuration, NANOSECONDS, MILLISECONDS }
 
   implicit final def clockInstance: Clock[Rxn] =
-    _clockInstance.asInstanceOf[Clock[Rxn]]
+    _clockInstance
 
   private[this] val _clockInstance: Clock[Rxn] = new Clock[Rxn] {
     final override def applicative: Applicative[Rxn] =
@@ -2722,8 +2723,8 @@ private sealed abstract class RxnInstances10 extends RxnInstances11 { self: Rxn.
 
 private sealed abstract class RxnInstances11 extends RxnSyntax0 { self: Rxn.type =>
 
-  implicit final def catsRefMakeInstance[X]: CatsRef.Make[Rxn] =
-    _catsRefMakeInstance.asInstanceOf[CatsRef.Make[Rxn]]
+  implicit final def catsRefMakeInstance: CatsRef.Make[Rxn] =
+    _catsRefMakeInstance
 
   private[this] val _catsRefMakeInstance: CatsRef.Make[Rxn] = new CatsRef.Make[Rxn] {
     final override def refOf[A](a: A): Rxn[CatsRef[Rxn, A]] = {
@@ -2732,7 +2733,7 @@ private sealed abstract class RxnInstances11 extends RxnSyntax0 { self: Rxn.type
           final override def get: Rxn[A] =
             underlying.get
           final override def set(a: A): Rxn[Unit] =
-            underlying.set1(a)
+            underlying.set(a)
           final override def access: Rxn[(A, A => Rxn[Boolean])] = {
             underlying.get.map { ov =>
               val setter = { (nv: A) =>
@@ -2747,7 +2748,7 @@ private sealed abstract class RxnInstances11 extends RxnSyntax0 { self: Rxn.type
           final override def tryModify[B](f: A => (A, B)): Rxn[Option[B]] =
             this.modify(f).attempt
           final override def update(f: A => A): Rxn[Unit] =
-            underlying.update1(f)
+            underlying.update(f)
           final override def modify[B](f: A => (A, B)): Rxn[B] =
             underlying.modify(f)
           final override def tryModifyState[B](state: State[A, B]): Rxn[Option[B]] =

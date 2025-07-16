@@ -18,31 +18,49 @@
 package dev.tauri.choam
 
 import fs2.{ Chunk, Stream }
+import fs2.concurrent.SignallingRef
 
-import core.{ Rxn, AsyncReactive }
+import core.{ Rxn, Ref, RefLike, AsyncReactive }
 import async.AsyncQueue
 
 package object stream {
 
   // TODO: Channel
-  // TODO: SignallingRef
   // TODO: SignallingMapRef
   // TODO: Topic
 
-  final def signallingRef[F[_] : AsyncReactive, A](initial: A): Rxn[RxnSignallingRef[F, A]] =
-    RxnSignallingRef[F, A](initial)
+  /**
+   * Creates an [[fs2.concurrent.SignallingRef]], which
+   * is also readable/writable as a [[dev.tauri.choam.core.Rxn Rxn]],
+   * because it has an associated [[dev.tauri.choam.core.RefLike RefLike]]
+   * instance, which is returned as the first element of the result
+   * tuple.
+   *
+   * @return a pair of (refLike, signallingRef), which
+   *         are "associated with" each other (i.e., use
+   *         the same underlying storage).
+   */
+  final def signallingRef[F[_] : AsyncReactive, A](initial: A): Rxn[(RefLike[A], SignallingRef[F, A])] = {
+    signallingRef(initial, Ref.AllocationStrategy.Default)
+  }
 
-  // TODO: do we need these? ---v
+  // TODO: make this public + also an overload with configurable OverflowStrategy
+  private[stream] final def signallingRef[F[_] : AsyncReactive, A](
+    initial: A,
+    str: Ref.AllocationStrategy,
+  ): Rxn[(RefLike[A], SignallingRef[F, A])] = {
+    Fs2SignallingRefWrapper[F, A](initial, str).map { sRef => (sRef.refLike, sRef) }
+  }
 
-  final def fromQueueUnterminated[F[_], A](q: AsyncQueue[A], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
+  final def streamFromQueueUnterminated[F[_], A](q: AsyncQueue[A], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
     Stream.fromQueueUnterminated(new Fs2QueueWrapper(q), limit = limit)(using F.monad)
 
-  final def fromQueueUnterminatedChunk[F[_], A](q: AsyncQueue[Chunk[A]], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
+  final def streamFromQueueUnterminatedChunks[F[_], A](q: AsyncQueue[Chunk[A]], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
     Stream.fromQueueUnterminatedChunk(new Fs2QueueWrapper(q), limit = limit)(using F.monad)
 
-  final def fromQueueNoneTerminated[F[_], A](q: AsyncQueue[Option[A]], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
+  final def streamFromQueueNoneTerminated[F[_], A](q: AsyncQueue[Option[A]], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
     Stream.fromQueueNoneTerminated(new Fs2QueueWrapper(q), limit = limit)(using F.monad)
 
-  final def fromQueueNoneTerminatedChunk[F[_], A](q: AsyncQueue[Option[Chunk[A]]], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
+  final def streamFromQueueNoneTerminatedChunks[F[_], A](q: AsyncQueue[Option[Chunk[A]]], limit: Int = Int.MaxValue)(implicit F: AsyncReactive[F]): Stream[F, A] =
     Stream.fromQueueNoneTerminatedChunk(new Fs2QueueWrapper(q), limit = limit)
 }

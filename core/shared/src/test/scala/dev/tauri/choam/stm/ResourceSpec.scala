@@ -23,22 +23,38 @@ import cats.effect.kernel.Async
 import cats.effect.{ IO, SyncIO }
 import cats.effect.syntax.all._
 
-import munit.CatsEffectSuite
+import internal.ChoamCatsEffectSuite
 
-final class ResourceSpecIO extends ResourceSpec[IO]
+final class ResourceSpecIO extends ChoamCatsEffectSuite with ResourceSpec[IO] {
 
-abstract class ResourceSpec[F[_]]()(implicit F: Async[F]) extends CatsEffectSuite with BaseSpec {
+  final override implicit def F: Async[IO] =
+    IO.asyncForIO
+}
 
-  test("Transactive.forAsyncRes") {
-    Transactive.forAsync[F].use { transactive =>
+trait ResourceSpec[F[_]] extends BaseSpec {
+
+  implicit def F: Async[F]
+
+  private val crt: ChoamRuntime = ChoamRuntime.unsafeBlocking()
+
+  private val crt2: ChoamRuntime = ChoamRuntime.unsafeBlocking()
+
+  final override def afterAll(): Unit = {
+    crt2.unsafeCloseBlocking()
+    crt.unsafeCloseBlocking()
+    super.afterAll()
+  }
+
+  test("Transactive.from") {
+    Transactive.from[F](crt).use { transactive =>
       transactive.commit(Txn.pure(42)).flatMap { v =>
         F.delay { assertEquals(v, 42) }
       }
     }
   }
 
-  test("Transactive.forAsyncResIn") {
-    val (transactive, close) = Transactive.forAsyncIn[SyncIO, F].allocated.unsafeRunSync()
+  test("Transactive.fromIn") {
+    val (transactive, close) = Transactive.fromIn[SyncIO, F](crt).allocated.unsafeRunSync()
     transactive.commit(Txn.pure(42)).flatMap { v =>
       F.delay { assertEquals(v, 42) }
     }.guarantee(close.to[F])
@@ -46,8 +62,8 @@ abstract class ResourceSpec[F[_]]()(implicit F: Async[F]) extends CatsEffectSuit
 
   test("Working on a TRef with 2 different MCAS impls") {
     // this should never happen!
-    Transactive.forAsync[F].use { transactive1 =>
-      Transactive.forAsync[F].use { transactive2 =>
+    Transactive.from[F](crt).use { transactive1 =>
+      Transactive.from[F](crt2).use { transactive2 =>
         for {
           ref <- transactive1.commit(TRef(42))
           v <- transactive1.commit(ref.updateAndGet(_ + 1))

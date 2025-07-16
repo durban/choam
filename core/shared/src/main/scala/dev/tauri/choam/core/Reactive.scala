@@ -28,14 +28,19 @@ import internal.mcas.Mcas
 // TODO: data structure might just run things
 // TODO: with the `Default` (e.g., CDL#toCats).
 
-sealed trait Reactive[F[_]] extends ~>[Rxn, F] { self =>
+sealed trait Reactive[F[_]] extends ~>[Rxn, F] {
+
   def apply[A, B](r: Rxn[B], s: RetryStrategy.Spin = RetryStrategy.Default): F[B]
-  private[choam] def mcasImpl: Mcas
-  def monad: Monad[F]
+
   final def run[A](a: Rxn[A], s: RetryStrategy.Spin = RetryStrategy.Default): F[A] =
     this.apply[Any, A](a, s)
+
   final override def apply[A](a: Rxn[A]): F[A] =
     this.run(a, RetryStrategy.Default)
+
+  private[choam] def mcasImpl: Mcas
+
+  private[choam] def monad: Monad[F]
 }
 
 object Reactive {
@@ -50,12 +55,6 @@ object Reactive {
 
   final def fromIn[G[_], F[_]](rt: ChoamRuntime)(implicit @unused G: Sync[G], F: Sync[F]): Resource[G, Reactive[F]] =
     Resource.pure(new SyncReactive(rt.mcasImpl))
-
-  final def forSync[F[_]](implicit F: Sync[F]): Resource[F, Reactive[F]] =
-    forSyncIn[F, F]
-
-  final def forSyncIn[G[_], F[_]](implicit G: Sync[G], F: Sync[F]): Resource[G, Reactive[F]] =
-    ChoamRuntime[G].flatMap(rt => fromIn(rt))
 
   private[choam] class SyncReactive[F[_]](
     final override val mcasImpl: Mcas,

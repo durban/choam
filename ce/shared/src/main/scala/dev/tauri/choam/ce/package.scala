@@ -17,18 +17,11 @@
 
 package dev.tauri.choam
 
-import cats.effect.kernel.Resource
 import cats.effect.{ IO, SyncIO }
 
 import core.{ Reactive, AsyncReactive }
 
 package object ce {
-
-  private[choam] final def reactiveForSyncIO: Resource[SyncIO, Reactive[SyncIO]] =
-    Reactive.forSync
-
-  private[choam] final def asyncReactiveForIO: Resource[IO, AsyncReactive[IO]] =
-    AsyncReactive.forAsync
 
   /** Only for testing! */
   private[choam] final object unsafeImplicits {

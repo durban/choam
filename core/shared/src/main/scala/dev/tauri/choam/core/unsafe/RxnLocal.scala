@@ -17,6 +17,7 @@
 
 package dev.tauri.choam
 package core
+package unsafe
 
 import java.util.Arrays
 

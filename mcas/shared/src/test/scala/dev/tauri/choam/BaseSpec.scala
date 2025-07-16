@@ -122,4 +122,8 @@ trait MUnitUtils extends MUnitUtilsPlatform { this: FunSuite =>
   def isMac(): Boolean = {
     System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("mac os x")
   }
+
+  def isArm(): Boolean = {
+    System.getProperty("os.arch", "").toLowerCase(java.util.Locale.ROOT).equals("aarch64")
+  }
 }

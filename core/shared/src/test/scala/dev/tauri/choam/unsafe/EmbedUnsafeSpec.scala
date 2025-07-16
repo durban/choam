@@ -47,7 +47,7 @@ trait EmbedUnsafeSpec[F[_]]
       ref1 <- Ref(0).run[F]
       ref2 <- Ref(0).run[F]
       rxn = ref1.get.flatMap { v1 =>
-        ref1.set1(v1 + 1) *> Rxn.unsafe.embedUnsafe[Unit] { implicit ir =>
+        ref1.set(v1 + 1) *> Rxn.unsafe.embedUnsafe[Unit] { implicit ir =>
           assertEquals(ref1.value, 1)
           assertEquals(ref2.value, 0)
           ref1.value = 42
