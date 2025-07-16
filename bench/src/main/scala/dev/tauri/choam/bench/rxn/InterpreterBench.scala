@@ -128,8 +128,8 @@ object InterpreterBench {
 
     private[this] def mkRxn3(ref6: Ref[String], ref7: Ref[String], ref8: Ref[String]): Rxn[Unit] = {
       def modOrRetry(ref: Ref[String]): Rxn[Unit] = {
-        ref.updateWith { s =>
-          if ((s.toInt % 2) == 0) Rxn.pure(s.##.toString)
+        ref.get.flatMap { s =>
+          if ((s.toInt % 2) == 0) ref.set(s.##.toString)
           else Rxn.unsafe.retry
         }
       }
