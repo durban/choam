@@ -17,19 +17,21 @@
 
 package dev.tauri.choam
 
+import java.util.concurrent.atomic.AtomicReference
+
 import munit.FunSuite
 
-import internal.mcas.{ Mcas, OsRng }
+import internal.mcas.Mcas
 
 trait RxnLinchkSpec extends BaseLinchkSpec { this: FunSuite =>
 
   override def beforeAll(): Unit = {
     super.beforeAll()
-    RxnLinchkSpec.gcThreadContexts()
+    RxnLinchkSpec.init()
   }
 
   override def afterAll(): Unit = {
-    RxnLinchkSpec.gcThreadContexts()
+    RxnLinchkSpec.cleanup()
     super.afterAll()
   }
 }
@@ -43,22 +45,29 @@ trait RxnLinchkSpec extends BaseLinchkSpec { this: FunSuite =>
  * `_threadContexts` skiplist in `GlobalContext`
  * can grow quite large. And this can cause lincheck
  * to detect a spinlock while we're just traversing
- * the skiplist. (Probably.) So we're trying to
- * remove old unused nodes before and after each
- * test suite.
+ * the skiplist. (Probably.)
+ *
+ * So we're doing this ugly hack: replacing the
+ * global instance with a fresh one (in `beforeAll`),
+ * and closing the old one (in `afterAll`).
  */
 object RxnLinchkSpec {
 
-  private type GlobalContextLike = {
-    def gcThreadContextsForTesting(): Unit
+  private[this] val _rtHolder =
+    new AtomicReference[ChoamRuntime](null)
+
+  final def defaultMcasForTesting: Mcas =
+    _rtHolder.getAcquire().mcasImpl
+
+  private final def init(): Unit = {
+    val newInst = ChoamRuntime.unsafeBlocking()
+    val oldInst = _rtHolder.getAndSet(newInst)
+    assert(oldInst eq null)
   }
 
-  val defaultMcasForTesting: Mcas =
-    Mcas.newDefaultMcas(OsRng.mkNew())
-
-  private final def gcThreadContexts(): Unit = {
-    import scala.language.reflectiveCalls
-    System.gc()
-    this.defaultMcasForTesting.asInstanceOf[GlobalContextLike].gcThreadContextsForTesting()
+  private final def cleanup(): Unit = {
+    val oldInst = _rtHolder.getAndSet(null)
+    assert(oldInst ne null)
+    oldInst.unsafeCloseBlocking()
   }
 }
