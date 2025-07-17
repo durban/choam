@@ -119,8 +119,8 @@ object InterpreterBench {
 
     private[this] def mkRxn2(ref4: Ref[String], ref5: Ref[String]): Rxn[String] = {
       Rxn.fastRandom.nextInt.flatMap { (i: Int) =>
-        ref4.modifyWith { ov4 =>
-          if ((i % 2) == 0) ref5.getAndUpdate(_ => ov4).map(s => (s, s))
+        ref4.get.flatMap { ov4 =>
+          if ((i % 2) == 0) ref5.getAndSet(ov4).flatTap(ref4.set)
           else Rxn.unsafe.retry
         } + ref4.getAndUpdate(ov4 => (ov4.toInt + 1).toString)
       }
@@ -128,8 +128,8 @@ object InterpreterBench {
 
     private[this] def mkRxn3(ref6: Ref[String], ref7: Ref[String], ref8: Ref[String]): Rxn[Unit] = {
       def modOrRetry(ref: Ref[String]): Rxn[Unit] = {
-        ref.updateWith { s =>
-          if ((s.toInt % 2) == 0) Rxn.pure(s.##.toString)
+        ref.get.flatMap { s =>
+          if ((s.toInt % 2) == 0) ref.set(s.##.toString)
           else Rxn.unsafe.retry
         }
       }

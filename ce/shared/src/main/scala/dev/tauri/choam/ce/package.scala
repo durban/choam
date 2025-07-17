@@ -24,7 +24,7 @@ import core.{ Reactive, AsyncReactive }
 package object ce {
 
   /** Only for testing! */
-  private[choam] final object unsafeImplicits {
+  private[choam] final object unsafeImplicits { // TODO: remove this, it's really easy to misuse!
 
     private[this] val _rt =
       ChoamRuntime.unsafeBlocking()

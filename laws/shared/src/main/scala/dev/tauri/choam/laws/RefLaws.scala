@@ -23,7 +23,7 @@ import cats.laws.IsEq
 import cats.laws.IsEqArrow
 import cats.syntax.all._
 
-import core.{ Rxn, Ref }
+import core.Ref
 
 sealed trait RefLaws {
 
@@ -43,17 +43,6 @@ sealed trait RefLaws {
 
   def orderConsistentWithIdentity[A](x: Ref[A], y: Ref[A]): IsEq[Boolean] =
     Order[Ref[A]].eqv(x, y) <-> (x eq y)
-
-  def modifyWithPureIsModify[A, C](x: Ref[A], f: A => A, g: A => C): IsEq[Rxn[C]] = {
-    val uw = x.modifyWith { a => Rxn.pure((f(a), g(a))) }
-    val u = x.modify { a => (f(a), g(a)) }
-    def restoreRefAtEnd(rxn: Rxn[C]): Rxn[C] = {
-      x.get.flatMap { orig =>
-        rxn.postCommit(x.set(orig))
-      }
-    }
-    restoreRefAtEnd(uw) <-> restoreRefAtEnd(u)
-  }
 }
 
 object RefLaws {

@@ -22,7 +22,7 @@ package discipline
 import cats.kernel.Eq
 import cats.kernel.laws.discipline.catsLawsIsEqToProp
 
-import org.scalacheck.{ Arbitrary, Cogen }
+import org.scalacheck.Arbitrary
 import org.scalacheck.Prop.forAll
 import org.typelevel.discipline.Laws
 
@@ -47,13 +47,10 @@ sealed trait RefLawTests extends Laws {
   def laws: RefLaws =
     RefLaws.newRefLaws
 
-  def ref[A, B, C](
+  def ref[A, B](
     implicit
-    equC: Eq[C],
     arbA: Arbitrary[A],
     arbB: Arbitrary[B],
-    arbC: Arbitrary[C],
-    cogA: Cogen[A],
   ): RuleSet = new DefaultRuleSet(
     name = "ref",
     parent = None,
@@ -62,6 +59,5 @@ sealed trait RefLawTests extends Laws {
     "unique IDs (different type)" -> forAll(laws.uniqueIdsDifferentType[A, B]),
     "hashCode is based on ID" -> forAll(laws.hashCodeBasedOnId[A]),
     "Order consistent with identity" -> forAll(laws.orderConsistentWithIdentity[A]),
-    "updWith and ret is upd" -> forAll(laws.modifyWithPureIsModify[A, C]),
   )
 }

@@ -23,9 +23,8 @@ package bench
 import org.openjdk.jmh.annotations._
 
 import core.Rxn
-import data.{ Queue, QueueHelper }
-import dev.tauri.choam.bench.util.{ Prefill, McasImplState }
-import ce.unsafeImplicits._
+import data.Queue
+import dev.tauri.choam.bench.util.{ Prefill, McasImplState, McasImplStateBase }
 
 @Fork(value = 6, jvmArgsAppend = Array("-Xmx2048M"))
 @Threads(2)
@@ -74,9 +73,9 @@ object GcBench {
   class GcHostileSt extends BaseState {
 
     private[this] val _circle: List[Queue[String]] = List.fill(circleSize) {
-      QueueHelper.gcHostileMsQueueFromList[cats.effect.SyncIO, String](
+      Queue.gcHostileMsQueueFromList[cats.effect.SyncIO, String](
         Prefill.prefill().toList
-      ).unsafeRunSync()
+      )(McasImplStateBase.reactiveSyncIO).unsafeRunSync()
     }
 
     final override def circle: List[Queue[String]] =
@@ -87,9 +86,9 @@ object GcBench {
   class MsQueueSt extends BaseState {
 
     private[this] val _circle: List[Queue[String]] = List.fill(circleSize) {
-      QueueHelper.msQueueFromList[cats.effect.SyncIO, String](
+      Queue.msQueueFromList[cats.effect.SyncIO, String](
         Prefill.prefill().toList
-      ).unsafeRunSync()
+      )(McasImplStateBase.reactiveSyncIO).unsafeRunSync()
     }
 
     final override def circle: List[Queue[String]] =

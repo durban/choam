@@ -91,14 +91,18 @@ abstract class McasImplStateBase {
     McasImplStateBase.rt
 }
 
-private[bench] object McasImplStateBase {
+private[choam] object McasImplStateBase {
 
   private[bench] val rt: ChoamRuntime = {
     ChoamRuntime.unsafeBlocking()
   }
 
-  private[bench] val reactiveIO: Reactive[IO] = {
+  private[choam] val reactiveIO: Reactive[IO] = {
     AsyncReactive.fromIn[SyncIO, IO](this.rt).allocated.unsafeRunSync()._1
+  }
+
+  private[choam] val reactiveSyncIO: Reactive[SyncIO] = {
+    Reactive.fromIn[SyncIO, SyncIO](this.rt).allocated.unsafeRunSync()._1
   }
 
   private[bench] val mcasImpl: Mcas = {

@@ -48,25 +48,6 @@ sealed trait Ref[A] extends RefLike.UnsealedRefLike[A] { this: MemoryLocation[A]
   final override def update(f: A => A): Rxn[Unit] =
     Rxn.ref.updUpdate1(this)(f)
 
-  // TODO: eventually remove the *With methods, because
-  // TODO: they have somewhat problematic behavior
-  private[choam] final def modifyWith[C](f: A => Rxn[(A, C)]): Rxn[C] =
-    Rxn.ref.modifyWith(this)(f)
-
-  private[choam] final def updateWith(f: A => Rxn[A]): Rxn[Unit] =
-    modifyWith { oa => f(oa).map(na => (na, ())) }
-
-  /** Returns previous value */
-  private[choam] final def getAndUpdateWith(f: A => Rxn[A]): Rxn[A] =
-    modifyWith { oa => f(oa).map(na => (na, oa)) }
-
-  /** Returns new value */
-  private[choam] final def updateAndGetWith(f: A => Rxn[A]): Rxn[A] = { // TODO: optimize
-    modifyWith { oa =>
-      f(oa).map { na => (na, na) }
-    }
-  }
-
   final override def toCats[F[_]](implicit F: core.Reactive[F]): CatsRef[F, A] =
     new Ref.CatsRefFromRef[F, A](this) {}
 
@@ -446,10 +427,8 @@ object Ref extends RefInstances0 {
   }
 
   final def swap[A](r1: Ref[A], r2: Ref[A]): Rxn[Unit] = {
-    r1.updateWith { o1 =>
-      r2.modify[A] { o2 =>
-        (o1, o2)
-      }
+    r1.get.flatMap { o1 =>
+      r2.modify { o2 => (o1, o2) }.flatMap(r1.set)
     }
   }
 }

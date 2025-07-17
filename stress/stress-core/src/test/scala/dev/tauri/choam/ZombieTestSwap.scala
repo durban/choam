@@ -45,7 +45,7 @@ class ZombieTestSwap extends StressTestBase {
 
   // another swap, but checks the observed values:
   private[this] final def swapObserve(r: LLL_Result): Rxn[Unit] = {
-    ref1.updateWith { o1 =>
+    ref1.get.flatMap { o1 =>
       ref2.modify[String] { o2 =>
         if (o1 eq o2) {
           // we've observed an inconsistent state
@@ -54,7 +54,7 @@ class ZombieTestSwap extends StressTestBase {
           r.r3 = o1
         }
         (o1, o2)
-      }
+      }.flatMap(ref1.set)
     }
   }
 

@@ -34,9 +34,9 @@ private object Memo {
   ) extends Memo[A] {
 
     final override def getOrInit: Rxn[A] = {
-      state.updateAndGetWith { ov =>
+      state.get.flatMap { ov =>
         if (ov.isInstanceOf[Initializer[?]]) {
-          ov.asInstanceOf[Initializer[A]].act
+          ov.asInstanceOf[Initializer[A]].act.flatTap(state.set)
         } else {
           Rxn.pure(ov.asInstanceOf[A])
         }

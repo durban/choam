@@ -93,47 +93,18 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("updWith should behave correctly when used through getAndUpdateWith") {
+  test("Ref.swap") {
     for {
-      r1 <- newRef("foo")
-      r2 <- newRef("x")
-      r = r1.getAndUpdateWith { ov =>
-        if (ov eq "foo") Rxn.ret("bar")
-        else r2.getAndSet(ov)
+      r1 <- newRef("a")
+      r2 <- newRef("b")
+      _ <- assertResultF(Ref.swap(r1, r2).run, ())
+      _ <- assertResultF((r1.get * r2.get).run, ("b", "a"))
+      _ <- if (this.mcasImpl.isThreadSafe) {
+        assertResultF(F.both(Ref.swap(r1, r2).run, Ref.swap(r2, r1).run), ((), ()))
+      } else {
+        assertResultF((Ref.swap(r1, r2).run, Ref.swap(r2, r1).run).tupled, ((), ()))
       }
-      _ <- r.run
-      _ <- assertResultF(r1.get.run, "bar")
-      _ <- assertResultF(r2.get.run, "x")
-      _ <- r.run
-      _ <- assertResultF(r1.get.run, "x")
-      _ <- assertResultF(r2.get.run, "bar")
-    } yield ()
-  }
-
-  test("Ref#updateWith et. al.") {
-    for {
-      r <- newRef("a")
-      _ <- assertResultF(r.updateWith(s => Rxn.ret(s + "c")).run[F], ())
-      _ <- assertResultF(r.getAndUpdateWith(s => Rxn.ret(s + "f")).run[F], "ac")
-      _ <- assertResultF(r.get.run, "acf")
-    } yield ()
-  }
-
-  test("Ref#modifyWith et. al.") {
-    for {
-      r <- newRef("a")
-      _ <- assertResultF(r.modifyWith(s => Rxn.ret((s + "c", 43))).run[F], 43)
-      _ <- assertResultF(r.get.run[F], "ac")
-    } yield ()
-  }
-
-  test("Ref#updateAndGetWith") {
-    for {
-      ctr <- newRef(0)
-      r <- newRef("a")
-      _ <- assertResultF(r.updateAndGetWith { ov => ctr.update(_ + 1).as(ov + "b") }.run[F], "ab")
-      _ <- assertResultF(r.get.run[F], "ab")
-      _ <- assertResultF(ctr.get.run[F], 1)
+      _ <- assertResultF((r1.get * r2.get).run, ("b", "a"))
     } yield ()
   }
 
@@ -284,6 +255,16 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(r.modify(s => (s + "b", 42)).run[F], 42)
       _ <- assertResultF(r.tryModify(s => (s + "d", 44)).run[F], Some(44))
       _ <- assertResultF(r.get.run[F], "abd")
+    } yield ()
+  }
+
+  test("Ref#flatModify") {
+    for {
+      r <- newRef("a")
+      r2 <- newRef(0)
+      _ <- assertResultF(r.flatModify(s => (s + "b", r2.update(_ + 1).as(42))).run[F], 42)
+      _ <- assertResultF(r.get.run[F], "ab")
+      _ <- assertResultF(r2.get.run[F], 1)
     } yield ()
   }
 

@@ -45,15 +45,15 @@ private final class RingBuffer[A](
 
   final override def add(newVal: A): Rxn[Unit] = {
     tail.getAndUpdate(incrIdx).flatMap { idx =>
-      arr.unsafeGet(idx).updateWith { oldVal =>
+      arr.unsafeGet(idx).modify { oldVal =>
         if (isEmpty(oldVal)) {
-          Rxn.pure(newVal)
+          (newVal, Rxn.unit)
         } else {
           // we're overwriting the oldest value;
           // we also have to increment the deque index:
-          head.update(incrIdx).as(newVal)
+          (newVal, head.update(incrIdx))
         }
-      }
+      }.flatten
     }
   }
 }

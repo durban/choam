@@ -43,14 +43,14 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
     this(Node(nullOf[Ref[A]], Ref.unsafeUnpadded(End[A](), initRig)), initRig = initRig)
 
   final override val poll: Rxn[Option[A]] = {
-    head.modifyWith { node =>
+    head.get.flatMap { node =>
       skipRemoved(from = node.next).flatMap {
         case None =>
           // empty queue:
-          Rxn.ret((node, None))
+          Rxn.none
         case Some((a, n)) =>
           // deque first node (and drop tombs before it):
-          Rxn.ret((n.copy(data = nullOf[Ref[A]]), Some(a)))
+          head.set(n.copy(data = nullOf[Ref[A]])).as(Some(a))
       }
     }
   }
