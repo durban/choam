@@ -168,7 +168,7 @@ ThisBuild / versionPolicyIgnoredInternalDependencyVersions := Some("^\\d+\\.\\d+
 ThisBuild / versionPolicyIntention := Compatibility.BinaryCompatible
 
 ThisBuild / githubWorkflowUseSbtThinClient := false
-ThisBuild / githubWorkflowBuildTimeoutMinutes := Some(420)
+ThisBuild / githubWorkflowBuildTimeoutMinutes := Some(360) // this is the GH maximum
 ThisBuild / githubWorkflowPublishTargetBranches := Seq()
 ThisBuild / githubWorkflowBuild := List(
   // Tests on non-OpenJ9:
@@ -201,6 +201,7 @@ ThisBuild / githubWorkflowBuild := List(
   )
 ) ++ stressTestNames.map { projName =>
   // JCStress tests (they only run if commit msg contains 'full CI' or the project name):
+  // TODO: running ALL stress tests (with 'full CI') always times out (6hr)
   WorkflowStep.Sbt(
     List(mkStressTestCmd(projName)),
     cond = Some(s"(${stressCond}) && ((${fullCiCond}) || (${commitContains(projName)}))")
