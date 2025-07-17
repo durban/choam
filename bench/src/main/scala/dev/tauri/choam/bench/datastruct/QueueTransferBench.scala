@@ -126,7 +126,7 @@ object QueueTransferBench {
   class MsSt extends MsStBase {
 
     protected override def newQueue(): Queue[String] =
-      QueueHelper.msQueueFromList[SyncIO, String](Prefill.prefill().toList).unsafeRunSync()
+      Queue.msQueueFromList[SyncIO, String](Prefill.prefill().toList).unsafeRunSync()
 
     @Setup
     def setup(): Unit =

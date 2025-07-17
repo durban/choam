@@ -118,6 +118,14 @@ object Queue {
     }
   }
 
+  private[choam] final def msQueueFromList[F[_] : Reactive, A](as: List[A]): F[Queue[A]] = {
+    Reactive[F].monad.widen(fromList(MsQueue[A])(as))
+  }
+
+  private[choam] final def gcHostileMsQueueFromList[F[_] : Reactive, A](as: List[A]): F[Queue[A]] = {
+    Reactive[F].monad.widen(fromList(GcHostileMsQueue[A])(as))
+  }
+
   private[choam] final def drainOnce[F[_], A](queue: Queue.Poll[A])(implicit F: Reactive[F]): F[List[A]] = {
       F.monad.tailRecM(List.empty[A]) { acc =>
         F.monad.map(F.run(queue.poll)) {

@@ -54,7 +54,7 @@ private object QueueStressTestBase {
 
 abstract class MsQueueStressTestBase extends QueueStressTestBase {
   protected final override def newQueue[A](as: A*): Queue[A] =
-    QueueHelper.msQueueFromList[SyncIO, A](as.toList).unsafeRunSync()
+    Queue.msQueueFromList[SyncIO, A](as.toList).unsafeRunSync()
 }
 
 abstract class RemoveQueueStressTestBase extends QueueStressTestBase {

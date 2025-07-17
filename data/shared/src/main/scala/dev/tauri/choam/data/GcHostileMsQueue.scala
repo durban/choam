@@ -57,7 +57,7 @@ private final class GcHostileMsQueue[A] private[this] (sentinel: Node[A], initRi
   }
 
   final override def add(a: A): Rxn[Unit] = {
-    Ref.padded[Elem[A]](End()).flatMap { newRef =>
+    Ref[Elem[A]](End(), Ref.AllocationStrategy.Default).flatMap { newRef =>
       findAndEnqueue(Node(a, newRef))
     }
   }

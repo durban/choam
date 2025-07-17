@@ -146,7 +146,7 @@ object SyncUnboundedQueueBench {
     val runtime =
       cats.effect.unsafe.IORuntime.global
     val michaelScottQueue: Queue[String] =
-      QueueHelper.msQueueFromList[SyncIO, String](Prefill.prefill().toList).unsafeRunSync()
+      Queue.msQueueFromList[SyncIO, String](Prefill.prefill().toList).unsafeRunSync()
   }
 
   @State(Scope.Benchmark)
