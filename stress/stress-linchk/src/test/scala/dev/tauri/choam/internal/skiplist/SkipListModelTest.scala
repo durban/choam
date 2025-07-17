@@ -19,9 +19,11 @@ package dev.tauri.choam
 package internal
 package skiplist
 
-import org.jetbrains.kotlinx.lincheck.LinChecker
-import org.jetbrains.kotlinx.lincheck.paramgen.{ IntGen, StringGen }
-import org.jetbrains.kotlinx.lincheck.annotations.{ Operation, Param, StateRepresentation }
+import org.jetbrains.lincheck.datastructures.{ StringGen, IntGen }
+import org.jetbrains.lincheck.datastructures.{ Param, Operation }
+
+// TODO: StateRepresentation is deprecated, but seems to work for now
+import org.jetbrains.kotlinx.lincheck.annotations.StateRepresentation
 
 import munit.FunSuite
 
@@ -31,7 +33,7 @@ final class SkipListModelTest extends FunSuite with BaseLinchkSpec {
     val opts = defaultModelCheckingOptions()
       .sequentialSpecification(classOf[SkipListModelTest.TestStateSequential])
     printFatalErrors {
-      LinChecker.check(classOf[SkipListModelTest.TestState], opts)
+      opts.check(classOf[SkipListModelTest.TestState])
     }
   }
 }
@@ -46,6 +48,7 @@ object SkipListModelTest {
       new SkipListMap
 
     @StateRepresentation
+    @nowarn("cat=deprecation")
     def stateRepr(): String = {
       val lst = List.newBuilder[String]
       m.foreachAndSum { (k, v) =>
@@ -79,6 +82,7 @@ object SkipListModelTest {
       scala.collection.mutable.TreeMap.empty[Int, String]
 
     @StateRepresentation
+    @nowarn("cat=deprecation")
     def stateRepr(): String = {
       m.toList.map {
         case (k, cb) => s"[${k}, ${cb}]"

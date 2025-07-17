@@ -20,9 +20,8 @@ package core
 
 import cats.syntax.all._
 
-import org.jetbrains.kotlinx.lincheck.LinChecker
-import org.jetbrains.kotlinx.lincheck.paramgen.{ StringGen, BooleanGen, IntGen }
-import org.jetbrains.kotlinx.lincheck.annotations.{ Operation, Param }
+import org.jetbrains.lincheck.datastructures.{ StringGen, BooleanGen, IntGen }
+import org.jetbrains.lincheck.datastructures.{ Param, Operation }
 
 import munit.FunSuite
 
@@ -32,7 +31,7 @@ final class RxnModelTest extends FunSuite with RxnLinchkSpec {
 
   test("Model checking Rxn".tag(SLOW)) {
     val opts = fastModelCheckingOptions()
-    LinChecker.check(classOf[TestState], opts)
+    opts.check(classOf[TestState])
   }
 }
 

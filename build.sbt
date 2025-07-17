@@ -926,7 +926,7 @@ lazy val dependencies = new {
   val jol = Def.setting("org.openjdk.jol" % "jol-core" % jolVersion)
   val jmh = Def.setting("org.openjdk.jmh" % "jmh-core" % jmhVersion)
   val jcTools = Def.setting("org.jctools" % "jctools-core" % "4.0.5") // https://github.com/JCTools/JCTools
-  val lincheck = Def.setting("org.jetbrains.kotlinx" % "lincheck-jvm" % "2.38") // https://github.com/JetBrains/lincheck
+  val lincheck = Def.setting("org.jetbrains.lincheck" % "lincheck" % "3.1") // https://github.com/JetBrains/lincheck
 
   // JS:
   val scalaJsLocale = Def.setting[Seq[ModuleID]](Seq(

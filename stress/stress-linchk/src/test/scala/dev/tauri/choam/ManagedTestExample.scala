@@ -19,9 +19,8 @@ package dev.tauri.choam
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import org.jetbrains.kotlinx.lincheck.{ LinChecker }
-import org.jetbrains.kotlinx.lincheck.paramgen.IntGen
-import org.jetbrains.kotlinx.lincheck.annotations.{ Operation, Param }
+import org.jetbrains.lincheck.datastructures.IntGen
+import org.jetbrains.lincheck.datastructures.{ Param, Operation }
 
 import munit.FunSuite
 
@@ -30,11 +29,11 @@ import ManagedTestExample._
 final class ManagedTestExample extends FunSuite with BaseLinchkSpec {
 
   test("Counter test which fails".tag(SLOW).fail) {
-    LinChecker.check(classOf[BadCounterState], defaultModelCheckingOptions())
+    defaultModelCheckingOptions().check(classOf[BadCounterState])
   }
 
   test("Counter test which passes".tag(SLOW)) {
-    LinChecker.check(classOf[GoodCounterState], defaultModelCheckingOptions())
+    defaultModelCheckingOptions().check(classOf[GoodCounterState])
   }
 }
 
