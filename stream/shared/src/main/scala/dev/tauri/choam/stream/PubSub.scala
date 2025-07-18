@@ -53,7 +53,13 @@ object PubSub {
 
   final def apply[F[_] : AsyncReactive, A](
     defaultStrategy: OverflowStrategy,
-    str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default,
+  ): Rxn[PubSub[F, A]] = {
+    apply(defaultStrategy, Ref.AllocationStrategy.Default)
+  }
+
+  final def apply[F[_] : AsyncReactive, A](
+    defaultStrategy: OverflowStrategy,
+    str: Ref.AllocationStrategy,
   ): Rxn[PubSub[F, A]] = {
     // TODO: if `str` is padded, this AtomicLong should also be padded
     Rxn.unsafe.delay { new AtomicLong }.flatMap { nextId =>

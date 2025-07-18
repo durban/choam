@@ -60,10 +60,14 @@ object AsyncQueue {
   sealed trait Take[+A] extends data.Queue.UnsealedQueuePoll[A] {
     // TODO: add InvariantSyntax (to be able to call it like `.take[F]`)
     def take[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA]
+    // TODO: asCats : QueueSource (but: needs size)
+    // TODO: Functor instance
   }
 
   sealed trait Put[-A] extends data.Queue.UnsealedQueueOffer[A] {
     def put[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit]
+    // TODO: asCats : QueueSink
+    // TODO: Covariant instance
   }
 
   sealed trait SourceSink[A]
