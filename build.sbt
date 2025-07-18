@@ -200,18 +200,17 @@ ThisBuild / githubWorkflowBuild := List(
     cond = Some(s"(${stressLinchkCond}) && (${commitContains("stressLinchk")})")
   )
 ) ++ stressTestNames.map { projName =>
-  // JCStress tests (they only run if commit msg contains 'full CI' or the project name):
-  // TODO: running ALL stress tests (with 'full CI') always times out (6hr)
+  // JCStress tests (they only run if commit msg contains the project name):
   WorkflowStep.Sbt(
     List(mkStressTestCmd(projName)),
-    cond = Some(s"(${stressCond}) && ((${fullCiCond}) || (${commitContains(projName)}))")
+    cond = Some(s"(${stressCond}) && (${commitContains(projName)})")
   ),
 } ++ List(
   WorkflowStep.Use(
     GhActions.uploadArtifactV4,
     name = Some("Upload JCStress results"),
     cond = {
-      val commitMsgCond = s"${fullCiCond} || (${stressTestNames.map(commitContains).mkString("", " || ", "")})"
+      val commitMsgCond = s"(${stressTestNames.map(commitContains).mkString("", " || ", "")})"
       Some(s"(success() || failure()) && (${stressCond}) && (${commitMsgCond})")
     },
     params = Map(
@@ -344,7 +343,6 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
       dependencies.catsCore.value,
       dependencies.catsEffectKernel.value,
       dependencies.catsEffectStd.value,
-      // "eu.timepit" %%% "refined" % "0.11.1",
     ),
     mimaBinaryIssueFilters ++= Seq(
     ),

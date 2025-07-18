@@ -209,28 +209,28 @@ jobs:
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' runLincheckTests
 
-      - if: (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@24')) && ((contains(github.event.head_commit.message, 'full CI')) || (contains(github.event.head_commit.message, 'stressMcas')))
+      - if: (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@24')) && (contains(github.event.head_commit.message, 'stressMcas'))
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' stressMcas/Jcstress/run
 
-      - if: (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@24')) && ((contains(github.event.head_commit.message, 'full CI')) || (contains(github.event.head_commit.message, 'stressCore')))
+      - if: (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@24')) && (contains(github.event.head_commit.message, 'stressCore'))
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' stressCore/Jcstress/run
 
-      - if: (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@24')) && ((contains(github.event.head_commit.message, 'full CI')) || (contains(github.event.head_commit.message, 'stressData')))
+      - if: (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@24')) && (contains(github.event.head_commit.message, 'stressData'))
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' stressData/Jcstress/run
 
-      - if: (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@24')) && ((contains(github.event.head_commit.message, 'full CI')) || (contains(github.event.head_commit.message, 'stressAsync')))
+      - if: (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@24')) && (contains(github.event.head_commit.message, 'stressAsync'))
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' stressAsync/Jcstress/run
 
-      - if: (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@24')) && ((contains(github.event.head_commit.message, 'full CI')) || (contains(github.event.head_commit.message, 'stressExperiments')))
+      - if: (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@24')) && (contains(github.event.head_commit.message, 'stressExperiments'))
         shell: bash
         run: sbt -v '++ ${{ matrix.scala }}' stressExperiments/Jcstress/run
 
       - name: Upload JCStress results
-        if: (success() || failure()) && (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@24')) && (contains(github.event.head_commit.message, 'full CI') || (contains(github.event.head_commit.message, 'stressMcas') || contains(github.event.head_commit.message, 'stressCore') || contains(github.event.head_commit.message, 'stressData') || contains(github.event.head_commit.message, 'stressAsync') || contains(github.event.head_commit.message, 'stressExperiments')))
+        if: (success() || failure()) && (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@24')) && ((contains(github.event.head_commit.message, 'stressMcas') || contains(github.event.head_commit.message, 'stressCore') || contains(github.event.head_commit.message, 'stressData') || contains(github.event.head_commit.message, 'stressAsync') || contains(github.event.head_commit.message, 'stressExperiments')))
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: jcstress-results-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}
