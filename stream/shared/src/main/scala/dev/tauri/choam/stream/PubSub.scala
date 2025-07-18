@@ -52,21 +52,21 @@ sealed abstract class PubSub[F[_], A] {
 object PubSub {
 
   final def apply[F[_] : AsyncReactive, A](
-    defaultStrategy: OverflowStrategy,
+    overflowStr: OverflowStrategy,
   ): Rxn[PubSub[F, A]] = {
-    apply(defaultStrategy, Ref.AllocationStrategy.Default)
+    apply(overflowStr, Ref.AllocationStrategy.Default)
   }
 
   final def apply[F[_] : AsyncReactive, A](
-    defaultStrategy: OverflowStrategy,
-    str: Ref.AllocationStrategy,
+    overflowStr: OverflowStrategy,
+    allocStr: Ref.AllocationStrategy,
   ): Rxn[PubSub[F, A]] = {
     // TODO: if `str` is padded, this AtomicLong should also be padded
     Rxn.unsafe.delay { new AtomicLong }.flatMap { nextId =>
-      Ref(LongMap.empty[Subscription[F, A]], str).flatMap { subscriptions =>
-        Ref(false, str).flatMap { isClosed =>
-          Promise[Unit](str).map { awaitClosed =>
-            new PubSubImpl[F, A](nextId, subscriptions, isClosed, awaitClosed, defaultStrategy)
+      Ref(LongMap.empty[Subscription[F, A]], allocStr).flatMap { subscriptions =>
+        Ref(false, allocStr).flatMap { isClosed =>
+          Promise[Unit](allocStr).map { awaitClosed =>
+            new PubSubImpl[F, A](nextId, subscriptions, isClosed, awaitClosed, overflowStr)
           }
         }
       }
