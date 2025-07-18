@@ -45,10 +45,10 @@ trait UnboundedQueueImplWithSize[F[_]] extends UnboundedQueueSpec[F] { this: Mca
   protected final override def newQueue[G[_] : AsyncReactive, A] =
     AsyncQueue.unboundedWithSize[A].run[G]
 
-  test("UnboundedQueue.WithSize#toCats") {
+  test("UnboundedQueue.WithSize#asCats") {
     for {
       q <- newQueue[F, String]
-      cq = q.toCats
+      cq = q.asCats
       _ <- assertResultF(cq.size, 0)
       f <- cq.take.start
       _ <- this.tickAll

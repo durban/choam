@@ -39,7 +39,7 @@ class AsyncUnboundedQueueToCatsBench extends BenchUtils {
 
   @Benchmark
   def unboundedQueueToCats(s: St): Unit = {
-    val tsk = AsyncQueue.unboundedWithSize[String].run[IO].map(_.toCats[IO]).flatMap(task)
+    val tsk = AsyncQueue.unboundedWithSize[String].run[IO].map(_.asCats[IO]).flatMap(task)
     run(s.runtime, tsk, size = size)
   }
 

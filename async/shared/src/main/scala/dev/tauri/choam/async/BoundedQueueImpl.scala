@@ -76,7 +76,7 @@ private[choam] object BoundedQueueImpl {
     final override def put[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
       gwl.asyncSet(a)
 
-    final override def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A] = {
+    final override def asCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A] = {
       new CatsQueueFromBoundedQueue(this)
     }
 
@@ -101,7 +101,7 @@ private[choam] object BoundedQueueImpl {
     final override def put[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
       gwl.asyncSet(a)
 
-    final override def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A] = {
+    final override def asCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A] = {
       new CatsQueueFromBoundedQueue[F, A](this)(using F)
     }
 

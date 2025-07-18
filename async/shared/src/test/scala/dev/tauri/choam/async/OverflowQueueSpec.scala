@@ -77,7 +77,7 @@ trait OverflowQueueSpec[F[_]]
       val ints = _ints.take(2 * Max)
       for {
         q <- newRingBuffer[Int](capacity = c)
-        qc <- newRingBuffer[Int](capacity = c).map(_.toCats)
+        qc <- newRingBuffer[Int](capacity = c).map(_.asCats)
         s <- CatsQueue.circularBuffer[F, Int](capacity = c)
         _ <- checkSize(q, qc, s)
         _ <- ints.traverse_ { i =>
@@ -116,7 +116,7 @@ trait OverflowQueueSpec[F[_]]
       val ints = _ints.take(2 * Max)
       for {
         q <- newDroppingQueue[Int](capacity = c)
-        qc <- newDroppingQueue[Int](capacity = c).map(_.toCats)
+        qc <- newDroppingQueue[Int](capacity = c).map(_.asCats)
         s <- CatsQueue.dropping[F, Int](capacity = c)
         _ <- checkSize(q, qc, s)
         _ <- ints.traverse_ { i =>
@@ -352,10 +352,10 @@ trait OverflowQueueSpec[F[_]]
     } yield ()
   }
 
-  test("RingBuffer#toCats") {
+  test("RingBuffer#asCats") {
     for {
       q <- newRingBuffer[Int](capacity = 3)
-      cq = q.toCats
+      cq = q.asCats
       f <- cq.take.start
       _ <- this.tickAll
       _ <- cq.offer(1)

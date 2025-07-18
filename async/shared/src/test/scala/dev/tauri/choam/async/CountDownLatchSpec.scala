@@ -108,16 +108,16 @@ trait CountDownLatchSpec[F[_]]
     } yield ()
   }
 
-  test("CountDownLatch#toCats") {
+  test("CountDownLatch#asCats") {
     for {
       _ <- assumeF(this.mcasImpl.isThreadSafe)
       cdl1 <- CountDownLatch(2).run[F]
-      ccdl1 = cdl1.toCats
+      ccdl1 = cdl1.asCats
       fib1 <- ccdl1.await.start
       _ <- F.both(cdl1.release.run[F], cdl1.release.run[F])
       _ <- fib1.joinWithNever
       cdl2 <- CountDownLatch(2).run[F]
-      ccdl2 = cdl2.toCats
+      ccdl2 = cdl2.asCats
       fib2 <- cdl2.await.start
       _ <- F.both(ccdl2.release, ccdl2.release)
       _ <- fib2.joinWithNever

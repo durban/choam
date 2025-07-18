@@ -39,10 +39,10 @@ sealed trait Map[K, V] { self =>
   def remove(k: K, v: V): Rxn[Boolean]
   def refLike(key: K, default: V): RefLike[V]
 
-  def toCats[F[_]](default: V)(implicit F: Reactive[F]): MapRef[F, K, V] = {
+  final def asCats[F[_]](default: V)(implicit F: Reactive[F]): MapRef[F, K, V] = {
     new MapRef[F, K, V] {
       final override def apply(k: K): CatsRef[F, V] =
-        self.refLike(k, default).toCats
+        self.refLike(k, default).asCats
     }
   }
 }

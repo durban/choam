@@ -26,7 +26,7 @@ import internal.mcas.Mcas
 // TODO: We should have a way to "propagate"
 // TODO: a `Strategy`, because this way a
 // TODO: data structure might just run things
-// TODO: with the `Default` (e.g., CDL#toCats).
+// TODO: with the `Default` (e.g., CDL#asCats).
 
 sealed trait Reactive[F[_]] extends ~>[Rxn, F] {
 

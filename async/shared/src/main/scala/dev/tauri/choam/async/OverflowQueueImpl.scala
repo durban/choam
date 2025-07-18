@@ -59,7 +59,7 @@ private object OverflowQueueImpl {
     final override def size: Rxn[Int] =
       buff.size
 
-    final override def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A] =
+    final override def asCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A] =
       new AsyncQueue.CatsQueueAdapter(this)
 
     final override def offer(a: A): Rxn[Boolean] =
@@ -83,7 +83,7 @@ private object OverflowQueueImpl {
     final override def size: Rxn[Int] =
       q.size
 
-    final override def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A] =
+    final override def asCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A] =
       new AsyncQueue.CatsQueueAdapter(this)
 
     final override def offer(a: A): Rxn[Boolean] =

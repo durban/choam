@@ -55,7 +55,7 @@ private object UnboundedQueueImpl {
             F.monad.widen(wl.asyncGet)
           final override def size: Rxn[Int] =
             q.size
-          final override def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A] =
+          final override def asCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A] =
             new AsyncQueue.CatsQueueAdapter(this)
         }
       }

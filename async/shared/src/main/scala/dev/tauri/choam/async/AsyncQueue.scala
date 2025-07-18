@@ -76,7 +76,7 @@ object AsyncQueue {
 
     def size: Rxn[Int]
 
-    def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A]
+    def asCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A]
   }
 
   final def unbounded[A]: Rxn[AsyncQueue[A]] =
@@ -114,7 +114,7 @@ object AsyncQueue {
   private[choam] sealed trait SourceSinkWithSize[A] // TODO: do we want this public? (see above)
     extends AsyncQueue.SourceSink[A] {
 
-    def toCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A]
+    def asCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A]
 
     def size: Rxn[Int]
   }

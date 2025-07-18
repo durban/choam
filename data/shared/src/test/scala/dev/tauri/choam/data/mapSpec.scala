@@ -422,10 +422,10 @@ trait MapSpec[F[_]]
     } yield ()
   }
 
-  test("Map#toCats (MapRef)") {
+  test("Map#asCats (MapRef)") {
     for {
       m <- mkEmptyMap[String, Option[Int]]
-      mapRef = m.toCats[F](default = None)
+      mapRef = m.asCats[F](default = None)
       r1 = mapRef("a")
       r2 = mapRef("b")
       r3 = mapRef("c")

@@ -306,10 +306,10 @@ trait BoundedQueueSpec[F[_]]
     } yield ()
   }
 
-  test("BoundedQueue#toCats") {
+  test("BoundedQueue#asCats") {
     for {
       bq <- newQueue[String](bound = 2)
-      q = bq.toCats
+      q = bq.asCats
       _ <- assertResultF(q.size, 0)
       _ <- q.offer("a")
       _ <- assertResultF(q.size, 1)

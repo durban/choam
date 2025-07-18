@@ -62,7 +62,7 @@ trait StreamSpec[F[_]]
     def check(q: AsyncQueue.SourceSinkWithSize[Option[String]]): F[Unit] = {
       for {
         _ <- assumeF(this.mcasImpl.isThreadSafe)
-        fibVec <- Stream.fromQueueNoneTerminated(q.toCats, limit = 4).compile.toVector.start
+        fibVec <- Stream.fromQueueNoneTerminated(q.asCats, limit = 4).compile.toVector.start
         _ <- (1 to 8).toList.traverse { idx => q.put(Some(idx.toString)) }
         _ <- q.put(None)
         _ <- assertResultF(fibVec.joinWithNever, (1 to 8).map(_.toString).toVector)
@@ -105,7 +105,7 @@ trait StreamSpec[F[_]]
     } yield ()
   }
 
-  test("Stream interrupter (Promise#toCats)") {
+  test("Stream interrupter (Promise#asCats)") {
     val N = 20L
     val one = 0.1.second
     val many = one * N
@@ -115,7 +115,7 @@ trait StreamSpec[F[_]]
         .awakeEvery(one)
         .zip(Stream.iterate(0)(_ + 1))
         .map(_._2)
-        .interruptWhen(p.toCats)
+        .interruptWhen(p.asCats)
         .compile.toVector.start
       _ <- F.sleep(many)
       _ <- p.complete(Right(())).run[F]

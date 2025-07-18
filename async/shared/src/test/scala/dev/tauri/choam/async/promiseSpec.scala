@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicLong
 import cats.{ Functor, Invariant, Contravariant }
 import cats.effect.IO
 import cats.effect.std.CountDownLatch
-import cats.effect.kernel.Outcome
+import cats.effect.kernel.{ Outcome, DeferredSource, DeferredSink }
 
 import core.{ Rxn, Ref }
 
@@ -226,21 +226,31 @@ trait PromiseSpec[F[_]]
     } yield ()
   }
 
-  test("Promise#toCats") {
+  test("Promise#asCats") {
+    def convertPromiseGet(p: Promise[Int]): DeferredSource[F, Any] = {
+      // Note: we make a temporary `conv` to test inference
+      val conv = p.asCats[F, Any]
+      conv
+    }
+    def convertPromiseComplete(p: Promise[Int]): DeferredSink[F, 21] = {
+      // Note: we make a temporary `conv` to test inference
+      val conv = p.asCats[F, 21]
+      conv
+    }
     for {
       _ <- assumeF(this.mcasImpl.isThreadSafe)
       p1 <- Promise[Int].run[F]
-      d1 = p1.toCats
+      d1 = convertPromiseGet(p1)
       fib1 <- d1.get.start
       _ <- assertResultF(p1.complete(42).run[F], true)
       _ <- assertResultF(fib1.joinWithNever, 42)
       p2 <- Promise[Int].run[F]
-      d2 = p2.toCats
+      d2 = convertPromiseComplete(p2)
       fib2 <- p2.get.start
       _ <- assertResultF(d2.complete(21), true)
       _ <- assertResultF(fib2.joinWithNever, 21)
       p3 <- Promise[Int].run[F]
-      d3 = p3.toCats
+      d3 = p3.asCats
       fib3 <- d3.get.start
       _ <- assertResultF(p3.complete(44).run[F], true)
       _ <- assertResultF(d3.tryGet, Some(44))

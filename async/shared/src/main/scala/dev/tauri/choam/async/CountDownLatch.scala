@@ -29,7 +29,7 @@ sealed abstract class CountDownLatch private () { self =>
 
   def await[F[_]](implicit F: AsyncReactive[F]): F[Unit]
 
-  def toCats[F[_]](implicit F: AsyncReactive[F]): CatsCountDownLatch[F]
+  def asCats[F[_]](implicit F: AsyncReactive[F]): CatsCountDownLatch[F]
 }
 
 object CountDownLatch {
@@ -49,7 +49,7 @@ object CountDownLatch {
         final override def await[F[_]](implicit F: AsyncReactive[F]): F[Unit] = {
           p.getF[F, Unit]
         }
-        final override def toCats[F[_]](implicit F: AsyncReactive[F]): CatsCountDownLatch[F] = {
+        final override def asCats[F[_]](implicit F: AsyncReactive[F]): CatsCountDownLatch[F] = {
           new CatsCountDownLatch[F] {
             final def release: F[Unit] =
               F.run(self.release)

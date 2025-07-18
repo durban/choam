@@ -64,7 +64,7 @@ sealed trait RefLike[A] {
 
   // interop:
 
-  def toCats[F[_]](implicit F: Reactive[F]): CatsRef[F, A] =
+  def asCats[F[_]](implicit F: Reactive[F]): CatsRef[F, A] =
     new RefLike.CatsRefFromRefLike[F, A](this) {}
 }
 
