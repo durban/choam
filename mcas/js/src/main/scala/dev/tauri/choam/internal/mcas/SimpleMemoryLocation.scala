@@ -40,7 +40,7 @@ private class SimpleMemoryLocation[A](private[this] var value: A)(
   }
 
   override def toString: String =
-    "SMemLoc@" + refHashString(id)
+    "SMemLoc@" + refIdHexString(id)
 
   final override def unsafeGetV(): A =
     this.value

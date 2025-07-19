@@ -39,14 +39,14 @@ package object refs extends RefsPackagePlatform {
   private[refs] def refStringFrom4Ids( // TODO: rename
     i0: Long,
   ): String = {
-    "Ref@" + internal.mcas.refHashString(i0)
+    "Ref@" + internal.mcas.refIdHexString(i0)
   }
 
   private[refs] def refStringFrom8Ids( // TODO: rename
     i0: Long,
     i1: Long,
   ): String = {
-    "Ref2@" + internal.mcas.refHashString(i0 ^ i1)
+    "Ref2@" + internal.mcas.refIdHexString(i0 ^ i1)
   }
 
   private[refs] def refArrayRefToString(idBase: Long, offset: Int): String = {

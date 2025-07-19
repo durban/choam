@@ -34,7 +34,7 @@ private class SimpleMemoryLocation[A](initial: A)(
     new AtomicReference // (null)
 
   final override def toString: String =
-    "SMemLoc@" + refHashString(id)
+    "SMemLoc@" + refIdHexString(id)
 
   final override def hashCode: Int = {
     // `RefIdGen` generates IDs with

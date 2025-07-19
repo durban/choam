@@ -20,11 +20,11 @@ package internal
 
 package object mcas {
 
-  private[choam] final def refHashString(
-    id: Long,
-  ): String = {
+  private[choam] final def refIdHexString(id: Long): String =
+    toHexPadded(id)
+
+  private[choam] final def refHashString(id: Long): String =
     toHexPadded(refShortHash(id))
-  }
 
   private[choam] final def toHexPadded(n: Long): String = {
     val hex = java.lang.Long.toHexString(n)

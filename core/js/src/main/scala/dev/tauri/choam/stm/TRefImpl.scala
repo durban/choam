@@ -110,7 +110,7 @@ private final class TRefImpl[A](
   }
 
   final override def toString: String =
-    "TRef@" + internal.mcas.refHashString(this.id)
+    "TRef@" + internal.mcas.refIdHexString(this.id)
 
   private[choam] final override def withListeners: this.type =
     this
