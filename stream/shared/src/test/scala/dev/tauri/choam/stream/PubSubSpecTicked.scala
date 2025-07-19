@@ -44,7 +44,7 @@ trait PubSubSpecTicked[F[_]]
 
   test("DropOldest - should drop oldest elements") {
       for {
-        hub <- PubSub[F, Int](dropOldest(3)).run[F]
+        hub <- PubSub[Int](dropOldest(3)).run[F]
         fast <- hub.subscribe.evalTap(_ => F.sleep(0.1.second)).compile.toVector.start
         slow <- hub.subscribe.evalTap(_ => F.sleep(1.second)).compile.toVector.start
         _ <- this.tickAll // wait for subscriptions to happen
@@ -68,7 +68,7 @@ trait PubSubSpecTicked[F[_]]
 
   test("DropNewest - should drop newest elements") {
       for {
-        hub <- PubSub[F, Int](dropNewest(3)).run[F]
+        hub <- PubSub[Int](dropNewest(3)).run[F]
         fast <- hub.subscribe.evalTap(_ => F.sleep(0.1.second)).compile.toVector.start
         slow <- hub.subscribe.evalTap(_ => F.sleep(1.second)).compile.toVector.start
         _ <- this.tickAll // wait for subscriptions to happen
@@ -95,7 +95,7 @@ trait PubSubSpecTicked[F[_]]
 
     test(s"$name - basics") {
       for {
-        hub <- PubSub[F, Int](str).run[F]
+        hub <- PubSub[Int](str).run[F]
         f1 <- hub.subscribe.compile.toVector.start
         f2 <- hub.subscribe.take(3).compile.toVector.start
         f3 <- hub.subscribe.map(_ + 1).compile.toVector.start
@@ -113,7 +113,7 @@ trait PubSubSpecTicked[F[_]]
 
     test(s"$name - closing") {
       for {
-        hub <- PubSub[F, Int](str).run[F]
+        hub <- PubSub[Int](str).run[F]
         f1 <- hub.subscribe.compile.toVector.start
         f2 <- hub.subscribe.take(3).compile.toVector.start
         f3 <- hub.subscribe.map(_ + 1).compile.toVector.start
@@ -134,7 +134,7 @@ trait PubSubSpecTicked[F[_]]
 
     test(s"$name - closing without subscribers") {
       for {
-        hub <- PubSub[F, Int](str).run[F]
+        hub <- PubSub[Int](str).run[F]
         f1 <- hub.subscribe.take(1).compile.toVector.start
         f2 <- hub.subscribe.take(3).compile.toVector.start
         _ <- this.tickAll // wait for subscriptions to happen
@@ -154,7 +154,7 @@ trait PubSubSpecTicked[F[_]]
 
     test(s"$name - awaitShutdown") {
       for {
-        hub <- PubSub[F, Int](str).run[F]
+        hub <- PubSub[Int](str).run[F]
         ctr <- F.ref[Int](0)
         f1 <- hub.subscribe.take(4).evalTap(_ => ctr.update(_ + 1)).compile.toVector.start
         f2 <- hub.subscribe.evalTap(_ => ctr.update(_ + 1)).compile.toVector.start
@@ -177,7 +177,7 @@ trait PubSubSpecTicked[F[_]]
 
     test(s"$name - subscribe with non-default strategy") {
       for {
-        hub <- PubSub[F, Int](str).run[F]
+        hub <- PubSub[Int](str).run[F]
         f1 <- hub.subscribe.compile.toVector.start
         f2 <- hub.subscribe(dropOldest(1)).evalTap(_ => F.sleep(0.1.second)).compile.toVector.start
         _ <- this.tickAll // wait for subscriptions to happen
@@ -194,32 +194,32 @@ trait PubSubSpecTicked[F[_]]
 
     test(s"$name - numberOfSubscriptions") {
       for {
-        hub <- PubSub[F, Int](str).run[F]
-        _ <- assertResultF(hub.numberOfSubscriptions, 0)
+        hub <- PubSub[Int](str).run[F]
+        _ <- assertResultF(hub.numberOfSubscriptions.run, 0)
         f1 <- hub.subscribe.compile.toVector.start
         _ <- this.tickAll // wait for subscription to happen
-        _ <- assertResultF(hub.numberOfSubscriptions, 1)
+        _ <- assertResultF(hub.numberOfSubscriptions.run, 1)
         f2 <- hub.subscribe.compile.toVector.start
         _ <- this.tickAll // wait for subscription to happen
-        _ <- assertResultF(hub.numberOfSubscriptions, 2)
+        _ <- assertResultF(hub.numberOfSubscriptions.run, 2)
         _ <- assertResultF(hub.publish(1).run[F], PubSub.Success)
         _ <- this.tickAll
-        _ <- assertResultF(hub.numberOfSubscriptions, 2)
+        _ <- assertResultF(hub.numberOfSubscriptions.run, 2)
         f3 <- hub.subscribe.take(2).compile.toVector.start
         _ <- this.tickAll // wait for subscription to happen
-        _ <- assertResultF(hub.numberOfSubscriptions, 3)
+        _ <- assertResultF(hub.numberOfSubscriptions.run, 3)
         _ <- assertResultF(hub.publish(2).run[F], PubSub.Success)
         _ <- this.tickAll
-        _ <- assertResultF(hub.numberOfSubscriptions, 3)
+        _ <- assertResultF(hub.numberOfSubscriptions.run, 3)
         _ <- f1.cancel
         _ <- this.tickAll
-        _ <- assertResultF(hub.numberOfSubscriptions, 2)
+        _ <- assertResultF(hub.numberOfSubscriptions.run, 2)
         _ <- assertResultF(hub.publish(3).run[F], PubSub.Success)
         _ <- this.tickAll
-        _ <- assertResultF(hub.numberOfSubscriptions, 1)
+        _ <- assertResultF(hub.numberOfSubscriptions.run, 1)
         _ <- assertResultF(hub.close.run[F], PubSub.Backpressured)
         _ <- hub.awaitShutdown
-        _ <- assertResultF(hub.numberOfSubscriptions, 0)
+        _ <- assertResultF(hub.numberOfSubscriptions.run, 0)
         _ <- assertResultF(f2.joinWithNever, Vector(1, 2, 3))
         _ <- assertResultF(f3.joinWithNever, Vector(2, 3))
       } yield ()
@@ -235,7 +235,7 @@ trait PubSubSpecTicked[F[_]]
     test(s"$name - closing mustn't conflict with item dropping") {
       for {
         _ <- assertF(bufferSize > 2)
-        hub <- PubSub[F, Int](str).run[F]
+        hub <- PubSub[Int](str).run[F]
         fib <- hub.subscribe.compile.toVector.start
         _ <- this.tickAll // wait for subscription to happen
         rss <- (1 to bufferSize).toList.traverse(i => hub.publish(i).run[F]) // fill the queue
@@ -251,7 +251,7 @@ trait PubSubSpecTicked[F[_]]
 
     test(s"$name - should never backpressure") {
       for {
-        hub <- PubSub[F, Int](str).run[F]
+        hub <- PubSub[Int](str).run[F]
         fib <- hub.subscribe.evalMap(_ => F.never[Int]).compile.toVector.start // infinitely slow subscriber
         _ <- this.tickAll // wait for subscription to happen
         pub = (hub.publish : (Int => Rxn[PubSub.Result]))
@@ -270,7 +270,7 @@ trait PubSubSpecTicked[F[_]]
 
     test(s"$name - single element buffer") {
       for {
-        hub <- PubSub[F, Int](str).run[F]
+        hub <- PubSub[Int](str).run[F]
         fib1 <- hub.subscribe.compile.toVector.start
         fib2 <- hub.subscribe.take(2).compile.toVector.start
         _ <- this.tickAll // wait for subscription to happen

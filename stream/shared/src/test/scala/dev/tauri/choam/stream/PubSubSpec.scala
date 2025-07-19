@@ -57,7 +57,7 @@ trait PubSubSpec[F[_]]
       val expSet = (nums.toSet ++ nums.map(-_).toSet)
       val succVec = Vector.fill(N)(PubSub.Success)
       val t = for {
-        hub <- PubSub[F, Int](str).run[F]
+        hub <- PubSub[Int](str).run[F]
         f1 <- hub.subscribe.compile.toVector.start
         f2 <- hub.subscribe.compile.toVector.start
         _ <- F.sleep(1.second) // wait for subscription to happen
@@ -91,7 +91,7 @@ trait PubSubSpec[F[_]]
         dropNewest = _ => (OverflowStrategy.dropNewest(1), defaultRepl),
       )
       val t = for {
-        hub <- PubSub[F, Int](str2).run[F]
+        hub <- PubSub[Int](str2).run[F]
         f1 <- hub.subscribe.evalTap { _ => if (ThreadLocalRandom.current().nextBoolean()) F.cede else F.unit }.compile.toVector.start
         f2 <- hub.subscribe.compile.toVector.start
         _ <- F.sleep(1.second) // wait for subscription to happen

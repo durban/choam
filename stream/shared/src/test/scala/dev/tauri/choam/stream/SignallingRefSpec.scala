@@ -92,7 +92,7 @@ trait SignallingRefSpec[F[_]]
     }
     def checkListeners(ref: SignallingRef[F, Int], min: Int, max: Int): F[Unit] = {
       F.defer {
-        val noOfListeners: F[Int] = ref.asInstanceOf[Fs2SignallingRefWrapper[F, Int]].pubSub.numberOfSubscriptions
+        val noOfListeners: F[Int] = ref.asInstanceOf[Fs2SignallingRefWrapper[F, Int]].pubSub.numberOfSubscriptions.run
         noOfListeners.flatMap(n => assertF(clue(n) <= clue(max)) *> assertF(clue(n) >= clue(min)))
       }
     }
