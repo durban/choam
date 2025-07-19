@@ -24,16 +24,23 @@ import core.AsyncReactive
 import async.AsyncQueue
 
 private final class Fs2QueueWrapper[F[_], A](
-  self: AsyncQueue.Take[A] & AsyncQueue.Put[A],
+  self: AsyncQueue.Take[A],
 )(implicit F: AsyncReactive[F]) extends CatsQueue[F, A] {
+
   final override def take: F[A] =
     self.take
+
   final override def tryTake: F[Option[A]] =
     self.poll.run[F]
+
+  // FS2 doesn't really use these methods, so we cheat:
+
   final override def size: F[Int] =
-    F.asyncInst.raiseError(new AssertionError) // FS2 doesn't really need `size`, so we cheat
+    F.asyncInst.raiseError(new AssertionError("Fs2QueueWrapper#size"))
+
   final override def offer(a: A): F[Unit] =
-    self.put[F](a)
+    F.asyncInst.raiseError(new AssertionError("Fs2QueueWrapper#offer"))
+
   final override def tryOffer(a: A): F[Boolean] =
-    F.apply(self.offer(a))
+    F.asyncInst.raiseError(new AssertionError("Fs2QueueWrapper#tryOffer"))
 }

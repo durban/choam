@@ -45,6 +45,8 @@ sealed abstract class PubSub[F[_], A] {
 
   def awaitShutdown: F[Unit]
 
+  // TODO: asFs2 : Topic[F, A]
+
   /** Only for testing! */
   private[stream] def numberOfSubscriptions: F[Int]
 }

@@ -85,22 +85,22 @@ trait StreamSpec[F[_]]
       // streamFromQueueUnterminated:
       q <- AsyncQueue.unbounded[String].run[F]
       _ <- q.put[F]("foo")
-      qr <- streamFromQueueUnterminated(q).take(1).compile.toVector
+      qr <- streamFromQueueUnterminated(q : AsyncQueue.Take[String]).take(1).compile.toVector
       _ <- assertEqualsF(qr, Vector("foo"))
       // streamFromQueueNoneTerminated:
       qOpt <- AsyncQueue.unbounded[Option[String]].run[F]
       _ <- qOpt.put[F](Some("foo")) >> qOpt.put[F](None)
-      qOptR <- streamFromQueueNoneTerminated(qOpt).compile.toVector
+      qOptR <- streamFromQueueNoneTerminated(qOpt : AsyncQueue.Take[Option[String]]).compile.toVector
       _ <- assertEqualsF(qOptR, Vector("foo"))
       // streamFromQueueUnterminatedChunks:
       qChunk <- AsyncQueue.unbounded[Chunk[String]].run[F]
       _ <- qChunk.put[F](Chunk("foo", "bar"))
-      qChunkR <- streamFromQueueUnterminatedChunks(qChunk).take(2).compile.toVector
+      qChunkR <- streamFromQueueUnterminatedChunks(qChunk : AsyncQueue.Take[Chunk[String]]).take(2).compile.toVector
       _ <- assertEqualsF(qChunkR, Vector("foo", "bar"))
       // streamFromQueueNoneTerminatedChunks:
       qOptChunk <- AsyncQueue.unbounded[Option[Chunk[String]]].run[F]
       _ <- qOptChunk.put[F](Some(Chunk("foo", "bar"))) >> qOptChunk.put[F](None)
-      qOptChunkR <- streamFromQueueNoneTerminatedChunks(qOptChunk).compile.toVector
+      qOptChunkR <- streamFromQueueNoneTerminatedChunks(qOptChunk : AsyncQueue.Take[Option[Chunk[String]]]).compile.toVector
       _ <- assertEqualsF(qOptChunkR, Vector("foo", "bar"))
     } yield ()
   }
