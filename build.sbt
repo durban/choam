@@ -236,7 +236,7 @@ ThisBuild / githubWorkflowBuild := List(
 )
 ThisBuild / githubWorkflowJavaVersions := Seq(jvmTemurins, jvmGraals, jvmOpenj9s).flatten
 ThisBuild / githubWorkflowOSes := Seq(linux, linux86, windows, windowsArm, macos, macosIntel)
-ThisBuild / githubWorkflowSbtCommand := "sbt -v"
+ThisBuild / githubWorkflowSbtCommand := "sbt -v --no-server"
 ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
   List(windows, windowsArm).map { win => MatrixExclude(Map("os" -> win)) }, // but see inclusions
   List(macos, macosIntel).map { macos => MatrixExclude(Map("os" -> macos)) }, // but see inclusions
