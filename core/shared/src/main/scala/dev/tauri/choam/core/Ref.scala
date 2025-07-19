@@ -78,6 +78,9 @@ object Ref extends RefInstances0 {
 
     private[choam] final val Padded: Ref.AllocationStrategy =
       Ref.AllocationStrategy(padded = true)
+
+    private[choam] final val Unpadded: Ref.AllocationStrategy =
+      Ref.AllocationStrategy(padded = false)
   }
 
   private[this] final class AllocationStrategyImpl(final override val padded: Boolean)

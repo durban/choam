@@ -75,7 +75,7 @@ object GcBench {
     private[this] val _circle: List[Queue[String]] = List.fill(circleSize) {
       Queue.gcHostileMsQueueFromList[cats.effect.SyncIO, String](
         Prefill.prefill().toList
-      )(McasImplStateBase.reactiveSyncIO).unsafeRunSync()
+      )(using McasImplStateBase.reactiveSyncIO).unsafeRunSync()
     }
 
     final override def circle: List[Queue[String]] =
@@ -88,7 +88,7 @@ object GcBench {
     private[this] val _circle: List[Queue[String]] = List.fill(circleSize) {
       Queue.msQueueFromList[cats.effect.SyncIO, String](
         Prefill.prefill().toList
-      )(McasImplStateBase.reactiveSyncIO).unsafeRunSync()
+      )(using McasImplStateBase.reactiveSyncIO).unsafeRunSync()
     }
 
     final override def circle: List[Queue[String]] =

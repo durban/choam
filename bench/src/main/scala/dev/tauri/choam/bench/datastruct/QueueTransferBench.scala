@@ -27,9 +27,8 @@ import io.github.timwspence.cats.stm.STM
 import zio.stm.ZSTM
 
 import util._
-import core.Rxn
-import data.{ Queue, QueueHelper, RemoveQueue }
-import ce.unsafeImplicits._
+import core.{ Rxn, Ref }
+import data.Queue
 
 @Fork(1)
 class QueueTransferBench extends BenchUtils {
@@ -125,8 +124,11 @@ object QueueTransferBench {
   @State(Scope.Benchmark)
   class MsSt extends MsStBase {
 
-    protected override def newQueue(): Queue[String] =
-      Queue.msQueueFromList[SyncIO, String](Prefill.prefill().toList).unsafeRunSync()
+    protected override def newQueue(): Queue[String] = {
+      Queue.msQueueFromList[SyncIO, String](
+        Prefill.prefill().toList, Ref.AllocationStrategy.Padded
+      )(using McasImplStateBase.reactiveSyncIO).unsafeRunSync()
+    }
 
     @Setup
     def setup(): Unit =
@@ -136,8 +138,11 @@ object QueueTransferBench {
   @State(Scope.Benchmark)
   class MsuSt extends MsStBase {
 
-    protected override def newQueue(): Queue[String] =
-      QueueHelper.msQueueUnpaddedFromList[SyncIO, String](Prefill.prefill().toList).unsafeRunSync()
+    protected override def newQueue(): Queue[String] = {
+      Queue.msQueueFromList[SyncIO, String](
+        Prefill.prefill().toList, Ref.AllocationStrategy.Unpadded
+      )(using McasImplStateBase.reactiveSyncIO).unsafeRunSync()
+    }
 
     @Setup
     def setup(): Unit =
@@ -147,8 +152,11 @@ object QueueTransferBench {
   @State(Scope.Benchmark)
   class RmSt extends MsStBase {
 
-    protected override def newQueue(): Queue[String] =
-      QueueHelper.fromList[SyncIO, Queue, String](RemoveQueue[String])(Prefill.prefill().toList).unsafeRunSync()
+    protected override def newQueue(): Queue[String] = {
+      Queue.removeQueueFromList[SyncIO, String](
+        Prefill.prefill().toList
+      )(using McasImplStateBase.reactiveSyncIO).unsafeRunSync()
+    }
 
     @Setup
     def setup(): Unit =

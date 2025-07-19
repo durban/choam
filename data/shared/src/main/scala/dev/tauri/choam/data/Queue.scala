@@ -118,8 +118,17 @@ object Queue {
     }
   }
 
-  private[choam] final def msQueueFromList[F[_] : Reactive, A](as: List[A]): F[Queue[A]] = {
-    Reactive[F].monad.widen(fromList(MsQueue[A])(as))
+  private[choam] final def msQueueFromList[F[_] : Reactive, A](
+    as: List[A],
+    str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default,
+  ): F[Queue[A]] = {
+    Reactive[F].monad.widen(fromList(MsQueue[A](str))(as))
+  }
+
+  private[choam] final def removeQueueFromList[F[_] : Reactive, A](
+    as: List[A],
+  ): F[RemoveQueue[A]] = {
+    fromList[F, RemoveQueue, A](RemoveQueue.apply[A])(as)
   }
 
   private[choam] final def gcHostileMsQueueFromList[F[_] : Reactive, A](as: List[A]): F[Queue[A]] = {
