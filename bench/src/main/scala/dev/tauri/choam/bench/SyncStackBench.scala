@@ -25,8 +25,6 @@ import org.openjdk.jmh.annotations._
 
 import util._
 import data.Stack
-import helpers.StackHelper
-import ce.unsafeImplicits._
 
 @Fork(2)
 @Threads(1) // set it to _concurrentOps!
@@ -142,7 +140,7 @@ object SyncStackBench {
     val runtime =
       cats.effect.unsafe.IORuntime.global
     val treiberStack: Stack[String] =
-      StackHelper.treiberStackFromList[SyncIO, String](Prefill.prefill()).unsafeRunSync()
+      Stack.fromList[SyncIO, String](Stack.apply)(Prefill.prefill())(using McasImplStateBase.reactiveSyncIO).unsafeRunSync()
   }
 
   @State(Scope.Benchmark)
@@ -150,7 +148,7 @@ object SyncStackBench {
     val runtime =
       cats.effect.unsafe.IORuntime.global
     val eliminationStack: Stack[String] =
-      StackHelper.eliminationStackFromList[SyncIO, String](Prefill.prefill()).unsafeRunSync()
+      Stack.fromList[SyncIO, String](Stack.eliminationStack)(Prefill.prefill())(using McasImplStateBase.reactiveSyncIO).unsafeRunSync()
   }
 
   @State(Scope.Benchmark)
