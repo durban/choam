@@ -36,6 +36,9 @@ private[data] abstract class MapPlatform extends AbstractMapPlatform {
   final override def orderedMap[K: Order, V](str: Ref.AllocationStrategy): Rxn[Map[K, V]] =
     Ttrie.skipListBased[K, V](str)
 
+  private[choam] final def ttrie[K: Hash, V](str: Ref.AllocationStrategy): Rxn[Map[K, V]] =
+    Ttrie.apply[K, V](str)
+
   private[data] override def unsafeSnapshot[F[_], K, V](m: Map[K, V])(implicit F: Reactive[F]) = {
     m match {
       case m: SimpleMap[_, _] =>

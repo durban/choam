@@ -24,9 +24,9 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLL_Result
 
-import core.Rxn
+import core.{ Rxn, Ref }
 import internal.mcas.Mcas
-import data.{ Map, MapHelper }
+import data.Map
 
 @JCStressTest
 @State
@@ -77,7 +77,7 @@ object TtrieComposedTest {
       override def hash(x: Int): Int =
         x % 7
     }
-    val m = MapHelper.ttrie[Int, String](using h).unsafePerform(initMcas)
+    val m = Map.ttrie[Int, String](Ref.AllocationStrategy.Unpadded)(using h).unsafePerform(initMcas)
     m.put(0, "0").unsafePerform(initMcas)
     m.put(1, "1").unsafePerform(initMcas)
     m.put(7, "7").unsafePerform(initMcas)
