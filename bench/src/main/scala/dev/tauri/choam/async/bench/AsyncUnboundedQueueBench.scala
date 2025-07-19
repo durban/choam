@@ -24,31 +24,34 @@ import org.openjdk.jmh.annotations._
 import cats.syntax.all._
 import cats.effect.IO
 
-import _root_.dev.tauri.choam.bench.BenchUtils
-import ce.unsafeImplicits._
+import dev.tauri.choam.bench.BenchUtils
+import dev.tauri.choam.bench.util.McasImplStateBase
 
 @Fork(2)
 @Threads(1)
 class AsyncUnboundedQueueBench extends BenchUtils {
 
-  import AsyncUnboundedQueueBench._
+  import AsyncUnboundedQueueBench.St
 
   final val size = 2048
   final val queueSize = 4
 
   @Benchmark
   def unboundedQueueSimple(s: St): Unit = {
-    val tsk = AsyncQueue.unbounded[String].run[IO].flatMap(task)
+    import s.reactive
+    val tsk = AsyncQueue.unbounded[String].run[IO].flatMap(task(_, s))
     run(s.runtime, tsk, size = size)
   }
 
   @Benchmark
   def unboundedQueueWithSize(s: St): Unit = {
-    val tsk = AsyncQueue.unboundedWithSize[String].run[IO].flatMap(task)
+    import s.reactive
+    val tsk = AsyncQueue.unboundedWithSize[String].run[IO].flatMap(task(_, s))
     run(s.runtime, tsk, size = size)
   }
 
-  private[this] def task(q: AsyncQueue[String]): IO[Unit] = {
+  private[this] def task(q: AsyncQueue[String], s: St): IO[Unit] = {
+    import s.reactive
     for {
       fibs <- q.take.start.replicateA(queueSize)
       _ <- fibs.take(queueSize / 2).traverse(_.cancel)
@@ -60,7 +63,7 @@ class AsyncUnboundedQueueBench extends BenchUtils {
 
 object AsyncUnboundedQueueBench {
   @State(Scope.Benchmark)
-  class St {
+  class St extends McasImplStateBase {
     val runtime = cats.effect.unsafe.IORuntime.global
   }
 }

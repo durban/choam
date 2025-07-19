@@ -26,8 +26,6 @@ import org.openjdk.jcstress.infra.results.LLLL_Result
 import cats.syntax.all._
 import cats.effect.{ IO, SyncIO, Fiber }
 
-import ce.unsafeImplicits._
-
 @JCStressTest
 @State
 @Description("AsyncQueue: it must be linearizable (cancelling dequeue)")
@@ -36,7 +34,7 @@ import ce.unsafeImplicits._
   new Outcome(id = Array("null, a, Some(b), cancelled"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled"),
   new Outcome(id = Array("null, b, Some(a), cancelled"), expect = FORBIDDEN, desc = "cancelled, but items swapped"),
 ))
-class AsyncQueueLinearizableTest {
+class AsyncQueueLinearizableTest extends StressTestBase {
 
   private[this] val runtime =
     cats.effect.unsafe.IORuntime.global

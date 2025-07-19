@@ -24,8 +24,8 @@ import org.openjdk.jmh.annotations._
 import cats.effect.IO
 import fs2.concurrent.SignallingRef
 
-import ce.unsafeImplicits._
 import dev.tauri.choam.bench.CeRuntime
+import dev.tauri.choam.bench.util.McasImplStateBase
 
 @Fork(2)
 @Threads(1) // because it run on the CE compute pool
@@ -60,8 +60,9 @@ class SignallingRefBench {
 }
 
 object SignallingRefBench {
+
   @State(Scope.Benchmark)
-  class St {
+  class St extends McasImplStateBase {
 
     val runtime =
       CeRuntime.forBenchmarks
@@ -71,7 +72,7 @@ object SignallingRefBench {
     val fs2Reset: IO[Unit] =
       reset(fs2)
     val rxn: SignallingRef[IO, String] =
-      stream.signallingRef[IO, String]("initial").unsafePerform(asyncReactiveForIO.mcasImpl)._2
+      stream.signallingRef[IO, String]("initial").unsafePerform(this.mcasImpl)._2
     val rxnReset: IO[Unit] =
       reset(rxn)
 

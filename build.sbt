@@ -310,7 +310,7 @@ lazy val choam = project.in(file("."))
     profiler, // JVM
     ce.jvm, ce.js,
     zi.jvm, zi.js,
-    internalHelpers, // JVM
+    testAssert, // JVM
     laws.jvm, laws.js,
     unidocs,
     testExt.jvm, testExt.js,
@@ -474,9 +474,8 @@ lazy val zi = crossProject(JVMPlatform, JSPlatform)
     tlVersionIntroduced := Map("2.13" -> "0.4.11", "3" -> "0.4.11"),
   )
 
-/** Internal use only; no published project may depend on this */
-lazy val internalHelpers = project.in(file("internal-helpers"))
-  .settings(name := "choam-internal-helpers")
+lazy val testAssert = project.in(file("test-assert"))
+  .settings(name := "choam-test-assert")
   .enablePlugins(NoPublishPlugin, BuildInfoPlugin)
   .disablePlugins(disabledPlugins: _*)
   .settings(commonSettings)
@@ -596,7 +595,6 @@ lazy val bench = project.in(file("bench"))
   .enablePlugins(JmhPlugin)
   .dependsOn(stream.jvm % "compile->compile;compile->test")
   .dependsOn(profiler % "compile->compile")
-  .dependsOn(internalHelpers)
   .settings(Jmh / version := dependencies.jmhVersion)
 
 // Stress tests (mostly with JCStress):
@@ -612,7 +610,7 @@ lazy val stressMcas = project.in(file("stress") / "stress-mcas")
   .disablePlugins(disabledPluginsForStress: _*)
   .enablePlugins(JCStressPlugin)
   .enablePlugins(NoPublishPlugin)
-  .dependsOn(mcas.jvm % "compile->compile;test->test")
+  .dependsOn(core.jvm % "compile->compile;test->test")
 
 lazy val stressMcasSlow = project.in(file("stress") / "stress-mcas-slow")
   .settings(name := "choam-stress-mcas-slow")
@@ -645,7 +643,6 @@ lazy val stressData = project.in(file("stress") / "stress-data")
   .enablePlugins(NoPublishPlugin)
   .dependsOn(data.jvm % "compile->compile;test->test")
   .dependsOn(stressMcas % "compile->compile;test->test")
-  .dependsOn(internalHelpers)
 
 lazy val stressDataSlow = project.in(file("stress") / "stress-data-slow")
   .settings(name := "choam-stress-data-slow")
@@ -668,7 +665,6 @@ lazy val stressAsync = project.in(file("stress") / "stress-async")
   .enablePlugins(NoPublishPlugin)
   .dependsOn(async.jvm % "compile->compile;test->test")
   .dependsOn(stressMcas % "compile->compile;test->test")
-  .dependsOn(internalHelpers)
 
 lazy val stressExperiments = project.in(file("stress") / "stress-experiments")
   .settings(name := "choam-stress-experiments")

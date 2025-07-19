@@ -27,7 +27,6 @@ import cats.effect.SyncIO
 import cats.syntax.all._
 
 import core.Rxn
-import ce.unsafeImplicits._
 
 @JCStressTest
 @State
@@ -37,7 +36,7 @@ import ce.unsafeImplicits._
   new Outcome(id = Array("true, (Some(x),Some(y)), (Some(x),Some(y))"), expect = ACCEPTABLE_INTERESTING, desc = "complete wins"),
   new Outcome(id = Array("true, (None,Some(y)), (Some(x),Some(y))"), expect = ACCEPTABLE_INTERESTING, desc = "complete between the 2 reads"),
 ))
-class PromiseCompleteTest {
+class PromiseCompleteTest extends StressTestBase {
 
   private[this] val p1: Promise[String] =
     Promise[String].run[SyncIO].unsafeRunSync()

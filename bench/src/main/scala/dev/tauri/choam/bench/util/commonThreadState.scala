@@ -81,8 +81,11 @@ class UnsafeApiState extends McasImplState {
 
 abstract class McasImplStateBase {
 
-  private[choam] val reactive: Reactive[IO] =
+  private[choam] implicit val reactive: AsyncReactive[IO] =
     McasImplStateBase.reactiveIO
+
+  private[choam] implicit val reactiveSyncIO: Reactive[SyncIO] =
+    McasImplStateBase.reactiveSyncIO
 
   private[choam] val mcasImpl: Mcas =
     McasImplStateBase.mcasImpl
@@ -97,7 +100,7 @@ private[choam] object McasImplStateBase {
     ChoamRuntime.unsafeBlocking()
   }
 
-  private[choam] val reactiveIO: Reactive[IO] = {
+  private[choam] val reactiveIO: AsyncReactive[IO] = {
     AsyncReactive.fromIn[SyncIO, IO](this.rt).allocated.unsafeRunSync()._1
   }
 

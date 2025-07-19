@@ -27,13 +27,10 @@ import scala.concurrent.duration._
 
 import cats.effect.IO
 
-import munit.CatsEffectSuite
-
 import io.github.timwspence.cats.stm.STM
 import zio.{ stm => zstm }
 
 import core.{ Rxn, Ref }
-import ce.unsafeImplicits._
 
 /**
  * This test shows that the current semantics of
@@ -76,7 +73,7 @@ import ce.unsafeImplicits._
  *
  * This test class shows the 2. question.
  */
-final class OrElseSemanticsSpec extends CatsEffectSuite {
+final class OrElseSemanticsSpec extends BaseSpecIO with SpecDefaultMcas {
 
   test("cats-stm orElse") {
     STM.runtime[IO].flatMap { stm =>

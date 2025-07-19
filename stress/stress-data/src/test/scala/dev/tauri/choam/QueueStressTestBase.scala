@@ -19,37 +19,10 @@ package dev.tauri.choam
 
 import cats.effect.SyncIO
 
-import internal.mcas.Mcas
-import core.Reactive
 import data.{ Queue, RemoveQueue }
 
 abstract class QueueStressTestBase extends StressTestBase {
-
   protected def newQueue[A](as: A*): Queue[A]
-
-  protected final override val impl: Mcas =
-    QueueStressTestBase._mcasImpl
-
-  protected final implicit def reactive: Reactive[SyncIO] =
-    QueueStressTestBase._reactiveForSyncIo
-}
-
-private object QueueStressTestBase {
-
-  private val _crt: ChoamRuntime = {
-    // Note: we're never closing this, but
-    // JCStress forks JVMs, so it will be
-    // short-lived.
-    ChoamRuntime.unsafeBlocking()
-  }
-
-  private val _reactiveForSyncIo: Reactive[SyncIO] = {
-    Reactive.fromIn[SyncIO, SyncIO](_crt).allocated.unsafeRunSync()._1
-  }
-
-  private val _mcasImpl: Mcas = {
-    this._crt.mcasImpl
-  }
 }
 
 abstract class MsQueueStressTestBase extends QueueStressTestBase {

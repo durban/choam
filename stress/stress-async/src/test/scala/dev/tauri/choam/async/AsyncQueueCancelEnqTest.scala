@@ -25,8 +25,6 @@ import org.openjdk.jcstress.infra.results.LLLL_Result
 
 import cats.effect.{ IO, SyncIO, Fiber }
 
-import ce.unsafeImplicits._
-
 @JCStressTest
 @State
 @Description("AsyncQueue: cancelling enqueue must not lose items")
@@ -34,7 +32,7 @@ import ce.unsafeImplicits._
   new Outcome(id = Array("true, x, completed, Some(a)"), expect = ACCEPTABLE, desc = "cancelled late"),
   new Outcome(id = Array("false, x, cancelled, None"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled"),
 ))
-class AsyncQueueCancelEnqTest {
+class AsyncQueueCancelEnqTest extends StressTestBase {
 
   private[this] val runtime =
     cats.effect.unsafe.IORuntime.global

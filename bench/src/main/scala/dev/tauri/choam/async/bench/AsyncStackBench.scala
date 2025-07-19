@@ -25,8 +25,8 @@ import cats.syntax.all._
 import cats.effect.{ IO, SyncIO }
 import cats.effect.unsafe.IORuntime
 
-import _root_.dev.tauri.choam.bench.BenchUtils
-import ce.unsafeImplicits._
+import dev.tauri.choam.bench.BenchUtils
+import dev.tauri.choam.bench.util.McasImplStateBase
 
 @Fork(2)
 @Threads(1)
@@ -43,18 +43,19 @@ class AsyncStackBench extends BenchUtils {
   @Benchmark
   @Group("stack3pp")
   def stack3push(s: StackSt): Unit = {
-    val tsk = push(s.stack3)
+    val tsk = push(s.stack3, s)
     run(s.runtime, tsk, size = size)
   }
 
   @Benchmark
   @Group("stack3pp")
   def stack3pop(s: StackSt): Unit = {
-    val tsk = pop(s.stack3)
+    val tsk = pop(s.stack3, s)
     run(s.runtime, tsk, size = size)
   }
 
-  private[this] def push(s: AsyncStack[String]): IO[Unit] = {
+  private[this] def push(s: AsyncStack[String], st: StackSt): IO[Unit] = {
+    import st.reactive
     def go(left: Int): IO[Unit] = {
       if (left > 0) s.push("foo").run[IO] >> go(left - 1)
       else IO.unit
@@ -62,7 +63,8 @@ class AsyncStackBench extends BenchUtils {
     go(stackSize * multiplier)
   }
 
-  private[this] def pop(s: AsyncStack[String]): IO[Unit] = {
+  private[this] def pop(s: AsyncStack[String], st: StackSt): IO[Unit] = {
+    import st.reactive
     def go(left: Int): IO[Unit] = {
       if (left > 0) s.pop >> go(left - 1)
       else IO.unit
@@ -74,11 +76,12 @@ class AsyncStackBench extends BenchUtils {
 
   @Benchmark
   def asyncStack3(s: StackSt): Unit = {
-    val tsk = task(s.stack3)
+    val tsk = task(s.stack3, s)
     run(s.runtime, tsk, size = size)
   }
 
-  private[this] def task(s: AsyncStack[String]): IO[Unit] = {
+  private[this] def task(s: AsyncStack[String], st: StackSt): IO[Unit] = {
+    import st.reactive
     for {
       fibs <- s.pop.start.replicateA(stackSize)
       _ <- fibs.take(stackSize / 2).traverse(_.cancel)
@@ -90,8 +93,8 @@ class AsyncStackBench extends BenchUtils {
 
 object AsyncStackBench {
   @State(Scope.Benchmark)
-  class StackSt {
+  class StackSt extends McasImplStateBase {
     val runtime: IORuntime = cats.effect.unsafe.IORuntime.global
-    val stack3: AsyncStack[String] = AsyncStack[String].run[SyncIO].unsafeRunSync()
+    val stack3: AsyncStack[String] = AsyncStack[String].run[SyncIO](using this.reactiveSyncIO).unsafeRunSync()
   }
 }

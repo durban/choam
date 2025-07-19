@@ -26,8 +26,6 @@ import org.openjdk.jcstress.infra.results.LLLL_Result
 import cats.effect.{ IO, SyncIO, Fiber }
 import cats.effect.kernel.Outcome
 
-import ce.unsafeImplicits._
-
 @JCStressTest
 @State
 @Description("AsyncStack: racing pushes should work fine with waiting pop")
@@ -37,7 +35,7 @@ import ce.unsafeImplicits._
   new JcsOutcome(id = Array("cancelled, null, Some(b), Some(a)"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled, ba"),
   new JcsOutcome(id = Array("cancelled, null, Some(a), Some(b)"), expect = ACCEPTABLE_INTERESTING, desc = "cancelled, ab"),
 ))
-class AsyncStackPushWaitTest {
+class AsyncStackPushWaitTest extends StressTestBase {
 
   private[this] val runtime =
     cats.effect.unsafe.IORuntime.global

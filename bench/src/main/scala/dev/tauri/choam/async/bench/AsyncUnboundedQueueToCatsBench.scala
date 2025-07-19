@@ -25,8 +25,8 @@ import cats.syntax.all._
 import cats.effect.IO
 import cats.effect.std.{ Queue => CatsQueue }
 
-import _root_.dev.tauri.choam.bench.BenchUtils
-import ce.unsafeImplicits._
+import dev.tauri.choam.bench.BenchUtils
+import dev.tauri.choam.bench.util.McasImplStateBase
 
 @Fork(2)
 @Threads(1)
@@ -39,6 +39,7 @@ class AsyncUnboundedQueueToCatsBench extends BenchUtils {
 
   @Benchmark
   def unboundedQueueToCats(s: St): Unit = {
+    import s.reactive
     val tsk = AsyncQueue.unboundedWithSize[String].run[IO].map(_.asCats[IO]).flatMap(task)
     run(s.runtime, tsk, size = size)
   }
@@ -61,7 +62,7 @@ class AsyncUnboundedQueueToCatsBench extends BenchUtils {
 
 object AsyncUnboundedQueueToCatsBench {
   @State(Scope.Benchmark)
-  class St {
+  class St extends McasImplStateBase {
     val runtime = cats.effect.unsafe.IORuntime.global
   }
 }

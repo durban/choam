@@ -25,8 +25,6 @@ import org.openjdk.jcstress.infra.results.ZLL_Result
 
 import cats.effect.{ IO, SyncIO, Fiber }
 
-import ce.unsafeImplicits._
-
 @JCStressTest
 @State
 @Description("Promise: get should be cancellable")
@@ -36,7 +34,7 @@ import ce.unsafeImplicits._
   new Outcome(id = Array("true, s, null"), expect = ACCEPTABLE, desc = "cancel2 was faster"),
   new Outcome(id = Array("true, s, s"), expect = ACCEPTABLE, desc = "complete was faster")
 ))
-class PromiseCancelTest {
+class PromiseCancelTest extends StressTestBase {
 
   private[this] val runtime =
     cats.effect.unsafe.IORuntime.global

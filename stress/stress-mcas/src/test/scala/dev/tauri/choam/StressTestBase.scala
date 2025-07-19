@@ -17,12 +17,21 @@
 
 package dev.tauri.choam
 
-import internal.mcas.{ Mcas, OsRng, RefIdGen }
+import cats.effect.{ IO, SyncIO }
+
+import internal.mcas.{ Mcas, RefIdGen }
+import core.{ Reactive, AsyncReactive }
 
 abstract class StressTestBase {
 
-  protected def impl: Mcas =
-    StressTestBase.emcasInst
+  protected final val impl: Mcas =
+    StressTestBase._mcasImpl
+
+  protected final implicit def reactive: Reactive[SyncIO] =
+    StressTestBase._reactiveForSyncIo
+
+  protected final implicit def reactiveIO: AsyncReactive[IO] =
+    StressTestBase._reactiveForIo
 
   protected final def rig: RefIdGen =
     this.impl.currentContext().refIdGen
@@ -30,6 +39,28 @@ abstract class StressTestBase {
 
 object StressTestBase {
 
-  val emcasInst: Mcas =
-    Mcas.newEmcas(OsRng.mkNew())
+  private val _crt: ChoamRuntime = {
+    // Note: we're never closing this, but
+    // JCStress forks JVMs, so it will be
+    // short-lived.
+    ChoamRuntime.unsafeBlocking()
+  }
+
+  private val _reactiveForSyncIo: Reactive[SyncIO] = {
+    Reactive.fromIn[SyncIO, SyncIO](_crt).allocated.unsafeRunSync()._1
+  }
+
+  private val _reactiveForIo: AsyncReactive[IO] = {
+    AsyncReactive.fromIn[SyncIO, IO](_crt).allocated.unsafeRunSync()._1
+  }
+
+  private val _mcasImpl: Mcas = {
+    this._crt.mcasImpl
+  }
+
+  val emcasInst: Mcas = {
+    val e = _mcasImpl
+    Predef.assert(e.getClass().getSimpleName() == "Emcas")
+    e
+  }
 }

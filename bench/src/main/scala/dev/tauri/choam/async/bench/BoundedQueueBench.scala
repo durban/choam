@@ -27,13 +27,13 @@ import cats.effect.IO
 import cats.effect.std.{ Queue => CatsQueue }
 
 import dev.tauri.choam.bench.BenchUtils
-import ce.unsafeImplicits._
+import dev.tauri.choam.bench.util.McasImplStateBase
 
 @Fork(2)
 @Threads(1) // because it runs on the CE threadpool
 class BoundedQueueBench extends BenchUtils {
 
-  import BoundedQueueBench._
+  import BoundedQueueBench.{ St, ParamSt }
 
   // must be divisible by `producers`
   final val N = 1024 * 32 * 12
@@ -103,7 +103,7 @@ object BoundedQueueBench {
   }
 
   @State(Scope.Benchmark)
-  class St {
+  class St extends McasImplStateBase {
     final val Bound =
       1024
     val runtime =
@@ -111,8 +111,8 @@ object BoundedQueueBench {
     val catsQ: CatsQueue[IO, String] =
       CatsQueue.bounded[IO, String](Bound).unsafeRunSync()(using runtime)
     val rxnLinkedQ: CatsQueue[IO, String] =
-      BoundedQueueImpl.linked[String](Bound).unsafePerform(asyncReactiveForIO.mcasImpl).asCats[IO]
+      BoundedQueueImpl.linked[String](Bound).unsafePerform(this.mcasImpl).asCats[IO]
     val rxnArrayQ: CatsQueue[IO, String] =
-      BoundedQueueImpl.array[String](Bound).unsafePerform(asyncReactiveForIO.mcasImpl).asCats[IO]
+      BoundedQueueImpl.array[String](Bound).unsafePerform(this.mcasImpl).asCats[IO]
   }
 }
