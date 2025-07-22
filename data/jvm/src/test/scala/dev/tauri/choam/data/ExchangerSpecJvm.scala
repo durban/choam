@@ -19,6 +19,7 @@ package dev.tauri.choam
 package data
 
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.ThreadLocalRandom
 
 import scala.concurrent.duration._
 
@@ -138,7 +139,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     val  N = 10
     def tsk(idx: Int) = for {
       _ <- F.unit
-      debugId = if (idx == N) Some(0xdf9cfdda895f145eL) else None
+      debugId = if (idx == N) Some(0xdf9cfdda895f145eL) else Some(ThreadLocalRandom.current().nextLong())
       ex <- F.delay(core.Exchanger.unsafe[String, Int](debugId))
       r1a <- F.delay(Ref.unsafeUnpaddedWithId(0, 0x01685a09d41f7b4bL)) // 0 -> 1
       r1b <- F.delay(Ref.unsafeUnpaddedWithId(0, 0x0L)) // PC
