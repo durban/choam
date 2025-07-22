@@ -133,6 +133,7 @@ private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K]
 
   protected final def copyToArrayInternal(tok: T1, flag: Boolean, nullIfBlue: Boolean): Array[E] = {
     val arr = this.newArray(this.size)
+    // System.err.println(s"${this.contentsArr.mkString("[", ", ", "]")}")
     val endAndBlue = this.copyIntoArray(arr, 0, tok, flag = flag)
     _assert(unpackSize(endAndBlue) == arr.length)
     if (nullIfBlue && unpackBlue(endAndBlue)) {

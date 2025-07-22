@@ -30,6 +30,8 @@ private sealed trait ExchangerImplJvm[A, B]
 
   import ExchangerImplJvm.{ size => _, _ }
 
+  protected def debugId: Option[Long]
+
   // TODO: could we use a single elimination array?
   protected def incoming: AtomicReferenceArray[ExchangerNode[?]]
 
@@ -80,9 +82,13 @@ private sealed trait ExchangerImplJvm[A, B]
     incoming.get(idx) match {
       case null =>
         // empty slot, insert ourselves:
+        val holeId = debugId match {
+          case None => ctx.refIdGen.nextId()
+          case Some(id) => id
+        }
         val self = new ExchangerNode[C](
           msg,
-          Ref.unsafePadded[NodeResult[C]](null, ctx.refIdGen),
+          Ref.unsafeUnpaddedWithId[NodeResult[C]](null, holeId),
         )
         if (incoming.compareAndSet(idx, null, self)) {
           debugLog(s"posted offer (contT: ${java.util.Arrays.toString(msg.contT)}) - thread#${Thread.currentThread().getId()}")
@@ -350,6 +356,7 @@ private sealed trait ExchangerImplJvm[A, B]
 
 private final class DualExchangerImplJvm[A, B](
   final override val dual: PrimaryExchangerImplJvm[B, A],
+  final override val debugId: Option[Long],
 ) extends ExchangerImplJvm[A, B] {
 
   protected final override def incoming =
@@ -366,11 +373,12 @@ private final class DualExchangerImplJvm[A, B](
 }
 
 private final class PrimaryExchangerImplJvm[A, B] private[core] (
+  final override val debugId: Option[Long]
 ) extends PrimaryExchangerImplJvmBase
   with ExchangerImplJvm[A, B] {
 
   final override val dual: Exchanger[B, A] =
-    new DualExchangerImplJvm[B, A](this)
+    new DualExchangerImplJvm[B, A](this, debugId)
 
   protected[core] final override val key =
     new Exchanger.Key
@@ -408,8 +416,11 @@ private final class PrimaryExchangerImplJvm[A, B] private[core] (
 
 private object ExchangerImplJvm {
 
-  private[core] def unsafe[A, B]: Exchanger[A, B] = {
-    new PrimaryExchangerImplJvm[A, B]()
+  private[core] def unsafe[A, B]: Exchanger[A, B] =
+    unsafe[A, B](None)
+
+  private[core] def unsafe[A, B](debugId: Option[Long]): Exchanger[A, B] = {
+    new PrimaryExchangerImplJvm[A, B](debugId)
   }
 
   private[core] type StatMap =

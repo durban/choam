@@ -135,18 +135,21 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   }
 
   test("Exchange with postCommits on both sides") {
-    val tsk = for {
-      ex <- Rxn.unsafe.exchanger[String, Int].run[F]
-      r1a <- Ref(0).run[F]
-      r1b <- Ref(0).run[F]
-      r1c <- Ref(0).run[F]
-      r1d <- Ref(0).run[F]
-      r1e <- Ref(0).run[F]
-      r2a <- Ref(0).run[F]
-      r2b <- Ref(0).run[F]
-      r2c <- Ref(0).run[F]
-      r2d <- Ref(0).run[F]
-      r2e <- Ref(0).run[F]
+    val  N = 10
+    def tsk(idx: Int) = for {
+      _ <- F.unit
+      debugId = if (idx == N) Some(0xdf9cfdda895f145eL) else None
+      ex <- F.delay(core.Exchanger.unsafe[String, Int](debugId))
+      r1a <- F.delay(Ref.unsafeUnpaddedWithId(0, 0x01685a09d41f7b4bL)) // 0 -> 1
+      r1b <- F.delay(Ref.unsafeUnpaddedWithId(0, 0x0L)) // PC
+      r1c <- F.delay(Ref.unsafeUnpaddedWithId(0, 0x0L)) // PC
+      r1d <- F.delay(Ref.unsafeUnpaddedWithId(0, 0xc4f96696d58a8321L)) // 0 -> 9
+      r1e <- F.delay(Ref.unsafeUnpaddedWithId(0, 0x0L)) // PC
+      r2a <- F.delay(Ref.unsafeUnpaddedWithId(0, 0xea52f96a57ab0ee2L)) // 0 -> 1
+      r2b <- F.delay(Ref.unsafeUnpaddedWithId(0, 0x0L)) // PC
+      r2c <- F.delay(Ref.unsafeUnpaddedWithId(0, 0x0L)) // PC
+      r2d <- F.delay(Ref.unsafeUnpaddedWithId(0, 0xdc0ec73651feef8aL)) // 0 -> 3
+      r2e <- F.delay(Ref.unsafeUnpaddedWithId(0, 0x0L)) // PC
       rxn1 = r1a.update(_ + 1).postCommit(r1b.update(_ + 1)) *> (
         ex.exchange("str").postCommit(x => r1c.getAndSet(x).void).flatMap { (i: Int) =>
           r1d.update(_ + i).postCommit(r1e.update(_ + 1))
@@ -172,7 +175,9 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(r2d.get.run[F], 3) // "str".length
       _ <- assertResultF(r2e.get.run[F], 1) // exactly once
     } yield ()
-    tsk.replicateA_(iterations)
+    (1 to N).toList.traverse_ { idx =>
+      tsk(idx)
+    }
   }
 
   test("2 Exchangers in 1 Rxn (second never succeeds)") {
