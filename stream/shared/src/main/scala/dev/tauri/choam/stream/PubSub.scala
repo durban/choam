@@ -47,6 +47,11 @@ sealed abstract class PubSub[A] {
 
   // TODO: asFs2 : Topic[F, A]
 
+  private[stream] def subscribeWithInitial[F[_]: AsyncReactive](
+    strategy: PubSub.OverflowStrategy,
+    initial: Rxn[A],
+  ): Stream[F, A]
+
   /** Only for testing! */
   private[stream] def numberOfSubscriptions: Rxn[Int]
 }
@@ -85,6 +90,29 @@ object PubSub {
   private[this] val _axnBackpressured = Rxn.pure(Backpressured)
   private[this] val _axnSuccess = Rxn.pure(Success)
 
+  private[this] final class SignalChunk[A](a: A) extends Chunk[A] {
+
+    final override def size: Int =
+      1
+
+    final override def apply(i: Int): A = {
+      if (i == 0) a
+      else throw new IndexOutOfBoundsException
+    }
+
+    final override def copyToArray[O2 >: A](xs: Array[O2], start: Int): Unit = {
+      xs(start) = a
+    }
+
+    protected final override def splitAtChunk_(n: Int): (Chunk[A], Chunk[A]) = {
+      impossible("SignalChunk#splitAtChunk_")
+    }
+  }
+
+  private[this] def signalChunk[A](a: A): Chunk[A] = {
+    new SignalChunk(a)
+  }
+
   sealed abstract class OverflowStrategy {
 
     // TODO: type R >: ClosedOrSuccess <: Result
@@ -112,20 +140,28 @@ object PubSub {
         underlying.tryTakeLast.flatMap {
           case None =>
             Rxn.none
+          case some @ Some(null) =>
+            Rxn.pure(some)
+          case some @ Some(_: SignalChunk[_]) =>
+            Rxn.pure(some)
           case some @ Some(chunk) =>
-            if (chunk eq null) Rxn.pure(some)
-            else size.update(_ - chunk.size).as(some)
+            size.update { oldSize =>
+              val newSize = oldSize - chunk.size
+              _assert(newSize >= 0) // PubSubBuffer#enqueue guarantees this
+              newSize
+            }.as(some)
         },
-        { chunk =>
-          if (chunk ne null) {
+        {
+          case null =>
+            underlying.addFirst(null)
+          case chunk: SignalChunk[_] =>
+            underlying.addFirst(chunk)
+          case chunk =>
             size.update { oldSize =>
               val newSize = oldSize + chunk.size
               Predef.assert(newSize >= oldSize) // check overflow (unlikely)
               newSize
             } *> underlying.addFirst(chunk)
-          } else {
-            underlying.addFirst(chunk)
-          }
         },
       )
     }
@@ -245,7 +281,13 @@ object PubSub {
     final override def subscribe[F[_]](implicit F: AsyncReactive[F]): Stream[F, A] =
       this.subscribe(this.defaultStrategy)
 
-    final override def subscribe[F[_]](strategy: PubSub.OverflowStrategy)(implicit F: AsyncReactive[F]): Stream[F, A] = {
+    final override def subscribe[F[_]](strategy: PubSub.OverflowStrategy)(implicit F: AsyncReactive[F]): Stream[F, A] =
+      this.subscribeWithInitial(strategy, Rxn.nullOf[A]).drop(1)
+
+    private[stream] final override def subscribeWithInitial[F[_]](
+      strategy: PubSub.OverflowStrategy,
+      initial: Rxn[A],
+    )(implicit F: AsyncReactive[F]): Stream[F, A] = {
       implicit val FF: Async[F] = F.asyncInst
       val acqSubs = FF.delay(nextId.getAndIncrement()).flatMap { id =>
         Promise[Unit].run[F].flatMap { sp =>
@@ -254,8 +296,10 @@ object PubSub {
               Rxn.pure(null : Subscription[A])
             } else {
               strategy.newBuffer[F, A].flatMap { buf =>
-                val subs = new Subscription[A](id, buf, sp, this)
-                subscriptions.update(_.updated(id, subs)).as(subs)
+                initial.flatMap { elem => buf.enqueue(signalChunk(elem)) } *> {
+                  val subs = new Subscription[A](id, buf, sp, this)
+                  subscriptions.update(_.updated(id, subs)).as(subs)
+                }
               }
             }
           }
@@ -391,7 +435,7 @@ object PubSub {
     }
 
     final def closeExternal: Rxn[Unit] = {
-      queue.close
+      queue.enqueue(null).void
     }
 
     final def closeInternal[F[_]](implicit F: AsyncReactive[F]): F[Unit] = {
@@ -410,24 +454,27 @@ object PubSub {
 
     protected[this] def handleOverflow(newChunk: Chunk[A], missingCapacity: Int): Rxn[Result]
 
-    final def close: Rxn[Unit] = {
-      wl.set0(null).void
-    }
-
     final def enqueue(chunk: Chunk[A]): Rxn[Result] = getSize.flatMap { sz =>
-      val chunkSize = chunk.size
-      _assert(chunkSize > 0)
-      if (chunkSize > capacity) {
-        // impossible to publish a chunk this big
-        _axnBackpressured
-      } else {
-        val left = capacity - sz
-        if (left >= chunkSize) { // OK
+      chunk match {
+        case null =>
+          wl.set0(null).as(Success)
+        case _: SignalChunk[_] =>
           wl.set0(chunk).as(Success)
-        } else {
-          val missing = chunkSize - left
-          this.handleOverflow(chunk, missing)
-        }
+        case _ =>
+          val chunkSize = chunk.size
+          _assert(chunkSize > 0)
+          if (chunkSize > capacity) {
+            // impossible to publish a chunk this big
+            _axnBackpressured
+          } else {
+            val left = capacity - sz
+            if (left >= chunkSize) { // OK
+              wl.set0(chunk).as(Success)
+            } else {
+              val missing = chunkSize - left
+              this.handleOverflow(chunk, missing)
+            }
+          }
       }
     }
 

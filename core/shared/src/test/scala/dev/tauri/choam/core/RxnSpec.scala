@@ -1297,6 +1297,8 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Rxn constants") {
     for {
       _ <- assertResultF(Rxn.none[Int].run, None)
+      _ <- assertResultF(Rxn.nullOf[String].run, null: String)
+      _ <- assertResultF[Int, Int](Rxn.nullOf[Int].run.map(identity), 0: Int) // <- weird because unboxing null
       _ <- assertResultF(Rxn.true_.run, true)
       _ <- assertResultF(Rxn.false_.run, false)
       _ <- assertResultF(Rxn.unit.run, ())

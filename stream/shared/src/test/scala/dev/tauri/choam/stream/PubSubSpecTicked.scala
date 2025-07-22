@@ -24,7 +24,8 @@ import cats.effect.kernel.Outcome
 import cats.effect.IO
 import fs2.Chunk
 
-import core.Rxn
+import core.{ Rxn, Ref }
+import async.Promise
 
 import PubSub.OverflowStrategy
 import PubSub.OverflowStrategy.{ dropOldest, dropNewest, backpressure, unbounded }
@@ -43,22 +44,25 @@ trait PubSubSpecTicked[F[_]]
   singleElementBufferTests("DropOldest", dropOldest(1))
 
   test("DropOldest - should drop oldest elements") {
-      for {
-        hub <- PubSub[Int](dropOldest(3)).run[F]
-        fast <- hub.subscribe.evalTap(_ => F.sleep(0.1.second)).compile.toVector.start
-        slow <- hub.subscribe.evalTap(_ => F.sleep(1.second)).compile.toVector.start
-        _ <- this.tickAll // wait for subscriptions to happen
-        _ <- assertResultF(hub.publish(1).run, PubSub.Success)
-        _ <- this.tick // make sure they receive the 1st, and then start to sleep
-        _ <- assertResultF(hub.publishChunk(Chunk(2, 3)).run, PubSub.Success)
-        _ <- assertResultF(hub.publish(4).run, PubSub.Success) // buffers full
-        _ <- assertResultF(hub.publish(5).run, PubSub.Success)
-        _ <- this.advanceAndTick(0.1.second) // `fast` can dequeue
-        _ <- assertResultF(hub.publish(6).run, PubSub.Success)
-        _ <- assertResultF(hub.close.run, PubSub.Backpressured)
-        _ <- assertResultF(fast.joinWithNever, Vector(1, 3, 4, 5, 6))
-        _ <- assertResultF(slow.joinWithNever, Vector(1, 4, 5, 6))
-      } yield ()
+    val str = dropOldest(3)
+    for {
+      hub <- PubSub[Int](str).run[F]
+      fast <- hub.subscribe.evalTap(_ => F.sleep(0.1.second)).compile.toVector.start
+      slow <- hub.subscribe.evalTap(_ => F.sleep(1.second)).compile.toVector.start
+      withInit <- hub.subscribeWithInitial(str, Rxn.pure(0)).evalTap(_ => F.sleep(0.5.second)).compile.toVector.start
+      _ <- this.tickAll // wait for subscriptions to happen
+      _ <- assertResultF(hub.publish(1).run, PubSub.Success)
+      _ <- this.tick // make sure they receive the 1st, and then start to sleep
+      _ <- assertResultF(hub.publishChunk(Chunk(2, 3)).run, PubSub.Success)
+      _ <- assertResultF(hub.publish(4).run, PubSub.Success) // buffers full
+      _ <- assertResultF(hub.publish(5).run, PubSub.Success)
+      _ <- this.advanceAndTick(0.1.second) // `fast` can dequeue
+      _ <- assertResultF(hub.publish(6).run, PubSub.Success)
+      _ <- assertResultF(hub.close.run, PubSub.Backpressured)
+      _ <- assertResultF(fast.joinWithNever, Vector(1, 3, 4, 5, 6))
+      _ <- assertResultF(slow.joinWithNever, Vector(1, 4, 5, 6))
+      _ <- assertResultF(withInit.joinWithNever, Vector(0, 1, 4, 5, 6))
+    } yield ()
   }
 
   commonTests("DropNewest", dropNewest(64))
@@ -67,22 +71,22 @@ trait PubSubSpecTicked[F[_]]
   singleElementBufferTests("DropNewest", dropNewest(1))
 
   test("DropNewest - should drop newest elements") {
-      for {
-        hub <- PubSub[Int](dropNewest(3)).run[F]
-        fast <- hub.subscribe.evalTap(_ => F.sleep(0.1.second)).compile.toVector.start
-        slow <- hub.subscribe.evalTap(_ => F.sleep(1.second)).compile.toVector.start
-        _ <- this.tickAll // wait for subscriptions to happen
-        _ <- assertResultF(hub.publish(1).run, PubSub.Success)
-        _ <- this.tick // make sure they receive the 1st, and then start to sleep
-        _ <- assertResultF(hub.publishChunk(Chunk(2, 3)).run, PubSub.Success)
-        _ <- assertResultF(hub.publish(4).run, PubSub.Success) // buffers full
-        _ <- assertResultF(hub.publish(5).run, PubSub.Success) // this is dropped
-        _ <- this.advanceAndTick(0.1.second) // `fast` can dequeue
-        _ <- assertResultF(hub.publishChunk(Chunk(6, 7)).run, PubSub.Success) // this is dropped
-        _ <- assertResultF(hub.close.run, PubSub.Backpressured)
-        _ <- assertResultF(fast.joinWithNever, Vector(1, 2, 3, 4, 6, 7))
-        _ <- assertResultF(slow.joinWithNever, Vector(1, 2, 3, 4))
-      } yield ()
+    for {
+      hub <- PubSub[Int](dropNewest(3)).run[F]
+      fast <- hub.subscribe.evalTap(_ => F.sleep(0.1.second)).compile.toVector.start
+      slow <- hub.subscribe.evalTap(_ => F.sleep(1.second)).compile.toVector.start
+      _ <- this.tickAll // wait for subscriptions to happen
+      _ <- assertResultF(hub.publish(1).run, PubSub.Success)
+      _ <- this.tick // make sure they receive the 1st, and then start to sleep
+      _ <- assertResultF(hub.publishChunk(Chunk(2, 3)).run, PubSub.Success)
+      _ <- assertResultF(hub.publish(4).run, PubSub.Success) // buffers full
+      _ <- assertResultF(hub.publish(5).run, PubSub.Success) // this is dropped
+      _ <- this.advanceAndTick(0.1.second) // `fast` can dequeue
+      _ <- assertResultF(hub.publishChunk(Chunk(6, 7)).run, PubSub.Success) // this is dropped
+      _ <- assertResultF(hub.close.run, PubSub.Backpressured)
+      _ <- assertResultF(fast.joinWithNever, Vector(1, 2, 3, 4, 6, 7))
+      _ <- assertResultF(slow.joinWithNever, Vector(1, 2, 3, 4))
+    } yield ()
   }
 
   commonTests("Unbounded", unbounded)
@@ -224,6 +228,27 @@ trait PubSubSpecTicked[F[_]]
         _ <- assertResultF(f3.joinWithNever, Vector(2, 3))
       } yield ()
     }
+
+    test(s"$name - initial Rxn should run for each subscription") {
+      for {
+        hub <- PubSub[Int](str).run[F]
+        ctr <- Ref[Int](0).run[F]
+        vec = hub.subscribeWithInitial(str, ctr.getAndUpdate(_ + 1)).compile.toVector
+        fib1 <- vec.start
+        _ <- this.tickAll
+        fib2 <- vec.start
+        _ <- this.tickAll
+        fib3 <- vec.start
+        _ <- this.tickAll
+        _ <- assertResultF(hub.publish(42).run, PubSub.Success)
+        _ <- hub.close.run
+        _ <- hub.awaitShutdown
+        _ <- assertResultF(fib1.joinWithNever, Vector(0, 42))
+        _ <- assertResultF(fib2.joinWithNever, Vector(1, 42))
+        _ <- assertResultF(fib3.joinWithNever, Vector(2, 42))
+        _ <- assertResultF(ctr.get.run, 3)
+      } yield ()
+    }
   }
 
   private def droppingTests(
@@ -243,6 +268,18 @@ trait PubSubSpecTicked[F[_]]
         _ <- assertResultF(hub.close.run[F], PubSub.Backpressured)
         vec <- fib.joinWithNever
         _ <- assertEqualsF(vec, (1 to bufferSize).toVector)
+      } yield ()
+    }
+
+    test(s"$name - Initial element mustn't count against the buffer size") {
+      for {
+        _ <- assertF(bufferSize > 2)
+        hub <- PubSub[Int](str).run[F]
+        latch <- Promise[Unit].run
+        fib <- hub.subscribeWithInitial(str, latch.complete(()).as(0)).compile.toVector.start
+        _ <- latch.get[F] *> (1 to bufferSize).toList.traverse_(i => hub.publish(i).run[F])
+        _ <- hub.close.run
+        _ <- assertResultF(fib.joinWithNever, 0 +: (1 to bufferSize).toVector)
       } yield ()
     }
   }

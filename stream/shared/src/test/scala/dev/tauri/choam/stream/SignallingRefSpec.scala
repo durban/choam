@@ -61,10 +61,10 @@ trait SignallingRefSpec[F[_]]
       rr <- signallingRef[F, Int](initial = 0).run[F]
       (_, ref) = rr
       _ <- assertResultF(ref.continuous.take(3).compile.toList, List(0, 0, 0))
-      fd <- ref.discrete.take(3).compile.toList.start
+      fd <- ref.discrete.take(4).compile.toList.start
       _ <- this.tickAll
       intrpt <- F.deferred[Either[Throwable, Unit]]
-      fc <- ref.continuous.interruptWhen(intrpt).compile.toList.start
+      fc <- ref.continuous.take(1000).interruptWhen(intrpt).compile.toList.start
       _ <- tickALot
       _ <- ref.set(1)
       _ <- tickALot
@@ -72,7 +72,7 @@ trait SignallingRefSpec[F[_]]
       _ <- tickALot
       _ <- assertResultF(ref.modify(ov => (ov + 1, 42)), 42)
       _ <- tickALot
-      _ <- assertResultF(fd.joinWithNever, List(1, 2, 3))
+      _ <- assertResultF(fd.joinWithNever, List(0, 1, 2, 3))
       _ <- tickALot
       _ <- intrpt.complete(Right(()))
       lst <- fc.joinWithNever
@@ -129,10 +129,24 @@ trait SignallingRefSpec[F[_]]
       l1 <- f1.joinWithNever
       l2 <- f2.joinWithNever
       // we mustn't lose elements:
-      _ <- assertEqualsF(l1, (1 to N).toList)
-      _ <- assertEqualsF(l2, (1 to N).toList)
-      _ <- assertEqualsF(l3, (1 to N).toList)
+      _ <- assertEqualsF(l1, (0 to N).toList)
+      _ <- assertEqualsF(l2, (0 to N).toList)
+      _ <- assertEqualsF(l3, (0 to N).toList)
       _ <- checkListeners(ref, min = 0, max = 0)
+    } yield ()
+  }
+
+  test("SignallingRef#discrete should receive at least the current value") {
+    for {
+      sr <- signallingRef[F, Int](0).run[F]
+      strm = sr._2.discrete.take(1)
+      result1 <- strm.compile.toList
+      result2 <- strm.compile.toList
+      _ <- assertEqualsF(result1, List(0))
+      _ <- assertEqualsF(result2, List(0))
+      _ <- sr._2.set(42)
+      results <- F.both(strm.compile.toList, strm.compile.toList)
+      _ <- assertEqualsF(results, (List(42), List(42)))
     } yield ()
   }
 }

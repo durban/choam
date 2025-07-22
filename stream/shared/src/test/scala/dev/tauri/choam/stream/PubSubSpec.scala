@@ -24,6 +24,7 @@ import scala.concurrent.duration._
 
 import cats.effect.IO
 
+import core.Rxn
 import PubSub.OverflowStrategy
 
 final class PubSubSpec_DefaultMcas_IO
@@ -59,7 +60,7 @@ trait PubSubSpec[F[_]]
       val t = for {
         hub <- PubSub[Int](str).run[F]
         f1 <- hub.subscribe.compile.toVector.start
-        f2 <- hub.subscribe.compile.toVector.start
+        f2 <- hub.subscribeWithInitial(str, Rxn.pure(0)).compile.toVector.start
         _ <- F.sleep(1.second) // wait for subscription to happen
         rr <- F.both(
           F.cede *> nums.traverse(i => hub.publish(i).run[F]),
@@ -69,7 +70,9 @@ trait PubSubSpec[F[_]]
         _ <- assertEqualsF(rr._2, succVec)
         _ <- assertResultF(hub.close.run[F], PubSub.Backpressured) // with high probability
         v1 <- f1.joinWithNever
-        v2 <- f2.joinWithNever
+        v2WithInitial <- f2.joinWithNever
+        _ <- assertEqualsF(v2WithInitial.take(1), Vector(0))
+        v2 = v2WithInitial.drop(1)
         _ <- assertEqualsF(v1, v2)
         _ <- assertEqualsF(v1.toSet, expSet)
         _ <- checkOrder(v1, str)
@@ -104,12 +107,13 @@ trait PubSubSpec[F[_]]
         v1 <- f1.joinWithNever
         v2 <- f2.joinWithNever
         _ <- str2.fold(
-          unbounded = assertEqualsF(v1, v2), // we never lose items
+          unbounded = assertEqualsF(v1, v2) *> assertEqualsF(v1.toSet, nums.toSet union nums.map(-_).toSet), // we never lose items
           backpressure = _ => assertEqualsF(v1, v2), // if we lose an item, neither of them sees it
           dropOldest = _ => F.unit, // they might see different items (depending on scheduling)
           dropNewest = _ => F.unit, // they might see different items (depending on scheduling)
         )
         _ <- checkOrder(v1, str2) // we may lose items, but the order must be correct
+        _ <- checkOrder(v2, str2) // we may lose items, but the order must be correct
       } yield ()
       t.replicateA_(if (isJs()) 1 else repl)
     }

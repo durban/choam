@@ -78,7 +78,7 @@ private final class Fs2SignallingRefWrapper[F[_], A](
     Stream.repeatEval(this.get)
 
   final override def discrete: Stream[F, A] =
-    this.pubSub.subscribe
+    this.pubSub.subscribeWithInitial(PubSub.OverflowStrategy.unbounded, _refLike.get)
 
   // CatsRef:
 

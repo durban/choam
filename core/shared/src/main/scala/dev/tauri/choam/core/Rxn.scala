@@ -384,6 +384,9 @@ object Rxn extends RxnInstances0 {
   private[this] val _none: Rxn[Option[Nothing]] =
     pure(None)
 
+  private[this] val _nullOf: Rxn[Null] =
+    pure(null)
+
   private[this] val _true: RxnImpl[Boolean] =
     pureImpl(true)
 
@@ -405,6 +408,9 @@ object Rxn extends RxnInstances0 {
 
   private[choam] final def false_[A]: Rxn[Boolean] =
     _false
+
+  private[choam] final def nullOf[A]: Rxn[A] =
+    _nullOf.asInstanceOf[Rxn[A]]
 
   final def postCommit(pc: Rxn[Unit]): Rxn[Unit] =
     new Rxn.PostCommit[Unit](unit, _ => pc)
