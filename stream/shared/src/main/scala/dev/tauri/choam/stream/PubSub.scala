@@ -32,10 +32,8 @@ import async.{ Promise, WaitList }
 import data.UnboundedDeque
 
 sealed abstract class PubSub[A]
-  extends PubSub.Emit[A] // TODO: -> Publish[A]
-  with PubSub.Subscribe[A] {
-
-
+  extends PubSub.Simple[A]
+  with PubSub.Publish[A] {
 
   // TODO: asFs2 : Topic[F, A] (or asTopic?)
 }
@@ -64,40 +62,40 @@ object PubSub {
     private[stream] def numberOfSubscriptions: Rxn[Int]
   }
 
-  private[choam] final def emit[A]( // TODO: better name + make it public
+  sealed abstract class Simple[A]
+    extends PubSub.Emit[A]
+    with PubSub.Subscribe[A]
+
+  final def simple[A](
     overflowStr: OverflowStrategy,
-  ): Rxn[PubSub.Emit[A] & PubSub.Subscribe[A]] = {
-    emit(overflowStr, Ref.AllocationStrategy.Default)
+  ): Rxn[PubSub.Simple[A]] = {
+    simple(overflowStr, Ref.AllocationStrategy.Default)
   }
 
-  private[choam] final def emit[A]( // TODO: better name + make it public
+  final def simple[A](
     overflowStr: OverflowStrategy,
     allocStr: Ref.AllocationStrategy,
-  ): Rxn[PubSub.Emit[A] & PubSub.Subscribe[A]] = {
-    apply(overflowStr, allocStr)
-  }
-
-  final def apply[A](
-    overflowStr: OverflowStrategy,
-  ): Rxn[PubSub[A]] = {
-    apply(overflowStr, Ref.AllocationStrategy.Default)
-  }
-
-  final def apply[A](
-    overflowStr: OverflowStrategy,
-    allocStr: Ref.AllocationStrategy,
-  ): Rxn[PubSub[A]] = {
+  ): Rxn[PubSub.Simple[A]] = {
     // TODO: if `str` is padded, this AtomicLong should also be padded
     Rxn.unsafe.delay { new AtomicLong }.flatMap { nextId =>
       Ref(LongMap.empty[Subscription[A, _]], allocStr).flatMap { subscriptions =>
         Ref(false, allocStr).flatMap { isClosed =>
           Promise[Unit](allocStr).map { awaitClosed =>
-            new PubSubImpl[A](nextId, subscriptions, isClosed, awaitClosed, overflowStr)
+            new SimplePubSubImpl[A](nextId, subscriptions, isClosed, awaitClosed, overflowStr)
           }
         }
       }
     }
   }
+
+  final def async[A](
+    overflowStr: OverflowStrategy,
+  ): Rxn[PubSub[A]] = sys.error("TODO")
+
+  final def async[A](
+    overflowStr: OverflowStrategy,
+    allocStr: Ref.AllocationStrategy,
+  ): Rxn[PubSub[A]] = sys.error("TODO")
 
   sealed abstract class Result
   // TODO: sealed abstract class ClosedOrSuccess extends Result
@@ -290,13 +288,13 @@ object PubSub {
     def isClosed: Ref[Boolean]
   }
 
-  private[this] final class PubSubImpl[A](
+  private[this] final class SimplePubSubImpl[A](
     nextId: AtomicLong,
     val subscriptions: Ref[LongMap[Subscription[A, _]]],
     val isClosed: Ref[Boolean],
     awaitClosed: Promise[Unit],
     defaultStrategy: OverflowStrategy,
-  ) extends PubSub[A] with HandleSubscriptions {
+  ) extends PubSub.Simple[A] with HandleSubscriptions {
 
     final override def subscribe[F[_]](implicit F: AsyncReactive[F]): Stream[F, A] =
       this.subscribe(this.defaultStrategy)

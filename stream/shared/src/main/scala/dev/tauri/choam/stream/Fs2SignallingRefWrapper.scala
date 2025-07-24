@@ -117,7 +117,7 @@ private object Fs2SignallingRefWrapper {
     str: Ref.AllocationStrategy,
   ): Rxn[Fs2SignallingRefWrapper[F, A]] = {
     val ofStr = PubSub.OverflowStrategy.unbounded // TODO: make OverflowStrategy configurable
-    (Ref[A](initial, str) * PubSub.emit[A](ofStr, str)).map {
+    (Ref[A](initial, str) * PubSub.simple[A](ofStr, str)).map {
       case (underlying, pubSub) =>
         new Fs2SignallingRefWrapper[F, A](underlying, pubSub)
     }
