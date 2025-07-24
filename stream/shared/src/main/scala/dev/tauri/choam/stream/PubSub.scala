@@ -31,32 +31,51 @@ import core.{ Rxn, Ref, AsyncReactive }
 import async.{ Promise, WaitList }
 import data.UnboundedDeque
 
-sealed abstract class PubSub[A] {
+sealed abstract class PubSub[A]
+  extends PubSub.Emit[A] // TODO: -> Publish[A]
+  with PubSub.Subscribe[A] {
 
-  def subscribe[F[_]: AsyncReactive]: Stream[F, A]
 
-  def subscribe[F[_]: AsyncReactive](strategy: PubSub.OverflowStrategy): Stream[F, A]
 
-  def publish(a: A): Rxn[PubSub.Result]
-
-  def publishChunk(ch: Chunk[A]): Rxn[PubSub.Result]
-
-  def close: Rxn[PubSub.Result]
-
-  def awaitShutdown[F[_]: AsyncReactive]: F[Unit]
-
-  // TODO: asFs2 : Topic[F, A]
-
-  private[stream] def subscribeWithInitial[F[_]: AsyncReactive](
-    strategy: PubSub.OverflowStrategy,
-    initial: Rxn[A],
-  ): Stream[F, A]
-
-  /** Only for testing! */
-  private[stream] def numberOfSubscriptions: Rxn[Int]
+  // TODO: asFs2 : Topic[F, A] (or asTopic?)
 }
 
 object PubSub {
+
+  sealed trait Emit[-A] {
+    def emit(a: A): Rxn[PubSub.Result]
+    def emitChunk(ch: Chunk[A]): Rxn[PubSub.Result]
+    def close: Rxn[PubSub.Result]
+  }
+
+  sealed trait Publish[-A] extends Emit[A] {
+    def publish[F[_]: AsyncReactive](a: A): F[PubSub.Result] // TODO: ClosedOrSuccess
+    def publishChunk[F[_]: AsyncReactive](ch: Chunk[A]): F[PubSub.Result] // TODO: ClosedOrSuccess
+  }
+
+  sealed trait Subscribe[+A] {
+    def subscribe[F[_]: AsyncReactive]: Stream[F, A]
+    def awaitShutdown[F[_]: AsyncReactive]: F[Unit] // TODO: does this belong here?
+    private[choam] def subscribe[F[_]: AsyncReactive](strategy: PubSub.OverflowStrategy): Stream[F, A]
+    private[choam] def subscribeWithInitial[F[_]: AsyncReactive, B >: A](
+      strategy: PubSub.OverflowStrategy,
+      initial: Rxn[B],
+    ): Stream[F, B]
+    private[stream] def numberOfSubscriptions: Rxn[Int]
+  }
+
+  private[choam] final def emit[A]( // TODO: better name + make it public
+    overflowStr: OverflowStrategy,
+  ): Rxn[PubSub.Emit[A] & PubSub.Subscribe[A]] = {
+    emit(overflowStr, Ref.AllocationStrategy.Default)
+  }
+
+  private[choam] final def emit[A]( // TODO: better name + make it public
+    overflowStr: OverflowStrategy,
+    allocStr: Ref.AllocationStrategy,
+  ): Rxn[PubSub.Emit[A] & PubSub.Subscribe[A]] = {
+    apply(overflowStr, allocStr)
+  }
 
   final def apply[A](
     overflowStr: OverflowStrategy,
@@ -70,7 +89,7 @@ object PubSub {
   ): Rxn[PubSub[A]] = {
     // TODO: if `str` is padded, this AtomicLong should also be padded
     Rxn.unsafe.delay { new AtomicLong }.flatMap { nextId =>
-      Ref(LongMap.empty[Subscription[A]], allocStr).flatMap { subscriptions =>
+      Ref(LongMap.empty[Subscription[A, _]], allocStr).flatMap { subscriptions =>
         Ref(false, allocStr).flatMap { isClosed =>
           Promise[Unit](allocStr).map { awaitClosed =>
             new PubSubImpl[A](nextId, subscriptions, isClosed, awaitClosed, overflowStr)
@@ -270,13 +289,18 @@ object PubSub {
     }
   }
 
+  private[this] sealed trait HandleSubscriptions {
+    def removeSubscription(id: Long): Rxn[Unit]
+    def isClosed: Ref[Boolean]
+  }
+
   private[this] final class PubSubImpl[A](
     nextId: AtomicLong,
-    val subscriptions: Ref[LongMap[Subscription[A]]],
+    val subscriptions: Ref[LongMap[Subscription[A, _]]],
     val isClosed: Ref[Boolean],
     awaitClosed: Promise[Unit],
     defaultStrategy: OverflowStrategy,
-  ) extends PubSub[A] {
+  ) extends PubSub[A] with HandleSubscriptions {
 
     final override def subscribe[F[_]](implicit F: AsyncReactive[F]): Stream[F, A] =
       this.subscribe(this.defaultStrategy)
@@ -284,20 +308,23 @@ object PubSub {
     final override def subscribe[F[_]](strategy: PubSub.OverflowStrategy)(implicit F: AsyncReactive[F]): Stream[F, A] =
       this.subscribeWithInitial(strategy, Rxn.nullOf[A]).drop(1)
 
-    private[stream] final override def subscribeWithInitial[F[_]](
+    final override def removeSubscription(id: Long): Rxn[Unit] =
+      this.subscriptions.update(_.removed(id))
+
+    private[choam] final override def subscribeWithInitial[F[_], B >: A](
       strategy: PubSub.OverflowStrategy,
-      initial: Rxn[A],
-    )(implicit F: AsyncReactive[F]): Stream[F, A] = {
+      initial: Rxn[B],
+    )(implicit F: AsyncReactive[F]): Stream[F, B] = {
       implicit val FF: Async[F] = F.asyncInst
       val acqSubs = FF.delay(nextId.getAndIncrement()).flatMap { id =>
         Promise[Unit].run[F].flatMap { sp =>
-          val act: Rxn[Subscription[A]] = isClosed.get.flatMap { isClosed =>
+          val act: Rxn[Subscription[A, B]] = isClosed.get.flatMap { isClosed =>
             if (isClosed) {
-              Rxn.pure(null : Subscription[A])
+              Rxn.pure(null : Subscription[A, B])
             } else {
-              strategy.newBuffer[F, A].flatMap { buf =>
+              strategy.newBuffer[F, B].flatMap { buf =>
                 initial.flatMap { elem => buf.enqueue(signalChunk(elem)) } *> {
-                  val subs = new Subscription[A](id, buf, sp, this)
+                  val subs = new Subscription[B, B](id, buf, sp, this)
                   subscriptions.update(_.updated(id, subs)).as(subs)
                 }
               }
@@ -315,11 +342,11 @@ object PubSub {
       }
     }
 
-    final override def publish(a: A): Rxn[Result] = {
-      publishChunk(Chunk.singleton(a))
+    final override def emit(a: A): Rxn[Result] = {
+      emitChunk(Chunk.singleton(a))
     }
 
-    final override def publishChunk(ch: Chunk[A]): Rxn[Result] = {
+    final override def emitChunk(ch: Chunk[A]): Rxn[Result] = {
       isClosed.get.flatMap { isClosed =>
         if (isClosed) {
           _axnClosed
@@ -388,22 +415,22 @@ object PubSub {
     }
   }
 
-  private[PubSub] final class Subscription[A](
+  private[PubSub] final class Subscription[-A, B >: A](
     id: Long,
     queue: PubSubBuffer[A],
     val awaitShutdown: Promise[Unit],
-    hub: PubSubImpl[A],
+    hub: HandleSubscriptions,
   ) {
 
     final def publishChunkOrRetry(ch: Chunk[A]): Rxn[Result] = {
       queue.enqueue(ch)
     }
 
-    final def stream[F[_]: AsyncReactive]: Stream[F, A] = {
+    final def stream[F[_]: AsyncReactive]: Stream[F, B] = {
       consume(Chunk.empty).stream
     }
 
-    private[this] final def consume[F[_]](acc: Chunk[A])(implicit F: AsyncReactive[F]): Pull[F, A, Unit] = {
+    private[this] final def consume[F[_]](acc: Chunk[A])(implicit F: AsyncReactive[F]): Pull[F, B, Unit] = {
       implicit val FF: Async[F] = F.asyncInst
       Pull.eval(F.apply(queue.tryDequeue)).flatMap {
         case Some(null) =>
@@ -413,7 +440,7 @@ object PubSub {
           // collect multiple chunks into a bigger one:
           consume(acc ++ chunk) // TODO: add a sizeLimit parameter
         case None =>
-          Pull.output[F, A](acc) *> Pull.eval(F.apply(hub.isClosed.get)).flatMap { isClosed =>
+          Pull.output[F, B](acc) *> Pull.eval(F.apply(hub.isClosed.get)).flatMap { isClosed =>
             if (isClosed) {
               // double check queue, because there is a
               // race between `output` above, and more
@@ -440,7 +467,7 @@ object PubSub {
 
     final def closeInternal[F[_]](implicit F: AsyncReactive[F]): F[Unit] = {
       implicit val FF: Async[F] = F.asyncInst
-      F.apply(hub.subscriptions.update(_.removed(this.id))).guarantee(
+      F.apply(hub.removeSubscription(this.id)).guarantee(
         awaitShutdown.complete(()).void.run[F]
       )
     }

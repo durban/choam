@@ -58,13 +58,13 @@ trait PubSubSpec[F[_]]
       val expSet = (nums.toSet ++ nums.map(-_).toSet)
       val succVec = Vector.fill(N)(PubSub.Success)
       val t = for {
-        hub <- PubSub[Int](str).run[F]
+        hub <- PubSub.emit[Int](str).run[F]
         f1 <- hub.subscribe.compile.toVector.start
         f2 <- hub.subscribeWithInitial(str, Rxn.pure(0)).compile.toVector.start
         _ <- F.sleep(1.second) // wait for subscription to happen
         rr <- F.both(
-          F.cede *> nums.traverse(i => hub.publish(i).run[F]),
-          F.cede *> nums.traverse(i => hub.publish(-i).run[F]),
+          F.cede *> nums.traverse(i => hub.emit(i).run[F]),
+          F.cede *> nums.traverse(i => hub.emit(-i).run[F]),
         )
         _ <- assertEqualsF(rr._1, succVec)
         _ <- assertEqualsF(rr._2, succVec)
@@ -94,13 +94,13 @@ trait PubSubSpec[F[_]]
         dropNewest = _ => (OverflowStrategy.dropNewest(1), defaultRepl),
       )
       val t = for {
-        hub <- PubSub[Int](str2).run[F]
+        hub <- PubSub.emit[Int](str2).run[F]
         f1 <- hub.subscribe.evalTap { _ => if (ThreadLocalRandom.current().nextBoolean()) F.cede else F.unit }.compile.toVector.start
         f2 <- hub.subscribe.compile.toVector.start
         _ <- F.sleep(1.second) // wait for subscription to happen
         _ <- F.both(
-          F.cede *> nums.traverse_(i => hub.publish(i).run[F]),
-          F.cede *> nums.traverse_(i => hub.publish(-i).run[F]),
+          F.cede *> nums.traverse_(i => hub.emit(i).run[F]),
+          F.cede *> nums.traverse_(i => hub.emit(-i).run[F]),
         )
         closeRes <- hub.close.run[F]
         _ <- assertF((closeRes eq PubSub.Backpressured) || (closeRes eq PubSub.Success))

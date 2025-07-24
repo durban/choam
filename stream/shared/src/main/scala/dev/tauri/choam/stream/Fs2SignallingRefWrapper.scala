@@ -28,7 +28,7 @@ import core.{ Rxn, Ref, RefLike, AsyncReactive }
 
 private final class Fs2SignallingRefWrapper[F[_], A](
   underlying: Ref[A],
-  val pubSub: PubSub[A],
+  val pubSub: PubSub.Emit[A] & PubSub.Subscribe[A],
 )(implicit F: AsyncReactive[F]) extends SignallingRef[F, A] {
 
   // Rxn API:
@@ -60,7 +60,7 @@ private final class Fs2SignallingRefWrapper[F[_], A](
     }
 
     private[this] def notifyListeners(newVal: A): Rxn[Unit] = {
-      pubSub.publish(newVal).map {
+      pubSub.emit(newVal).map {
         case PubSub.Success =>
           () // ok
         case otherResult =>
@@ -117,7 +117,7 @@ private object Fs2SignallingRefWrapper {
     str: Ref.AllocationStrategy,
   ): Rxn[Fs2SignallingRefWrapper[F, A]] = {
     val ofStr = PubSub.OverflowStrategy.unbounded // TODO: make OverflowStrategy configurable
-    (Ref[A](initial, str) * PubSub[A](ofStr, str)).map {
+    (Ref[A](initial, str) * PubSub.emit[A](ofStr, str)).map {
       case (underlying, pubSub) =>
         new Fs2SignallingRefWrapper[F, A](underlying, pubSub)
     }
