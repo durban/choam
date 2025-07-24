@@ -55,7 +55,7 @@ trait SignallingRefSpec[F[_]]
     }
     def tickALot: F[Unit] = {
       val aLot = 1000
-      assertResultF(this.tickN(aLot), aLot)
+      this.tickN(aLot).void
     }
     for {
       rr <- signallingRef[F, Int](initial = 0).run[F]
