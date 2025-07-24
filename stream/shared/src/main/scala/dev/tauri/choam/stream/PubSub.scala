@@ -244,7 +244,7 @@ object PubSub {
         new PubSubBuffer[A](bufferSize, sizeRef.get, wl) {
 
           protected[this] final override def handleOverflow(newChunk: Chunk[A], missingCapacity: Int): Rxn[Result] =
-            dropOldestN(missingCapacity) *> sizeRef.update(_ - missingCapacity) *> wl.set0(newChunk).as(Success)
+            dropOldestN(missingCapacity) *> sizeRef.update(_ - missingCapacity) *> wl.set(newChunk).as(Success)
 
           private[this] final def dropOldestN(n: Int): Rxn[Unit] = {
             underlying.tryTakeLast.flatMap {
@@ -483,9 +483,9 @@ object PubSub {
     final def enqueue(chunk: Chunk[A]): Rxn[Result] = getSize.flatMap { sz =>
       chunk match {
         case null =>
-          wl.set0(null).as(Success)
+          wl.set(null).as(Success)
         case _: SignalChunk[_] =>
-          wl.set0(chunk).as(Success)
+          wl.set(chunk).as(Success)
         case _ =>
           val chunkSize = chunk.size
           _assert(chunkSize > 0)
@@ -495,7 +495,7 @@ object PubSub {
           } else {
             val left = capacity - sz
             if (left >= chunkSize) { // OK
-              wl.set0(chunk).as(Success)
+              wl.set(chunk).as(Success)
             } else {
               val missing = chunkSize - left
               this.handleOverflow(chunk, missing)

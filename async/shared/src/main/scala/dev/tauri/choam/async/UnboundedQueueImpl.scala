@@ -31,7 +31,7 @@ private object UnboundedQueueImpl {
           final override def offer(a: A): Rxn[Boolean] =
             this.add(a).as(true)
           final override def add(a: A): Rxn[Unit] =
-            wl.set0(a).void
+            wl.set(a).void
           final override def poll: Rxn[Option[A]] =
             wl.tryGet
           final override def take[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
@@ -48,7 +48,7 @@ private object UnboundedQueueImpl {
           final override def offer(a: A): Rxn[Boolean] =
             this.add(a).as(true)
           final override def add(a: A): Rxn[Unit] =
-            wl.set0(a).void
+            wl.set(a).void
           final override def poll: Rxn[Option[A]] =
             wl.tryGet
           final override def take[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =

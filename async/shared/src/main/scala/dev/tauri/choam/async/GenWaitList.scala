@@ -27,7 +27,7 @@ import data.RemoveQueue
 
 private[choam] sealed trait GenWaitList[A] { self =>
 
-  def trySet0(a: A): Rxn[Boolean]
+  def trySet(a: A): Rxn[Boolean]
 
   def tryGet: Rxn[Option[A]]
 
@@ -39,10 +39,10 @@ private[choam] sealed trait GenWaitList[A] { self =>
 private[choam] sealed trait WaitList[A] extends GenWaitList[A] { self =>
 
   /** Returns `true` for a "normal" set, and `false` for waking a waiting getter. */
-  def set0(a: A): Rxn[Boolean] // TODO: do we need the 0?
+  def set(a: A): Rxn[Boolean]
 
-  final override def trySet0(a: A): Rxn[Boolean] =
-    this.set0(a).as(true)
+  final override def trySet(a: A): Rxn[Boolean] =
+    this.set(a).as(true)
 }
 
 private[choam] object WaitList { // TODO: should support AllocationStrategy
@@ -165,7 +165,7 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
     setters: RemoveQueue[Either[Throwable, Unit] => Unit],
   ) extends GenWaitListCommon[A] { self =>
 
-    final override def trySet0(a: A): Rxn[Boolean] = {
+    final override def trySet(a: A): Rxn[Boolean] = {
       setters.isEmpty.flatMap { noSetters =>
         if (noSetters) {
           getters.poll.flatMap {
@@ -176,7 +176,7 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
                 if (ok) {
                   callCbRightUnit(cb).as(true)
                 } else {
-                  impossible("AsyncGenWaitList#trySet0 found a getter, but trySetUnderlying failed")
+                  impossible("AsyncGenWaitList#trySet found a getter, but trySetUnderlying failed")
                 }
               }
           }
@@ -219,7 +219,7 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
           implicit G: MonadCancel[G, Throwable]
         ): (Either[Throwable, Unit] => Unit, G[Unit], F ~> G) => G[Unit] = { (cb, get, lift) =>
           G.uncancelable { poll =>
-            val ts = if (firstTry) self.trySet0(a) else self.trySetUnderlying(a)
+            val ts = if (firstTry) self.trySet(a) else self.trySetUnderlying(a)
             lift(ar.apply(
               ts.flatMap { ok =>
                 if (ok) {
@@ -264,10 +264,6 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
     }
   }
 
-  // TODO: Look at all usages of (Gen)WaitList, and make
-  // TODO: sure, that none of them uses the underlying
-  // TODO: data structure directly (unless really
-  // TODO: necessary), because that's dangerous.
   private final class AsyncWaitList[A](
     tryGetUnderlying: Rxn[Option[A]],
     setUnderlying: A => Rxn[Unit],
@@ -285,7 +281,7 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
       }
     }
 
-    final override def set0(a: A): Rxn[Boolean] = {
+    final override def set(a: A): Rxn[Boolean] = {
       this.waiters.poll.flatMap {
         case None =>
           this.setUnderlying(a).as(true)
@@ -295,7 +291,7 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
     }
 
     final override def asyncSet[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] = {
-      F.asyncInst.void(F.apply(this.set0(a)))
+      F.asyncInst.void(F.apply(this.set(a)))
     }
 
     final override def asyncGet[F[_]](implicit ar: AsyncReactive[F]): F[A] = {

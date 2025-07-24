@@ -71,7 +71,7 @@ private[choam] object BoundedQueueImpl {
       F.monad.widen(gwl.asyncGet)
 
     final override def offer(a: A): Rxn[Boolean] =
-      gwl.trySet0(a)
+      gwl.trySet(a)
 
     final override def put[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
       gwl.asyncSet(a)
@@ -96,7 +96,7 @@ private[choam] object BoundedQueueImpl {
       F.monad.widen(gwl.asyncGet)
 
     final override def offer(a: A): Rxn[Boolean] =
-      gwl.trySet0(a)
+      gwl.trySet(a)
 
     final override def put[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
       gwl.asyncSet(a)

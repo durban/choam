@@ -66,7 +66,7 @@ private object OverflowQueueImpl {
       this.add(a).as(true)
 
     final override def add(a: A): Rxn[Unit] =
-      wl.set0(a).void
+      wl.set(a).void
 
     final override def poll: Rxn[Option[A]] =
       wl.tryGet
@@ -87,7 +87,7 @@ private object OverflowQueueImpl {
       new AsyncQueue.CatsQueueAdapter(this)
 
     final override def offer(a: A): Rxn[Boolean] =
-      gwl.trySet0(a)
+      gwl.trySet(a)
 
     final override def add(a: A): Rxn[Unit] =
       this.offer(a).void

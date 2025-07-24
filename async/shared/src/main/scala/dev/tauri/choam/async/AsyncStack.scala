@@ -42,7 +42,7 @@ object AsyncStack {
     WaitList(stack.tryPop, stack.push).map { wl =>
       new AsyncStack[A] {
         final override def push(a: A): Rxn[Unit] =
-          wl.set0(a).void
+          wl.set(a).void
         final override def pop[F[_]](implicit F: AsyncReactive[F]): F[A] =
           wl.asyncGet
         final override def tryPop: Rxn[Option[A]] =
