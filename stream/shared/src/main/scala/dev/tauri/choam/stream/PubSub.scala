@@ -149,9 +149,13 @@ object PubSub {
     }
 
     // TODO: add an `str: AllocationStrategy` parameter, and use it
-    private[PubSub] def newBuffer[F[_] : AsyncReactive, A]: Rxn[PubSubBuffer[A]]
+    private[PubSub] def newBuffer[F[_] : AsyncReactive, A](
+      sizeRef: Ref[Int],
+      underlying: UnboundedDeque[Chunk[A]],
+      wl: WaitList[Chunk[A]],
+    ): PubSubBuffer[A]
 
-    protected[this] final def mkWaitList[A](
+    private[PubSub] final def mkWaitList[A](
       underlying: UnboundedDeque[Chunk[A]],
       size: Ref[Int]
     ): Rxn[WaitList[Chunk[A]]] = {
@@ -204,32 +208,28 @@ object PubSub {
 
       require(bufferSize > 0)
 
-      private[PubSub] final override def newBuffer[F[_] : AsyncReactive, A]: Rxn[PubSubBuffer[A]] = {
-        UnboundedDeque[Chunk[A]].flatMap { underlying =>
-          Ref[Int](0).flatMap { size =>
-            mkWaitList(underlying, size).map { wl =>
-              new PubSubBuffer[A](bufferSize, size.get, wl) {
-                protected[this] final override def handleOverflow(newChunk: Chunk[A], missingCapacity: Int): Rxn[Result] =
-                  Rxn.unsafe.retryWhenChanged
-              }
-            }
-          }
+      private[PubSub] def newBuffer[F[_] : AsyncReactive, A](
+        sizeRef: Ref[Int],
+        underlying: UnboundedDeque[Chunk[A]],
+        wl: WaitList[Chunk[A]],
+      ): PubSubBuffer[A] = {
+        new PubSubBuffer[A](bufferSize, sizeRef.get, wl) {
+          protected[this] final override def handleOverflow(newChunk: Chunk[A], missingCapacity: Int): Rxn[Result] =
+            Rxn.unsafe.retryWhenChanged
         }
       }
     }
 
     private final object Unbounded extends OverflowStrategy {
 
-      private[PubSub] final override def newBuffer[F[_] : AsyncReactive, A]: Rxn[PubSubBuffer[A]] = {
-        UnboundedDeque[Chunk[A]].flatMap { underlying =>
-          Ref[Int](0).flatMap { size =>
-            mkWaitList(underlying, size).map { wl =>
-              new PubSubBuffer[A](Integer.MAX_VALUE, size.get, wl) {
-                protected[this] final override def handleOverflow(newChunk: Chunk[A], missingCapacity: Int): Rxn[Result] =
-                  impossible(s"OverflowStrategy.Unbounded#handleOverflow (chunkSize = ${newChunk.size}, missingCapacity = $missingCapacity)")
-              }
-            }
-          }
+      private[PubSub] def newBuffer[F[_] : AsyncReactive, A](
+        sizeRef: Ref[Int],
+        underlying: UnboundedDeque[Chunk[A]],
+        wl: WaitList[Chunk[A]],
+      ): PubSubBuffer[A] = {
+        new PubSubBuffer[A](Integer.MAX_VALUE, sizeRef.get, wl) {
+          protected[this] final override def handleOverflow(newChunk: Chunk[A], missingCapacity: Int): Rxn[Result] =
+            impossible(s"OverflowStrategy.Unbounded#handleOverflow (chunkSize = ${newChunk.size}, missingCapacity = $missingCapacity)")
         }
       }
     }
@@ -238,32 +238,30 @@ object PubSub {
 
       require(bufferSize > 0)
 
-      private[PubSub] final override def newBuffer[F[_] : AsyncReactive, A]: Rxn[PubSubBuffer[A]] = {
-        UnboundedDeque[Chunk[A]].flatMap { underlying =>
-          Ref[Int](0).flatMap { size =>
-            mkWaitList(underlying, size).map { wl =>
-              new PubSubBuffer[A](bufferSize, size.get, wl) {
+      private[PubSub] def newBuffer[F[_] : AsyncReactive, A](
+        sizeRef: Ref[Int],
+        underlying: UnboundedDeque[Chunk[A]],
+        wl: WaitList[Chunk[A]],
+      ): PubSubBuffer[A] = {
+        new PubSubBuffer[A](bufferSize, sizeRef.get, wl) {
 
-                protected[this] final override def handleOverflow(newChunk: Chunk[A], missingCapacity: Int): Rxn[Result] =
-                  dropOldestN(missingCapacity) *> size.update(_ - missingCapacity) *> wl.set0(newChunk).as(Success)
+          protected[this] final override def handleOverflow(newChunk: Chunk[A], missingCapacity: Int): Rxn[Result] =
+            dropOldestN(missingCapacity) *> sizeRef.update(_ - missingCapacity) *> wl.set0(newChunk).as(Success)
 
-                private[this] final def dropOldestN(n: Int): Rxn[Unit] = {
-                  underlying.tryTakeLast.flatMap {
-                    case None =>
-                      Rxn.unit
-                    case Some(chunk) =>
-                      val chunkSize = chunk.size
-                      if (chunkSize < n) {
-                        dropOldestN(n - chunkSize)
-                      } else if (chunkSize > n) {
-                        val putItBack = chunk.drop(n)
-                        underlying.addLast(putItBack)
-                      } else { // chunkSize == n
-                        Rxn.unit
-                      }
-                  }
+          private[this] final def dropOldestN(n: Int): Rxn[Unit] = {
+            underlying.tryTakeLast.flatMap {
+              case None =>
+                Rxn.unit
+              case Some(chunk) =>
+                val chunkSize = chunk.size
+                if (chunkSize < n) {
+                  dropOldestN(n - chunkSize)
+                } else if (chunkSize > n) {
+                  val putItBack = chunk.drop(n)
+                  underlying.addLast(putItBack)
+                } else { // chunkSize == n
+                  Rxn.unit
                 }
-              }
             }
           }
         }
@@ -274,16 +272,14 @@ object PubSub {
 
       require(bufferSize > 0)
 
-      private[PubSub] final override def newBuffer[F[_] : AsyncReactive, A]: Rxn[PubSubBuffer[A]] = {
-        UnboundedDeque[Chunk[A]].flatMap { underlying =>
-          Ref[Int](0).flatMap { size =>
-            mkWaitList(underlying, size).map { wl =>
-              new PubSubBuffer[A](bufferSize, size.get, wl) {
-                protected[this] final override def handleOverflow(newChunk: Chunk[A], missingCapacity: Int): Rxn[Result] =
-                  _axnSuccess
-              }
-            }
-          }
+      private[PubSub] def newBuffer[F[_] : AsyncReactive, A](
+        sizeRef: Ref[Int],
+        underlying: UnboundedDeque[Chunk[A]],
+        wl: WaitList[Chunk[A]],
+      ): PubSubBuffer[A] = {
+        new PubSubBuffer[A](bufferSize, sizeRef.get, wl) {
+          protected[this] final override def handleOverflow(newChunk: Chunk[A], missingCapacity: Int): Rxn[Result] =
+            _axnSuccess
         }
       }
     }
@@ -322,10 +318,15 @@ object PubSub {
             if (isClosed) {
               Rxn.pure(null : Subscription[A, B])
             } else {
-              strategy.newBuffer[F, B].flatMap { buf =>
-                initial.flatMap { elem => buf.enqueue(signalChunk(elem)) } *> {
-                  val subs = new Subscription[B, B](id, buf, sp, this)
-                  subscriptions.update(_.updated(id, subs)).as(subs)
+              UnboundedDeque[Chunk[B]].flatMap { underlying =>
+                Ref[Int](0).flatMap { size =>
+                  strategy.mkWaitList(underlying, size).flatMap { wl =>
+                    val buf = strategy.newBuffer[F, B](size, underlying, wl)
+                    initial.flatMap { elem => buf.enqueue(signalChunk(elem)) } *> {
+                      val subs = new Subscription[B, B](id, buf, sp, this)
+                      subscriptions.update(_.updated(id, subs)).as(subs)
+                    }
+                  }
                 }
               }
             }
