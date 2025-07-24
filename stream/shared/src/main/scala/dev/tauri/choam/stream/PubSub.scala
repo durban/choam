@@ -152,40 +152,6 @@ object PubSub {
       underlying: UnboundedDeque[Chunk[A]],
       wl: WaitList[Chunk[A]],
     ): PubSubBuffer[A]
-
-    private[PubSub] final def mkWaitList[A](
-      underlying: UnboundedDeque[Chunk[A]],
-      size: Ref[Int]
-    ): Rxn[WaitList[Chunk[A]]] = {
-      WaitList.apply[Chunk[A]]( // TODO: pass AllocationStrategy
-        underlying.tryTakeLast.flatMap {
-          case None =>
-            Rxn.none
-          case some @ Some(null) =>
-            Rxn.pure(some)
-          case some @ Some(_: SignalChunk[_]) =>
-            Rxn.pure(some)
-          case some @ Some(chunk) =>
-            size.update { oldSize =>
-              val newSize = oldSize - chunk.size
-              _assert(newSize >= 0) // PubSubBuffer#enqueue guarantees this
-              newSize
-            }.as(some)
-        },
-        {
-          case null =>
-            underlying.addFirst(null)
-          case chunk: SignalChunk[_] =>
-            underlying.addFirst(chunk)
-          case chunk =>
-            size.update { oldSize =>
-              val newSize = oldSize + chunk.size
-              Predef.assert(newSize >= oldSize) // check overflow (unlikely)
-              newSize
-            } *> underlying.addFirst(chunk)
-        },
-      )
-    }
   }
 
   final object OverflowStrategy {
@@ -318,7 +284,7 @@ object PubSub {
             } else {
               UnboundedDeque[Chunk[B]].flatMap { underlying =>
                 Ref[Int](0).flatMap { size =>
-                  strategy.mkWaitList(underlying, size).flatMap { wl =>
+                  PubSubBuffer.mkWaitList(underlying, size).flatMap { wl =>
                     val buf = strategy.newBuffer[F, B](size, underlying, wl)
                     initial.flatMap { elem => buf.enqueue(signalChunk(elem)) } *> {
                       val subs = new Subscription[B, B](id, buf, sp, this)
@@ -510,6 +476,43 @@ object PubSub {
 
     final def dequeue[F[_]: AsyncReactive]: F[Chunk[A]] = {
       wl.asyncGet
+    }
+  }
+
+  private[this] final object PubSubBuffer {
+
+    final def mkWaitList[A](
+      underlying: UnboundedDeque[Chunk[A]],
+      size: Ref[Int]
+    ): Rxn[WaitList[Chunk[A]]] = {
+      WaitList.apply[Chunk[A]]( // TODO: pass AllocationStrategy
+        underlying.tryTakeLast.flatMap {
+          case None =>
+            Rxn.none
+          case some @ Some(null) =>
+            Rxn.pure(some)
+          case some @ Some(_: SignalChunk[_]) =>
+            Rxn.pure(some)
+          case some @ Some(chunk) =>
+            size.update { oldSize =>
+              val newSize = oldSize - chunk.size
+              _assert(newSize >= 0) // PubSubBuffer#enqueue guarantees this
+              newSize
+            }.as(some)
+        },
+        {
+          case null =>
+            underlying.addFirst(null)
+          case chunk: SignalChunk[_] =>
+            underlying.addFirst(chunk)
+          case chunk =>
+            size.update { oldSize =>
+              val newSize = oldSize + chunk.size
+              Predef.assert(newSize >= oldSize) // check overflow (unlikely)
+              newSize
+            } *> underlying.addFirst(chunk)
+        },
+      )
     }
   }
 }
