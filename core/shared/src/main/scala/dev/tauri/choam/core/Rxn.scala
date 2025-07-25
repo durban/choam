@@ -393,6 +393,9 @@ object Rxn extends RxnInstances0 {
   private[this] val _false: RxnImpl[Boolean] =
     pureImpl(false)
 
+  private[this] val _rightUnit: Rxn[Right[Nothing, Unit]] =
+    pureImpl(Right(()))
+
   @inline
   final def unit: Rxn[Unit] =
     unitImpl
@@ -403,14 +406,17 @@ object Rxn extends RxnInstances0 {
   private[choam] final def none[A]: Rxn[Option[A]] =
     _none
 
+  private[choam] final def nullOf[A]: Rxn[A] =
+    _nullOf.asInstanceOf[Rxn[A]]
+
   private[choam] final def true_[A]: Rxn[Boolean] =
     _true
 
   private[choam] final def false_[A]: Rxn[Boolean] =
     _false
 
-  private[choam] final def nullOf[A]: Rxn[A] =
-    _nullOf.asInstanceOf[Rxn[A]]
+  private[choam] final def rightUnit: Rxn[Right[Nothing, Unit]] =
+    _rightUnit
 
   final def postCommit(pc: Rxn[Unit]): Rxn[Unit] =
     new Rxn.PostCommit[Unit](unit, _ => pc)

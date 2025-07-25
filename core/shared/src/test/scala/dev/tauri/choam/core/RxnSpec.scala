@@ -1302,6 +1302,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(Rxn.true_.run, true)
       _ <- assertResultF(Rxn.false_.run, false)
       _ <- assertResultF(Rxn.unit.run, ())
+      _ <- assertResultF(Rxn.rightUnit.run, Right(()))
     } yield ()
   }
 
