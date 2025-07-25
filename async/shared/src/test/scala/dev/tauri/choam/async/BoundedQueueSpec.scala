@@ -79,7 +79,7 @@ trait BoundedQueueSpec[F[_]]
   }
 
   test("BoundedQueue empty take") {
-    for {
+    (for {
       s <- newQueue[String](bound = 4)
       f1 <- s.take.start
       _ <- this.tickAll
@@ -96,7 +96,7 @@ trait BoundedQueueSpec[F[_]]
       _ <- assertResultF(f1.joinWithNever, "a")
       _ <- assertResultF(f2.joinWithNever, "b")
       _ <- assertResultF(f3.joinWithNever, "c")
-    } yield ()
+    } yield ()).replicateA_(if (isJvm()) 10000 else 1)
   }
 
   test("BoundedQueue empty poll") {
