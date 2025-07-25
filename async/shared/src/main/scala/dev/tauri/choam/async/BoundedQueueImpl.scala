@@ -30,9 +30,11 @@ private[choam] object BoundedQueueImpl {
     (Queue.unbounded[A] * Ref.unpadded[Int](0)).flatMap {
       case (q, size) =>
         GenWaitList[A](
-          q.poll.flatMap { res =>
-            if (res.nonEmpty) size.update(_ - 1).as(res)
-            else Rxn.pure(res)
+          q.poll.flatMap {
+            case some @ Some(_) =>
+              size.update(_ - 1).as(some)
+            case None =>
+              Rxn.none
           },
           a => size.flatModify { s =>
             if (s < bound) {
