@@ -43,6 +43,10 @@ private[choam] sealed trait WaitList[A] extends GenWaitList[A] { self =>
 
   final override def trySet(a: A): Rxn[Boolean] =
     this.set(a).as(true)
+
+  final override def asyncSet[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] = {
+    F.apply(this.set(a).void)
+  }
 }
 
 private[choam] object WaitList { // TODO: should support AllocationStrategy
@@ -288,10 +292,6 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
         case Some(cb) =>
           this.setUnderlying(a) *> callCbRightUnit(cb).as(false)
       }
-    }
-
-    final override def asyncSet[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] = {
-      F.asyncInst.void(F.apply(this.set(a)))
     }
 
     final override def asyncGet[F[_]](implicit ar: AsyncReactive[F]): F[A] = {
