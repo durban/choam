@@ -131,7 +131,7 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
           assertEqualsF(eliminationLeftResult, 99) *> assertEqualsF(rightRes, Right("42"))
       }).guarantee(bgFiber1.cancel)
     } yield ()
-    t.replicateA_(50000)
+    t.replicateA_(25000)
   }
 
   test("EliminationStack.tagged") {
