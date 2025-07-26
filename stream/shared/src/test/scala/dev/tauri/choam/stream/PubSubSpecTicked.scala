@@ -249,6 +249,22 @@ trait PubSubSpecTicked[F[_]]
         _ <- assertResultF(ctr.get.run, 3)
       } yield ()
     }
+
+    test(s"$name - chunk bigger than capacity is an error") {
+      val bsize = str.fold(-1, s => s, s => s, s => s)
+      this.assume(bsize != -1)
+      val ch = Chunk.from((1 to (bsize + 1)).toList)
+      for {
+        hub <- PubSub.simple[Int](str).run[F]
+        fib <- hub.subscribe.compile.toList.start
+        _ <- this.tickAll
+        r <- hub.emitChunk(ch).run[F].attempt
+        _ <- assertF(clue(r).fold(_.isInstanceOf[IllegalArgumentException], _ => false))
+        _ <- assertResultF(hub.emit(42).run, PubSub.Success)
+        _ <- hub.close.run
+        _ <- assertResultF(fib.joinWithNever, List(42))
+      } yield ()
+    }
   }
 
   private def droppingTests(

@@ -457,7 +457,9 @@ object PubSub {
           _assert(chunkSize > 0)
           if (chunkSize > capacity) {
             // impossible to publish a chunk this big
-            _axnBackpressured
+            Rxn.unsafe.panic(new IllegalArgumentException(
+              s"can't publish chunk of size ${chunkSize} to buffer with capacity ${capacity}"
+            ))
           } else {
             val left = capacity - sz
             if (left >= chunkSize) { // OK
