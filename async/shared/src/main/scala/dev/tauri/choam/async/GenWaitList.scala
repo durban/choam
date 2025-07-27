@@ -151,6 +151,10 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
                           lift(asyncGetImpl(false,  getters, tryGetUnderlying, settersOrNull))
                         ),
                         lift(ar.run(wakeUpNextWaiter(getters))) // we need this due to the gap above
+                        // TODO: This second finalizer actually also runs if
+                        // TODO: the "normal" finalizer above (`lift(cancel)`)
+                        // TODO: also ran. This causes an unnecessary wakeup.
+                        // TODO: See also the same issue for `asyncSetImpl`.
                       )
                     }
                   }
