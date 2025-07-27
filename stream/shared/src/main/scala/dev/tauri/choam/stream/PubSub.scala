@@ -156,12 +156,13 @@ object PubSub {
     }
 
     // TODO: add an `str: AllocationStrategy` parameter, and use it
-    private[PubSub] final def newBuffer[F[_], A](
-      sizeRef: Ref[Int],
-      underlying: UnboundedDeque[Chunk[A]],
-    ): Rxn[PubSubBuffer[A]] = {
-      mkWaitList(underlying, this.capacityOrMax, sizeRef).map { wl =>
-        new PubSubBuffer[A](sizeRef, underlying, wl)
+    private[PubSub] final def newBuffer[F[_], A]: Rxn[PubSubBuffer[A]] = {
+      UnboundedDeque[Chunk[A]].flatMap { underlying =>
+        Ref[Int](0).flatMap { sizeRef =>
+          mkWaitList(underlying, this.capacityOrMax, sizeRef).map { wl =>
+            new PubSubBuffer[A](sizeRef, underlying, wl)
+          }
+        }
       }
     }
 
@@ -348,14 +349,10 @@ object PubSub {
             if (isClosed) {
               Rxn.pure(null : Subscription[A, B])
             } else {
-              UnboundedDeque[Chunk[B]].flatMap { underlying =>
-                Ref[Int](0).flatMap { size =>
-                  strategy.newBuffer[F, B](size, underlying).flatMap { buf =>
-                    initial.flatMap { elem => buf.enqueue(signalChunk(elem)) } *> {
-                      val subs = new Subscription[B, B](id, buf, sp, this)
-                      subscriptions.update(_.updated(id, subs)).as(subs)
-                    }
-                  }
+              strategy.newBuffer[F, B].flatMap { buf =>
+                initial.flatMap { elem => buf.enqueue(signalChunk(elem)) } *> {
+                  val subs = new Subscription[B, B](id, buf, sp, this)
+                  subscriptions.update(_.updated(id, subs)).as(subs)
                 }
               }
             }
