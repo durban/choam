@@ -20,9 +20,9 @@ package async
 
 import cats.~>
 import cats.syntax.all._
-import cats.effect.kernel.{ Cont, MonadCancel }
+import cats.effect.kernel.{ Cont, MonadCancel, Async }
 
-import core.{ Rxn, AsyncReactive }
+import core.{ Rxn, Ref, AsyncReactive }
 import data.RemoveQueue
 
 private[choam] sealed trait GenWaitList[A] { self =>
@@ -56,6 +56,31 @@ private[choam] object WaitList { // TODO: should support AllocationStrategy
     setUnderlying: A => Rxn[Unit],
   ): Rxn[WaitList[A]] = {
     GenWaitList.waitListForAsync[A](tryGetUnderlying, setUnderlying)
+  }
+
+  private[choam] sealed trait Debug[A] extends WaitList[A] {
+    def tryGetUnderlyingCount: Rxn[Int]
+    def setUnderlyingCount: Rxn[Int]
+  }
+
+  private[choam] final def debug[A](
+    tryGetUnderlying: Rxn[Option[A]],
+    setUnderlying: A => Rxn[Unit],
+  ): Rxn[WaitList.Debug[A]] = {
+    (Ref(0), Ref(0)).flatMapN { (tguCount, suCount) =>
+      apply[A](
+        tryGetUnderlying = tryGetUnderlying <* tguCount.update(_ + 1),
+        setUnderlying = { a => setUnderlying(a) <* suCount.update(_ + 1) },
+      ).map { wl =>
+        new WaitList.Debug[A] {
+          final override def tryGetUnderlyingCount: Rxn[Int] = tguCount.get
+          final override def setUnderlyingCount: Rxn[Int] = suCount.get
+          final override def asyncGet[F[_]](implicit F: AsyncReactive[F]): F[A] = wl.asyncGet[F]
+          final override def tryGet: Rxn[Option[A]] = wl.tryGet
+          final override def set(a: A): Rxn[Boolean] = wl.set(a)
+        }
+      }
+    }
   }
 }
 
@@ -108,6 +133,30 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
       }
     }
 
+    /**
+     * This is like `Async#asyncCheckAttempt`, except:
+     * (1) the immediate result can have a different type, and
+     * (2) a finalizer is mandatory.
+     *
+     * TODO: use this (or delete it)
+     */
+    protected[this] final def asyncCheckAttemptEither[F[_], B, C](
+      k: (Either[Throwable, B] => Unit) => F[Either[F[Unit], C]]
+    )(implicit F: Async[F]): F[Either[B, C]] = {
+      F.cont(new Cont[F, B, Either[B, C]] {
+        final override def apply[G[_]](
+          implicit G: MonadCancel[G, Throwable]
+        ): (Either[Throwable, B] => Unit, G[B], F ~> G) => G[Either[B, C]] = { (cb, get, lift) =>
+          G.uncancelable { poll =>
+            lift(k(cb)).flatMap {
+              case Right(b) => G.pure(Right(b))
+              case Left(fin) => G.onCancel(poll(get), lift(fin)).map(Left(_))
+            }
+          }
+        }
+      })
+    }
+
     protected[this] final def asyncGetImpl[F[_]](
       isFirstTry: Boolean,
       getters: RemoveQueue[Either[Throwable, Unit] => Unit],
@@ -147,14 +196,15 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
                       // we need a `poll` also on the recursive call,
                       // because right now we're inside an `uncancelable`:
                       G.onCancel(
-                        poll(/* cancellation gap right here */
+                        poll( // cancellation gap right here
+                          // also, there is another gap _inside_
+                          // the `cont` in the recursive call
                           lift(asyncGetImpl(false,  getters, tryGetUnderlying, settersOrNull))
                         ),
-                        lift(ar.run(wakeUpNextWaiter(getters))) // we need this due to the gap above
-                        // TODO: This second finalizer actually also runs if
-                        // TODO: the "normal" finalizer above (`lift(cancel)`)
-                        // TODO: also ran. This causes an unnecessary wakeup.
-                        // TODO: See also the same issue for `asyncSetImpl`.
+                        lift(ar.run(wakeUpNextWaiter(getters))) // we need this due to the gap(s) above
+                        // Note: This second finalizer never runs, if
+                        // Note: the first one ran (and vice versa).
+                        // Note: (They're on the same fiber, with a `*>`.)
                       )
                     }
                   }
