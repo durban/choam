@@ -182,68 +182,88 @@ trait WaitListSpec[F[_]]
     } yield ()
   }
 
+  noUnneededWakeupForAsyncGet("WaitList", bound = None)
+  noUnneededWakeupForAsyncGet("GenWaitList", bound = Some(8))
+
   private sealed trait DebugQueue[A]
     extends AsyncQueue.UnsealedAsyncQueueTake[A]
     with data.Queue.UnsealedQueueOffer[A] {
     def tryGetUnderlyingCount: Rxn[Int]
-    def setUnderlyingCount: Rxn[Int]
+    def trySetUnderlyingCount: Rxn[Int]
   }
 
   private[this] final def debugAsyncQueue[A](
-    underlying: data.Queue[A]
+    bound: Option[Int]
+  ): Rxn[DebugQueue[A]] = bound match {
+    case Some(n) =>
+      data.Queue.bounded[A](n).flatMap { underlying =>
+        GenWaitList.debug[A](
+          tryGetUnderlying = underlying.poll,
+          trySetUnderlying = underlying.offer,
+        ).flatMap(gwl => debugAsyncQueue(gwl))
+      }
+    case None =>
+      data.Queue.unbounded[A].flatMap { underlying =>
+        WaitList.debug[A](
+          tryGetUnderlying = underlying.poll,
+          setUnderlying = underlying.add,
+        ).flatMap(wl => debugAsyncQueue(wl))
+      }
+  }
+
+  private[this] final def debugAsyncQueue[A](
+    wl: GenWaitList.Debug[A],
   ): Rxn[DebugQueue[A]] = {
-    WaitList.debug[A](
-      tryGetUnderlying = underlying.poll,
-      setUnderlying = underlying.add,
-    ).map { wl =>
+    Rxn.pure(
       new DebugQueue[A] {
         final override def tryGetUnderlyingCount: Rxn[Int] = wl.tryGetUnderlyingCount
-        final override def setUnderlyingCount: Rxn[Int] = wl.setUnderlyingCount
-        final override def offer(a: A): Rxn[Boolean] = wl.set(a).as(true)
+        final override def trySetUnderlyingCount: Rxn[Int] = wl.trySetUnderlyingCount
+        final override def offer(a: A): Rxn[Boolean] = wl.trySet(a)
         final override def poll: Rxn[Option[A]] = wl.tryGet
         final override def take[G[_], AA >: A](implicit G: AsyncReactive[G]): G[AA] = G.monad.widen(wl.asyncGet(using G))
       }
-    }
+    )
   }
 
-  test("WaitList#asyncGet should have no unnecessary wakeups") {
-    val initialCount = 1
-    val t = for {
-      ul <- data.Queue.unbounded[String].run[F]
-      q <- debugAsyncQueue[String](ul).run[F]
-      holder <- F.ref[String](null)
-      fib1 <- F.uncancelable { poll =>
-        poll(q.take[F, String]).flatMap(holder.set)
-      }.start
-      _ <- this.tickAll // wait for fiber to suspend
-      _ <- assertResultF(q.tryGetUnderlyingCount.run, initialCount)
-      fib2 <- q.take[F, String].start
-      _ <- this.tickAll // add a second waiter
-      _ <- assertResultF(q.tryGetUnderlyingCount.run, initialCount)
-      fib3 <- q.take[F, String].start
-      _ <- this.tickAll // add a third waiter
-      _ <- assertResultF(q.tryGetUnderlyingCount.run, initialCount)
-      _ <- F.both(q.offer("foo").run, fib1.cancel)
-      _ <- this.tickAll
-      oc <- fib1.join
-      holderVal <- holder.get
-      _ <- if (holderVal eq null) {
-        for {
-          _ <- assertF(oc.isCanceled)
-          _ <- assertResultF(fib2.joinWithNever, "foo")
-        } yield ()
-      } else {
-        for {
-          _ <- assertF(oc.isSuccess)
-          _ <- assertEqualsF(holderVal, "foo")
-          oc2 <- fib2.cancel *> fib2.join
-          _ <- assertF(oc2.isCanceled)
-        } yield ()
-      }
-      oc3 <- fib3.cancel *> fib3.join
-      _ <- assertF(oc3.isCanceled)
-      _ <- assertResultF(q.tryGetUnderlyingCount.run, initialCount + 1)
-    } yield ()
-    t.replicateA_(if (isJvm()) 50 else 5)
+  private def noUnneededWakeupForAsyncGet(topts: TestOptions, bound: Option[Int]): Unit = {
+    test(topts.withName(s"${topts.name}: asyncGet should have no unnecessary wakeups")) {
+      val initialCount = 1
+      val t = for {
+        q <- debugAsyncQueue[String](bound = bound).run[F]
+        holder <- F.ref[String](null)
+        fib1 <- F.uncancelable { poll =>
+          poll(q.take[F, String]).flatMap(holder.set)
+        }.start
+        _ <- this.tickAll // wait for fiber to suspend
+        _ <- assertResultF(q.tryGetUnderlyingCount.run, initialCount)
+        fib2 <- q.take[F, String].start
+        _ <- this.tickAll // add a second waiter
+        _ <- assertResultF(q.tryGetUnderlyingCount.run, initialCount)
+        fib3 <- q.take[F, String].start
+        _ <- this.tickAll // add a third waiter
+        _ <- assertResultF(q.tryGetUnderlyingCount.run, initialCount)
+        _ <- F.both(q.offer("foo").run, fib1.cancel)
+        _ <- this.tickAll
+        oc <- fib1.join
+        holderVal <- holder.get
+        _ <- if (holderVal eq null) {
+          for {
+            _ <- assertF(oc.isCanceled)
+            _ <- assertResultF(fib2.joinWithNever, "foo")
+          } yield ()
+        } else {
+          for {
+            _ <- assertF(oc.isSuccess)
+            _ <- assertEqualsF(holderVal, "foo")
+            oc2 <- fib2.cancel *> fib2.join
+            _ <- assertF(oc2.isCanceled)
+          } yield ()
+        }
+        oc3 <- fib3.cancel *> fib3.join
+        _ <- assertF(oc3.isCanceled)
+        _ <- assertResultF(q.tryGetUnderlyingCount.run, initialCount + 1)
+      } yield ()
+      t.replicateA_(if (isJvm()) 50 else 5)
+    }
   }
 }

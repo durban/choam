@@ -58,27 +58,16 @@ private[choam] object WaitList { // TODO: should support AllocationStrategy
     GenWaitList.waitListForAsync[A](tryGetUnderlying, setUnderlying)
   }
 
-  private[choam] sealed trait Debug[A] extends WaitList[A] {
-    def tryGetUnderlyingCount: Rxn[Int]
-    def setUnderlyingCount: Rxn[Int]
-  }
-
   private[choam] final def debug[A](
     tryGetUnderlying: Rxn[Option[A]],
     setUnderlying: A => Rxn[Unit],
-  ): Rxn[WaitList.Debug[A]] = {
+  ): Rxn[GenWaitList.Debug[A]] = {
     (Ref(0), Ref(0)).flatMapN { (tguCount, suCount) =>
       apply[A](
         tryGetUnderlying = tryGetUnderlying <* tguCount.update(_ + 1),
         setUnderlying = { a => setUnderlying(a) <* suCount.update(_ + 1) },
       ).map { wl =>
-        new WaitList.Debug[A] {
-          final override def tryGetUnderlyingCount: Rxn[Int] = tguCount.get
-          final override def setUnderlyingCount: Rxn[Int] = suCount.get
-          final override def asyncGet[F[_]](implicit F: AsyncReactive[F]): F[A] = wl.asyncGet[F]
-          final override def tryGet: Rxn[Option[A]] = wl.tryGet
-          final override def set(a: A): Rxn[Boolean] = wl.set(a)
-        }
+        GenWaitList.Debug.from(wl, tguCount = tguCount, tsuCount = suCount)
       }
     }
   }
@@ -96,6 +85,42 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
     RemoveQueue[Either[Throwable, Unit] => Unit].flatMap { getters =>
       RemoveQueue[Either[Throwable, Unit] => Unit].map { setters =>
         new AsyncGenWaitList[A](tryGetUnderlying, trySetUnderlying, getters, setters)
+      }
+    }
+  }
+
+  private[choam] sealed trait Debug[A] extends GenWaitList[A] {
+    def tryGetUnderlyingCount: Rxn[Int]
+    def trySetUnderlyingCount: Rxn[Int]
+  }
+
+  private[choam] final object Debug {
+    final def from[A](
+      gwl: GenWaitList[A],
+      tguCount: Ref[Int],
+      tsuCount: Ref[Int],
+    ): GenWaitList.Debug[A] = {
+      new GenWaitList.Debug[A] {
+        final override def tryGetUnderlyingCount: Rxn[Int] = tguCount.get
+        final override def trySetUnderlyingCount: Rxn[Int] = tsuCount.get
+        final override def asyncGet[F[_]](implicit F: AsyncReactive[F]): F[A] = gwl.asyncGet[F]
+        final override def asyncSet[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] = gwl.asyncSet[F](a)
+        final override def tryGet: Rxn[Option[A]] = gwl.tryGet
+        final override def trySet(a: A): Rxn[Boolean] = gwl.trySet(a)
+      }
+    }
+  }
+
+  private[choam] final def debug[A](
+    tryGetUnderlying: Rxn[Option[A]],
+    trySetUnderlying: A => Rxn[Boolean],
+  ): Rxn[GenWaitList.Debug[A]] = {
+    (Ref(0), Ref(0)).flatMapN { (tguCount, tsuCount) =>
+      apply[A](
+        tryGetUnderlying = tryGetUnderlying <* tguCount.update(_ + 1),
+        trySetUnderlying = { a => trySetUnderlying(a) <* tsuCount.update(_ + 1) },
+      ).map { gwl =>
+        GenWaitList.Debug.from(gwl, tguCount = tguCount, tsuCount = tsuCount)
       }
     }
   }
