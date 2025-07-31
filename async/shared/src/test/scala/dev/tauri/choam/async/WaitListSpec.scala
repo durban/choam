@@ -193,53 +193,11 @@ trait WaitListSpec[F[_]]
 
   noUnneededWakeupForAsyncSet("GenWaitList", bound = 8)
 
-  private sealed trait DebugQueue[A]
-    extends AsyncQueue.UnsealedAsyncQueueTake[A]
-    with AsyncQueue.UnsealedAsyncQueuePut[A]
-    with data.Queue.UnsealedQueueOffer[A] {
-    def tryGetUnderlyingCount: Rxn[Int]
-    def trySetUnderlyingCount: Rxn[Int]
-  }
-
-  private[this] final def debugAsyncQueue[A](
-    bound: Option[Int]
-  ): Rxn[DebugQueue[A]] = bound match {
-    case Some(n) =>
-      data.Queue.bounded[A](n).flatMap { underlying =>
-        GenWaitList.debug[A](
-          tryGetUnderlying = underlying.poll,
-          trySetUnderlying = underlying.offer,
-        ).flatMap(gwl => debugAsyncQueue(gwl))
-      }
-    case None =>
-      data.Queue.unbounded[A].flatMap { underlying =>
-        WaitList.debug[A](
-          tryGetUnderlying = underlying.poll,
-          setUnderlying = underlying.add,
-        ).flatMap(wl => debugAsyncQueue(wl))
-      }
-  }
-
-  private[this] final def debugAsyncQueue[A](
-    wl: GenWaitList.Debug[A],
-  ): Rxn[DebugQueue[A]] = {
-    Rxn.pure(
-      new DebugQueue[A] {
-        final override def tryGetUnderlyingCount: Rxn[Int] = wl.tryGetUnderlyingCount
-        final override def trySetUnderlyingCount: Rxn[Int] = wl.trySetUnderlyingCount
-        final override def offer(a: A): Rxn[Boolean] = wl.trySet(a)
-        final override def poll: Rxn[Option[A]] = wl.tryGet
-        final override def take[G[_], AA >: A](implicit G: AsyncReactive[G]): G[AA] = G.monad.widen(wl.asyncGet(using G))
-        final override def put[G[_]](a: A)(implicit G: AsyncReactive[G]): G[Unit] = wl.asyncSet[G](a)
-      }
-    )
-  }
-
   private def noUnneededWakeupForAsyncSet(topts: TestOptions, bound: Int): Unit = {
     test(topts.withName(s"${topts.name}: asyncSet should have no unnecessary wakeups")) {
       require(bound > 0)
       val t = for {
-        q <- debugAsyncQueue[String](bound = Some(bound)).run[F]
+        q <- WaitListSpec.debugQueue[String](bound = Some(bound)).run[F]
         _ <- (1 to bound).toList.traverse_(i => q.put[F](i.toString)) // make it full
         initialCount <- q.trySetUnderlyingCount.run
         holder <- F.ref[Boolean](false)
@@ -281,7 +239,7 @@ trait WaitListSpec[F[_]]
     test(topts.withName(s"${topts.name}: asyncGet should have no unnecessary wakeups")) {
       val initialCount = 1
       val t = for {
-        q <- debugAsyncQueue[String](bound = bound).run[F]
+        q <- WaitListSpec.debugQueue[String](bound = bound).run[F]
         holder <- F.ref[String](null)
         fib1 <- F.uncancelable { poll =>
           poll(q.take[F, String]).flatMap(holder.set)
@@ -318,5 +276,50 @@ trait WaitListSpec[F[_]]
       } yield ()
       t.replicateA_(if (isJvm()) 50 else 5)
     }
+  }
+}
+
+object WaitListSpec {
+
+  private[WaitListSpec] sealed trait DebugQueue[A]
+    extends AsyncQueue.UnsealedAsyncQueueTake[A]
+    with AsyncQueue.UnsealedAsyncQueuePut[A]
+    with data.Queue.UnsealedQueueOffer[A] {
+    def tryGetUnderlyingCount: Rxn[Int]
+    def trySetUnderlyingCount: Rxn[Int]
+  }
+
+  private[WaitListSpec] final def debugQueue[A](
+    bound: Option[Int]
+  ): Rxn[DebugQueue[A]] = bound match {
+    case Some(n) =>
+      data.Queue.bounded[A](n).flatMap { underlying =>
+        GenWaitList.debug[A](
+          tryGetUnderlying = underlying.poll,
+          trySetUnderlying = underlying.offer,
+        ).flatMap(gwl => debugQueue(gwl))
+      }
+    case None =>
+      data.Queue.unbounded[A].flatMap { underlying =>
+        WaitList.debug[A](
+          tryGetUnderlying = underlying.poll,
+          setUnderlying = underlying.add,
+        ).flatMap(wl => debugQueue(wl))
+      }
+  }
+
+  private[this] final def debugQueue[A](
+    wl: GenWaitList.Debug[A],
+  ): Rxn[DebugQueue[A]] = {
+    Rxn.pure(
+      new DebugQueue[A] {
+        final override def tryGetUnderlyingCount: Rxn[Int] = wl.tryGetUnderlyingCount
+        final override def trySetUnderlyingCount: Rxn[Int] = wl.trySetUnderlyingCount
+        final override def offer(a: A): Rxn[Boolean] = wl.trySet(a)
+        final override def poll: Rxn[Option[A]] = wl.tryGet
+        final override def take[G[_], AA >: A](implicit G: AsyncReactive[G]): G[AA] = G.monad.widen(wl.asyncGet(using G))
+        final override def put[G[_]](a: A)(implicit G: AsyncReactive[G]): G[Unit] = wl.asyncSet[G](a)
+      }
+    )
   }
 }
