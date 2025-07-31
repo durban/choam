@@ -33,6 +33,9 @@ private[choam] sealed trait GenWaitList[A] { self =>
 
   def asyncSet[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit]
 
+  // TODO: try to use this to implement `asyncSet`
+  def asyncSetCb(a: A, cb: Either[Throwable, Unit] => Unit, firstTry: Boolean): Rxn[Either[Rxn[Unit], Unit]]
+
   def asyncGet[F[_]](implicit F: AsyncReactive[F]): F[A]
 }
 
@@ -46,6 +49,11 @@ private[choam] sealed trait WaitList[A] extends GenWaitList[A] { self =>
 
   final override def asyncSet[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] = {
     F.apply(this.set(a).void)
+  }
+
+  final override def asyncSetCb(a: A, cb: Either[Throwable, Unit] => Unit, firstTry: Boolean): Rxn[Right[Nothing, Unit]] = {
+    _assert(firstTry)
+    this.set(a).as(GenWaitList.RightUnit)
   }
 }
 
@@ -75,7 +83,10 @@ private[choam] object WaitList { // TODO: should support AllocationStrategy
 
 private[choam] object GenWaitList { // TODO: should support AllocationStrategy
 
-  private[this] final val RightUnit: Right[Nothing, Unit] =
+  private[async] final def RightUnit: Right[Nothing, Unit] =
+    _rightUnit
+
+  private[this] val _rightUnit: Right[Nothing, Unit] =
     Right(())
 
   final def apply[A](
@@ -101,12 +112,20 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
       tsuCount: Ref[Int],
     ): GenWaitList.Debug[A] = {
       new GenWaitList.Debug[A] {
-        final override def tryGetUnderlyingCount: Rxn[Int] = tguCount.get
-        final override def trySetUnderlyingCount: Rxn[Int] = tsuCount.get
-        final override def asyncGet[F[_]](implicit F: AsyncReactive[F]): F[A] = gwl.asyncGet[F]
-        final override def asyncSet[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] = gwl.asyncSet[F](a)
-        final override def tryGet: Rxn[Option[A]] = gwl.tryGet
-        final override def trySet(a: A): Rxn[Boolean] = gwl.trySet(a)
+        final override def tryGetUnderlyingCount: Rxn[Int] =
+          tguCount.get
+        final override def trySetUnderlyingCount: Rxn[Int] =
+          tsuCount.get
+        final override def asyncGet[F[_]](implicit F: AsyncReactive[F]): F[A] =
+          gwl.asyncGet[F]
+        final override def asyncSet[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
+          gwl.asyncSet[F](a)
+        final override def asyncSetCb(a: A, cb: Either[Throwable, Unit] => Unit, firstTry: Boolean): Rxn[Either[Rxn[Unit], Unit]] =
+          gwl.asyncSetCb(a, cb, firstTry)
+        final override def tryGet: Rxn[Option[A]] =
+          gwl.tryGet
+        final override def trySet(a: A): Rxn[Boolean] =
+          gwl.trySet(a)
       }
     }
   }
@@ -335,6 +354,28 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
           }
         }
       })
+    }
+
+    final override def asyncSetCb(a: A, cb: Either[Throwable, Unit] => Unit, firstTry: Boolean): Rxn[Either[Rxn[Unit], Unit]] = {
+      val ts = if (firstTry) self.trySet(a) else self.trySetUnderlying(a)
+      ts.flatMap { ok =>
+        if (ok) {
+          // we're basically done, but might need to wake a getter:
+          if (!firstTry) {
+            wakeUpNextWaiter(getters).as(RightUnit)
+          } else {
+            Rxn.rightUnit
+          }
+        } else {
+          setters.enqueueWithRemover(cb).map { remover =>
+            val cancel: Rxn[Unit] = remover.flatMap { ok =>
+              if (ok) Rxn.unit
+              else wakeUpNextWaiter(setters)
+            }
+            Left(cancel)
+          }
+        }
+      }
     }
 
     final override def asyncGet[F[_]](implicit F: AsyncReactive[F]): F[A] = {

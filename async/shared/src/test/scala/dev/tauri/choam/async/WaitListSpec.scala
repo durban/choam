@@ -50,6 +50,60 @@ trait WaitListSpec[F[_]]
     } yield ()
   }
 
+  test("WaitList#asyncSetCb") {
+    for {
+      ref <- Ref[Option[Int]](None).run[F]
+      wl <- WaitList[Int](
+        ref.get,
+        i => ref.getAndSet(Some(i)).void
+      ).run[F]
+      _ <- F.asyncCheckAttempt[Unit] { cb =>
+        wl.asyncSetCb(42, cb, firstTry = true).run[F].widen
+      }
+      _ <- assertResultF(ref.get.run, Some(42))
+    } yield ()
+  }
+
+  test("GenWaitList#asyncSetCb") {
+    for {
+      ref <- Ref[Option[Int]](None).run[F]
+      gwl <- GenWaitList[Int](
+        ref.getAndUpdate { _ => None },
+        i => ref.modify {
+          case None => (Some(i), true)
+          case s => (s, false)
+        }
+      ).run[F]
+      _ <- F.asyncCheckAttempt[Unit] { cb =>
+        gwl.asyncSetCb(42, cb, firstTry = true).map {
+          case Left(fin) => Left(Some(fin.run[F]): Option[F[Unit]])
+          case Right(()) => Right(())
+        }.run[F]
+      }
+      _ <- assertResultF(ref.get.run, Some(42))
+      d <- F.deferred[Unit]
+      fib <- F.asyncCheckAttempt[Unit] { cb =>
+        gwl.asyncSetCb(21, cb, firstTry = true).map {
+          case Left(fin) => Left(Some(fin.run[F]): Option[F[Unit]])
+          case Right(()) => Right(())
+        }.run[F]
+      }.guarantee(d.complete(()).void).start
+      _ <- this.tickAll
+      _ <- assertResultF(d.tryGet, None)
+      _ <- assertResultF(gwl.asyncGet[F], 42)
+      _ <- this.tickAll
+      _ <- assertResultF(d.tryGet, Some(()))
+      _ <- assertResultF(fib.joinWithNever, ())
+      _ <- F.asyncCheckAttempt[Unit] { cb =>
+        gwl.asyncSetCb(21, cb, firstTry = false).map {
+          case Left(fin) => Left(Some(fin.run[F]): Option[F[Unit]])
+          case Right(()) => Right(())
+        }.run[F]
+      }
+      _ <- assertResultF(ref.get.run, Some(21))
+    } yield ()
+  }
+
   commonTests("WaitList", AsyncQueue.unbounded[String].run[F].widen)
   commonTests("GenWaitList", AsyncQueue.bounded[String](8).run[F].widen)
 
