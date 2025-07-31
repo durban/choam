@@ -185,8 +185,11 @@ trait WaitListSpec[F[_]]
   noUnneededWakeupForAsyncGet("WaitList", bound = None)
   noUnneededWakeupForAsyncGet("GenWaitList", bound = Some(8))
 
+  noUnneededWakeupForAsyncSet("GenWaitList", bound = 8)
+
   private sealed trait DebugQueue[A]
     extends AsyncQueue.UnsealedAsyncQueueTake[A]
+    with AsyncQueue.UnsealedAsyncQueuePut[A]
     with data.Queue.UnsealedQueueOffer[A] {
     def tryGetUnderlyingCount: Rxn[Int]
     def trySetUnderlyingCount: Rxn[Int]
@@ -221,8 +224,51 @@ trait WaitListSpec[F[_]]
         final override def offer(a: A): Rxn[Boolean] = wl.trySet(a)
         final override def poll: Rxn[Option[A]] = wl.tryGet
         final override def take[G[_], AA >: A](implicit G: AsyncReactive[G]): G[AA] = G.monad.widen(wl.asyncGet(using G))
+        final override def put[G[_]](a: A)(implicit G: AsyncReactive[G]): G[Unit] = wl.asyncSet[G](a)
       }
     )
+  }
+
+  private def noUnneededWakeupForAsyncSet(topts: TestOptions, bound: Int): Unit = {
+    test(topts.withName(s"${topts.name}: asyncSet should have no unnecessary wakeups")) {
+      require(bound > 0)
+      val t = for {
+        q <- debugAsyncQueue[String](bound = Some(bound)).run[F]
+        _ <- (1 to bound).toList.traverse_(i => q.put[F](i.toString)) // make it full
+        initialCount <- q.trySetUnderlyingCount.run
+        holder <- F.ref[Boolean](false)
+        fib1 <- F.uncancelable { poll =>
+          poll(q.put[F]("foo")).flatMap(_ => holder.set(true))
+        }.start
+        _ <- this.tickAll // wait for fiber to suspend
+        fib2 <- q.put[F]("abc").start
+        _ <- this.tickAll // add a second waiter
+        fib3 <- q.put[F]("def").start
+        _ <- this.tickAll // add a third waiter
+        _ <- assertResultF(q.trySetUnderlyingCount.run, initialCount + 1)
+        rr <- F.both(q.take[F, String], fib1.cancel)
+        _ <- assertEqualsF(rr._1, "1")
+        _ <- this.tickAll
+        oc <- fib1.join
+        holderVal <- holder.get
+        _ <- if (!holderVal) {
+          for {
+            _ <- assertF(oc.isCanceled)
+            _ <- assertResultF(fib2.joinWithNever, ())
+          } yield ()
+        } else {
+          for {
+            _ <- assertF(oc.isSuccess)
+            oc2 <- fib2.cancel *> fib2.join
+            _ <- assertF(oc2.isCanceled)
+          } yield ()
+        }
+        oc3 <- fib3.cancel *> fib3.join
+        _ <- assertF(oc3.isCanceled)
+        _ <- assertResultF(q.trySetUnderlyingCount.run, initialCount + 1 + 1)
+      } yield ()
+      t.replicateA_(if (isJvm()) 50 else 5)
+    }
   }
 
   private def noUnneededWakeupForAsyncGet(topts: TestOptions, bound: Option[Int]): Unit = {
@@ -242,7 +288,8 @@ trait WaitListSpec[F[_]]
         fib3 <- q.take[F, String].start
         _ <- this.tickAll // add a third waiter
         _ <- assertResultF(q.tryGetUnderlyingCount.run, initialCount)
-        _ <- F.both(q.offer("foo").run, fib1.cancel)
+        rr <- F.both(q.offer("foo").run, fib1.cancel)
+        _ <- assertEqualsF(rr._1, true)
         _ <- this.tickAll
         oc <- fib1.join
         holderVal <- holder.get
