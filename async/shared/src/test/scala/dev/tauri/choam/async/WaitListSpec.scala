@@ -56,7 +56,7 @@ trait WaitListSpec[F[_]]
   private def commonTests(topts: TestOptions, newQueue: F[AsyncQueue.Take[String] & data.Queue.Offer[String]]): Unit = {
 
     test(topts.withName(s"${topts.name}: deque and poll race")) {
-      for {
+      val t = for {
         q <- newQueue
         fib1 <- q.take[F, String].start
         _ <- this.tickAll // wait for fiber to suspend
@@ -67,10 +67,11 @@ trait WaitListSpec[F[_]]
         _ <- assertResultF(fib1.joinWithNever, "foo")
         _ <- fib2.cancel
       } yield ()
+      t.replicateA_(if (isJvm()) 50 else 5)
     }
 
     test(topts.withName(s"${topts.name}: deque wakes up, then goes to sleep again")) {
-      for {
+      val t = for {
         q <- newQueue
         fib1 <- q.take[F, String].start
         _ <- this.tickAll // wait for fiber to suspend
@@ -87,10 +88,11 @@ trait WaitListSpec[F[_]]
             assertResultF(fib1.joinWithNever, "foo")
         }
       } yield ()
+      t.replicateA_(if (isJvm()) 50 else 5)
     }
 
     test(topts.withName(s"${topts.name}: deque gets cancelled right after (correctly) waking up")) {
-      for {
+      val t = for {
         q <- newQueue
         fib1 <- q.take[F, String].start
         _ <- this.tickAll // wait for fiber to suspend
@@ -113,11 +115,12 @@ trait WaitListSpec[F[_]]
             failF(ex.toString)
         }
       } yield ()
+      t.replicateA_(if (isJvm()) 50 else 5)
     }
   }
 
   test("GenWaitList: enqueue and offer race") {
-    for {
+    val t = for {
       q <- AsyncQueue.bounded[String](1).run[F]
       _ <- assertResultF(q.offer("first").run[F], true) // fill the queue
       fib1 <- q.put[F]("foo").start
@@ -131,10 +134,11 @@ trait WaitListSpec[F[_]]
       _ <- this.tickAll
       _ <- assertResultF(q.poll.run[F], Some("foo"))
     } yield ()
+    t.replicateA_(if (isJvm()) 50 else 5)
   }
 
   test("GenWaitList: enqueue wakes up, then goes to sleep again") {
-    for {
+    val t = for {
       q <- AsyncQueue.bounded[String](1).run[F]
       _ <- assertResultF(q.offer("first").run[F], true) // fill the queue
       fib1 <- q.put[F]("foo").start
@@ -153,10 +157,11 @@ trait WaitListSpec[F[_]]
         assertResultF(fib1.joinWithNever, ()) *> assertResultF(q.take[F, String], "foo")
       }
     } yield ()
+    t.replicateA_(if (isJvm()) 50 else 5)
   }
 
   test("GenWaitList: enqueue gets cancelled right after (correctly) waking up") {
-    for {
+    val t = for {
       q <- AsyncQueue.bounded[String](1).run[F]
       _ <- assertResultF(q.put[F]("first"), ()) // fill the queue
       fib1 <- q.put[F]("foo").start
@@ -180,6 +185,7 @@ trait WaitListSpec[F[_]]
           failF(ex.toString)
       }
     } yield ()
+    t.replicateA_(if (isJvm()) 50 else 5)
   }
 
   noUnneededWakeupForAsyncGet("WaitList", bound = None)
