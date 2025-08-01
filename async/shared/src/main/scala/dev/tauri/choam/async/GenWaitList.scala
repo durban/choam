@@ -21,6 +21,7 @@ package async
 import cats.~>
 import cats.syntax.all._
 import cats.effect.kernel.{ Cont, MonadCancel, Async }
+import cats.effect.kernel.syntax.all._
 
 import core.{ Rxn, Ref, AsyncReactive }
 import data.RemoveQueue
@@ -153,6 +154,8 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
     }
   }
 
+  private[GenWaitList] final class Flag(var value: Boolean)
+
   private abstract class GenWaitListCommon[A]
     extends GenWaitList[A] { self =>
 
@@ -160,10 +163,6 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
       Rxn.postCommit(Rxn.unsafe.delay {
         cb(b)
       })
-    }
-
-    protected[this] final def callCbUnit(cb: Unit => Unit): Rxn[Unit] = {
-      this.callCb(cb, ())
     }
 
     protected[this] final def callCbRightUnit(cb: Right[Nothing, Unit] => Unit): Rxn[Unit] = {
@@ -181,8 +180,6 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
      * This is like `Async#asyncCheckAttempt`, except:
      * (1) the immediate result can have a different type, and
      * (2) a finalizer is mandatory.
-     *
-     * TODO: use this (or delete it)
      */
     protected[this] final def asyncCheckAttemptEither[F[_], B, C](
       k: (Either[Throwable, B] => Unit) => F[Either[F[Unit], C]]
@@ -206,57 +203,84 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
       getters: RemoveQueue[Either[Throwable, Unit] => Unit],
       tryGetUnderlying: Rxn[Option[A]],
       settersOrNull: RemoveQueue[Either[Throwable, Unit] => Unit],
-    )(implicit ar: AsyncReactive[F]): F[A] = {
-      ar.asyncInst.cont(new Cont[F, Unit, A] {
-        final override def apply[G[_]](
-          implicit G: MonadCancel[G, Throwable]
-        ): (Either[Throwable, Unit] => Unit, G[Unit], F ~> G) => G[A] = { (cb, get, lift) =>
-          G.uncancelable { poll =>
+      poll: F ~> F,
+    )(implicit F: AsyncReactive[F]): F[A] = {
+      implicit val FF: Async[F] = F.asyncInst
+      // This `Flag` is a side-channel between the 2 finalizers
+      // below (we need this to detect in the outer one if the
+      // inner one was already executed). Note, that we don't
+      // need volatile or anything here, since finalizers are
+      // ordered.
+      FF.delay(new Flag(false)).flatMap { asyncFinalizerDone =>
+        poll( // cancellation point right here
+          // also, there is another one _inside_
+          // the `cont` on the next line:
+          asyncCheckAttemptEither[F, Unit, A] { cb =>
             // when we're trying first, we must check for the
             // existence of other waiters (to be fair); however,
             // when we're woken up later, we're supposed to go
             // directly to the underlying data structure:
             val tg = if (isFirstTry) self.tryGet else tryGetUnderlying
-            lift(ar.run(
+            F.run(
               tg.flatMap {
                 case Some(a) =>
                   // in GenWaitList, we may need to notify a setter now:
                   if ((!isFirstTry) && (settersOrNull ne null)) {
-                    wakeUpNextWaiter(settersOrNull).as(G.pure(a))
+                    wakeUpNextWaiter(settersOrNull).as(Right(a))
                   } else {
-                    Rxn.pure(G.pure(a))
+                    Rxn.pure(Right(a))
                   }
                 case None =>
                   getters.enqueueWithRemover(cb).map { remover =>
-                    val cancel: F[Unit] = ar.run(remover.flatMap { ok =>
+                    // this inner finalizer takes care of cleanup
+                    // if we're cancelled while suspended:
+                    val cancel: F[Unit] = F.run(remover.flatMap { ok =>
                       if (ok) {
                         Rxn.unit
                       } else {
                         // wake up someone else instead of ourselves:
                         wakeUpNextWaiter(getters)
                       }
-                    })
-                    G.onCancel(poll(get), lift(cancel)) *> {
-                      // we need a `poll` also on the recursive call,
-                      // because right now we're inside an `uncancelable`:
-                      G.onCancel(
-                        poll( // cancellation gap right here
-                          // also, there is another gap _inside_
-                          // the `cont` in the recursive call
-                          lift(asyncGetImpl(false,  getters, tryGetUnderlying, settersOrNull))
-                        ),
-                        lift(ar.run(wakeUpNextWaiter(getters))) // we need this due to the gap(s) above
-                        // Note: This second finalizer never runs, if
-                        // Note: the first one ran (and vice versa).
-                        // Note: (They're on the same fiber, with a `*>`.)
-                      )
+                    }) *> FF.delay {
+                      // also signal to the outer finalizer, that
+                      // it doesn't need to do anything:
+                      asyncFinalizerDone.value = true
                     }
+                    Left(cancel)
                   }
               }
-            )).flatten
+            )
           }
-        }
-      })
+        ).onCancel(FF.defer {
+          // we need this outer finalizer, because
+          // if we're cancelled NOT when suspended,
+          // but before (or right inside) the
+          // `asyncCheckAttemptEither` (see above),
+          // then the inner finalizer doesn't run
+          // (obviously; it doesn't even exist)
+          if (isFirstTry || asyncFinalizerDone.value) {
+            // either we weren't suspended, so we were
+            // cancelled right at the beginning (so we
+            // don't need a finalizer); or we detected
+            // through the side-channel, that the inner
+            // finalizer already ran, so we don't need to:
+            FF.unit
+          } else {
+            wakeUpNextWaiter(getters).run[F]
+          }
+        })
+      }.flatMap {
+        case Left(_) =>
+          asyncGetImpl(
+            isFirstTry = false,
+            getters = getters,
+            tryGetUnderlying = tryGetUnderlying,
+            settersOrNull = settersOrNull,
+            poll = poll,
+          )
+        case Right(a) =>
+          FF.pure(a)
+      }
     }
   }
 
@@ -379,12 +403,15 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
     }
 
     final override def asyncGet[F[_]](implicit F: AsyncReactive[F]): F[A] = {
-      asyncGetImpl(
-        isFirstTry = true,
-        getters = this.getters,
-        tryGetUnderlying = this.tryGetUnderlying,
-        settersOrNull = this.setters,
-      )
+      F.asyncInst.uncancelable { poll =>
+        asyncGetImpl(
+          isFirstTry = true,
+          getters = this.getters,
+          tryGetUnderlying = this.tryGetUnderlying,
+          settersOrNull = this.setters,
+          poll = poll,
+        )
+      }
     }
   }
 
@@ -414,13 +441,16 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
       }
     }
 
-    final override def asyncGet[F[_]](implicit ar: AsyncReactive[F]): F[A] = {
-      asyncGetImpl[F](
-        isFirstTry = true,
-        getters = this.waiters,
-        tryGetUnderlying = this.tryGetUnderlying,
-        settersOrNull = null,
-      )
+    final override def asyncGet[F[_]](implicit F: AsyncReactive[F]): F[A] = {
+      F.asyncInst.uncancelable { poll =>
+        asyncGetImpl[F](
+          isFirstTry = true,
+          getters = this.waiters,
+          tryGetUnderlying = this.tryGetUnderlying,
+          settersOrNull = null,
+          poll = poll,
+        )
+      }
     }
   }
 }
