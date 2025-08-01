@@ -251,24 +251,7 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
               }
             )
           }
-        ).onCancel(FF.defer {
-          // we need this outer finalizer, because
-          // if we're cancelled NOT when suspended,
-          // but before (or right inside) the
-          // `asyncCheckAttemptEither` (see above),
-          // then the inner finalizer doesn't run
-          // (obviously; it doesn't even exist)
-          if (isFirstTry || asyncFinalizerDone.value) {
-            // either we weren't suspended, so we were
-            // cancelled right at the beginning (so we
-            // don't need a finalizer); or we detected
-            // through the side-channel, that the inner
-            // finalizer already ran, so we don't need to:
-            FF.unit
-          } else {
-            wakeUpNextWaiter(getters).run[F]
-          }
-        })
+        ).onCancel(fallbackWakeup(getters, asyncFinalizerDone, firstTry = isFirstTry))
       }.flatMap {
         case Left(_) =>
           asyncGetImpl(
@@ -280,6 +263,32 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
           )
         case Right(a) =>
           FF.pure(a)
+      }
+    }
+
+    protected[this] final def fallbackWakeup[F[_]](
+      getters: RemoveQueue[Either[Throwable, Unit] => Unit],
+      asyncFinalizerDone: Flag,
+      firstTry: Boolean,
+    )(implicit F: AsyncReactive[F]): F[Unit] = {
+      val FF = F.asyncInst
+      FF.defer {
+        // we need this outer finalizer, because
+        // if we're cancelled NOT when suspended,
+        // but before (or right inside) the
+        // `asyncCheckAttemptEither` (see above),
+        // then the inner finalizer doesn't run
+        // (obviously; it doesn't even exist)
+        if (firstTry || asyncFinalizerDone.value) {
+          // either we weren't suspended, so we were
+          // cancelled right at the beginning (so we
+          // don't need a finalizer); or we detected
+          // through the side-channel, that the inner
+          // finalizer already ran, so we don't need to:
+          FF.unit
+        } else {
+          wakeUpNextWaiter(getters).run[F]
+        }
       }
     }
   }
@@ -336,48 +345,41 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
     }
 
     final override def asyncSet[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] = {
-      asyncSetImpl(a, firstTry = true)
+      F.asyncInst.uncancelable { poll =>
+        asyncSetImpl(a, firstTry = true, poll = poll)
+      }
     }
 
-    private[this] final def asyncSetImpl[F[_]](a: A, firstTry: Boolean)(implicit ar: AsyncReactive[F]): F[Unit] = {
-      ar.asyncInst.cont(new Cont[F, Unit, Unit] {
-        final override def apply[G[_]](
-          implicit G: MonadCancel[G, Throwable]
-        ): (Either[Throwable, Unit] => Unit, G[Unit], F ~> G) => G[Unit] = { (cb, get, lift) =>
-          G.uncancelable { poll =>
-            val ts = if (firstTry) self.trySet(a) else self.trySetUnderlying(a)
-            lift(ar.apply(
-              ts.flatMap { ok =>
-                if (ok) {
-                  // we're basically done, but might need to wake a getter:
-                  if (!firstTry) {
-                    wakeUpNextWaiter(getters).as(G.unit)
-                  } else {
-                    Rxn.pure(G.unit)
-                  }
-                } else {
-                  setters.enqueueWithRemover(cb).map { remover =>
-                    val cancel: F[Unit] = ar.run(remover.flatMap { ok =>
-                      if (ok) {
-                        Rxn.unit
-                      } else {
-                        // wake up someone else instead of ourselves:
-                        wakeUpNextWaiter(setters)
-                      }
-                    })
-                    G.onCancel(poll(get), lift(cancel)) *> {
-                      G.onCancel(
-                        poll(lift(asyncSetImpl(a, false))),
-                        lift(ar.run(wakeUpNextWaiter(setters)))
-                      )
-                    }
-                  }
-                }
+    private[this] final def asyncSetImpl[F[_]](
+      a: A,
+      firstTry: Boolean,
+      poll: F ~> F,
+    )(implicit F: AsyncReactive[F]): F[Unit] = {
+      implicit val FF: Async[F] = F.asyncInst
+      // Note: about the `Flag`, see the comment in `asyncGetImpl`
+      FF.delay(new Flag(false)).flatMap { asyncFinalizerDone =>
+        poll(
+          asyncCheckAttemptEither[F, Unit, Unit] { cb =>
+            F.run(
+              asyncSetCb(a, cb, firstTry = firstTry).map {
+                case Left(fin) =>
+                  Left(fin.run[F] *> FF.delay { asyncFinalizerDone.value = true })
+                case Right(()) =>
+                  RightUnit
               }
-            )).flatten
+            )
           }
-        }
-      })
+        ).onCancel(fallbackWakeup(setters, asyncFinalizerDone, firstTry = firstTry))
+      }.flatMap {
+        case Left(()) =>
+          asyncSetImpl(
+            a,
+            firstTry = false,
+            poll = poll,
+          )
+        case Right(()) =>
+          FF.unit
+      }
     }
 
     final override def asyncSetCb(a: A, cb: Either[Throwable, Unit] => Unit, firstTry: Boolean): Rxn[Either[Rxn[Unit], Unit]] = {
