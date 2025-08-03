@@ -55,6 +55,13 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
     }
   }
 
+  // TODO: put this in the public API
+  final def peek: Rxn[Option[A]] = {
+    head.get.flatMap { node =>
+      skipRemovedRo(from = node.next)
+    }
+  }
+
   private[this] final def skipRemoved(from: Ref[Elem[A]]): Rxn[Option[(A, Node[A])]] = {
     from.get.flatMap {
       case n @ Node(dataRef, nextRef) =>
@@ -65,6 +72,23 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
             impossible("poll found an already dequeued node")
           } else {
             dataRef.set(dequeued[A]).as(Some((a, n)))
+          }
+        }
+      case End() =>
+        Rxn.none
+    }
+  }
+
+  private[this] final def skipRemovedRo(from: Ref[Elem[A]]): Rxn[Option[A]] = {
+    from.get.flatMap {
+      case Node(dataRef, nextRef) =>
+        dataRef.get.flatMap { a =>
+          if (isRemoved(a)) {
+            skipRemovedRo(nextRef)
+          } else if (isDequeued(a)) {
+            impossible("peek found an already dequeued node")
+          } else {
+            Rxn.pure(Some(a))
           }
         }
       case End() =>

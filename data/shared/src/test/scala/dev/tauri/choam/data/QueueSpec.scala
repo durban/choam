@@ -244,6 +244,36 @@ trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
       _ <- assertResultF(q.isEmpty.run[F], true)
     } yield ()
   }
+
+  test("RemoveQueue#peek") {
+    for {
+      q <- newQueueFromList(List.empty[Int])
+      _ <- assertResultF(q.peek.run[F], None)
+      _ <- assertResultF(q.peek.run[F], None)
+      _ <- q.enqueueWithRemover(1).run[F]
+      _ <- assertResultF(q.peek.run[F], Some(1))
+      _ <- assertResultF(q.peek.run[F], Some(1))
+      r2 <- q.enqueueWithRemover(2).run[F]
+      r3 <- q.enqueueWithRemover(3).run[F]
+      _ <- assertResultF((q.peek.flatMap { peeked =>
+        q.poll.map { polled => (peeked, polled) }
+      }).run[F], (Some(1), Some(1)))
+      _ <- assertResultF(q.peek.run[F], Some(2))
+      _ <- assertResultF(r2.run, true)
+      _ <- assertResultF(q.peek.run[F], Some(3))
+      _ <- assertResultF(r3.run, true)
+      _ <- assertResultF(q.peek.run[F], None)
+      _ <- q.enqueueWithRemover(42).run[F]
+      _ <- assertResultF(q.peek.run[F], Some(42))
+      _ <- q.enqueueWithRemover(43).run[F]
+      _ <- assertResultF(q.peek.run[F], Some(42))
+      _ <- assertResultF(q.poll.run[F], Some(42))
+      _ <- assertResultF(q.peek.run[F], Some(43))
+      _ <- assertResultF(q.poll.run[F], Some(43))
+      _ <- assertResultF(q.peek.run[F], None)
+      _ <- assertResultF(q.peek.run[F], None)
+    } yield ()
+  }
 }
 
 trait QueueMsSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>

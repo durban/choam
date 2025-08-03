@@ -152,7 +152,7 @@ object AsyncQueue {
   // TODO: But this is basically `cats.effect.std.Queue.synchronous`.
   // TODO: We could implement it with `Rxn` internally. Would
   // TODO: that have a performance advantage? Maybe if contention
-  // TODO: is high (because the CE queue uses an single Ref)?
+  // TODO: is high (because the CE queue uses a single Ref)?
 
   private[async] final class CatsQueueAdapter[F[_] : AsyncReactive, A](self: AsyncQueue.WithSize[A])
     extends CatsQueue[F, A] {
