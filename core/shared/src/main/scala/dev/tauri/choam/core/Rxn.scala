@@ -577,7 +577,11 @@ object Rxn extends RxnInstances0 {
      * `(... *> retryWhenChanged) orElse (<someting which doesn't retry>)`.
      */
     @inline
-    private[choam] final def retryWhenChanged[A]: Rxn[A] =
+    private[choam] final def retryWhenChanged[A]: Rxn[A] = // TODO: remove this
+      StmImpl.retryWhenChanged[A]
+
+    @inline
+    private[choam] final def retryStm[A]: Rxn[A] =
       StmImpl.retryWhenChanged[A]
 
     /**

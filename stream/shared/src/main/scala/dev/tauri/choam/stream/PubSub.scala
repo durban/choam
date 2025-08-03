@@ -22,13 +22,14 @@ import java.util.concurrent.atomic.AtomicLong
 
 import scala.collection.immutable.LongMap
 
+import cats.~>
 import cats.syntax.all._
-import cats.effect.kernel.Async
+import cats.effect.kernel.{ Async, Cont, MonadCancel }
 import cats.effect.syntax.all._
 import fs2.{ Stream, Chunk, Pull }
 
 import core.{ Rxn, Ref, AsyncReactive }
-import async.{ Promise, WaitList }
+import async.{ Promise, WaitList, GenWaitList }
 import data.UnboundedDeque
 
 sealed abstract class PubSub[A]
@@ -126,9 +127,14 @@ object PubSub {
     }
   }
 
-  private[this] def signalChunk[A](a: A): Chunk[A] = {
+  private[this] def signalChunk[A](a: A): SignalChunk[A] = {
     new SignalChunk(a)
   }
+
+  private[this] sealed abstract class HandleOverflowResult
+  private[this] final object Done extends HandleOverflowResult
+  private[this] final object Retry extends HandleOverflowResult
+  private[this] final object Suspend extends HandleOverflowResult
 
   sealed abstract class OverflowStrategy {
 
@@ -141,7 +147,8 @@ object PubSub {
       sizeRef: Ref[Int],
       newChunk: Chunk[A],
       missingCapacity: Int,
-    ): Rxn[Boolean]
+      canSuspend: Boolean,
+    ): Rxn[HandleOverflowResult]
 
     private[stream] final def fold[A](
       unbounded: A,
@@ -156,10 +163,10 @@ object PubSub {
     }
 
     // TODO: add an `str: AllocationStrategy` parameter, and use it
-    private[PubSub] final def newBuffer[F[_], A]: Rxn[PubSubBuffer[A]] = {
+    private[PubSub] final def newBuffer[F[_], A](canSuspend: Boolean): Rxn[PubSubBuffer[A]] = {
       UnboundedDeque[Chunk[A]].flatMap { underlying =>
         Ref[Int](0).flatMap { sizeRef =>
-          mkWaitList(underlying, this.capacityOrMax, sizeRef).map { wl =>
+          mkWaitList(underlying, this.capacityOrMax, sizeRef, canSuspend = canSuspend).map { wl =>
             new PubSubBuffer[A](sizeRef, underlying, wl)
           }
         }
@@ -170,57 +177,90 @@ object PubSub {
       underlying: UnboundedDeque[Chunk[A]],
       capacity: Int,
       size: Ref[Int],
-    ): Rxn[WaitList[Chunk[A]]] = {
-      WaitList.apply[Chunk[A]]( // TODO: pass AllocationStrategy
-        tryGetUnderlying = underlying.tryTakeLast.flatMap {
-          case None =>
-            Rxn.none
-          case some @ Some(null) =>
-            Rxn.pure(some)
-          case some @ Some(_: SignalChunk[_]) =>
-            Rxn.pure(some)
-          case some @ Some(chunk) =>
-            size.update { oldSize =>
-              val newSize = oldSize - chunk.size
-              _assert(newSize >= 0)
-              newSize
-            }.as(some)
-        },
-        setUnderlying = {
-          case null =>
-            underlying.addFirst(null)
-          case chunk: SignalChunk[_] =>
-            underlying.addFirst(chunk)
-          case chunk =>
-            val chunkSize = chunk.size
-            _assert(chunkSize > 0)
-            if (chunkSize > capacity) {
-              // impossible to publish a chunk this big
-              Rxn.unsafe.panic(new IllegalArgumentException(
-                s"can't publish chunk of size ${chunkSize} to buffer with capacity ${capacity}"
-              ))
-            } else {
+      canSuspend: Boolean,
+    ): Rxn[GenWaitList[Chunk[A]]] = {
+      if (!canSuspend) {
+        WaitList.apply[Chunk[A]]( // TODO: pass AllocationStrategy
+          tryGetUnderlying = this.tryGetUnderlying(underlying, size),
+          setUnderlying = this.setUnderlying(_, underlying, capacity, size, canSuspend = false).map { ok =>
+            _assert(ok)
+            ()
+          },
+        )
+      } else {
+        GenWaitList.apply[Chunk[A]]( // TODO: pass AllocationStrategy
+          tryGetUnderlying = this.tryGetUnderlying(underlying, size),
+          trySetUnderlying = this.setUnderlying(_, underlying, capacity, size, canSuspend = true),
+        )
+      }
+    }
 
-              def go: Rxn[Unit] = {
-                size.get.flatMap { oldSize =>
-                  val left = capacity - oldSize
-                  if (left >= chunkSize) { // OK
-                    val newSize = oldSize + chunkSize
-                    size.set(newSize) *> underlying.addFirst(chunk)
-                  } else {
-                    val missing = chunkSize - left
-                    this.handleOverflow(underlying, size, chunk, missing).flatMap { done =>
-                      if (done) Rxn.unit
-                      else go // retry
-                    }
+    private[this] final def tryGetUnderlying[A](
+      underlying: UnboundedDeque[Chunk[A]],
+      size: Ref[Int],
+    ): Rxn[Option[Chunk[A]]] = {
+      underlying.tryTakeLast.flatMap {
+        case None =>
+          Rxn.none
+        case some @ Some(null) =>
+          Rxn.pure(some)
+        case some @ Some(_: SignalChunk[_]) =>
+          Rxn.pure(some)
+        case some @ Some(chunk) =>
+          size.update { oldSize =>
+            val newSize = oldSize - chunk.size
+            _assert(newSize >= 0)
+            newSize
+          }.as(some)
+      }
+    }
+
+    private[this] final def setUnderlying[A](
+      ch: Chunk[A],
+      underlying: UnboundedDeque[Chunk[A]],
+      capacity: Int,
+      size: Ref[Int],
+      canSuspend: Boolean,
+    ): Rxn[Boolean] = {
+      ch match {
+        case null =>
+          underlying.addFirst(null).as(true)
+        case chunk: SignalChunk[_] =>
+          underlying.addFirst(chunk).as(true)
+        case chunk =>
+          val chunkSize = chunk.size
+          _assert(chunkSize > 0)
+          if (chunkSize > capacity) {
+            // impossible to publish a chunk this big
+            Rxn.unsafe.panic(new IllegalArgumentException(
+              s"can't publish chunk of size ${chunkSize} to buffer with capacity ${capacity}"
+            ))
+          } else {
+
+            def go: Rxn[Boolean] = {
+              size.get.flatMap { oldSize =>
+                val left = capacity - oldSize
+                if (left >= chunkSize) { // OK
+                  val newSize = oldSize + chunkSize
+                  size.set(newSize) *> underlying.addFirst(chunk).as(true)
+                } else {
+                  val missing = chunkSize - left
+                  this.handleOverflow(underlying, size, chunk, missing, canSuspend = canSuspend).flatMap {
+                    case Done =>
+                      Rxn.true_
+                    case Retry =>
+                      go // retry (`handleOverflow` changed `size`)
+                    case Suspend =>
+                      _assert(canSuspend)
+                      Rxn.false_
                   }
                 }
               }
-
-              go
             }
-        },
-      )
+
+            go
+          }
+      }
     }
   }
 
@@ -248,8 +288,9 @@ object PubSub {
         underlying: UnboundedDeque[Chunk[A]],
         sizeRef: Ref[Int],
         newChunk: Chunk[A],
-        missingCapacity: Int
-      ): Rxn[Boolean] = Rxn.unsafe.retryWhenChanged
+        missingCapacity: Int,
+        canSuspend: Boolean,
+      ): Rxn[HandleOverflowResult] = if (canSuspend) Rxn.pure(Suspend) else Rxn.unsafe.retryWhenChanged
     }
 
     private final object Unbounded extends OverflowStrategy {
@@ -260,8 +301,9 @@ object PubSub {
         underlying: UnboundedDeque[Chunk[A]],
         sizeRef: Ref[Int],
         newChunk: Chunk[A],
-        missingCapacity: Int
-      ): Rxn[Boolean] = impossible(
+        missingCapacity: Int,
+        canSuspend: Boolean,
+      ): Rxn[HandleOverflowResult] = impossible(
         s"OverflowStrategy.Unbounded#handleOverflow (..., chunkSize = ${newChunk.size}, missingCapacity = $missingCapacity)"
       )
     }
@@ -276,9 +318,10 @@ object PubSub {
         underlying: UnboundedDeque[Chunk[A]],
         sizeRef: Ref[Int],
         newChunk: Chunk[A],
-        missingCapacity: Int
-      ): Rxn[Boolean] = {
-        dropOldestN(underlying, missingCapacity) *> sizeRef.update(_ - missingCapacity).as(false)
+        missingCapacity: Int,
+        canSuspend: Boolean,
+      ): Rxn[HandleOverflowResult] = {
+        dropOldestN(underlying, missingCapacity) *> sizeRef.update(_ - missingCapacity).as(Retry)
       }
 
       private[this] final def dropOldestN[A](underlying: UnboundedDeque[Chunk[A]], n: Int): Rxn[Unit] = {
@@ -309,9 +352,10 @@ object PubSub {
         underlying: UnboundedDeque[Chunk[A]],
         sizeRef: Ref[Int],
         newChunk: Chunk[A],
-        missingCapacity: Int
-      ): Rxn[Boolean] = {
-        Rxn.true_
+        missingCapacity: Int,
+        canSuspend: Boolean,
+      ): Rxn[HandleOverflowResult] = {
+        Rxn.pure(Done)
       }
     }
   }
@@ -320,6 +364,8 @@ object PubSub {
     def removeSubscription(id: Long): Rxn[Unit]
     def isClosed: Ref[Boolean]
   }
+
+  private[this] final class SuspWith[A](val subs: Subscription[A, _], val cleanup: Rxn[Unit])
 
   private[this] final class SimplePubSubImpl[A](
     nextId: AtomicLong,
@@ -349,8 +395,8 @@ object PubSub {
             if (isClosed) {
               Rxn.pure(null : Subscription[A, B])
             } else {
-              strategy.newBuffer[F, B].flatMap { buf =>
-                initial.flatMap { elem => buf.enqueue(signalChunk(elem)) } *> {
+              strategy.newBuffer[F, B](canSuspend = false).flatMap { buf =>
+                initial.flatMap { elem => buf.enqueueSignal(signalChunk(elem)) } *> {
                   val subs = new Subscription[B, B](id, buf, sp, this)
                   subscriptions.update(_.updated(id, subs)).as(subs)
                 }
@@ -395,6 +441,122 @@ object PubSub {
             }
           }
         }
+      }
+    }
+
+    final def asyncEmitChunk[F[_]](ch: Chunk[A])(implicit F: AsyncReactive[F]): F[Result] = {
+      F.asyncInst.uncancelable { poll =>
+        asyncEmitChunkImpl(ch, wasSuspendedWith = null, poll = poll)
+      }
+    }
+
+    /**
+     * This is like `Async#asyncCheckAttempt`, except:
+     * (1) the immediate result can have a different type,
+     * (2) the callback is just for waking up, and
+     * (3) a finalizer is mandatory.
+     *
+     * @see GenWaitListCommon#asyncCheckAttemptEither
+     */
+    private[this] final def asyncCheckAttemptEitherTuple[F[_], B, C](
+      k: (Either[Throwable, Unit] => Unit) => F[Either[(F[Unit], B), C]]
+    )(implicit F: Async[F]): F[Either[B, C]] = {
+      F.cont(new Cont[F, Unit, Either[B, C]] {
+        final override def apply[G[_]](
+          implicit G: MonadCancel[G, Throwable]
+        ): (Either[Throwable, Unit] => Unit, G[Unit], F ~> G) => G[Either[B, C]] = { (cb, get, lift) =>
+          G.uncancelable { poll =>
+            lift(k(cb)).flatMap {
+              case Right(b) => G.pure(Right(b))
+              case Left((fin, b)) => G.onCancel(poll(get), lift(fin)).as(Left(b))
+            }
+          }
+        }
+      })
+    }
+
+    final def asyncEmitChunkImpl[F[_]](
+      ch: Chunk[A],
+      wasSuspendedWith: Subscription[A, _],
+      poll: F ~> F,
+    )(implicit F: AsyncReactive[F]): F[Result] = {
+      implicit val FF: Async[F] = F.asyncInst
+      // Note: about the `Flag`, see the comment in `GenWaitListCommon#asyncGetImpl`
+      F.run(GenWaitList.Flag.mkNew(wasSuspendedWith eq null)).flatMap { asyncFinalizerDone =>
+        poll(
+          asyncCheckAttemptEitherTuple[F, Subscription[A, _], Result] { cb =>
+            F.run(
+              isClosed.get.flatMap { isClosed =>
+                if (isClosed) {
+                  Rxn.pure(Right(Closed))
+                } else if (ch.isEmpty) {
+                  Rxn.pure(Right(Success))
+                } else {
+                  subscriptions.get.flatMap { subsMap =>
+
+                    def go(itr: Iterator[Subscription[A, _]], dryRun: Boolean): Rxn[Either[SuspWith[A], Unit]] = {
+                      Rxn.unsafe.suspend {
+                        if (itr.hasNext) {
+                          val subs: Subscription[A, _] = itr.next()
+                          _assert(subs ne null)
+                          val firstTry = (subs ne wasSuspendedWith)
+                          val publish1 = subs.publishChunkOrSuspend(ch, cb, flag = asyncFinalizerDone, firstTry = firstTry)
+                          if (dryRun) {
+                            // TODO: this is likely quite slow
+                            Rxn.unsafe.orElse(
+                              publish1.flatMap {
+                                case Left(cleanup) =>
+                                  val sw = new SuspWith[A](subs, cleanup)
+                                  Rxn.pure(Left(sw))
+                                case Right(_) =>
+                                  Rxn.unsafe.retryStm
+                              },
+                              go(itr, dryRun = true)
+                            )
+                          } else {
+                            publish1.flatMap {
+                              case Left(_) =>
+                                impossible("dryRun = false, and got Left")
+                              case Right(_) =>
+                                go(itr, dryRun = false)
+                            }
+                          }
+                        } else {
+                          Rxn.rightUnit
+                        }
+                      }
+                    }
+
+                    Rxn.unsafe.delay(subsMap.valuesIterator).flatMap(go(_, dryRun = true)).flatMap {
+                      case Left(suspWith) =>
+                        Rxn.pure(Left((
+                          F.run(suspWith.cleanup),
+                          suspWith.subs
+                        )))
+                      case Right(()) =>
+                        // dry run was successful, now we can do it for real:
+                        Rxn.unsafe.delay(subsMap.valuesIterator).flatMap(go(_, dryRun = false)).map {
+                          case Left(_) =>
+                            impossible("got Left after a successful dryRun")
+                          case Right(()) =>
+                            Right(Success)
+                        }
+                    }
+                  }
+                }
+              }
+            )
+          }
+        ).onCancel(wasSuspendedWith.publishChunkOrSuspendFallback(asyncFinalizerDone).run)
+      }.flatMap {
+        case Left(subs) =>
+          asyncEmitChunkImpl(
+            ch,
+            wasSuspendedWith = subs,
+            poll = poll,
+          )
+        case Right(result) =>
+          FF.pure(result)
       }
     }
 
@@ -450,7 +612,20 @@ object PubSub {
   ) {
 
     final def publishChunkOrRetry(ch: Chunk[A]): Rxn[Result] = {
-      queue.enqueue(ch)
+      queue.enqueueOrRetry(ch)
+    }
+
+    final def publishChunkOrSuspend(
+      ch: Chunk[A],
+      cb: Either[Throwable, Unit] => Unit,
+      flag: GenWaitList.Flag,
+      firstTry: Boolean,
+    ): Rxn[Either[Rxn[Unit], Unit]] = {
+      queue.enqueueOrSuspend(ch, cb, flag, firstTry)
+    }
+
+    final def publishChunkOrSuspendFallback(flag: GenWaitList.Flag): Rxn[Unit] = {
+      queue.enqueueOrSuspendFallback(flag)
     }
 
     final def stream[F[_]: AsyncReactive]: Stream[F, B] = {
@@ -489,7 +664,7 @@ object PubSub {
     }
 
     final def closeExternal: Rxn[Unit] = {
-      queue.enqueue(null).void
+      queue.enqueueSignal(null).void
     }
 
     final def closeInternal[F[_]](implicit F: AsyncReactive[F]): F[Unit] = {
@@ -503,11 +678,34 @@ object PubSub {
   private[this] final class PubSubBuffer[A](
     val sizeRef: Ref[Int],
     val underlying: UnboundedDeque[Chunk[A]],
-    val wl: WaitList[Chunk[A]],
+    val wl: GenWaitList[Chunk[A]],
   ) {
 
-    final def enqueue(chunk: Chunk[A]): Rxn[Result] = {
-      wl.set(chunk).as(Success)
+    final def enqueueSignal(chunk: SignalChunk[A]): Rxn[Success.type] = {
+      wl.trySet(chunk).map { ok =>
+        _assert(ok)
+        Success
+      }
+    }
+
+    final def enqueueOrRetry(chunk: Chunk[A]): Rxn[Success.type] = {
+      wl.trySet(chunk).map { ok =>
+        _assert(ok)
+        Success
+      }
+    }
+
+    final def enqueueOrSuspend(
+      chunk: Chunk[A],
+      cb: Either[Throwable, Unit] => Unit,
+      flag: GenWaitList.Flag,
+      firstTry: Boolean,
+    ): Rxn[Either[Rxn[Unit], Unit]] = {
+      wl.asyncSetCb(chunk, cb, firstTry, flag)
+    }
+
+    final def enqueueOrSuspendFallback(flag: GenWaitList.Flag): Rxn[Unit] = {
+      wl.asyncSetCbFallback(flag)
     }
 
     final def tryDequeue: Rxn[Option[Chunk[A]]] = {

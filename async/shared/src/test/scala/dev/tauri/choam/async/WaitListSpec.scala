@@ -57,8 +57,9 @@ trait WaitListSpec[F[_]]
         ref.get,
         i => ref.getAndSet(Some(i)).void
       ).run[F]
+      flag <- GenWaitList.Flag.mkNew(true).run
       _ <- F.asyncCheckAttempt[Unit] { cb =>
-        wl.asyncSetCb(42, cb, firstTry = true).run[F].widen
+        wl.asyncSetCb(42, cb, firstTry = true, flag = flag).run[F].widen
       }
       _ <- assertResultF(ref.get.run, Some(42))
     } yield ()
@@ -74,16 +75,18 @@ trait WaitListSpec[F[_]]
           case s => (s, false)
         }
       ).run[F]
+      flag0 <- GenWaitList.Flag.mkNew(true).run
       _ <- F.asyncCheckAttempt[Unit] { cb =>
-        gwl.asyncSetCb(42, cb, firstTry = true).map {
+        gwl.asyncSetCb(42, cb, firstTry = true, flag = flag0).map {
           case Left(fin) => Left(Some(fin.run[F]): Option[F[Unit]])
           case Right(()) => Right(())
         }.run[F]
       }
       _ <- assertResultF(ref.get.run, Some(42))
       d <- F.deferred[Unit]
+      flag1 <- GenWaitList.Flag.mkNew(true).run
       fib <- F.asyncCheckAttempt[Unit] { cb =>
-        gwl.asyncSetCb(21, cb, firstTry = true).map {
+        gwl.asyncSetCb(21, cb, firstTry = true, flag = flag1).map {
           case Left(fin) => Left(Some(fin.run[F]): Option[F[Unit]])
           case Right(()) => Right(())
         }.run[F]
@@ -94,8 +97,9 @@ trait WaitListSpec[F[_]]
       _ <- this.tickAll
       _ <- assertResultF(d.tryGet, Some(()))
       _ <- assertResultF(fib.joinWithNever, ())
+      flag2 <- GenWaitList.Flag.mkNew(false).run
       _ <- F.asyncCheckAttempt[Unit] { cb =>
-        gwl.asyncSetCb(21, cb, firstTry = false).map {
+        gwl.asyncSetCb(21, cb, firstTry = false, flag = flag2).map {
           case Left(fin) => Left(Some(fin.run[F]): Option[F[Unit]])
           case Right(()) => Right(())
         }.run[F]
@@ -248,6 +252,7 @@ trait WaitListSpec[F[_]]
   noUnneededWakeupForAsyncSet("GenWaitList", bound = 8)
 
   private def noUnneededWakeupForAsyncSet(topts: TestOptions, bound: Int): Unit = {
+
     test(topts.withName(s"${topts.name}: asyncSet should have no unnecessary wakeups")) {
       require(bound > 0)
       val t = for {

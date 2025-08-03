@@ -34,8 +34,9 @@ private[choam] sealed trait GenWaitList[A] { self =>
 
   def asyncSet[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit]
 
-  // TODO: try to use this to implement `asyncSet`
-  def asyncSetCb(a: A, cb: Either[Throwable, Unit] => Unit, firstTry: Boolean): Rxn[Either[Rxn[Unit], Unit]]
+  def asyncSetCb(a: A, cb: Either[Throwable, Unit] => Unit, firstTry: Boolean, flag: GenWaitList.Flag): Rxn[Either[Rxn[Unit], Unit]]
+
+  def asyncSetCbFallback(flag: GenWaitList.Flag): Rxn[Unit]
 
   def asyncGet[F[_]](implicit F: AsyncReactive[F]): F[A]
 }
@@ -52,9 +53,13 @@ private[choam] sealed trait WaitList[A] extends GenWaitList[A] { self =>
     F.apply(this.set(a).void)
   }
 
-  final override def asyncSetCb(a: A, cb: Either[Throwable, Unit] => Unit, firstTry: Boolean): Rxn[Right[Nothing, Unit]] = {
+  final override def asyncSetCb(a: A, cb: Either[Throwable, Unit] => Unit, firstTry: Boolean, flag: GenWaitList.Flag): Rxn[Right[Nothing, Unit]] = {
     _assert(firstTry)
     this.set(a).as(GenWaitList.RightUnit)
+  }
+
+  final override def asyncSetCbFallback(flag: GenWaitList.Flag): Rxn[Unit] = {
+    Rxn.unit
   }
 }
 
@@ -121,8 +126,10 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
           gwl.asyncGet[F]
         final override def asyncSet[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
           gwl.asyncSet[F](a)
-        final override def asyncSetCb(a: A, cb: Either[Throwable, Unit] => Unit, firstTry: Boolean): Rxn[Either[Rxn[Unit], Unit]] =
-          gwl.asyncSetCb(a, cb, firstTry)
+        final override def asyncSetCb(a: A, cb: Either[Throwable, Unit] => Unit, firstTry: Boolean, flag: Flag): Rxn[Either[Rxn[Unit], Unit]] =
+          gwl.asyncSetCb(a, cb, firstTry, flag)
+        final override def asyncSetCbFallback(flag: GenWaitList.Flag): Rxn[Unit] =
+          gwl.asyncSetCbFallback(flag)
         final override def tryGet: Rxn[Option[A]] =
           gwl.tryGet
         final override def trySet(a: A): Rxn[Boolean] =
@@ -154,7 +161,15 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
     }
   }
 
-  private[GenWaitList] final class Flag(var value: Boolean)
+  private[choam] final class Flag private (private[this] var value: Boolean) {
+    def set: Rxn[Unit] = Rxn.unsafe.delay { this.value = true }
+    def isSet: Rxn[Boolean] = Rxn.unsafe.delay { this.value }
+    private[GenWaitList] def unsafeIsSet(): Boolean = { this.value }
+  }
+
+  private[choam] final object Flag {
+    def mkNew(firstTry: Boolean): Rxn[Flag] = Rxn.unsafe.delay { new Flag(firstTry) }
+  }
 
   private abstract class GenWaitListCommon[A]
     extends GenWaitList[A] { self =>
@@ -180,6 +195,8 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
      * This is like `Async#asyncCheckAttempt`, except:
      * (1) the immediate result can have a different type, and
      * (2) a finalizer is mandatory.
+     *
+     * @see PubSubImpl#asyncCheckAttemptEitherTuple
      */
     protected[this] final def asyncCheckAttemptEither[F[_], B, C](
       k: (Either[Throwable, B] => Unit) => F[Either[F[Unit], C]]
@@ -211,7 +228,7 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
       // inner one was already executed). Note, that we don't
       // need volatile or anything here, since finalizers are
       // ordered.
-      FF.delay(new Flag(false)).flatMap { asyncFinalizerDone =>
+      F.run(Flag.mkNew(isFirstTry)).flatMap { asyncFinalizerDone =>
         poll( // cancellation point right here
           // also, there is another one _inside_
           // the `cont` on the next line:
@@ -241,17 +258,17 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
                         // wake up someone else instead of ourselves:
                         wakeUpNextWaiter(getters)
                       }
-                    }) *> FF.delay {
+                    }) *> F.run {
                       // also signal to the outer finalizer, that
                       // it doesn't need to do anything:
-                      asyncFinalizerDone.value = true
+                      asyncFinalizerDone.set
                     }
                     Left(cancel)
                   }
               }
             )
           }
-        ).onCancel(fallbackWakeup(getters, asyncFinalizerDone, firstTry = isFirstTry))
+        ).onCancel(fallbackWakeup(getters, asyncFinalizerDone).run)
       }.flatMap {
         case Left(_) =>
           asyncGetImpl(
@@ -266,28 +283,26 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
       }
     }
 
-    protected[this] final def fallbackWakeup[F[_]](
+    protected[this] final def fallbackWakeup(
       getters: RemoveQueue[Either[Throwable, Unit] => Unit],
       asyncFinalizerDone: Flag,
-      firstTry: Boolean,
-    )(implicit F: AsyncReactive[F]): F[Unit] = {
-      val FF = F.asyncInst
-      FF.defer {
+    ): Rxn[Unit] = {
+      Rxn.unsafe.suspend {
         // we need this outer finalizer, because
         // if we're cancelled NOT when suspended,
         // but before (or right inside) the
         // `asyncCheckAttemptEither` (see above),
         // then the inner finalizer doesn't run
         // (obviously; it doesn't even exist)
-        if (firstTry || asyncFinalizerDone.value) {
+        if (asyncFinalizerDone.unsafeIsSet()) {
           // either we weren't suspended, so we were
           // cancelled right at the beginning (so we
           // don't need a finalizer); or we detected
           // through the side-channel, that the inner
           // finalizer already ran, so we don't need to:
-          FF.unit
+          Rxn.unit
         } else {
-          wakeUpNextWaiter(getters).run[F]
+          wakeUpNextWaiter(getters)
         }
       }
     }
@@ -357,19 +372,19 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
     )(implicit F: AsyncReactive[F]): F[Unit] = {
       implicit val FF: Async[F] = F.asyncInst
       // Note: about the `Flag`, see the comment in `asyncGetImpl`
-      FF.delay(new Flag(false)).flatMap { asyncFinalizerDone =>
+      F.run(Flag.mkNew(firstTry)).flatMap { asyncFinalizerDone =>
         poll(
           asyncCheckAttemptEither[F, Unit, Unit] { cb =>
             F.run(
-              asyncSetCb(a, cb, firstTry = firstTry).map {
+              asyncSetCb(a, cb, firstTry = firstTry, flag = asyncFinalizerDone).map {
                 case Left(fin) =>
-                  Left(fin.run[F] *> FF.delay { asyncFinalizerDone.value = true })
+                  Left(fin.run[F])
                 case Right(()) =>
                   RightUnit
               }
             )
           }
-        ).onCancel(fallbackWakeup(setters, asyncFinalizerDone, firstTry = firstTry))
+        ).onCancel(asyncSetCbFallback(flag = asyncFinalizerDone).run)
       }.flatMap {
         case Left(()) =>
           asyncSetImpl(
@@ -382,7 +397,7 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
       }
     }
 
-    final override def asyncSetCb(a: A, cb: Either[Throwable, Unit] => Unit, firstTry: Boolean): Rxn[Either[Rxn[Unit], Unit]] = {
+    final override def asyncSetCb(a: A, cb: Either[Throwable, Unit] => Unit, firstTry: Boolean, flag: Flag): Rxn[Either[Rxn[Unit], Unit]] = {
       val ts = if (firstTry) self.trySet(a) else self.trySetUnderlying(a)
       ts.flatMap { ok =>
         if (ok) {
@@ -395,13 +410,16 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
         } else {
           setters.enqueueWithRemover(cb).map { remover =>
             val cancel: Rxn[Unit] = remover.flatMap { ok =>
-              if (ok) Rxn.unit
-              else wakeUpNextWaiter(setters)
+              flag.set *> (if (ok) Rxn.unit else wakeUpNextWaiter(setters))
             }
             Left(cancel)
           }
         }
       }
+    }
+
+    final override def asyncSetCbFallback(flag: GenWaitList.Flag): Rxn[Unit] = {
+      fallbackWakeup(setters, flag)
     }
 
     final override def asyncGet[F[_]](implicit F: AsyncReactive[F]): F[A] = {
