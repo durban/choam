@@ -252,17 +252,15 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
                     // this inner finalizer takes care of cleanup
                     // if we're cancelled while suspended:
                     val cancel: F[Unit] = F.run(remover.flatMap { ok =>
+                      // Note: we also need to signal to the outer
+                      // finalizer, that it doesn't need to do anything.
                       if (ok) {
-                        Rxn.unit
+                        asyncFinalizerDone.set
                       } else {
-                        // wake up someone else instead of ourselves:
-                        wakeUpNextWaiter(getters)
+                        // also wake up someone else instead of ourselves:
+                        asyncFinalizerDone.set *> wakeUpNextWaiter(getters)
                       }
-                    }) *> F.run {
-                      // also signal to the outer finalizer, that
-                      // it doesn't need to do anything:
-                      asyncFinalizerDone.set
-                    }
+                    })
                     Left(cancel)
                   }
               }
@@ -410,7 +408,11 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
         } else {
           setters.enqueueWithRemover(cb).map { remover =>
             val cancel: Rxn[Unit] = remover.flatMap { ok =>
-              flag.set *> (if (ok) Rxn.unit else wakeUpNextWaiter(setters))
+              if (ok) {
+                flag.set
+              } else {
+                flag.set *> wakeUpNextWaiter(setters)
+              }
             }
             Left(cancel)
           }
