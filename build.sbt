@@ -26,6 +26,8 @@ import com.typesafe.tools.mima.core.{
   IncompatibleMethTypeProblem,
 }
 
+import scala.scalanative.build.GC
+
 // Scala versions:
 val scala2 = "2.13.16"
 val scala3 = "3.3.6"
@@ -746,6 +748,12 @@ lazy val commonSettingsJs = Seq[Setting[_]](
 )
 
 lazy val commonSettingsNative = Seq[Setting[_]](
+  nativeConfig ~= { config =>
+    config
+      .withGC(GC.commix)
+      .withMultithreading(true)
+      .withSourceLevelDebuggingConfig(_.enableAll)
+  }
 )
 
 lazy val commonSettings = Seq[Setting[_]](
