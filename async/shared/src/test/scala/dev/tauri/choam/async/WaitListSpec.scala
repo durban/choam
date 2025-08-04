@@ -18,6 +18,11 @@
 package dev.tauri.choam
 package async
 
+import java.util.concurrent.ThreadLocalRandom
+
+import scala.concurrent.duration._
+
+import cats.effect.kernel.{ Ref => CatsRef }
 import cats.effect.{ IO, Outcome }
 
 import munit.TestOptions
@@ -172,6 +177,79 @@ trait WaitListSpec[F[_]]
           case Outcome.Errored(ex) =>
             failF(ex.toString)
         }
+      } yield ()
+      t.replicateA_(if (isJvm()) 50 else 5)
+    }
+
+    test(topts.withName(s"${topts.name}: lots of cancels")) {
+      val N = 64
+      val M = 2 * N
+      val t = for {
+        q <- newQueue
+        rng <- F.delay(new scala.util.Random(ThreadLocalRandom.current().nextLong()))
+        killSwitch <- F.ref(false)
+        rr <- F.both(
+          (1 to N).toList.traverse { _ =>
+            F.ref[String]("").flatMap { holder =>
+              F.uncancelable { poll =>
+                poll(q.take[F, String]).flatMap(holder.set)
+              }.start.map { fib => (fib, holder) }
+            }
+          },
+          F.ref[Int](0).flatMap { sRef =>
+            (1 to M).toList.traverse { idx =>
+
+              def once(holder: CatsRef[F, String], successes: CatsRef[F, Int]): F[Unit] = {
+                F.uncancelable { poll =>
+                  poll(q.offer(idx.toString).run[F]).flatTap { ok =>
+                    if (ok) holder.set(idx.toString) *> successes.update(_ + 1)
+                    else F.unit
+                  }
+                }.flatMap { ok =>
+                  if (ok) {
+                    F.unit
+                  } else {
+                    (successes.get, killSwitch.get).flatMapN { (succ, killed) =>
+                      if ((succ >= N) || killed) {
+                        F.unit
+                      } else {
+                        F.sleep(1.second) *> once(holder, successes)
+                      }
+                    }
+                  }
+                }
+              }
+
+              F.ref[String]("").flatMap { holder =>
+                (once(holder, sRef).start <* F.cede).map { fib => (fib, holder) }
+              }
+            }
+          }
+        )
+        (takeFibers, offerFibers) = rr
+        _ <- F.both(
+          rng.shuffle(takeFibers).take(N >> 1).traverse { case (fib, _) => fib.cancel.start }.flatMap(_.traverse_(_.join)),
+          rng.shuffle(offerFibers).take(M >> 1).traverse { case (fib, _) => fib.cancel.start }.flatMap(_.traverse_(_.join)),
+        )
+        taken <- takeFibers.traverse { case (fib, holder) =>
+          fib.join.flatMap[Option[String]] { _ =>
+            holder.get.map {
+              case "" => None
+              case s => Some(s)
+            }
+          }
+        }.map(_.collect { case Some(s) => s })
+        _ <- killSwitch.set(true)
+        offered <- offerFibers.traverse { case (fib, holder) =>
+          fib.join.flatMap[Option[String]] { _ =>
+            holder.get.map {
+              case "" => None
+              case s => Some(s)
+            }
+          }
+        }.map(_.collect { case Some(s) => s })
+        drained <- data.Queue.drainOnce(q)
+        _ <- assertEqualsF((clue(taken) ++ clue(drained)).sorted, clue(offered).sorted)
       } yield ()
       t.replicateA_(if (isJvm()) 50 else 5)
     }
