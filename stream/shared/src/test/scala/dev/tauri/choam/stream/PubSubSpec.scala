@@ -68,7 +68,8 @@ trait PubSubSpec[F[_]]
         )
         _ <- assertEqualsF(rr._1, succVec)
         _ <- assertEqualsF(rr._2, succVec)
-        _ <- assertResultF(hub.close.run[F], PubSub.Backpressured) // with high probability
+        closeRes <- hub.close.run[F]
+        _ <- assertF((closeRes eq PubSub.Backpressured) || (closeRes eq PubSub.Success))
         v1 <- f1.joinWithNever
         v2WithInitial <- f2.joinWithNever
         _ <- assertEqualsF(v2WithInitial.take(1), Vector(0))
