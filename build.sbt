@@ -424,7 +424,10 @@ lazy val stream = crossProject(JVMPlatform, JSPlatform)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
   .dependsOn(async % "compile->compile;test->test")
-  .settings(libraryDependencies += dependencies.fs2.value)
+  .settings(libraryDependencies ++= Seq(
+    dependencies.catsEffectAll.value,
+    dependencies.fs2.value,
+  ))
 
 lazy val profiler = project.in(file("profiler"))
   .settings(name := "choam-profiler")
@@ -710,7 +713,6 @@ lazy val layout = project.in(file("layout"))
   .settings(
     libraryDependencies += dependencies.jol.value % TestInternal,
     Jol / version := dependencies.jolVersion,
-    Test / fork := true // JOL doesn't like sbt classpath
   )
   .dependsOn(core.jvm % "compile->compile;test->test")
 
