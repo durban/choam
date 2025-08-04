@@ -113,10 +113,17 @@ trait WaitListSpec[F[_]]
     } yield ()
   }
 
+  cancelStressTest[AsyncQueue[String]]("WaitList (put)", AsyncQueue.unbounded[String].run[F], { (q, s) => q.put(s).as(true) })
+  cancelStressTest[AsyncQueue.SourceSink[String]]("GenWaitList (put)", AsyncQueue.bounded[String](8).run[F], { (q, s) => q.put(s).as(true) })
+
   commonTests("WaitList", AsyncQueue.unbounded[String].run[F].widen)
   commonTests("GenWaitList", AsyncQueue.bounded[String](8).run[F].widen)
 
   private def commonTests(topts: TestOptions, newQueue: F[AsyncQueue.Take[String] & data.Queue.Offer[String]]): Unit = {
+
+    type Q = AsyncQueue.Take[String] & data.Queue.Offer[String]
+
+    cancelStressTest[Q](topts.withName(topts.name + " (offer)"), newQueue, { (q, s) => q.offer(s).run[F] })
 
     test(topts.withName(s"${topts.name}: deque and poll race")) {
       val t = for {
@@ -180,6 +187,13 @@ trait WaitListSpec[F[_]]
       } yield ()
       t.replicateA_(if (isJvm()) 50 else 5)
     }
+  }
+
+  private def cancelStressTest[Q <: AsyncQueue.Take[String]](
+    topts: TestOptions,
+    newQueue: F[Q],
+    offer: (Q, String) => F[Boolean],
+  ): Unit = {
 
     test(topts.withName(s"${topts.name}: lots of cancels")) {
       val N = 64
@@ -201,7 +215,7 @@ trait WaitListSpec[F[_]]
 
               def once(holder: CatsRef[F, String], successes: CatsRef[F, Int]): F[Unit] = {
                 F.uncancelable { poll =>
-                  poll(q.offer(idx.toString).run[F]).flatTap { ok =>
+                  poll(offer(q, idx.toString)).flatTap { ok =>
                     if (ok) holder.set(idx.toString) *> successes.update(_ + 1)
                     else F.unit
                   }
@@ -240,6 +254,8 @@ trait WaitListSpec[F[_]]
           }
         }.map(_.collect { case Some(s) => s })
         _ <- killSwitch.set(true)
+        // TODO: do we need killSwitch if we're cancelling every offerer anyway:
+        _ <- offerFibers.traverse { case (fib, _) => fib.cancel.start }.flatMap(_.traverse_(_.join))
         offered <- offerFibers.traverse { case (fib, holder) =>
           fib.join.flatMap[Option[String]] { _ =>
             holder.get.map {
