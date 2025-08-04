@@ -246,6 +246,45 @@ trait WaitListSpec[F[_]]
     t.replicateA_(if (isJvm()) 50 else 5)
   }
 
+  test("GenWaitList: underlying queue is full, but there are getters") {
+    val t = for {
+      q <- AsyncQueue.bounded[String](2).run[F]
+      fib1 <- q.take.start
+      _ <- this.tickAll // wait for fiber to suspend
+      fib2 <- q.take.start
+      _ <- this.tickAll // add a second waiter
+      fib3 <- q.take.start
+      _ <- this.tickAll // add a third waiter
+      // if these `offer`s happen sufficiently
+      // fast, it can happen that there is still
+      // a waiter (fib3), but the underlying
+      // queue is already full; if that happens,
+      // the result must be (true, true, false);
+      // otherwise (the normal case): (true, true, true).
+      rrr <- (q.offer("foo").run, q.offer("bar").run, q.offer("baz").run).tupled
+      _ <- assertEqualsF((rrr._1, rrr._2), (true, true))
+      // due to the fibers racing when waking up, the order might not be strict:
+      _ <- if (rrr._3) {
+        // all 3 succeeded:
+        for {
+          v1 <- fib1.joinWithNever
+          v2 <- fib2.joinWithNever
+          v3 <- fib3.joinWithNever
+          _ <- assertEqualsF(Set(v1, v2, v3), Set("foo", "bar", "baz"))
+        } yield ()
+      } else {
+        for {
+          v1 <- fib1.joinWithNever
+          v2 <- fib2.joinWithNever
+          _ <- assertEqualsF(Set(v1, v2), Set("foo", "bar"))
+          _ <- fib3.cancel
+          _ <- assertResultF(fib3.join.map(_.isCanceled), true)
+        } yield ()
+      }
+    } yield ()
+    t.replicateA_(if (isJvm()) 50 else 5)
+  }
+
   noUnneededWakeupForAsyncGet("WaitList", bound = None)
   noUnneededWakeupForAsyncGet("GenWaitList", bound = Some(8))
 

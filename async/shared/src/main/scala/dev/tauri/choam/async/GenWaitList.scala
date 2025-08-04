@@ -316,17 +316,23 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
     final override def trySet(a: A): Rxn[Boolean] = {
       setters.isEmpty.flatMap { noSetters =>
         if (noSetters) {
-          getters.poll.flatMap {
-            case None =>
-              trySetUnderlying(a)
-            case Some(cb) =>
-              trySetUnderlying(a).flatMap { ok =>
-                if (ok) {
+          trySetUnderlying(a).flatMap { ok =>
+            if (ok) {
+              getters.poll.flatMap {
+                case None =>
+                  Rxn.true_ // no one to wake up, but we added `a`
+                case Some(cb) =>
                   callCbRightUnit(cb).as(true)
-                } else {
-                  impossible("AsyncGenWaitList#trySet found a getter, but trySetUnderlying failed")
-                }
               }
+            } else {
+              // Couldn't set (e.g., underlying queue is full);
+              // note, that in this case it's possible that `getters`
+              // exist, but we won't wake them (we didn't add
+              // anything); the other getters are in the process
+              // of waking up, and that will make space, but that
+              // doesn't help us now, we can't wait for them.
+              Rxn.false_
+            }
           }
         } else {
           Rxn.false_
