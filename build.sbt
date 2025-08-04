@@ -304,7 +304,7 @@ lazy val choam = project.in(file("."))
     mcas.jvm, mcas.js,
     core.jvm, core.js,
     data.jvm, data.js,
-    internal.jvm, internal.js,
+    internal.jvm, internal.js, internal.native,
     async.jvm, async.js,
     stream.jvm, stream.js,
     profiler, // JVM
@@ -370,7 +370,7 @@ lazy val mcas = crossProject(JVMPlatform, JSPlatform)
     ),
   )
 
-lazy val internal = crossProject(JVMPlatform, JSPlatform)
+lazy val internal = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
   .in(file("internal"))
@@ -380,6 +380,7 @@ lazy val internal = crossProject(JVMPlatform, JSPlatform)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
+  .nativeSettings(commonSettingsNative)
   .settings(buildInfoSettings(pkg = "dev.tauri.choam.internal"))
   .settings(
     libraryDependencies ++= Seq(
@@ -731,13 +732,20 @@ lazy val commonSettingsJvm = Seq[Setting[_]](
     "-Djdk.graal.PrintBackendCFG=true",
     "-Djdk.graal.MethodFilter=AbstractHamt.*",
   ),
+  libraryDependencies ++= Seq(
+    dependencies.zioEverything.value.map(_ % TestInternal),
+  ).flatten,
 )
 
 lazy val commonSettingsJs = Seq[Setting[_]](
   libraryDependencies ++= Seq(
     dependencies.scalaJsLocale.value.map(_ % TestInternal),
+    dependencies.zioEverything.value.map(_ % TestInternal),
     Seq(dependencies.scalaJsSecRnd.value % TestInternal),
   ).flatten
+)
+
+lazy val commonSettingsNative = Seq[Setting[_]](
 )
 
 lazy val commonSettings = Seq[Setting[_]](
@@ -820,7 +828,9 @@ lazy val commonSettings = Seq[Setting[_]](
   )),
   // disable build server protocol for JS (idea from
   // https://github.com/typelevel/sbt-typelevel/pull/465)
-  bspEnabled := crossProjectPlatform.?.value.forall(_ == JVMPlatform),
+  bspEnabled := crossProjectPlatform.?.value.forall { pl =>
+    (pl == JVMPlatform) || (pl == NativePlatform)
+  },
 ) ++ inConfig(Compile)(
   inTask(packageBin)(extraPackagingSettings) ++
   inTask(packageSrc)(extraPackagingSettings) ++
@@ -953,7 +963,7 @@ lazy val dependencies = new {
       "org.typelevel" %%% "scalacheck-effect-munit" % scalacheckEffectVersion,
       "org.typelevel" %%% "discipline-munit" % "2.0.0", // https://github.com/typelevel/discipline-munit
       scalaJsTime.value,
-    ) ++ zioEverything.value
+    )
   }
 }
 

@@ -23,7 +23,7 @@ import java.util.concurrent.CountDownLatch
 
 import cats.effect.IO
 
-final class LazyIdempotentSpecJvm extends munit.CatsEffectSuite {
+final class LazyIdempotentSpecPar extends munit.CatsEffectSuite {
 
   test("race") {
     for {

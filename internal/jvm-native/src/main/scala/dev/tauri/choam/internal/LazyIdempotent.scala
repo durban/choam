@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 import LazyIdempotent.Initializer
 
-// Note: this class is duplicated on JVM/JS
+// Note: this class is duplicated on JVM-Native and JS
 private[choam] final class LazyIdempotent[A] private (i: Initializer[A]) {
 
   private[this] val holder: AtomicReference[AnyRef] =
