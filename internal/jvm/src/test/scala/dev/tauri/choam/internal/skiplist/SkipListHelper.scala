@@ -20,10 +20,10 @@ package internal
 package skiplist
 
 import cats.kernel.Order
+import cats.Applicative
 import cats.syntax.all._
 
 import org.scalacheck.{ Arbitrary, Gen }
-import org.scalacheck.cats.implicits._
 
 trait SkipListHelper {
 
@@ -42,6 +42,10 @@ trait SkipListHelper {
       } yield m
     }
   }
+
+  implicit private[this] final def applicativeForGen: Applicative[Gen] = {
+    SkipListHelper.applicativeForGen
+  }
 }
 
 object SkipListHelper {
@@ -56,5 +60,14 @@ object SkipListHelper {
     val lb = List.newBuilder[(K, V)]
     m.iterator.foreach { kv => lb += (kv) }
     lb.result()
+  }
+
+  private[SkipListHelper] val applicativeForGen: Applicative[Gen] = new Applicative[Gen] {
+
+    def pure[A](x: A): Gen[A] =
+      Gen.const(x)
+
+    def ap[A, B](ff: Gen[A => B])(fa: Gen[A]): Gen[B] =
+      ff.flatMap { f => fa.map(f) }
   }
 }

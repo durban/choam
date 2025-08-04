@@ -384,7 +384,6 @@ lazy val internal = crossProject(JVMPlatform, JSPlatform)
   .settings(
     libraryDependencies ++= Seq(
       dependencies.catsKernel.value,
-      dependencies.catsScalacheck.value % TestInternal,
     ),
   )
 
@@ -954,8 +953,6 @@ lazy val dependencies = new {
       scalaJsTime.value,
     ) ++ zioEverything.value
   }
-
-  val catsScalacheck = Def.setting("io.chrisdavenport" %%% "cats-scalacheck" % "0.3.2") // https://github.com/davenverse/cats-scalacheck
 }
 
 lazy val stressTestNames = List[String](
