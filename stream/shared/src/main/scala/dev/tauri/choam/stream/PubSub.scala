@@ -321,22 +321,32 @@ object PubSub {
         missingCapacity: Int,
         canSuspend: Boolean,
       ): Rxn[HandleOverflowResult] = {
-        dropOldestN(underlying, missingCapacity) *> sizeRef.update(_ - missingCapacity).as(Retry)
+        dropOldestN(underlying, missingCapacity, Nil) *> sizeRef.update { oldSize =>
+          val newSize = oldSize - missingCapacity
+          _assert(newSize >= 0)
+          newSize
+        }.as(Retry)
       }
 
-      private[this] final def dropOldestN[A](underlying: UnboundedDeque[Chunk[A]], n: Int): Rxn[Unit] = {
+      private[this] final def dropOldestN[A](
+        underlying: UnboundedDeque[Chunk[A]],
+        n: Int,
+        putItBack: List[SignalChunk[_ <: A]],
+      ): Rxn[Unit] = {
         underlying.tryTakeLast.flatMap {
           case None =>
-            Rxn.unit
+            impossible(s"empty UnboundedDeque, but need to drop oldest ${n}")
+          case Some(chunk: SignalChunk[_]) =>
+            dropOldestN(underlying, n, chunk :: putItBack)
           case Some(chunk) =>
             val chunkSize = chunk.size
             if (chunkSize < n) {
-              dropOldestN(underlying, n - chunkSize)
+              dropOldestN(underlying, n - chunkSize, putItBack)
             } else if (chunkSize > n) {
-              val putItBack = chunk.drop(n)
-              underlying.addLast(putItBack)
+              val putItBack2 = chunk.drop(n)
+              underlying.addLast(putItBack2) *> putItBack.traverse_(underlying.addLast)
             } else { // chunkSize == n
-              Rxn.unit
+              putItBack.traverse_(underlying.addLast)
             }
         }
       }

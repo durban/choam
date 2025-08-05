@@ -65,6 +65,26 @@ trait PubSubSpecTicked[F[_]]
     } yield ()
   }
 
+  test("DropOldest - size computation") {
+    val str = dropOldest(1)
+    val t = for {
+      hub <- PubSub.simple[Int](str).run[F]
+      rr <- F.both(
+        hub.subscribeWithInitial(str, Rxn.pure(0)).compile.toVector.start,
+        hub.emit(1).run *> hub.emit(2).run,
+      )
+      (fib, _) = rr
+      _ <- this.tickAll
+      _ <- hub.close.run[F]
+      r <- fib.joinWithNever
+      _ <- assertF(
+        (r == Vector(0)) || (r == Vector(0, 1)) || (r == Vector(0, 2)) || (r == Vector(0, 1, 2)),
+        s"unexpected result: ${r}"
+      )
+    } yield ()
+    t.replicateA_(if (isJvm()) 500 else 10)
+  }
+
   commonTests("DropNewest", dropNewest(64))
   droppingTests("DropNewest", dropNewest(4), 4)
   noBackpressureTests("DropNewest", dropNewest(64))
