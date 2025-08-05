@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package stream
 
-import java.util.concurrent.ThreadLocalRandom
+import java.util.concurrent.{ ThreadLocalRandom, TimeoutException }
 
 import scala.concurrent.duration._
 
@@ -50,6 +50,20 @@ trait PubSubSpec[F[_]]
   commonTests("Unbounded", PubSub.OverflowStrategy.unbounded)
   commonTests("Backpressure", PubSub.OverflowStrategy.backpressure(BS))
 
+  private def waitForSubscribers[A](hub: PubSub.Subscribe[A], expectedSubscribers: Int): F[Unit] = {
+    val once: F[Unit] = hub.numberOfSubscriptions.run[F].flatMap { numSubs =>
+      if (numSubs >= expectedSubscribers) F.unit
+      else F.raiseError[Unit](new TimeoutException(s"only ${numSubs} subscribers instead of the expected ${expectedSubscribers}"))
+    }
+    fs2.Stream.retry(
+      once,
+      delay = 0.1.second,
+      nextDelay = { d => d * 2 },
+      maxAttempts = 7,
+      retriable = _.isInstanceOf[TimeoutException],
+    ).compile.onlyOrError
+  }
+
   private def commonTests(name: String, str: PubSub.OverflowStrategy): Unit = {
 
     test(s"$name - racing publishers (bufferSize = $BS)") {
@@ -61,7 +75,7 @@ trait PubSubSpec[F[_]]
         hub <- PubSub.simple[Int](str).run[F]
         f1 <- hub.subscribe.compile.toVector.start
         f2 <- hub.subscribeWithInitial(str, Rxn.pure(0)).compile.toVector.start
-        _ <- F.sleep(1.second) // wait for subscription to happen
+        _ <- waitForSubscribers(hub, 2)
         rr <- F.both(
           F.cede *> nums.traverse(i => hub.emit(i).run[F]),
           F.cede *> nums.traverse(i => hub.emit(-i).run[F]),
@@ -98,7 +112,7 @@ trait PubSubSpec[F[_]]
         hub <- PubSub.simple[Int](str2).run[F]
         f1 <- hub.subscribe.evalTap { _ => if (ThreadLocalRandom.current().nextBoolean()) F.cede else F.unit }.compile.toVector.start
         f2 <- hub.subscribe.compile.toVector.start
-        _ <- F.sleep(1.second) // wait for subscription to happen
+        _ <- waitForSubscribers(hub, 2)
         _ <- F.both(
           F.cede *> nums.traverse_(i => hub.emit(i).run[F]),
           F.cede *> nums.traverse_(i => hub.emit(-i).run[F]),
