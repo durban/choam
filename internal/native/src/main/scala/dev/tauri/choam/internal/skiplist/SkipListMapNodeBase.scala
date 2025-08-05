@@ -38,6 +38,11 @@ private[skiplist] abstract class SkipListMapNodeBase[V, N <: SkipListMapNodeBase
   @unused private[this] var value: AnyRef = box(v)
   @unused private[this] var next: N = n
 
+  protected[this] final def yesWeNeedTheseFieldsEvenOnDotty(): Unit = {
+    this.value
+    this.next
+  }
+
   @alwaysinline
   private[this] final def atomicValue: AtomicRef[AnyRef] = {
     fromRawPtr[AnyRef](Intrinsics.classFieldRawPtr(this, "value")).atomic
