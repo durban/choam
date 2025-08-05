@@ -25,7 +25,7 @@ import cats.effect.unsafe.{ IORuntime, IORuntimeBuilder }
 import munit.CatsEffectSuite
 
 /**
- * Note: this class is duplicated on JVM/JS
+ * Note: this class is duplicated on JVM/Native and JS
  *
  * We make our own `CatsEffectSuite`, because some of
  * the defaults are not good for us: (1) the default

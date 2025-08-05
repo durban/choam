@@ -432,9 +432,8 @@ private[choam] final class SkipListMap[K, V]()(implicit K: Order[K])
             val v = p.getValue()
             if (p.isMarker || isTOMB(v)) {
               // marker or deleted node, unlink it:
-              q.casRight(r, r.getRight())
+              q.casRight(r, r.getRight()) : Unit
               // and will retry going right
-              ()
             } else {
               val c = cpr(key, p.key)
               if (c > 0) {
@@ -508,7 +507,7 @@ private[choam] final class SkipListMap[K, V]()(implicit K: Order[K])
       val p = r.node
       if (p.isMarker || p.isDeleted()) {
         // marker or deleted node, unlink it:
-        q.casRight(r, r.getRight())
+        q.casRight(r, r.getRight()) : Unit
         // and retry:
         walkRight(q, key)
       } else if (cpr(key, p.key) > 0) {
@@ -723,7 +722,7 @@ private[choam] final class SkipListMap[K, V]()(implicit K: Order[K])
             val p = r.node
             if (p.isMarker || p.isDeleted()) {
               // clean deleted node:
-              q.casRight(r, r.getRight())
+              q.casRight(r, r.getRight()) : Unit
               c = 0
             } else {
               c = cpr(z.key, p.key)
@@ -823,9 +822,8 @@ private[choam] final class SkipListMap[K, V]()(implicit K: Order[K])
       }
 
       val p = mark()
-      b.casNext(n, p)
+      b.casNext(n, p) : Unit
       // if this CAS failed, someone else already unlinked the marked `n`
-      ()
     }
   }
 
