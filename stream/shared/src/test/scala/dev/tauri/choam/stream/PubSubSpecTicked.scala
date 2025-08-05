@@ -118,7 +118,7 @@ trait PubSubSpecTicked[F[_]]
   private def commonTests(name: String, str: OverflowStrategy): Unit = {
 
     test(s"$name - basics") {
-      for {
+      val t = for {
         hub <- PubSub.simple[Int](str).run[F]
         f1 <- hub.subscribe.compile.toVector.start
         f2 <- hub.subscribe.take(3).compile.toVector.start
@@ -133,10 +133,11 @@ trait PubSubSpecTicked[F[_]]
         _ <- assertResultF(f1.joinWithNever, Vector(1, 2, 3, 4, 5, 6))
         _ <- assertResultF(f3.joinWithNever, Vector(2, 3, 4, 5, 6, 7))
       } yield ()
+      t.replicateA_(if (isJvm()) 50 else 5)
     }
 
     test(s"$name - closing") {
-      for {
+      val t = for {
         hub <- PubSub.simple[Int](str).run[F]
         f1 <- hub.subscribe.compile.toVector.start
         f2 <- hub.subscribe.take(3).compile.toVector.start
@@ -154,10 +155,11 @@ trait PubSubSpecTicked[F[_]]
         _ <- assertResultF(hub.close.run[F], PubSub.Closed)
         _ <- assertResultF(hub.subscribe.compile.toVector, Vector.empty)
       } yield ()
+      t.replicateA_(if (isJvm()) 50 else 5)
     }
 
     test(s"$name - closing without subscribers") {
-      for {
+      val t = for {
         hub <- PubSub.simple[Int](str).run[F]
         f1 <- hub.subscribe.take(1).compile.toVector.start
         f2 <- hub.subscribe.take(3).compile.toVector.start
@@ -174,10 +176,11 @@ trait PubSubSpecTicked[F[_]]
         _ <- assertResultF(hub.emitChunk(Chunk(2)).run[F], PubSub.Closed)
         _ <- assertResultF(hub.close.run[F], PubSub.Closed)
       } yield ()
+      t.replicateA_(if (isJvm()) 50 else 5)
     }
 
     test(s"$name - awaitShutdown") {
-      for {
+      val t = for {
         hub <- PubSub.simple[Int](str).run[F]
         ctr <- F.ref[Int](0)
         f1 <- hub.subscribe.take(4).evalTap(_ => ctr.update(_ + 1)).compile.toVector.start
@@ -197,10 +200,11 @@ trait PubSubSpecTicked[F[_]]
         _ <- assertResultF(f3.joinWithNever, Vector(1, 2, 3, 4, 5))
         _ <- assertResultF(hub.close.run[F], PubSub.Closed)
       } yield ()
+      t.replicateA_(if (isJvm()) 50 else 5)
     }
 
     test(s"$name - subscribe with non-default strategy") {
-      for {
+      val t = for {
         hub <- PubSub.simple[Int](str).run[F]
         f1 <- hub.subscribe.compile.toVector.start
         f2 <- hub.subscribe(dropOldest(1)).evalTap(_ => F.sleep(0.1.second)).compile.toVector.start
@@ -214,10 +218,11 @@ trait PubSubSpecTicked[F[_]]
         // whatever `f1` does, `f2` must use `dropOldest(1)`:
         _ <- assertResultF(f2.joinWithNever, Vector(1, 3))
       } yield ()
+      t.replicateA_(if (isJvm()) 50 else 5)
     }
 
     test(s"$name - numberOfSubscriptions") {
-      for {
+      val t = for {
         hub <- PubSub.simple[Int](str).run[F]
         _ <- assertResultF(hub.numberOfSubscriptions.run, 0)
         f1 <- hub.subscribe.compile.toVector.start
@@ -247,10 +252,11 @@ trait PubSubSpecTicked[F[_]]
         _ <- assertResultF(f2.joinWithNever, Vector(1, 2, 3))
         _ <- assertResultF(f3.joinWithNever, Vector(2, 3))
       } yield ()
+      t.replicateA_(if (isJvm()) 50 else 5)
     }
 
     test(s"$name - initial Rxn should run for each subscription") {
-      for {
+      val t = for {
         hub <- PubSub.simple[Int](str).run[F]
         ctr <- Ref[Int](0).run[F]
         vec = hub.subscribeWithInitial(str, ctr.getAndUpdate(_ + 1)).compile.toVector
@@ -268,13 +274,14 @@ trait PubSubSpecTicked[F[_]]
         _ <- assertResultF(fib3.joinWithNever, Vector(2, 42))
         _ <- assertResultF(ctr.get.run, 3)
       } yield ()
+      t.replicateA_(if (isJvm()) 50 else 5)
     }
 
     test(s"$name - chunk bigger than capacity is an error") {
       val bsize = str.fold(-1, s => s, s => s, s => s)
       this.assume(bsize != -1)
       val ch = Chunk.from((1 to (bsize + 1)).toList)
-      for {
+      val t = for {
         hub <- PubSub.simple[Int](str).run[F]
         fib <- hub.subscribe.compile.toList.start
         _ <- this.tickAll
@@ -284,6 +291,7 @@ trait PubSubSpecTicked[F[_]]
         _ <- hub.close.run
         _ <- assertResultF(fib.joinWithNever, List(42))
       } yield ()
+      t.replicateA_(if (isJvm()) 50 else 5)
     }
   }
 
@@ -294,7 +302,7 @@ trait PubSubSpecTicked[F[_]]
   ): Unit = {
 
     test(s"$name - closing mustn't conflict with item dropping") {
-      for {
+      val t = for {
         _ <- assertF(bufferSize > 2)
         hub <- PubSub.simple[Int](str).run[F]
         fib <- hub.subscribe.compile.toVector.start
@@ -305,10 +313,11 @@ trait PubSubSpecTicked[F[_]]
         vec <- fib.joinWithNever
         _ <- assertEqualsF(vec, (1 to bufferSize).toVector)
       } yield ()
+      t.replicateA_(if (isJvm()) 50 else 5)
     }
 
     test(s"$name - Initial element mustn't count against the buffer size") {
-      for {
+      val t = for {
         _ <- assertF(bufferSize > 2)
         hub <- PubSub.simple[Int](str).run[F]
         latch <- Promise[Unit].run
@@ -317,6 +326,7 @@ trait PubSubSpecTicked[F[_]]
         _ <- hub.close.run
         _ <- assertResultF(fib.joinWithNever, 0 +: (1 to bufferSize).toVector)
       } yield ()
+      t.replicateA_(if (isJvm()) 50 else 5)
     }
   }
 
