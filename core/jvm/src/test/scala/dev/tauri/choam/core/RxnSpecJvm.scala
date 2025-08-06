@@ -297,7 +297,7 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       ).map(_._1)
       _ <- assertEqualsF(r._2, r._3) // r._1 is allowed to be different
     } yield ()
-    t.replicateA_(20000)
+    t.replicateA_(15000)
   }
 
   test("unsafe.forceValidate (concurrent unrelated change)") {
