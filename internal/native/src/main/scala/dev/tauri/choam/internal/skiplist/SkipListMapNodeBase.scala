@@ -39,8 +39,8 @@ private[skiplist] abstract class SkipListMapNodeBase[V, N <: SkipListMapNodeBase
   @unused private[this] var next: N = n
 
   protected[this] final def yesWeNeedTheseFieldsEvenOnDotty(): Unit = {
-    this.value
-    this.next
+    this.value : Unit
+    this.next : Unit
   }
 
   @alwaysinline
