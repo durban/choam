@@ -92,21 +92,17 @@ trait PubSubSpec[F[_]]
         _ <- assertEqualsF(v1.toSet, expSet)
         _ <- checkOrder(v1, str)
       } yield ()
-      t.replicateA_(if (isJs()) 1 else 5)
+      t.replicateA_(if (isJs()) 1 else 50)
     }
 
     test(s"$name - racing publishers (bufferSize = 1)") {
       val N = 512
       val nums = (1 to N).toVector
-      val defaultRepl = 5
-      val (str2, repl) = str.fold(
-        unbounded = (
-          str, // can't set buffer size
-          30, // we repeat the unbounded test more times (because it has a small chance of failing if markers are mishandled)
-        ),
-        backpressure = _ => (OverflowStrategy.backpressure(1), defaultRepl),
-        dropOldest = _ => (OverflowStrategy.dropOldest(1), defaultRepl),
-        dropNewest = _ => (OverflowStrategy.dropNewest(1), defaultRepl),
+      val str2 = str.fold(
+        unbounded = str, // can't set buffer size
+        backpressure = _ => OverflowStrategy.backpressure(1),
+        dropOldest = _ => OverflowStrategy.dropOldest(1),
+        dropNewest = _ => OverflowStrategy.dropNewest(1),
       )
       val t = for {
         hub <- PubSub.simple[Int](str2).run[F]
@@ -130,7 +126,73 @@ trait PubSubSpec[F[_]]
         _ <- checkOrder(v1, str2) // we may lose items, but the order must be correct
         _ <- checkOrder(v2, str2) // we may lose items, but the order must be correct
       } yield ()
-      t.replicateA_(if (isJs()) 1 else repl)
+      t.replicateA_(if (isJs()) 1 else 50)
+    }
+
+    test(s"$name - subscribe/close race") {
+      val t = for {
+        hub <- PubSub.simple[Int](str).run[F]
+        rr <- F.both(
+          F.both(
+            hub.subscribeWithInitial(str, Rxn.pure(1)).compile.toVector.start,
+            hub.close.run,
+          ),
+          F.both(
+            hub.subscribeWithInitial(str, Rxn.pure(2)).compile.toVector.start,
+            hub.subscribeWithInitial(str, Rxn.pure(3)).compile.toVector.start,
+          ),
+        )
+        ((fib1, closeResult), (fib2, fib3)) = rr
+        _ <- if (closeResult eq PubSub.Backpressured) {
+          hub.awaitShutdown
+        } else {
+          assertEqualsF(closeResult, PubSub.Success)
+        }
+        r1 <- fib1.joinWithNever
+        r2 <- fib2.joinWithNever
+        r3 <- fib3.joinWithNever
+        _ <- assertF((clue(r1) == Vector()) || (r1 == Vector(1)))
+        _ <- assertF((clue(r2) == Vector()) || (r2 == Vector(2)))
+        _ <- assertF((clue(r3) == Vector()) || (r3 == Vector(3)))
+      } yield ()
+      t.replicateA_(if (isJs()) 1 else 50)
+    }
+
+    test(s"$name - subscribe/close/publish race") {
+      val t = for {
+        hub <- PubSub.simple[Int](str).run[F]
+        rr <- F.both(
+          F.both(
+            hub.subscribeWithInitial(str, Rxn.pure(1)).compile.toVector.start,
+            hub.emit(9).run,
+          ),
+          F.both(
+            hub.subscribeWithInitial(str, Rxn.pure(2)).compile.toVector.start,
+            F.cede *> hub.close.run,
+          ),
+        )
+        ((fib1, emitResult), (fib2, closeResult)) = rr
+        _ <- if (closeResult eq PubSub.Backpressured) {
+          hub.awaitShutdown
+        } else {
+          assertEqualsF(closeResult, PubSub.Success)
+        }
+        r1 <- fib1.joinWithNever
+        r2 <- fib2.joinWithNever
+        _ <- if (emitResult eq PubSub.Closed) {
+          for {
+            _ <- assertF((clue(r1) == Vector()) || (r1 == Vector(1)))
+            _ <- assertF((clue(r2) == Vector()) || (r2 == Vector(2)))
+          } yield ()
+        } else {
+          for {
+            _ <- assertEqualsF(emitResult, PubSub.Success)
+            _ <- assertF((clue(r1) == Vector()) || (r1 == Vector(1)) || (r1 == Vector(1, 9)))
+            _ <- assertF((clue(r2) == Vector()) || (r2 == Vector(2)) || (r2 == Vector(2, 9)))
+          } yield ()
+        }
+      } yield ()
+      t.replicateA_(if (isJs()) 1 else 50)
     }
   }
 
