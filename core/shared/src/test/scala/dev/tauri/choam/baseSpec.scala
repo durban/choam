@@ -168,10 +168,10 @@ abstract class BaseSpecIO
     ) +: super.munitValueTransforms
   }
 
-  private[this] def dumpFibers: IO[Unit] = {
+  private[this] final def dumpFibers: IO[Unit] = {
     import scala.language.reflectiveCalls
     type FiberMonitor = {
-      def liveFiberSnapshot(print: String => Unit): Unit
+      def printLiveFiberSnapshot(print: String => Unit): Unit
     }
     type FmHolder = {
       val fiberMonitor: FiberMonitor
@@ -181,7 +181,7 @@ abstract class BaseSpecIO
         .munitIORuntime
         .asInstanceOf[FmHolder]
         .fiberMonitor
-        .liveFiberSnapshot(System.err.print(_))
+        .printLiveFiberSnapshot(System.err.print(_))
     }
   }
 }
