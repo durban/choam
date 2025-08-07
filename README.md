@@ -262,6 +262,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
   - `choam-docs`
   - (and all unpublished modules)
 - There is no backwards compatibility for "hash" versions (e.g., `0.4-39d987a` or `0.4.3-2-39d987a`).
+- See also the next section (platforms).
 
 ### Supported platforms:
 
@@ -276,6 +277,9 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
     - provided to make cross-compiling easier for projects which use CHOAM
     - for secure random number generation, a `java.security.SecureRandom`
       implementation needs to be available (see [here](https://github.com/scala-js/scala-js-java-securerandom))
+  - Scala Native:
+    - support is completely experimental
+    - no backwards compatibility
 - Scala versions: cross-compiled for 2.13 and 3.3
 
 ### Lock-freedom
