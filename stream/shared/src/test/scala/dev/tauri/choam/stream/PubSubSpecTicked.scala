@@ -91,7 +91,7 @@ trait PubSubSpecTicked[F[_]]
   singleElementBufferTests("DropNewest", dropNewest(1))
 
   test("DropNewest - should drop newest elements") {
-    for {
+    val t = for {
       hub <- PubSub.simple[Int](dropNewest(3)).run[F]
       fast <- hub.subscribe.evalTap(_ => F.sleep(0.1.second)).compile.toVector.start
       slow <- hub.subscribe.evalTap(_ => F.sleep(1.second)).compile.toVector.start
@@ -107,6 +107,7 @@ trait PubSubSpecTicked[F[_]]
       _ <- assertResultF(fast.joinWithNever, Vector(1, 2, 3, 4, 6, 7))
       _ <- assertResultF(slow.joinWithNever, Vector(1, 2, 3, 4))
     } yield ()
+    t.replicateA_(if (isJvm()) 50 else 5)
   }
 
   commonTests("Unbounded", unbounded)
@@ -114,6 +115,57 @@ trait PubSubSpecTicked[F[_]]
 
   commonTests("Backpressure", backpressure(64))
   singleElementBufferTests("Backpressure", backpressure(1))
+
+  test("Backpressure - backpressuring") {
+    val t = for {
+      hub <- PubSub.simple[Int](backpressure(3)).run[F]
+      fast <- hub.subscribe.evalTap(_ => F.sleep(0.1.second)).compile.toVector.start
+      slow <- hub.subscribe.evalTap(_ => F.sleep(1.second)).compile.toVector.start
+      _ <- this.tickAll // wait for subscriptions to happen
+      _ <- assertResultF(hub.emit(1).run, PubSub.Success)
+      _ <- this.tick // make sure they receive the 1st, and then start to sleep
+      _ <- assertResultF(hub.emitChunk(Chunk(2, 3)).run, PubSub.Success)
+      _ <- assertResultF(hub.emit(4).run, PubSub.Success) // buffers full
+      _ <- assertResultF(hub.emit(5).run, PubSub.Backpressured) // can't publish this
+      _ <- this.advanceAndTick(0.1.second) // `fast` can dequeue
+      _ <- assertResultF(hub.emit(6).run, PubSub.Backpressured) // still can't (all or nothing)
+      _ <- this.tickAll // consume items
+      _ <- assertResultF(hub.emitChunk(Chunk(10, 11, 12)).run, PubSub.Success)
+      _ <- assertResultF(hub.close.run, PubSub.Backpressured)
+      _ <- assertResultF(fast.joinWithNever, Vector(1, 2, 3, 4, 10, 11, 12))
+      _ <- assertResultF(slow.joinWithNever, Vector(1, 2, 3, 4, 10, 11, 12))
+    } yield ()
+    t.replicateA_(if (isJvm()) 50 else 5)
+  }
+
+  test("Backpressure (async) - backpressuring") {
+    val t = for {
+      hub <- PubSub.async[Int](backpressure(3)).run[F]
+      fast <- hub.subscribe.evalTap(_ => F.sleep(0.1.second)).compile.toVector.start
+      slow <- hub.subscribe.evalTap(_ => F.sleep(1.second)).compile.toVector.start
+      _ <- this.tickAll // wait for subscriptions to happen
+      _ <- assertResultF(hub.publish(1), PubSub.Success)
+      _ <- this.tick // make sure they receive the 1st, and then start to sleep
+      _ <- assertResultF(hub.publishChunk(Chunk(2, 3)), PubSub.Success)
+      _ <- assertResultF(hub.publish(4), PubSub.Success) // buffers full
+      d <- F.deferred[Unit]
+      // this will suspend:
+      fib <- F.uncancelable { poll =>
+        poll(hub.publish(5)).flatMap { _ => d.complete(()) }
+      }.start
+      _ <- this.tick
+      _ <- assertResultF(d.tryGet, None) // still suspended
+      _ <- this.advanceAndTick(0.1.second) // `fast` can dequeue
+      _ <- assertResultF(d.tryGet, None) // but still suspended
+      _ <- this.tickAll // consume all items
+      _ <- fib.joinWithNever
+      _ <- assertResultF(hub.publishChunk(Chunk(10, 11, 12)), PubSub.Success)
+      _ <- assertResultF(hub.close.run, PubSub.Backpressured)
+      _ <- assertResultF(fast.joinWithNever, Vector(1, 2, 3, 4, 5, 10, 11, 12))
+      _ <- assertResultF(slow.joinWithNever, Vector(1, 2, 3, 4, 5, 10, 11, 12))
+    } yield ()
+    t.replicateA_(if (isJvm()) 50 else 5)
+  }
 
   private def commonTests(name: String, str: OverflowStrategy): Unit = {
 
@@ -129,6 +181,25 @@ trait PubSubSpecTicked[F[_]]
         _ <- assertResultF(f2.joinWithNever, Vector(1, 2, 3))
         _ <- assertResultF(hub.emit(4).run[F], PubSub.Success)
         _ <- assertResultF(hub.emitChunk(Chunk(5, 6)).run[F], PubSub.Success)
+        _ <- assertResultF(hub.close.run[F], PubSub.Backpressured)
+        _ <- assertResultF(f1.joinWithNever, Vector(1, 2, 3, 4, 5, 6))
+        _ <- assertResultF(f3.joinWithNever, Vector(2, 3, 4, 5, 6, 7))
+      } yield ()
+      t.replicateA_(if (isJvm()) 50 else 5)
+    }
+
+    test(s"$name (async) - basics") {
+      val t = for {
+        hub <- PubSub.async[Int](str).run[F]
+        f1 <- hub.subscribe.compile.toVector.start
+        f2 <- hub.subscribe.take(3).compile.toVector.start
+        f3 <- hub.subscribe.map(_ + 1).compile.toVector.start
+        _ <- this.tickAll // wait for subscriptions to happen
+        _ <- assertResultF(hub.publish(1), PubSub.Success)
+        _ <- assertResultF(hub.publishChunk(Chunk(2, 3)), PubSub.Success)
+        _ <- assertResultF(f2.joinWithNever, Vector(1, 2, 3))
+        _ <- assertResultF(hub.publish(4), PubSub.Success)
+        _ <- assertResultF(hub.publishChunk(Chunk(5, 6)), PubSub.Success)
         _ <- assertResultF(hub.close.run[F], PubSub.Backpressured)
         _ <- assertResultF(f1.joinWithNever, Vector(1, 2, 3, 4, 5, 6))
         _ <- assertResultF(f3.joinWithNever, Vector(2, 3, 4, 5, 6, 7))

@@ -77,26 +77,38 @@ object PubSub {
     overflowStr: OverflowStrategy,
     allocStr: Ref.AllocationStrategy,
   ): Rxn[PubSub.Simple[A]] = {
+    impl(overflowStr, allocStr, publishCanSuspend = false)
+  }
+
+  final def async[A](
+    overflowStr: OverflowStrategy,
+  ): Rxn[PubSub[A]] = {
+    async(overflowStr, Ref.AllocationStrategy.Default)
+  }
+
+  final def async[A](
+    overflowStr: OverflowStrategy,
+    allocStr: Ref.AllocationStrategy,
+  ): Rxn[PubSub[A]] = {
+    impl(overflowStr, allocStr, publishCanSuspend = true)
+  }
+
+  private[this] final def impl[A](
+    overflowStr: OverflowStrategy,
+    allocStr: Ref.AllocationStrategy,
+    publishCanSuspend: Boolean,
+  ): Rxn[PubSub[A]] = {
     // TODO: if `str` is padded, this AtomicLong should also be padded
     Rxn.unsafe.delay { new AtomicLong }.flatMap { nextId =>
       Ref(LongMap.empty[Subscription[A, _]], allocStr).flatMap { subscriptions =>
         Ref(false, allocStr).flatMap { isClosed =>
           Promise[Unit](allocStr).map { awaitClosed =>
-            new SimplePubSubImpl[A](nextId, subscriptions, isClosed, awaitClosed, overflowStr)
+            new PubSubImpl[A](nextId, subscriptions, isClosed, awaitClosed, overflowStr, publishCanSuspend)
           }
         }
       }
     }
   }
-
-  final def async[A](
-    overflowStr: OverflowStrategy,
-  ): Rxn[PubSub[A]] = sys.error("TODO")
-
-  final def async[A](
-    overflowStr: OverflowStrategy,
-    allocStr: Ref.AllocationStrategy,
-  ): Rxn[PubSub[A]] = sys.error("TODO")
 
   sealed abstract class Result
   // TODO: sealed abstract class ClosedOrSuccess extends Result
@@ -377,13 +389,14 @@ object PubSub {
 
   private[this] final class SuspWith[A](val subs: Subscription[A, _], val cleanup: Rxn[Unit])
 
-  private[this] final class SimplePubSubImpl[A](
+  private[this] final class PubSubImpl[A](
     nextId: AtomicLong,
     val subscriptions: Ref[LongMap[Subscription[A, _]]],
     val isClosed: Ref[Boolean],
     awaitClosed: Promise[Unit],
     defaultStrategy: OverflowStrategy,
-  ) extends PubSub.Simple[A] with HandleSubscriptions {
+    publishCanSuspend: Boolean,
+  ) extends PubSub[A] with HandleSubscriptions {
 
     final override def subscribe[F[_]](implicit F: AsyncReactive[F]): Stream[F, A] =
       this.subscribe(this.defaultStrategy)
@@ -405,7 +418,7 @@ object PubSub {
             if (isClosed) {
               Rxn.pure(null : Subscription[A, B])
             } else {
-              strategy.newBuffer[F, B](canSuspend = false).flatMap { buf =>
+              strategy.newBuffer[F, B](canSuspend = publishCanSuspend).flatMap { buf =>
                 initial.flatMap { elem => buf.enqueueSignal(signalChunk(elem)) } *> {
                   val subs = new Subscription[B, B](id, buf, sp, this)
                   subscriptions.update(_.updated(id, subs)).as(subs)
@@ -454,7 +467,12 @@ object PubSub {
       }
     }
 
-    final def asyncEmitChunk[F[_]](ch: Chunk[A])(implicit F: AsyncReactive[F]): F[Result] = {
+    final override def publish[F[_]: AsyncReactive](a: A): F[PubSub.Result] = {
+      publishChunk(Chunk.singleton(a))
+    }
+
+    final override def publishChunk[F[_]](ch: Chunk[A])(implicit F: AsyncReactive[F]): F[PubSub.Result] = {
+      _assert(publishCanSuspend)
       F.asyncInst.uncancelable { poll =>
         asyncEmitChunkImpl(ch, wasSuspendedWith = null, poll = poll)
       }
@@ -557,7 +575,13 @@ object PubSub {
               }
             )
           }
-        ).onCancel(wasSuspendedWith.publishChunkOrSuspendFallback(asyncFinalizerDone).run)
+        ).onCancel {
+          if (wasSuspendedWith ne null) {
+            wasSuspendedWith.publishChunkOrSuspendFallback(asyncFinalizerDone).run
+          } else {
+            FF.unit
+          }
+        }
       }.flatMap {
         case Left(subs) =>
           asyncEmitChunkImpl(
