@@ -716,7 +716,7 @@ object PubSub {
   ) {
 
     final def enqueueSignal(chunk: SignalChunk[A]): Rxn[Success.type] = {
-      wl.trySet(chunk).map { ok =>
+      wl.trySetDirectly(chunk).map { ok =>
         _assert(ok)
         Success
       }

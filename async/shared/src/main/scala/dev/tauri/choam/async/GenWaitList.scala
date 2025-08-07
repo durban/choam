@@ -30,6 +30,8 @@ private[choam] sealed trait GenWaitList[A] { self =>
 
   def trySet(a: A): Rxn[Boolean]
 
+  def trySetDirectly(a: A): Rxn[Boolean]
+
   def tryGet: Rxn[Option[A]]
 
   def asyncSet[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit]
@@ -47,6 +49,9 @@ private[choam] sealed trait WaitList[A] extends GenWaitList[A] { self =>
   def set(a: A): Rxn[Boolean]
 
   final override def trySet(a: A): Rxn[Boolean] =
+    this.set(a).as(true)
+
+  final override def trySetDirectly(a: A): Rxn[Boolean] =
     this.set(a).as(true)
 
   final override def asyncSet[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] = {
@@ -134,6 +139,8 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
           gwl.tryGet
         final override def trySet(a: A): Rxn[Boolean] =
           gwl.trySet(a)
+        final override def trySetDirectly(a: A): Rxn[Boolean] =
+          gwl.trySetDirectly(a)
       }
     }
   }
@@ -313,6 +320,10 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
     setters: RemoveQueue[Either[Throwable, Unit] => Unit],
   ) extends GenWaitListCommon[A] { self =>
 
+    final override def trySetDirectly(a: A): Rxn[Boolean] = {
+      trySetUnderlying(a)
+    }
+
     final override def trySet(a: A): Rxn[Boolean] = {
       setters.isEmpty.flatMap { noSetters =>
         if (noSetters) {
@@ -402,7 +413,7 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
     }
 
     final override def asyncSetCb(a: A, cb: Either[Throwable, Unit] => Unit, firstTry: Boolean, flag: Flag): Rxn[Either[Rxn[Unit], Unit]] = {
-      val ts = if (firstTry) self.trySet(a) else self.trySetUnderlying(a)
+      val ts = if (firstTry) self.trySet(a) else self.trySetDirectly(a)
       ts.flatMap { ok =>
         if (ok) {
           // we're basically done, but might need to wake a getter:

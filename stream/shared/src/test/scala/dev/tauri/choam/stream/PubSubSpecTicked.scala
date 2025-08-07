@@ -214,7 +214,12 @@ trait PubSubSpecTicked[F[_]]
         _ <- assertResultF(hub.emit(5).run[F], PubSub.Success)
         _ <- assertResultF(hub.close.run[F], PubSub.Backpressured)
         _ <- assertResultF(hub.close.run[F], PubSub.Closed)
-        _ <- hub.awaitShutdown
+        shutDown <- F.deferred[Unit]
+        awaitFib <- F.uncancelable { poll => poll(hub.awaitShutdown).flatMap { _ => shutDown.complete(()) } }.start
+        _ <- this.tick
+        _ <- assertResultF(shutDown.tryGet, None)
+        _ <- shutDown.get
+        _ <- awaitFib.joinWithNever
         _ <- assertResultF(ctr.get, 4 + (2 * 5))
         _ <- assertResultF(f1.joinWithNever, Vector(1, 2, 3, 4))
         _ <- assertResultF(f2.joinWithNever, Vector(1, 2, 3, 4, 5))
