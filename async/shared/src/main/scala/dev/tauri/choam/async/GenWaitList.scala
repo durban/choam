@@ -250,6 +250,9 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
                 case Some(a) =>
                   // in GenWaitList, we may need to notify a setter now:
                   if ((!isFirstTry) && (settersOrNull ne null)) {
+                    // we need to do this, because here we did not
+                    // go through `tryGet` (which would've done this
+                    // automatically):
                     wakeUpNextWaiter(settersOrNull).as(Right(a))
                   } else {
                     Rxn.pure(Right(a))
@@ -321,7 +324,10 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
   ) extends GenWaitListCommon[A] { self =>
 
     final override def trySetDirectly(a: A): Rxn[Boolean] = {
-      trySetUnderlying(a)
+      trySetUnderlying(a).flatTap { ok =>
+        if (ok) wakeUpNextWaiter(getters)
+        else Rxn.unit
+      }
     }
 
     final override def trySet(a: A): Rxn[Boolean] = {
@@ -416,12 +422,7 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
       val ts = if (firstTry) self.trySet(a) else self.trySetDirectly(a)
       ts.flatMap { ok =>
         if (ok) {
-          // we're basically done, but might need to wake a getter:
-          if (!firstTry) {
-            wakeUpNextWaiter(getters).as(RightUnit)
-          } else {
-            Rxn.rightUnit
-          }
+          Rxn.rightUnit
         } else {
           setters.enqueueWithRemover(cb).map { remover =>
             val cancel: Rxn[Unit] = remover.flatMap { ok =>
