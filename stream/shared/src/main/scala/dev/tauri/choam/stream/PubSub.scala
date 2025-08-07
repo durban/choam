@@ -723,9 +723,16 @@ object PubSub {
     }
 
     final def enqueueOrRetry(chunk: Chunk[A]): Rxn[Success.type] = {
-      wl.trySet(chunk).map { ok =>
-        _assert(ok)
-        Success
+      wl.trySet(chunk).flatMap { ok =>
+        if (ok) {
+          _axnSuccess
+        } else {
+          // this means we're in an _async_ `PubSub`, but in this
+          // case we can't suspend the fiber; but no problem, we're
+          // being called from `emitChunk`, whic expects a retry to
+          // handle this case:
+          Rxn.unsafe.retryStm
+        }
       }
     }
 

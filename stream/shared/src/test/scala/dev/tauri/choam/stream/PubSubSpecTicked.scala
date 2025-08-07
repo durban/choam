@@ -21,7 +21,6 @@ package stream
 import scala.concurrent.duration._
 
 import cats.effect.kernel.Outcome
-import cats.effect.IO
 import fs2.Chunk
 
 import core.{ Rxn, Ref }
@@ -30,13 +29,12 @@ import async.Promise
 import PubSub.OverflowStrategy
 import PubSub.OverflowStrategy.{ dropOldest, dropNewest, backpressure, unbounded }
 
-final class PubSubSpecTicked_DefaultMcas_IO
-  extends BaseSpecTickedIO
-  with SpecDefaultMcas
-  with PubSubSpecTicked[IO]
-
 trait PubSubSpecTicked[F[_]]
   extends BaseSpecAsyncF[F] { this: McasImplSpec & TestContextSpec[F] =>
+
+  protected[this] type H[A] <: PubSub.Simple[A]
+
+  protected[this] def newHub[A](str: PubSub.OverflowStrategy): F[H[A]]
 
   commonTests("DropOldest", dropOldest(64))
   droppingTests("DropOldest", dropOldest(4), 4)
@@ -46,7 +44,7 @@ trait PubSubSpecTicked[F[_]]
   test("DropOldest - should drop oldest elements") {
     val str = dropOldest(3)
     for {
-      hub <- PubSub.simple[Int](str).run[F]
+      hub <- newHub[Int](str)
       fast <- hub.subscribe.evalTap(_ => F.sleep(0.1.second)).compile.toVector.start
       slow <- hub.subscribe.evalTap(_ => F.sleep(1.second)).compile.toVector.start
       withInit <- hub.subscribeWithInitial(str, Rxn.pure(0)).evalTap(_ => F.sleep(0.5.second)).compile.toVector.start
@@ -68,7 +66,7 @@ trait PubSubSpecTicked[F[_]]
   test("DropOldest - size computation") {
     val str = dropOldest(1)
     val t = for {
-      hub <- PubSub.simple[Int](str).run[F]
+      hub <- newHub[Int](str)
       rr <- F.both(
         hub.subscribeWithInitial(str, Rxn.pure(0)).compile.toVector.start,
         hub.emit(1).run *> hub.emit(2).run,
@@ -92,7 +90,7 @@ trait PubSubSpecTicked[F[_]]
 
   test("DropNewest - should drop newest elements") {
     val t = for {
-      hub <- PubSub.simple[Int](dropNewest(3)).run[F]
+      hub <- newHub[Int](dropNewest(3))
       fast <- hub.subscribe.evalTap(_ => F.sleep(0.1.second)).compile.toVector.start
       slow <- hub.subscribe.evalTap(_ => F.sleep(1.second)).compile.toVector.start
       _ <- this.tickAll // wait for subscriptions to happen
@@ -118,7 +116,7 @@ trait PubSubSpecTicked[F[_]]
 
   test("Backpressure - backpressuring") {
     val t = for {
-      hub <- PubSub.simple[Int](backpressure(3)).run[F]
+      hub <- newHub[Int](backpressure(3))
       fast <- hub.subscribe.evalTap(_ => F.sleep(0.1.second)).compile.toVector.start
       slow <- hub.subscribe.evalTap(_ => F.sleep(1.second)).compile.toVector.start
       _ <- this.tickAll // wait for subscriptions to happen
@@ -138,40 +136,11 @@ trait PubSubSpecTicked[F[_]]
     t.replicateA_(if (isJvm()) 50 else 5)
   }
 
-  test("Backpressure (async) - backpressuring") {
-    val t = for {
-      hub <- PubSub.async[Int](backpressure(3)).run[F]
-      fast <- hub.subscribe.evalTap(_ => F.sleep(0.1.second)).compile.toVector.start
-      slow <- hub.subscribe.evalTap(_ => F.sleep(1.second)).compile.toVector.start
-      _ <- this.tickAll // wait for subscriptions to happen
-      _ <- assertResultF(hub.publish(1), PubSub.Success)
-      _ <- this.tick // make sure they receive the 1st, and then start to sleep
-      _ <- assertResultF(hub.publishChunk(Chunk(2, 3)), PubSub.Success)
-      _ <- assertResultF(hub.publish(4), PubSub.Success) // buffers full
-      d <- F.deferred[Unit]
-      // this will suspend:
-      fib <- F.uncancelable { poll =>
-        poll(hub.publish(5)).flatMap { _ => d.complete(()) }
-      }.start
-      _ <- this.tick
-      _ <- assertResultF(d.tryGet, None) // still suspended
-      _ <- this.advanceAndTick(0.1.second) // `fast` can dequeue
-      _ <- assertResultF(d.tryGet, None) // but still suspended
-      _ <- this.tickAll // consume all items
-      _ <- fib.joinWithNever
-      _ <- assertResultF(hub.publishChunk(Chunk(10, 11, 12)), PubSub.Success)
-      _ <- assertResultF(hub.close.run, PubSub.Backpressured)
-      _ <- assertResultF(fast.joinWithNever, Vector(1, 2, 3, 4, 5, 10, 11, 12))
-      _ <- assertResultF(slow.joinWithNever, Vector(1, 2, 3, 4, 5, 10, 11, 12))
-    } yield ()
-    t.replicateA_(if (isJvm()) 50 else 5)
-  }
-
   private def commonTests(name: String, str: OverflowStrategy): Unit = {
 
     test(s"$name - basics") {
       val t = for {
-        hub <- PubSub.simple[Int](str).run[F]
+        hub <- newHub[Int](str)
         f1 <- hub.subscribe.compile.toVector.start
         f2 <- hub.subscribe.take(3).compile.toVector.start
         f3 <- hub.subscribe.map(_ + 1).compile.toVector.start
@@ -188,28 +157,9 @@ trait PubSubSpecTicked[F[_]]
       t.replicateA_(if (isJvm()) 50 else 5)
     }
 
-    test(s"$name (async) - basics") {
-      val t = for {
-        hub <- PubSub.async[Int](str).run[F]
-        f1 <- hub.subscribe.compile.toVector.start
-        f2 <- hub.subscribe.take(3).compile.toVector.start
-        f3 <- hub.subscribe.map(_ + 1).compile.toVector.start
-        _ <- this.tickAll // wait for subscriptions to happen
-        _ <- assertResultF(hub.publish(1), PubSub.Success)
-        _ <- assertResultF(hub.publishChunk(Chunk(2, 3)), PubSub.Success)
-        _ <- assertResultF(f2.joinWithNever, Vector(1, 2, 3))
-        _ <- assertResultF(hub.publish(4), PubSub.Success)
-        _ <- assertResultF(hub.publishChunk(Chunk(5, 6)), PubSub.Success)
-        _ <- assertResultF(hub.close.run[F], PubSub.Backpressured)
-        _ <- assertResultF(f1.joinWithNever, Vector(1, 2, 3, 4, 5, 6))
-        _ <- assertResultF(f3.joinWithNever, Vector(2, 3, 4, 5, 6, 7))
-      } yield ()
-      t.replicateA_(if (isJvm()) 50 else 5)
-    }
-
     test(s"$name - closing") {
       val t = for {
-        hub <- PubSub.simple[Int](str).run[F]
+        hub <- newHub[Int](str)
         f1 <- hub.subscribe.compile.toVector.start
         f2 <- hub.subscribe.take(3).compile.toVector.start
         f3 <- hub.subscribe.map(_ + 1).compile.toVector.start
@@ -231,7 +181,7 @@ trait PubSubSpecTicked[F[_]]
 
     test(s"$name - closing without subscribers") {
       val t = for {
-        hub <- PubSub.simple[Int](str).run[F]
+        hub <- newHub[Int](str)
         f1 <- hub.subscribe.take(1).compile.toVector.start
         f2 <- hub.subscribe.take(3).compile.toVector.start
         _ <- this.tickAll // wait for subscriptions to happen
@@ -252,7 +202,7 @@ trait PubSubSpecTicked[F[_]]
 
     test(s"$name - awaitShutdown") {
       val t = for {
-        hub <- PubSub.simple[Int](str).run[F]
+        hub <- newHub[Int](str)
         ctr <- F.ref[Int](0)
         f1 <- hub.subscribe.take(4).evalTap(_ => ctr.update(_ + 1)).compile.toVector.start
         f2 <- hub.subscribe.evalTap(_ => ctr.update(_ + 1)).compile.toVector.start
@@ -276,7 +226,7 @@ trait PubSubSpecTicked[F[_]]
 
     test(s"$name - subscribe with non-default strategy") {
       val t = for {
-        hub <- PubSub.simple[Int](str).run[F]
+        hub <- newHub[Int](str)
         f1 <- hub.subscribe.compile.toVector.start
         f2 <- hub.subscribe(dropOldest(1)).evalTap(_ => F.sleep(0.1.second)).compile.toVector.start
         _ <- this.tickAll // wait for subscriptions to happen
@@ -294,7 +244,7 @@ trait PubSubSpecTicked[F[_]]
 
     test(s"$name - numberOfSubscriptions") {
       val t = for {
-        hub <- PubSub.simple[Int](str).run[F]
+        hub <- newHub[Int](str)
         _ <- assertResultF(hub.numberOfSubscriptions.run, 0)
         f1 <- hub.subscribe.compile.toVector.start
         _ <- this.tickAll // wait for subscription to happen
@@ -328,7 +278,7 @@ trait PubSubSpecTicked[F[_]]
 
     test(s"$name - initial Rxn should run for each subscription") {
       val t = for {
-        hub <- PubSub.simple[Int](str).run[F]
+        hub <- newHub[Int](str)
         ctr <- Ref[Int](0).run[F]
         vec = hub.subscribeWithInitial(str, ctr.getAndUpdate(_ + 1)).compile.toVector
         fib1 <- vec.start
@@ -353,7 +303,7 @@ trait PubSubSpecTicked[F[_]]
       this.assume(bsize != -1)
       val ch = Chunk.from((1 to (bsize + 1)).toList)
       val t = for {
-        hub <- PubSub.simple[Int](str).run[F]
+        hub <- newHub[Int](str)
         fib <- hub.subscribe.compile.toList.start
         _ <- this.tickAll
         r <- hub.emitChunk(ch).run[F].attempt
@@ -375,7 +325,7 @@ trait PubSubSpecTicked[F[_]]
     test(s"$name - closing mustn't conflict with item dropping") {
       val t = for {
         _ <- assertF(bufferSize > 2)
-        hub <- PubSub.simple[Int](str).run[F]
+        hub <- newHub[Int](str)
         fib <- hub.subscribe.compile.toVector.start
         _ <- this.tickAll // wait for subscription to happen
         rss <- (1 to bufferSize).toList.traverse(i => hub.emit(i).run[F]) // fill the queue
@@ -390,7 +340,7 @@ trait PubSubSpecTicked[F[_]]
     test(s"$name - Initial element mustn't count against the buffer size") {
       val t = for {
         _ <- assertF(bufferSize > 2)
-        hub <- PubSub.simple[Int](str).run[F]
+        hub <- newHub[Int](str)
         latch <- Promise[Unit].run
         fib <- hub.subscribeWithInitial(str, latch.complete(()).as(0)).compile.toVector.start
         _ <- latch.get[F] *> (1 to bufferSize).toList.traverse_(i => hub.emit(i).run[F])
@@ -405,7 +355,7 @@ trait PubSubSpecTicked[F[_]]
 
     test(s"$name - should never backpressure") {
       for {
-        hub <- PubSub.simple[Int](str).run[F]
+        hub <- newHub[Int](str)
         fib <- hub.subscribe.evalMap(_ => F.never[Int]).compile.toVector.start // infinitely slow subscriber
         _ <- this.tickAll // wait for subscription to happen
         pub = (hub.emit : (Int => Rxn[PubSub.Result]))
@@ -424,7 +374,7 @@ trait PubSubSpecTicked[F[_]]
 
     test(s"$name - single element buffer") {
       for {
-        hub <- PubSub.simple[Int](str).run[F]
+        hub <- newHub[Int](str)
         fib1 <- hub.subscribe.compile.toVector.start
         fib2 <- hub.subscribe.take(2).compile.toVector.start
         _ <- this.tickAll // wait for subscription to happen
