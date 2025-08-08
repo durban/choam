@@ -27,6 +27,8 @@ import com.typesafe.tools.mima.core.{
 }
 
 import scala.scalanative.build.GC
+import sbt.ProjectReference
+import sbtcrossproject.CrossProject
 
 // Scala versions:
 val scala2 = "2.13.16"
@@ -302,35 +304,44 @@ lazy val choam = project.in(file("."))
   .settings(commonSettings)
   .enablePlugins(NoPublishPlugin)
   .disablePlugins(disabledPlugins: _*)
-  .aggregate(myProjects: _*)
+  .aggregate(allProjects: _*)
 
-lazy val myProjects = Seq[sbt.ProjectReference](
-  mcas.jvm, mcas.js,
-  core.jvm, core.js,
-  data.jvm, data.js,
-  internal.jvm, internal.js, internal.native,
-  async.jvm, async.js,
-  stream.jvm, stream.js,
-  profiler, // JVM
-  ce.jvm, ce.js,
-  zi.jvm, zi.js,
-  testAssert, // JVM
-  laws.jvm, laws.js,
-  unidocs,
-  testExt.jvm, testExt.js,
-  graalNiExample, // JVM
-  bench, // JVM
-  stressMcas, // JVM
-  stressMcasSlow, // JVM
-  stressCore, // JVM
-  stressData, // JVM
-  stressDataSlow, // JVM
-  stressAsync, // JVM
-  stressExperiments, // JVM
-  stressLinchk, // JVM
-  stressRng, // JVM
-  layout, // JVM
+lazy val crossProjects: Seq[CrossProject] = Seq(
+  mcas,
+  core,
+  data,
+  internal,
+  async,
+  stream,
+  ce,
+  zi,
+  laws,
+  testExt,
 )
+
+lazy val jvmOnlyProjects: Seq[ProjectReference] = Seq(
+  profiler,
+  testAssert,
+  unidocs,
+  graalNiExample,
+  bench,
+  stressMcas,
+  stressMcasSlow,
+  stressCore,
+  stressData,
+  stressDataSlow,
+  stressAsync,
+  stressExperiments,
+  stressLinchk,
+  stressRng,
+  layout,
+)
+
+lazy val allProjects: Seq[ProjectReference] = {
+  crossProjects.flatMap { crossProj =>
+    crossProj.projects.values.toSeq.map(p => p : ProjectReference)
+  } ++ jvmOnlyProjects
+}
 
 lazy val core = crossProject(JVMPlatform, JSPlatform)
   .withoutSuffixFor(JVMPlatform)
