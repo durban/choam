@@ -302,37 +302,39 @@ lazy val choam = project.in(file("."))
   .settings(commonSettings)
   .enablePlugins(NoPublishPlugin)
   .disablePlugins(disabledPlugins: _*)
-  .aggregate(
-    mcas.jvm, mcas.js,
-    core.jvm, core.js,
-    data.jvm, data.js,
-    internal.jvm, internal.js, internal.native,
-    async.jvm, async.js,
-    stream.jvm, stream.js,
-    profiler, // JVM
-    ce.jvm, ce.js,
-    zi.jvm, zi.js,
-    testAssert, // JVM
-    laws.jvm, laws.js,
-    unidocs,
-    testExt.jvm, testExt.js,
-    graalNiExample, // JVM
-    bench, // JVM
-    stressMcas, // JVM
-    stressMcasSlow, // JVM
-    stressCore, // JVM
-    stressData, // JVM
-    stressDataSlow, // JVM
-    stressAsync, // JVM
-    stressExperiments, // JVM
-    stressLinchk, // JVM
-    stressRng, // JVM
-    layout, // JVM
-  )
+  .aggregate(myProjects: _*)
+
+lazy val myProjects = Seq[sbt.ProjectReference](
+  mcas.jvm, mcas.js,
+  core.jvm, core.js,
+  data.jvm, data.js,
+  internal.jvm, internal.js, internal.native,
+  async.jvm, async.js,
+  stream.jvm, stream.js,
+  profiler, // JVM
+  ce.jvm, ce.js,
+  zi.jvm, zi.js,
+  testAssert, // JVM
+  laws.jvm, laws.js,
+  unidocs,
+  testExt.jvm, testExt.js,
+  graalNiExample, // JVM
+  bench, // JVM
+  stressMcas, // JVM
+  stressMcasSlow, // JVM
+  stressCore, // JVM
+  stressData, // JVM
+  stressDataSlow, // JVM
+  stressAsync, // JVM
+  stressExperiments, // JVM
+  stressLinchk, // JVM
+  stressRng, // JVM
+  layout, // JVM
+)
 
 lazy val core = crossProject(JVMPlatform, JSPlatform)
-  .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
+  .crossType(CrossType.Full)
   .in(file("core"))
   .settings(name := "choam-core")
   .disablePlugins(disabledPlugins: _*)
@@ -357,8 +359,8 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
   )
 
 lazy val mcas = crossProject(JVMPlatform, JSPlatform)
-  .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
+  .crossType(CrossType.Full)
   .in(file("mcas"))
   .settings(name := "choam-mcas")
   .disablePlugins(disabledPlugins: _*)
@@ -373,8 +375,8 @@ lazy val mcas = crossProject(JVMPlatform, JSPlatform)
   )
 
 lazy val internal = crossProject(JVMPlatform, JSPlatform, NativePlatform)
-  .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
+  .crossType(CrossType.Full)
   .in(file("internal"))
   .settings(name := "choam-internal")
   .disablePlugins(disabledPlugins: _*)
@@ -391,8 +393,8 @@ lazy val internal = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   )
 
 lazy val data = crossProject(JVMPlatform, JSPlatform)
-  .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
+  .crossType(CrossType.Full)
   .in(file("data"))
   .settings(name := "choam-data")
   .disablePlugins(disabledPlugins: _*)
@@ -407,8 +409,8 @@ lazy val data = crossProject(JVMPlatform, JSPlatform)
   )
 
 lazy val async = crossProject(JVMPlatform, JSPlatform)
-  .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
+  .crossType(CrossType.Full)
   .in(file("async"))
   .settings(name := "choam-async")
   .disablePlugins(disabledPlugins: _*)
@@ -418,8 +420,8 @@ lazy val async = crossProject(JVMPlatform, JSPlatform)
   .dependsOn(data % "compile->compile;test->test")
 
 lazy val stream = crossProject(JVMPlatform, JSPlatform)
-  .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
+  .crossType(CrossType.Full)
   .in(file("stream"))
   .settings(name := "choam-stream")
   .disablePlugins(disabledPlugins: _*)
@@ -450,8 +452,8 @@ lazy val profiler = project.in(file("profiler"))
   )
 
 lazy val ce = crossProject(JVMPlatform, JSPlatform)
-  .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
+  .crossType(CrossType.Full)
   .in(file("ce"))
   .settings(name := "choam-ce")
   .disablePlugins(disabledPlugins: _*)
@@ -465,8 +467,8 @@ lazy val ce = crossProject(JVMPlatform, JSPlatform)
   )
 
 lazy val zi = crossProject(JVMPlatform, JSPlatform)
-  .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
+  .crossType(CrossType.Full)
   .in(file("zi"))
   .settings(name := "choam-zi")
   .disablePlugins(disabledPlugins: _*)
@@ -492,8 +494,8 @@ lazy val testAssert = project.in(file("test-assert"))
   )
 
 lazy val laws = crossProject(JVMPlatform, JSPlatform)
-  .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
+  .crossType(CrossType.Full)
   .in(file("laws"))
   .settings(name := "choam-laws")
   .enablePlugins(NoPublishPlugin)
@@ -537,8 +539,8 @@ lazy val unidocs = project
   )
 
 lazy val testExt = crossProject(JVMPlatform, JSPlatform)
-  .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
+  .crossType(CrossType.Full)
   .in(file("test-ext"))
   .settings(name := "choam-test-ext")
   .enablePlugins(NoPublishPlugin)
