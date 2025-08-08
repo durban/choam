@@ -304,9 +304,50 @@ lazy val choam = project.in(file("."))
   .settings(commonSettings)
   .enablePlugins(NoPublishPlugin)
   .disablePlugins(disabledPlugins: _*)
-  .aggregate(allProjects: _*)
+  .aggregate(_allProjects: _*)
 
-lazy val crossProjects: Seq[CrossProject] = Seq(
+lazy val _allProjects: Seq[ProjectReference] = {
+  _crossProjects.flatMap { crossProj =>
+    crossProj.projects.values.toSeq.map(p => p : ProjectReference)
+  } ++ _jvmOnlyProjects
+}
+
+lazy val choamJVM = project
+  .settings(name := "choamJVM")
+  .settings(commonSettings)
+  .enablePlugins(NoPublishPlugin)
+  .disablePlugins(disabledPlugins: _*)
+  .aggregate(_jvmProjects: _*)
+
+lazy val _jvmProjects: Seq[ProjectReference] = {
+  _crossProjects.flatMap { crossProj =>
+    crossProj.projects.get(JVMPlatform).map[ProjectReference](p => p).toSeq
+  } ++ _jvmOnlyProjects
+}
+
+lazy val choamJS = project
+  .settings(name := "choamJS")
+  .settings(commonSettings)
+  .enablePlugins(NoPublishPlugin)
+  .disablePlugins(disabledPlugins: _*)
+  .aggregate(_jsProjects: _*)
+
+lazy val _jsProjects: Seq[ProjectReference] = {
+  _crossProjects.flatMap { crossProj => crossProj.projects.get(JSPlatform).map[ProjectReference](p => p).toSeq }
+}
+
+lazy val choamNative = project
+  .settings(name := "choamNative")
+  .settings(commonSettings)
+  .enablePlugins(NoPublishPlugin)
+  .disablePlugins(disabledPlugins: _*)
+  .aggregate(_nativeProjects: _*)
+
+lazy val _nativeProjects: Seq[ProjectReference] = {
+  _crossProjects.flatMap { crossProj => crossProj.projects.get(NativePlatform).map[ProjectReference](p => p).toSeq }
+}
+
+lazy val _crossProjects: Seq[CrossProject] = Seq(
   mcas,
   core,
   data,
@@ -319,7 +360,7 @@ lazy val crossProjects: Seq[CrossProject] = Seq(
   testExt,
 )
 
-lazy val jvmOnlyProjects: Seq[ProjectReference] = Seq(
+lazy val _jvmOnlyProjects: Seq[ProjectReference] = Seq(
   profiler,
   testAssert,
   unidocs,
@@ -336,12 +377,6 @@ lazy val jvmOnlyProjects: Seq[ProjectReference] = Seq(
   stressRng,
   layout,
 )
-
-lazy val allProjects: Seq[ProjectReference] = {
-  crossProjects.flatMap { crossProj =>
-    crossProj.projects.values.toSeq.map(p => p : ProjectReference)
-  } ++ jvmOnlyProjects
-}
 
 lazy val core = crossProject(JVMPlatform, JSPlatform)
   .withoutSuffixFor(JVMPlatform)
