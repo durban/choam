@@ -23,6 +23,8 @@ import scala.concurrent.duration._
 import cats.effect.IO
 import fs2.Chunk
 
+import core.Ref
+
 import PubSub.OverflowStrategy
 import PubSub.OverflowStrategy.{ dropOldest, dropNewest, backpressure, unbounded }
 
@@ -200,6 +202,63 @@ trait PubSubSpecTickedAsync[F[_]] extends PubSubSpecTicked[F] { this: McasImplSp
         _ <- assertResultF(f2.joinWithNever, Vector(1, 2, 3, 4, 5))
         _ <- assertResultF(f3.joinWithNever, Vector(1, 2, 3, 4, 5))
         _ <- assertResultF(hub.close.run[F], PubSub.Closed)
+      } yield ()
+      t.replicateA_(if (isJvm()) 50 else 5)
+    }
+
+    test(s"$name (async) - subscribe with non-default strategy") {
+      val t = for {
+        hub <- newHub[Int](str)
+        f1 <- hub.subscribe.compile.toVector.start
+        f2 <- hub.subscribe(dropOldest(1)).evalTap(_ => F.sleep(0.1.second)).compile.toVector.start
+        _ <- this.tickAll // wait for subscriptions to happen
+        _ <- assertResultF(hub.publish(1), PubSub.Success)
+        _ <- this.tick // make sure they receive the 1st, and then `f2` starts to sleep
+        _ <- assertResultF(hub.publish(2), PubSub.Success)
+        _ <- assertResultF(hub.emit(3).run[F], PubSub.Success)
+        _ <- assertResultF(hub.close.run[F], PubSub.Backpressured)
+        _ <- f1.joinWithNever
+        // whatever `f1` does, `f2` must use `dropOldest(1)`:
+        _ <- assertResultF(f2.joinWithNever, Vector(1, 3))
+      } yield ()
+      t.replicateA_(if (isJvm()) 50 else 5)
+    }
+
+    test(s"$name (async) - initial Rxn should run for each subscription") {
+      val t = for {
+        hub <- newHub[Int](str)
+        ctr <- Ref[Int](0).run[F]
+        vec = hub.subscribeWithInitial(str, ctr.getAndUpdate(_ + 1)).compile.toVector
+        fib1 <- vec.start
+        _ <- this.tickAll
+        fib2 <- vec.start
+        _ <- this.tickAll
+        fib3 <- vec.start
+        _ <- this.tickAll
+        _ <- assertResultF(hub.publish(42), PubSub.Success)
+        _ <- hub.close.run
+        _ <- hub.awaitShutdown
+        _ <- assertResultF(fib1.joinWithNever, Vector(0, 42))
+        _ <- assertResultF(fib2.joinWithNever, Vector(1, 42))
+        _ <- assertResultF(fib3.joinWithNever, Vector(2, 42))
+        _ <- assertResultF(ctr.get.run, 3)
+      } yield ()
+      t.replicateA_(if (isJvm()) 50 else 5)
+    }
+
+    test(s"$name (async) - chunk bigger than capacity is an error") {
+      val bsize = str.fold(-1, s => s, s => s, s => s)
+      this.assume(bsize != -1)
+      val ch = Chunk.from((1 to (bsize + 1)).toList)
+      val t = for {
+        hub <- newHub[Int](str)
+        fib <- hub.subscribe.compile.toList.start
+        _ <- this.tickAll
+        r <- hub.publishChunk(ch).attempt
+        _ <- assertF(clue(r).fold(_.isInstanceOf[IllegalArgumentException], _ => false))
+        _ <- assertResultF(hub.publish(42), PubSub.Success)
+        _ <- hub.close.run
+        _ <- assertResultF(fib.joinWithNever, List(42))
       } yield ()
       t.replicateA_(if (isJvm()) 50 else 5)
     }
