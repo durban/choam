@@ -22,23 +22,15 @@ import java.util.concurrent.{ ThreadLocalRandom, TimeoutException }
 
 import scala.concurrent.duration._
 
-import cats.effect.IO
-
 import core.Rxn
 import PubSub.OverflowStrategy
 
-final class PubSubSpec_DefaultMcas_IO
-  extends BaseSpecIO
-  with SpecDefaultMcas
-  with PubSubSpec[IO]
-
-final class PubSubSpec_DefaultMcas_ZIO
-  extends BaseSpecZIO
-  with SpecDefaultMcas
-  with PubSubSpec[zio.Task]
-
 trait PubSubSpec[F[_]]
   extends BaseSpecAsyncF[F] { this: McasImplSpec =>
+
+  protected[this] type H[A] <: PubSub.Simple[A]
+
+  protected[this] def newHub[A](str: PubSub.OverflowStrategy): F[H[A]]
 
   final override def munitTimeout: Duration =
     2 * super.munitTimeout
@@ -72,7 +64,7 @@ trait PubSubSpec[F[_]]
       val expSet = (nums.toSet ++ nums.map(-_).toSet)
       val succVec = Vector.fill(N)(PubSub.Success)
       val t = for {
-        hub <- PubSub.simple[Int](str).run[F]
+        hub <- newHub[Int](str)
         f1 <- hub.subscribe.compile.toVector.start
         f2 <- hub.subscribeWithInitial(str, Rxn.pure(0)).compile.toVector.start
         _ <- waitForSubscribers(hub, 2)
@@ -105,7 +97,7 @@ trait PubSubSpec[F[_]]
         dropNewest = _ => OverflowStrategy.dropNewest(1),
       )
       val t = for {
-        hub <- PubSub.simple[Int](str2).run[F]
+        hub <- newHub[Int](str2)
         f1 <- hub.subscribe.evalTap { _ => if (ThreadLocalRandom.current().nextBoolean()) F.cede else F.unit }.compile.toVector.start
         f2 <- hub.subscribe.compile.toVector.start
         _ <- waitForSubscribers(hub, 2)
@@ -131,7 +123,7 @@ trait PubSubSpec[F[_]]
 
     test(s"$name - subscribe/close race") {
       val t = for {
-        hub <- PubSub.simple[Int](str).run[F]
+        hub <- newHub[Int](str)
         rr <- F.both(
           F.both(
             hub.subscribeWithInitial(str, Rxn.pure(1)).compile.toVector.start,
@@ -160,7 +152,7 @@ trait PubSubSpec[F[_]]
 
     test(s"$name - subscribe/close/publish race") {
       val t = for {
-        hub <- PubSub.simple[Int](str).run[F]
+        hub <- newHub[Int](str)
         rr <- F.both(
           F.both(
             hub.subscribeWithInitial(str, Rxn.pure(1)).compile.toVector.start,
