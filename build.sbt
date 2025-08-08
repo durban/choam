@@ -77,8 +77,6 @@ val macos = "macos-15" // ARM64
 val macosIntel = "macos-13" // x86_64
 
 val TestInternal = "test-internal"
-val ciCommand = "ci"
-val ciFullCommand = "ciFull"
 
 val openJ9Options: String = {
   val opts = List("-Xgcpolicy:balanced")
@@ -177,17 +175,17 @@ ThisBuild / githubWorkflowPublishTargetBranches := Seq()
 ThisBuild / githubWorkflowBuild := List(
   // Tests on non-OpenJ9:
   WorkflowStep.Sbt(
-    List(ciCommand),
+    List("${{ matrix.ci }}"),
     cond = Some(s"($isNotOpenJ9Cond) && ($quickCiCond)"),
   ),
   // Full tests on non-OpenJ9:
   WorkflowStep.Sbt(
-    List(ciFullCommand),
+    List("${{ matrix.ci }}Full"),
     cond = Some(s"($isNotOpenJ9Cond) && ($fullCiCond)"),
   ),
   // Tests on OpenJ9 only:
   WorkflowStep.Sbt(
-    List(openJ9Options, ciCommand),
+    List(openJ9Options, "${{ matrix.ci }}"),
     cond = Some(s"($isOpenJ9Cond)"),
   ),
   // Static analysis:
@@ -241,6 +239,7 @@ ThisBuild / githubWorkflowBuild := List(
 ThisBuild / githubWorkflowJavaVersions := Seq(jvmTemurins, jvmGraals, jvmOpenj9s).flatten
 ThisBuild / githubWorkflowOSes := Seq(linux, linux86, windows, windowsArm, macos, macosIntel)
 ThisBuild / githubWorkflowSbtCommand := "sbt -v --no-server"
+ThisBuild / githubWorkflowBuildMatrixAdditions ++= Map("ci" -> _quickCiAliases.keys.toList)
 ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
   List(windows, windowsArm).map { win => MatrixExclude(Map("os" -> win)) }, // but see inclusions
   List(macos, macosIntel).map { macos => MatrixExclude(Map("os" -> macos)) }, // but see inclusions
@@ -1042,13 +1041,47 @@ def mkStressTestCmd(projName: String): String =
 val stressTestCommand =
   stressTestNames.map(mkStressTestCmd).mkString(";", ";", "")
 
+Global / tlCommandAliases ++= _quickCiAliases
+Global / tlCommandAliases ++= _fullCiAliases
+
+def mkCiAlias(proj: String, full: Boolean, extraLink: Option[String] = None): List[String] = {
+  List(s"project ${proj}", "headerCheckAll", "Test/compile") ++ (
+    extraLink match {
+      case Some(cmd) => List(cmd)
+      case None => Nil
+    }
+  ) ++ (
+    if (full) {
+      List("test")
+    } else {
+      List("testOnly -- --exclude-tags=SLOW")
+    }
+  ) ++ List("compatCheck")
+}
+
+def mkCiAliases(full: Boolean): Map[String, List[String]] = {
+  val lst = for {
+    (baseName, proj, extra) <- List(
+      ("ciJVM", "choamJVM", None),
+      ("ciJS", "choamJS", Some("Test/fastLinkJS")),
+      ("ciNative", "choamNative", Some("Test/nativeLink")),
+    )
+  } yield {
+    val name = if (full) baseName + "Full" else baseName
+    val alias = mkCiAlias(proj, full = full, extraLink = extra)
+    (name, alias)
+  }
+  lst.toMap
+}
+
+lazy val _quickCiAliases = mkCiAliases(full = false)
+lazy val _fullCiAliases = mkCiAliases(full = true)
+
 addCommandAlias("checkScalafix", "scalafixAll --check")
 addCommandAlias("staticAnalysis", ";headerCheckAll;Test/compile;checkScalafix")
 addCommandAlias("stressTest", stressTestCommand)
 addCommandAlias("validate", ";staticAnalysis;test;stressTest")
 addCommandAlias("compatCheck", ";mimaReportBinaryIssues") // TODO: versionPolicyReportDependencyIssues
-addCommandAlias(ciCommand, ";headerCheckAll;Test/compile;Test/fastLinkJS;Test/nativeLink;testOnly -- --exclude-tags=SLOW;compatCheck")
-addCommandAlias(ciFullCommand, ";headerCheckAll;Test/compile;Test/fastLinkJS;Test/nativeLink;test;compatCheck")
 addCommandAlias("runLincheckTests", "stressLinchk/test")
 addCommandAlias("release", ";reload;tlRelease") // TODO: +versionPolicyReportDependencyIssues
 addCommandAlias("releaseHash", ";reload;tlRelease")

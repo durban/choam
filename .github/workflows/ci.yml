@@ -41,6 +41,7 @@ jobs:
           - graalvm@21
           - graalvm@24
           - semeru@23
+        ci: [ciJVM, ciJS, ciNative]
         include:
           - os: macos-15
             java: temurin@24
@@ -191,15 +192,15 @@ jobs:
 
       - if: (!((matrix.java == 'semeru@23'))) && (!(contains(github.event.head_commit.message, 'full CI')))
         shell: bash
-        run: sbt -v --no-server '++ ${{ matrix.scala }}' ci
+        run: sbt -v --no-server '++ ${{ matrix.scala }}' '${{ matrix.ci }}'
 
       - if: (!((matrix.java == 'semeru@23'))) && (contains(github.event.head_commit.message, 'full CI'))
         shell: bash
-        run: sbt -v --no-server '++ ${{ matrix.scala }}' ciFull
+        run: sbt -v --no-server '++ ${{ matrix.scala }}' '${{ matrix.ci }}Full'
 
       - if: ((matrix.java == 'semeru@23'))
         shell: bash
-        run: 'sbt -v --no-server ''++ ${{ matrix.scala }}'' -J-Xgcpolicy:balanced ci'
+        run: 'sbt -v --no-server ''++ ${{ matrix.scala }}'' -J-Xgcpolicy:balanced ''${{ matrix.ci }}'''
 
       - if: (matrix.os == 'ubuntu-24.04-arm') && (matrix.java == 'temurin@24') && (matrix.scala == '2.13.16')
         shell: bash
