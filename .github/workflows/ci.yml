@@ -321,7 +321,7 @@ jobs:
         run: sbt -v --no-server '++ ${{ matrix.scala }}' stressExperiments/Jcstress/run
 
       - name: Upload JCStress results
-        if: (success() || failure()) && (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@24')) && ((contains(github.event.head_commit.message, 'stressMcas') || contains(github.event.head_commit.message, 'stressCore') || contains(github.event.head_commit.message, 'stressData') || contains(github.event.head_commit.message, 'stressAsync') || contains(github.event.head_commit.message, 'stressExperiments')))
+        if: (success() || failure()) && (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@24')) && ((contains(github.event.head_commit.message, 'stressMcas') || contains(github.event.head_commit.message, 'stressCore') || contains(github.event.head_commit.message, 'stressData') || contains(github.event.head_commit.message, 'stressAsync') || contains(github.event.head_commit.message, 'stressExperiments'))) && (matrix.ci == 'ciJVM')
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: jcstress-results-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}
@@ -333,7 +333,7 @@ jobs:
         run: zip -r graal_dumps.zip . -i 'graal_dumps/*'
 
       - name: Upload Graal dumps
-        if: (success() || failure()) && (matrix.os == 'ubuntu-24.04-arm') && (matrix.java == 'graalvm@24')
+        if: (success() || failure()) && (matrix.os == 'ubuntu-24.04-arm') && (matrix.java == 'graalvm@24') && (matrix.ci == 'ciJVM')
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: graal-dumps-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}

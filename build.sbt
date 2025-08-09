@@ -213,7 +213,8 @@ ThisBuild / githubWorkflowBuild := List(
     name = Some("Upload JCStress results"),
     cond = {
       val commitMsgCond = s"(${stressTestNames.map(commitContains).mkString("", " || ", "")})"
-      Some(s"(success() || failure()) && (${stressCond}) && (${commitMsgCond})")
+      val jvmCond = "matrix.ci == 'ciJVM'"
+      Some(s"(success() || failure()) && (${stressCond}) && (${commitMsgCond}) && (${jvmCond})")
     },
     params = Map(
       "name" -> "jcstress-results-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}",
@@ -228,7 +229,10 @@ ThisBuild / githubWorkflowBuild := List(
   WorkflowStep.Use(
     GhActions.uploadArtifactV4,
     name = Some("Upload Graal dumps"),
-    cond = Some(s"(success() || failure()) && (matrix.os == '${linux}') && (matrix.java == '${jvmGraalLatest.render}')"),
+    cond = {
+      val jvmCond = "matrix.ci == 'ciJVM'"
+      Some(s"(success() || failure()) && (matrix.os == '${linux}') && (matrix.java == '${jvmGraalLatest.render}') && (${jvmCond})")
+    },
     params = Map(
       "name" -> "graal-dumps-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}",
       "path" -> "graal_dumps.zip",
