@@ -32,7 +32,9 @@ import java.util.concurrent.ThreadLocalRandom
  *
  * Implemented as a baseline for benchmarking and correctness tests.
  */
-private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
+private final class SpinLockMcas(
+  private[choam] final override val osRng: OsRng,
+) extends Mcas.UnsealedMcas { self =>
 
   private[this] val rig: RefIdGen =
     RefIdGen.newGlobal()
@@ -40,8 +42,8 @@ private object SpinLockMcas extends Mcas.UnsealedMcas { self =>
   final override def currentContext(): Mcas.ThreadContext =
     dummyContext
 
-  private[choam] final override val osRng: OsRng =
-    OsRng.mkNew()
+  private[choam] final override def close(): Unit =
+    ()
 
   private[choam] final override def isThreadSafe =
     true

@@ -27,6 +27,6 @@ private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanion
   private[choam] final def newEmcas(osRng: OsRng): Mcas =
     new emcas.Emcas(osRng)
 
-  final def SpinLockMcas: Mcas =
-    mcas.SpinLockMcas
+  private[choam] final def newSpinLockMcas(osRng: OsRng): Mcas =
+    new SpinLockMcas(osRng)
 }

@@ -17,7 +17,15 @@
 
 package dev.tauri.choam
 
-trait SpecSpinLockMcas extends McasImplSpec {
-  final override def mcasImpl: internal.mcas.Mcas =
-    internal.mcas.Mcas.SpinLockMcas
+import munit.Suite
+
+trait SpecSpinLockMcas extends Suite with McasImplSpec {
+
+  final override val mcasImpl: internal.mcas.Mcas =
+    internal.mcas.Mcas.newSpinLockMcas(BaseSpec.osRngForTesting)
+
+  override def afterAll(): Unit = {
+    this.mcasImpl.close()
+    super.afterAll()
+  }
 }

@@ -27,6 +27,8 @@ sealed trait Mcas {
   /** Returns the context associated with the current thread */
   def currentContext(): Mcas.ThreadContext
 
+  private[choam] def close(): Unit
+
   /**
    * The same as `ctx eq currentContext()`, but
    * might be more efficient.
@@ -35,10 +37,6 @@ sealed trait Mcas {
     // subclasses should override if
     // they can be more efficient:
     ctx eq currentContext()
-  }
-
-  private[choam] def close(): Unit = {
-    // subclasses should override
   }
 
   /** @return an already initialized RNG which reads from the OS */
