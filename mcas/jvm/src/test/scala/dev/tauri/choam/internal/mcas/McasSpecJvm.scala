@@ -221,7 +221,7 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     val endTs = ctx.start().validTs
     // EMCAS should be able to handle this (disjoint op), but
     // others should fail due to the version-CAS failing:
-    if (this.isEmcas) {
+    if (!mcasImpl.hasVersionFailure) {
       assertEquals(res, McasStatus.Successful)
       assertEquals(endTs, startTs + (2 * Version.Incr))
       assertSameInstance(ctx.readDirect(r1), "b")
@@ -277,7 +277,7 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
   }
 
   test("CommitTs ref must be the first (JVM)") {
-    assume(!this.isEmcas)
+    assume(mcasImpl.hasVersionFailure)
     val r1 = MemoryLocation.unsafeUnpadded[String]("foo", this.rigInstance)
     val r2 = MemoryLocation.unsafeUnpadded[String]("bar", this.rigInstance)
     val ctx = this.mcasImpl.currentContext()

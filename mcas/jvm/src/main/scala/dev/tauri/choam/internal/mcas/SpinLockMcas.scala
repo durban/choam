@@ -20,6 +20,7 @@ package internal
 package mcas
 
 import java.util.concurrent.ThreadLocalRandom
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Naïve k-CAS algorithm as described in [Reagents: Expressing and Composing
@@ -49,10 +50,10 @@ private final class SpinLockMcas(
     true
 
   private[choam] final override def hasVersionFailure: Boolean =
-    true
+    false
 
-  private[this] val commitTs: MemoryLocation[Long] =
-    MemoryLocation.unsafePadded(Version.Start, this.rig)
+  private[this] val commitTs: AtomicLong =
+    new AtomicLong(Version.Start)
 
   private[this] val dummyContext = new Mcas.UnsealedThreadContext {
 
@@ -70,7 +71,8 @@ private final class SpinLockMcas(
 
     final override def tryPerformInternal(desc: AbstractDescriptor, optimism: Long): Long = {
       val ops = desc.hwdIterator.toList
-      perform(ops, newVersion = desc.newVersion)
+      _assert((!desc.hasVersionCas) && ops.nonEmpty)
+      perform(ops)
     }
 
     private[this] final object Locked {
@@ -130,46 +132,36 @@ private final class SpinLockMcas(
     }
 
     final override def start(): Descriptor =
-      Descriptor.empty(commitTs, this)
+      Descriptor.emptyFromVer(commitTs.get())
 
     protected[mcas] final override def addVersionCas(desc: AbstractDescriptor): AbstractDescriptor.Aux[desc.D] =
-      desc.addVersionCas(commitTs)
+      desc // we increment the global commit version differently
 
     final override def validateAndTryExtend(
       desc: AbstractDescriptor,
       hwd: LogEntry[?],
     ): AbstractDescriptor.Aux[desc.D] = {
-      desc.validateAndTryExtend(commitTs, this, hwd)
+      desc.validateAndTryExtendVer(commitTs.get(), this, hwd)
     }
 
-    private def perform(ops: List[LogEntry[?]], newVersion: Long): Long = {
+    private def perform(ops: List[LogEntry[?]]): Long = {
 
       @tailrec
-      def lock(ops: List[LogEntry[?]]): (List[LogEntry[?]], Option[Long]) = ops match {
-        case Nil => (Nil, None)
+      def lock(ops: List[LogEntry[?]]): List[LogEntry[?]] = ops match {
+        case Nil => Nil
         case h :: tail => h match {
           case head: LogEntry[a] =>
             val witness: a = head.address.unsafeCmpxchgV(head.ov, locked[a])
-            val isGlobalVerCas = (head.address eq commitTs)
             if (equ(witness, head.ov)) {
               val witnessVer = head.address.unsafeGetVersionV()
-              if (isGlobalVerCas || (witnessVer == head.version)) {
+              if (witnessVer == head.version) {
                 lock(tail)
               } else {
-                (tail, None) // was locked, need to rollback
+                head.address.unsafeSetV(head.ov)
+                ops // rollback
               }
             } else {
-              val badVersion = if (isGlobalVerCas) {
-                if (isLocked(witness)) {
-                  None
-                } else {
-                  val ver = witness.asInstanceOf[Long]
-                  Some(ver)
-                }
-              } else {
-                None
-              }
-              (ops, badVersion) // rollback
+              ops // rollback
             }
         }
       }
@@ -202,21 +194,24 @@ private final class SpinLockMcas(
         }
       }
 
+      def incrTs(): Long = {
+        val ts = commitTs.incrementAndGet()
+        Predef.assert(VersionFunctions.isValid(ts)) // detect version overflow
+        ts
+      }
+
       ops match {
         case Nil =>
           McasStatus.Successful
         case l @ (_ :: _) =>
           lock(l) match {
-            case (Nil, bv) =>
-              _assert(bv.isEmpty)
+            case Nil =>
+              val newVersion = incrTs()
               commit(l, newVersion)
               McasStatus.Successful
-            case (to @ (_ :: _), bv) =>
+            case to @ (_ :: _) =>
               rollback(l, to)
-              bv match {
-                case Some(ver) => ver
-                case None => McasStatus.FailedVal
-              }
+              McasStatus.FailedVal
           }
       }
     }
