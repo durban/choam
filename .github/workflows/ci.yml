@@ -175,6 +175,24 @@ jobs:
             scala: 3
           - java: temurin@24
             scala: 2.13
+          - java: temurin@11
+            ci: ciJS
+          - java: temurin@21
+            ci: ciJS
+          - java: graalvm@21
+            ci: ciJS
+          - java: graalvm@24
+            ci: ciJS
+          - java: semeru@23
+            ci: ciJS
+          - java: temurin@11
+            ci: ciNative
+          - java: graalvm@21
+            ci: ciNative
+          - java: graalvm@24
+            ci: ciNative
+          - java: semeru@23
+            ci: ciNative
     runs-on: ${{ matrix.os }}
     timeout-minutes: 360
     steps:

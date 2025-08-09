@@ -247,12 +247,20 @@ ThisBuild / githubWorkflowBuildMatrixAdditions ++= Map("ci" -> _quickCiAliases.k
 ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
   List(windows, windowsArm).map { win => MatrixExclude(Map("os" -> win)) }, // but see inclusions
   List(macos, macosIntel).map { macos => MatrixExclude(Map("os" -> macos)) }, // but see inclusions
-  Seq(
+  List(
     MatrixExclude(Map("os" -> linux86)), // but see inclusions
     MatrixExclude(Map("java" -> jvmGraalLts.render, "scala" -> CrossVersion.binaryScalaVersion(scala3))),
     MatrixExclude(Map("java" -> jvmLts.render, "scala" -> CrossVersion.binaryScalaVersion(scala3))),
     MatrixExclude(Map("java" -> jvmLatest.render, "scala" -> CrossVersion.binaryScalaVersion(scala2))),
   ),
+  (List(jvmOldest, jvmLts) ++ jvmGraals ++ jvmOpenj9s).map { java =>
+    // don't run JS on JVMs, except the latest (to avoid too much jobs):
+    MatrixExclude(Map("java" -> java.render, "ci" -> "ciJS"))
+  },
+  (List(jvmOldest) ++ jvmGraals ++ jvmOpenj9s).map { java =>
+    // don't run Native on JVMs, except the latest 2 (to avoid too much jobs):
+    MatrixExclude(Map("java" -> java.render, "ci" -> "ciNative"))
+  },
 ).flatten
 ThisBuild / githubWorkflowBuildMatrixInclusions ++= crossScalaVersions.value.flatMap { scalaVer =>
   _quickCiAliases.keys.flatMap { plat =>
