@@ -43,10 +43,6 @@ jobs:
           - semeru@23
         ci: [ciJVM, ciJS, ciNative]
         include:
-          - os: macos-13
-            java: temurin@24
-            scala: 2.13
-            ci: ciJS
           - os: windows-2025
             java: temurin@24
             scala: 2.13
@@ -55,10 +51,6 @@ jobs:
             java: temurin@24
             scala: 2.13
             ci: ciJS
-          - os: ubuntu-24.04
-            java: temurin@24
-            scala: 2.13
-            ci: ciJS
           - os: windows-11-arm
             java: temurin@21
             scala: 2.13
@@ -79,10 +71,6 @@ jobs:
             java: temurin@24
             scala: 2.13
             ci: ciJVM
-          - os: windows-11-arm
-            java: temurin@21
-            scala: 2.13
-            ci: ciJS
           - os: windows-2025
             java: temurin@24
             scala: 2.13
@@ -115,10 +103,6 @@ jobs:
             java: temurin@24
             scala: 3
             ci: ciJS
-          - os: ubuntu-24.04
-            java: temurin@24
-            scala: 3
-            ci: ciJS
           - os: windows-11-arm
             java: temurin@21
             scala: 3
@@ -151,14 +135,6 @@ jobs:
             java: temurin@24
             scala: 3
             ci: ciJVM
-          - os: windows-11-arm
-            java: temurin@21
-            scala: 3
-            ci: ciJS
-          - os: macos-13
-            java: temurin@24
-            scala: 3
-            ci: ciJS
           - os: ubuntu-24.04
             java: temurin@24
             scala: 3

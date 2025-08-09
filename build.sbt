@@ -267,11 +267,18 @@ ThisBuild / githubWorkflowBuildMatrixInclusions ++= crossScalaVersions.value.fla
     val binVer = CrossVersion.binaryScalaVersion(scalaVer)
     Seq(
       MatrixInclude(matching = Map("os" -> macos, "java" -> jvmLatest.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty),
-      MatrixInclude(matching = Map("os" -> macosIntel, "java" -> jvmLatest.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty),
       MatrixInclude(matching = Map("os" -> windows, "java" -> jvmLatest.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty),
-      MatrixInclude(matching = Map("os" -> windowsArm, "java" -> jvmLts.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty),
-      MatrixInclude(matching = Map("os" -> linux86, "java" -> jvmLatest.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty),
-    )
+    ) ++ {
+      if (plat != "ciJS") {
+        Seq(
+          MatrixInclude(matching = Map("os" -> linux86, "java" -> jvmLatest.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty),
+          MatrixInclude(matching = Map("os" -> macosIntel, "java" -> jvmLatest.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty),
+          MatrixInclude(matching = Map("os" -> windowsArm, "java" -> jvmLts.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty),
+        )
+      } else {
+        Seq.empty
+      }
+    }
   }
 }
 ThisBuild / githubWorkflowJobSetup ~= { steps =>
