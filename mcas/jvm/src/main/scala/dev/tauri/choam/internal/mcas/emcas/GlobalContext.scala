@@ -85,10 +85,10 @@ private[mcas] abstract class GlobalContext
 
   /** Only for testing/benchmarking/JMX */
   private[choam] final override def getRetryStats(): Mcas.RetryStats = {
-    // allocating this builder is still cheaper than using an iterator (tuples):
-    val b = new GlobalContext.StatsBuilder()
-    val tcs = this._threadContexts
-    if (tcs ne null) {
+    if (Consts.statsEnabled) {
+      // allocating this builder is still cheaper than using an iterator (tuples):
+      val b = new GlobalContext.StatsBuilder()
+      val tcs = this._threadContexts
       tcs.foreachAndSum { (wr, _) =>
         val tctx = wr.get()
         if (tctx ne null) {
@@ -98,14 +98,16 @@ private[mcas] abstract class GlobalContext
         }
         0
       } : Unit
+      b.build()
+    } else {
+      Mcas.RetryStats.zero
     }
-    b.build()
   }
 
   private[choam] final override def collectExchangerStats(): Map[Long, Map[AnyRef, AnyRef]] = {
-    val mb = Map.newBuilder[Long, Map[AnyRef, AnyRef]]
-    val tcs = this._threadContexts
-    if (tcs ne null) {
+    if (Consts.statsEnabled) {
+      val mb = Map.newBuilder[Long, Map[AnyRef, AnyRef]]
+      val tcs = this._threadContexts
       tcs.foreachAndSum { (wr, _) =>
         val tc = wr.get()
         if (tc ne null) {
@@ -115,16 +117,18 @@ private[mcas] abstract class GlobalContext
         }
         0
       } : Unit
+      mb.result()
+    } else {
+      Map.empty
     }
-    mb.result()
   }
 
   private[choam] final override def maxReusedWeakRefs(): Int = {
-    // An `IntRef` is still cheaper than using an iterator (tuples):
-    @nowarn("cat=lint-performance")
-    var max = 0
-    val tcs = this._threadContexts
-    if (tcs ne null) {
+    if (Consts.statsEnabled) {
+      // An `IntRef` is still cheaper than using an iterator (tuples):
+      @nowarn("cat=lint-performance")
+      var max = 0
+      val tcs = this._threadContexts
       tcs.foreachAndSum { (wr, _) =>
         val tc = wr.get()
         if (tc ne null) {
@@ -137,8 +141,10 @@ private[mcas] abstract class GlobalContext
         }
         0
       } : Unit
+      max
+    } else {
+      0
     }
-    max
   }
 
   /** For testing. */
@@ -162,8 +168,8 @@ private[mcas] abstract class GlobalContext
   }
 
   private[emcas] final def threadContextCount(): Int = {
-    val tcs = this._threadContexts
-    if (tcs ne null) {
+    if (Consts.statsEnabled) {
+      val tcs = this._threadContexts
       tcs.foreachAndSum { (wr, _) =>
         if (wr.get() eq null) {
           tcs.del(wr) : Unit // clean empty weakref
@@ -173,7 +179,7 @@ private[mcas] abstract class GlobalContext
         }
       }
     } else {
-      0 // we don't know
+      0
     }
   }
 
@@ -216,7 +222,8 @@ private[mcas] abstract class GlobalContext
 
   /** Only for testing! */
   private[choam] final def gcThreadContextsForTesting(): Unit = {
-    this.gcThreadContexts()
+    if (Consts.statsEnabled) this.gcThreadContexts()
+    else throw new AssertionError("Consts.statsEnabled == false")
   }
 }
 
