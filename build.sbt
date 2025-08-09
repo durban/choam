@@ -251,14 +251,16 @@ ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
   ),
 ).flatten
 ThisBuild / githubWorkflowBuildMatrixInclusions ++= crossScalaVersions.value.flatMap { scalaVer =>
-  val binVer = CrossVersion.binaryScalaVersion(scalaVer)
-  Seq(
-    MatrixInclude(matching = Map("os" -> macos, "java" -> jvmLatest.render, "scala" -> binVer), additions = Map.empty),
-    MatrixInclude(matching = Map("os" -> macosIntel, "java" -> jvmLatest.render, "scala" -> binVer), additions = Map.empty),
-    MatrixInclude(matching = Map("os" -> windows, "java" -> jvmLatest.render, "scala" -> binVer), additions = Map.empty),
-    MatrixInclude(matching = Map("os" -> windowsArm, "java" -> jvmLts.render, "scala" -> binVer), additions = Map.empty),
-    MatrixInclude(matching = Map("os" -> linux86, "java" -> jvmLatest.render, "scala" -> binVer), additions = Map.empty),
-  )
+  _quickCiAliases.keys.flatMap { plat =>
+    val binVer = CrossVersion.binaryScalaVersion(scalaVer)
+    Seq(
+      MatrixInclude(matching = Map("os" -> macos, "java" -> jvmLatest.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty),
+      MatrixInclude(matching = Map("os" -> macosIntel, "java" -> jvmLatest.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty),
+      MatrixInclude(matching = Map("os" -> windows, "java" -> jvmLatest.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty),
+      MatrixInclude(matching = Map("os" -> windowsArm, "java" -> jvmLts.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty),
+      MatrixInclude(matching = Map("os" -> linux86, "java" -> jvmLatest.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty),
+    )
+  }
 }
 ThisBuild / githubWorkflowJobSetup ~= { steps =>
   steps.map(transformWorkflowStep)
