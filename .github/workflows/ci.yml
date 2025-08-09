@@ -151,6 +151,7 @@ jobs:
             scala: 3
           - java: temurin@24
             scala: 2.13
+            ci: ciJVM
           - java: temurin@11
             ci: ciJS
           - java: temurin@21

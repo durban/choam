@@ -251,7 +251,7 @@ ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
     MatrixExclude(Map("os" -> linux86)), // but see inclusions
     MatrixExclude(Map("java" -> jvmGraalLts.render, "scala" -> CrossVersion.binaryScalaVersion(scala3))),
     MatrixExclude(Map("java" -> jvmLts.render, "scala" -> CrossVersion.binaryScalaVersion(scala3))),
-    MatrixExclude(Map("java" -> jvmLatest.render, "scala" -> CrossVersion.binaryScalaVersion(scala2))),
+    MatrixExclude(Map("java" -> jvmLatest.render, "scala" -> CrossVersion.binaryScalaVersion(scala2), "ci" -> "ciJVM")),
   ),
   (List(jvmOldest, jvmLts) ++ jvmGraals ++ jvmOpenj9s).map { java =>
     // don't run JS on JVMs, except the latest (to avoid too much jobs):
