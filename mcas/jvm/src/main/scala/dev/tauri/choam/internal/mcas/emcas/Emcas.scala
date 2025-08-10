@@ -28,6 +28,7 @@ import java.lang.ref.{ Reference, WeakReference }
  */
 private[mcas] final class Emcas(
   private[choam] final override val osRng: OsRng,
+  private[choam] final override val stripes: Int,
 ) extends GlobalContext { global =>
 
   require(osRng ne null)

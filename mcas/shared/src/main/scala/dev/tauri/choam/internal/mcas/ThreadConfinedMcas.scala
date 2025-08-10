@@ -32,6 +32,9 @@ private final class ThreadConfinedMcas(
   private[choam] final override def close(): Unit =
     ()
 
+  private[choam] final override def stripes: Int =
+    1
+
   private[this] val _ctx = new Mcas.UnsealedThreadContext {
 
     final override type START = Descriptor

@@ -49,8 +49,9 @@ object ChoamRuntime {
 
   /** Acquires resources, allocates a new runtime; may block! */
   private[choam] final def unsafeBlocking(): ChoamRuntime = {
+    val numCpu = java.lang.Runtime.getRuntime().availableProcessors()
     val o = OsRng.mkNew() // may block due to /dev/random
-    val m = Mcas.newDefaultMcas(o) // may block due to JMX
+    val m = Mcas.newDefaultMcas(o, numCpu) // may block due to JMX
     new ChoamRuntimeImpl(m, o)
   }
 

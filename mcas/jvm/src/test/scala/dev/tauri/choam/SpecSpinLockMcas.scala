@@ -22,7 +22,7 @@ import munit.Suite
 trait SpecSpinLockMcas extends Suite with McasImplSpec {
 
   final override val mcasImpl: internal.mcas.Mcas =
-    internal.mcas.Mcas.newSpinLockMcas(BaseSpec.osRngForTesting)
+    internal.mcas.Mcas.newSpinLockMcas(BaseSpec.osRngForTesting, java.lang.Runtime.getRuntime().availableProcessors())
 
   override def afterAll(): Unit = {
     this.mcasImpl.close()

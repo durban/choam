@@ -27,13 +27,16 @@ import scala.collection.concurrent.TrieMap
 final class FlakyEMCAS extends Mcas.UnsealedMcas { self =>
 
   private[this] val emcasInst: Emcas =
-    new Emcas(BaseSpec.osRngForTesting)
+    new Emcas(BaseSpec.osRngForTesting, java.lang.Runtime.getRuntime().availableProcessors())
 
   private[this] val seen =
     new TrieMap[Int, Unit]
 
   private[choam] final override val osRng: OsRng =
     OsRng.mkNew()
+
+  private[choam] final override def stripes: Int =
+    emcasInst.stripes
 
   private[choam] final override def close(): Unit = {
     this.emcasInst.close()

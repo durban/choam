@@ -37,7 +37,7 @@ import munit.{ Location, TestOptions }
 class EmcasSpec extends BaseSpec {
 
   private[this] val inst: Emcas =
-    new Emcas(this.osRngInstance)
+    new Emcas(this.osRngInstance, java.lang.Runtime.getRuntime().availableProcessors())
 
   private[this] def rigInstance: RefIdGen =
     this.inst.currentContext().refIdGen

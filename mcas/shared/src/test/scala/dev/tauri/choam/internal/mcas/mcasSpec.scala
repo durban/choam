@@ -184,7 +184,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
   }
 
   test("Platform default must be thread-safe") {
-    val inst = Mcas.newDefaultMcas(this.osRngInstance)
+    val inst = Mcas.newDefaultMcas(this.osRngInstance, java.lang.Runtime.getRuntime().availableProcessors())
     try {
       assert(inst.isThreadSafe)
     } finally {

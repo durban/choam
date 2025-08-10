@@ -45,6 +45,8 @@ sealed trait Mcas {
   /** True iff `this` can be used to perform concurrent ops on separate threads */
   private[choam] def isThreadSafe: Boolean
 
+  private[choam] def stripes: Int
+
   /** Only for testing/benchmarking */
   private[choam] def getRetryStats(): Mcas.RetryStats = {
     // implementations should override if
@@ -72,9 +74,6 @@ object Mcas extends McasCompanionPlatform {
   private[mcas] trait UnsealedMcas extends Mcas
 
   private[mcas] trait UnsealedThreadContext extends ThreadContext
-
-  private[this] final val _numCpu =
-    java.lang.Runtime.getRuntime().availableProcessors()
 
   sealed trait ThreadContext {
 
@@ -154,7 +153,7 @@ object Mcas extends McasCompanionPlatform {
     // concrete:
 
     private[choam] final def stripes: Int =
-      _numCpu
+      this.impl.stripes
 
     private[choam] def stripeId: Int =
       java.lang.Long.remainderUnsigned(Consts.staffordMix13(Thread.currentThread().getId()), stripes.toLong).toInt

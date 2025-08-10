@@ -35,6 +35,7 @@ import java.util.concurrent.atomic.AtomicLong
  */
 private final class SpinLockMcas(
   private[choam] final override val osRng: OsRng,
+  private[choam] final override val stripes: Int,
 ) extends Mcas.UnsealedMcas { self =>
 
   private[this] val rig: RefIdGen =

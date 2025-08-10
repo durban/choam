@@ -40,7 +40,7 @@ final class EmcasSpecIO extends EmcasSpecF[IO] {
 abstract class EmcasSpecF[F[_]] extends BaseSpec {
 
   protected[this] val inst: Emcas =
-    new Emcas(this.osRngInstance)
+    new Emcas(this.osRngInstance, java.lang.Runtime.getRuntime().availableProcessors())
 
   private[this] def rigInstance: RefIdGen =
     this.inst.currentContext().refIdGen

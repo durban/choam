@@ -21,12 +21,12 @@ package mcas
 
 private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanionPlatform {
 
-  private[choam] final override def newDefaultMcas(osRng: OsRng): Mcas =
-    this.newEmcas(osRng)
+  private[choam] final override def newDefaultMcas(osRng: OsRng, numCpu: Int): Mcas =
+    this.newEmcas(osRng, numCpu)
 
-  private[choam] final def newEmcas(osRng: OsRng): Mcas =
-    new emcas.Emcas(osRng)
+  private[choam] final def newEmcas(osRng: OsRng, numCpu: Int): Mcas =
+    new emcas.Emcas(osRng, numCpu)
 
-  private[choam] final def newSpinLockMcas(osRng: OsRng): Mcas =
-    new SpinLockMcas(osRng)
+  private[choam] final def newSpinLockMcas(osRng: OsRng, numCpu: Int): Mcas =
+    new SpinLockMcas(osRng, numCpu)
 }

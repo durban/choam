@@ -29,7 +29,7 @@ trait BaseSpec
   with MUnitUtils {
 
   private[this] val _defaultMcasInstance: Mcas =
-    Mcas.newDefaultMcas(this.osRngInstance)
+    Mcas.newDefaultMcas(this.osRngInstance, java.lang.Runtime.getRuntime().availableProcessors())
 
   protected final def osRngInstance: OsRng =
     BaseSpec.osRngForTesting
@@ -52,7 +52,7 @@ object BaseSpec {
     OsRng.mkNew()
 
   final def newDefaultMcasForTesting(): Mcas =
-    Mcas.newDefaultMcas(osRngForTesting)
+    Mcas.newDefaultMcas(osRngForTesting, java.lang.Runtime.getRuntime().availableProcessors())
 
   final def closeMcas(mcasImpl: Mcas): Unit = {
     mcasImpl.close()

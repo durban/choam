@@ -21,6 +21,8 @@ package mcas
 
 private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanionPlatform {
 
-  private[choam] final override def newDefaultMcas(osRng: OsRng): Mcas =
+  private[choam] final override def newDefaultMcas(osRng: OsRng, numCpu: Int): Mcas = {
+    _assert(numCpu == 1)
     this.newThreadConfinedMcas(osRng)
+  }
 }

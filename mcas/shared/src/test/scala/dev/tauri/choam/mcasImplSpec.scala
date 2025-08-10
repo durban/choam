@@ -33,7 +33,7 @@ trait McasImplSpec {
 trait SpecDefaultMcas extends munit.Suite with SpecDefaultMcasPlatform {
 
   private[this] val _mcasImpl: Mcas =
-    Mcas.newDefaultMcas(BaseSpec.osRngForTesting)
+    Mcas.newDefaultMcas(BaseSpec.osRngForTesting, java.lang.Runtime.getRuntime().availableProcessors())
 
   override def afterAll(): Unit = {
     this._mcasImpl.close()
