@@ -595,7 +595,7 @@ object PubSub {
     }
 
     final override def close: Rxn[Result] = {
-      isClosed.getAndUpdate(_ => true).flatMap { wasClosed =>
+      isClosed.getAndSet(true).flatMap { wasClosed =>
         if (wasClosed) {
           _axnClosed
         } else {
@@ -698,13 +698,13 @@ object PubSub {
     }
 
     final def closeExternal: Rxn[Unit] = {
-      queue.enqueueSignal(null).void
+      queue.enqueueSignal(null)
     }
 
     final def closeInternal[F[_]](implicit F: AsyncReactive[F]): F[Unit] = {
       implicit val FF: Async[F] = F.asyncInst
       F.apply(hub.removeSubscription(this.id)).guarantee(
-        awaitShutdown.complete(()).void.run[F]
+        awaitShutdown.complete(()).run[F].void
       )
     }
   }
@@ -715,10 +715,9 @@ object PubSub {
     val wl: GenWaitList[Chunk[A]],
   ) {
 
-    final def enqueueSignal(chunk: SignalChunk[A]): Rxn[Success.type] = {
+    final def enqueueSignal(chunk: SignalChunk[A]): Rxn[Unit] = {
       wl.trySetDirectly(chunk).map { ok =>
         _assert(ok)
-        Success
       }
     }
 
