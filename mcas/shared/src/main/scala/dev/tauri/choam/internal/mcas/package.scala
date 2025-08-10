@@ -23,8 +23,8 @@ package object mcas {
   private[choam] final def refIdHexString(id: Long): String =
     toHexPadded(id)
 
-  private[choam] final def refHashString(id: Long): String =
-    toHexPadded(refShortHash(id))
+  private[choam] final def refHashArrayIdBase(id: Long): String =
+    toHexPadded(Consts.staffordMix13(id))
 
   private[choam] final def toHexPadded(n: Long): String = {
     val hex = java.lang.Long.toHexString(n)
@@ -34,9 +34,5 @@ package object mcas {
     } else {
       hex
     }
-  }
-
-  private[this] final def refShortHash(id: Long): Long = {
-    Consts.staffordMix13(id) // TODO: when we have pre-hashed IDs, remove this (except for idBase in arrays)
   }
 }

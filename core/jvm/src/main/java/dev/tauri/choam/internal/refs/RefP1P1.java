@@ -65,7 +65,7 @@ final class RefP1P1<A, B> extends PaddingForP1P1<A, B> implements Ref2Impl<A, B>
 
   @Override
   protected final String refToString() {
-    return package$.MODULE$.refStringFrom8Ids(this.id0(), this.id1());
+    return package$.MODULE$.refStringFrom2(this.id0(), this.id1());
   }
 
   @Override

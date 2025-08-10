@@ -68,7 +68,7 @@ final class RefP1<A>
 
   @Override
   protected final String refToString() {
-    return package$.MODULE$.refStringFrom4Ids(this.id());
+    return package$.MODULE$.refStringFrom1(this.id());
   }
 
   @Override

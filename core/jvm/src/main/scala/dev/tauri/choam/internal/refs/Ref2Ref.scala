@@ -72,7 +72,7 @@ private final class Ref2Ref1[A, B](self: Ref2ImplBase[A, B])
     this.id.toInt
 
   final override def toString: String =
-    refStringFrom4Ids(this.id)
+    refStringFrom1(this.id)
 
   final override def dummy(v: Byte): Long =
     self.dummyImpl1(v)
@@ -126,7 +126,7 @@ private final class Ref2Ref2[A, B](self: Ref2Impl[A, B])
     this.id.toInt
 
   final override def toString: String =
-    refStringFrom4Ids(this.id)
+    refStringFrom1(this.id)
 
   override def dummy(v: Byte): Long =
     self.dummyImpl2(v)

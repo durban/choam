@@ -36,13 +36,13 @@ package object refs extends RefsPackagePlatform {
     new SparseRefArray[A](__size = size, initial = initial, _idBase = idBase)
   }
 
-  private[refs] def refStringFrom4Ids( // TODO: rename
+  private[refs] def refStringFrom1(
     i0: Long,
   ): String = {
     "Ref@" + internal.mcas.refIdHexString(i0)
   }
 
-  private[refs] def refStringFrom8Ids( // TODO: rename
+  private[refs] def refStringFrom2(
     i0: Long,
     i1: Long,
   ): String = {
@@ -50,7 +50,7 @@ package object refs extends RefsPackagePlatform {
   }
 
   private[refs] def refArrayRefToString(idBase: Long, offset: Int): String = {
-    val baseHash = internal.mcas.refHashString(idBase)
+    val baseHash = internal.mcas.refHashArrayIdBase(idBase)
     s"ARef@${baseHash}+${offset}"
   }
 }

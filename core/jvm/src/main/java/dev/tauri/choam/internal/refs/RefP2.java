@@ -71,7 +71,7 @@ final class RefP2<A, B>
 
   @Override
   protected final String refToString() {
-    return package$.MODULE$.refStringFrom8Ids(this.id0(), this.id1());
+    return package$.MODULE$.refStringFrom2(this.id0(), this.id1());
   }
 
   @Override

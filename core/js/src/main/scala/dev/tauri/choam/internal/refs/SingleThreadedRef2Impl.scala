@@ -33,5 +33,5 @@ private final class SingleThreadedRef2Impl[A, B](a: A, b: B)(
     new SingleThreadedRefImpl(b)(i1)
 
   final override def toString: String =
-    refStringFrom8Ids(i0, i1)
+    refStringFrom2(i0, i1)
 }

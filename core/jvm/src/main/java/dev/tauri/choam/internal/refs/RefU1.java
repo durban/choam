@@ -66,7 +66,7 @@ final class RefU1<A> extends RefIdOnly<A> implements UnsealedRef<A>, MemoryLocat
 
   @Override
   protected final String refToString() {
-    return package$.MODULE$.refStringFrom4Ids(this.id());
+    return package$.MODULE$.refStringFrom1(this.id());
   }
 
   @Override

@@ -42,7 +42,7 @@ private final class SingleThreadedRefImpl[A](private[this] var value: A)(
   }
 
   final override def toString: String =
-    refStringFrom4Ids(id)
+    refStringFrom1(id)
 
   private[choam] final override def dummy(v: Byte): Long =
     id ^ v

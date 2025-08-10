@@ -183,7 +183,7 @@ object Ref extends RefInstances0 {
 
     protected[choam] final override def refToString(): String = {
       val idBase = this.id
-      s"Ref.Array[${size}]@${internal.mcas.refHashString(idBase)}"
+      s"Ref.Array[${size}]@${internal.mcas.refHashArrayIdBase(idBase)}"
     }
 
     protected final def checkIndex(idx: Int): Unit = {
