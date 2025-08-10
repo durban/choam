@@ -25,11 +25,10 @@ final class Descriptor private (
   protected final override val map: LogMap2[Any],
   final override val validTs: Long,
   final override val validTsBoxed: java.lang.Long,
-  final override val versionIncr: Long,
-  private final val versionCas: LogEntry[java.lang.Long], // can be null
+  private final val versionCas: LogEntry[java.lang.Long], // can be null // TODO: remove this
 ) extends DescriptorPlatform {
 
-  require(((versionCas eq null) || (versionIncr > 0L)) && ((validTsBoxed eq null) || (validTsBoxed.longValue == validTs)))
+  require((versionCas eq null) && ((validTsBoxed eq null) || (validTsBoxed.longValue == validTs)))
 
   final override type D = Descriptor
 
@@ -47,26 +46,6 @@ final class Descriptor private (
 
   private[mcas] final override def hasVersionCas: Boolean = {
     this.versionCas ne null
-  }
-
-  private[mcas] final override def addVersionCas(commitTsRef: MemoryLocation[Long]): Descriptor = {
-    require(this.versionCas eq null)
-    require(!this.readOnly)
-    require(this.versionIncr > 0L)
-    require(this.validTsBoxed ne null)
-    val hwd = LogEntry[java.lang.Long](
-      commitTsRef.asInstanceOf[MemoryLocation[java.lang.Long]],
-      ov = this.validTsBoxed, // no re-boxing here
-      nv = java.lang.Long.valueOf(this.newVersion),
-      version = Version.Start, // the version's version is unused/arbitrary
-    )
-    new Descriptor(
-      map = this.map,
-      validTs = this.validTs,
-      validTsBoxed = this.validTsBoxed,
-      versionIncr = this.versionIncr,
-      versionCas = hwd,
-    )
   }
 
   private[choam] final override def getOrElseNull[A](ref: MemoryLocation[A]): LogEntry[A] = {
@@ -182,7 +161,6 @@ final class Descriptor private (
           map = this.map,
           validTs = newValidTs,
           validTsBoxed = newValidTsBoxed,
-          versionIncr = this.versionIncr,
           versionCas = this.versionCas,
         )
       } else {
@@ -204,17 +182,6 @@ final class Descriptor private (
     }
   }
 
-  private[mcas] final def withNoNewVersion: Descriptor = {
-    require(this.versionCas eq null)
-    new Descriptor(
-      map = this.map,
-      validTs = this.validTs,
-      validTsBoxed = this.validTsBoxed,
-      versionIncr = 0L,
-      versionCas = null,
-    )
-  }
-
   private final def withLogMap(newMap: LogMap2[Any]): Descriptor = {
     if (newMap eq this.map) {
       this
@@ -223,7 +190,6 @@ final class Descriptor private (
         map = newMap,
         validTs = this.validTs,
         validTsBoxed = this.validTsBoxed,
-        versionIncr = this.versionIncr,
         versionCas = this.versionCas,
       )
     }
@@ -237,7 +203,6 @@ final class Descriptor private (
         map = newMap,
         validTs = newValidTs,
         validTsBoxed = newValidTsBoxed,
-        versionIncr = this.versionIncr,
         versionCas = this.versionCas,
       )
     }
@@ -245,17 +210,12 @@ final class Descriptor private (
 
   final override def toString: String = {
     val m = this.map.toString(pre = "[", post = "]")
-    val vi = if (versionIncr == Descriptor.DefaultVersionIncr) {
-      ""
-    } else {
-      s", versionIncr = ${versionIncr}"
-    }
     val vc = if (versionCas eq null) {
       ""
     } else {
       s", versionCas = ${versionCas}"
     }
-    s"mcas.Descriptor(${m}, validTs = ${validTs}, readOnly = ${readOnly}${vi}${vc})"
+    s"mcas.Descriptor(${m}, validTs = ${validTs}, readOnly = ${readOnly}${vc})"
   }
 
   final override def equals(that: Any): Boolean = {
@@ -265,7 +225,6 @@ final class Descriptor private (
           (this.versionCas == that.versionCas) &&
           (this.validTs == that.validTs) &&
           (this.validTsBoxed eq that.validTsBoxed) &&
-          (this.versionIncr == that.versionIncr) &&
           (this.map == that.map)
         )
       case _ =>
@@ -275,7 +234,6 @@ final class Descriptor private (
 
   final override def hashCode: Int = {
     var h = MurmurHash3.mix(0xefebde66, this.validTs.##)
-    h = MurmurHash3.mix(h, this.versionIncr.##)
     h = MurmurHash3.mix(h, this.versionCas.##)
     h = MurmurHash3.mix(h, this.map.##)
     MurmurHash3.finalizeHash(h, this.map.size)
@@ -284,9 +242,6 @@ final class Descriptor private (
 
 object Descriptor {
 
-  private final val DefaultVersionIncr =
-    Version.Incr
-
   private[mcas] final def empty(commitTsRef: MemoryLocation[Long], ctx: Mcas.ThreadContext): Descriptor = {
     val validTsBoxed: java.lang.Long =
       (ctx.readDirect(commitTsRef) : Any).asInstanceOf[java.lang.Long]
@@ -294,7 +249,6 @@ object Descriptor {
       LogMap2.empty,
       validTs = validTsBoxed.longValue,
       validTsBoxed = validTsBoxed,
-      versionIncr = DefaultVersionIncr,
       versionCas = null,
     )
   }
@@ -308,7 +262,6 @@ object Descriptor {
       LogMap2.empty,
       validTs = currentTs,
       validTsBoxed = null, // see above
-      versionIncr = DefaultVersionIncr,
       versionCas = null,
     )
   }
@@ -316,13 +269,11 @@ object Descriptor {
   private[mcas] final def fromLogMapAndVer(
     map: LogMap2[Any],
     validTs: Long,
-    versionIncr: Long,
   ): Descriptor = {
     new Descriptor(
       map = map,
       validTs = validTs,
       validTsBoxed = null, // see above
-      versionIncr = versionIncr,
       versionCas = null,
     )
   }
@@ -333,7 +284,7 @@ object Descriptor {
     ctx: Mcas.ThreadContext,
     canExtend: Boolean,
   ): Descriptor = {
-    _assert((a.versionCas eq null) && (b.versionCas eq null) && (a.versionIncr == b.versionIncr))
+    _assert((a.versionCas eq null) && (b.versionCas eq null))
     // throws `Hamt.IllegalInsertException` in case of conflict:
     val mergedMap = a.map.insertedAllFrom(b.map)
 
@@ -392,7 +343,7 @@ object Descriptor {
     // so we can safely replace `into`'s `validTs`
     // with `from`'s `validTs`.
     if (into ne null) {
-      _assert((into.versionIncr == from.versionIncr) && (!into.hasVersionCas) && (!from.hasVersionCas))
+      _assert((!into.hasVersionCas) && (!from.hasVersionCas))
       into.withLogMapAndValidTs(logMap, newValidTs = from.validTs, newValidTsBoxed = from.validTsBoxed)
     } else {
       _assert(!from.hasVersionCas)
@@ -400,7 +351,6 @@ object Descriptor {
         map = logMap,
         validTs = from.validTs,
         validTsBoxed = from.validTsBoxed,
-        versionIncr = from.versionIncr,
         versionCas = null,
       )
     }

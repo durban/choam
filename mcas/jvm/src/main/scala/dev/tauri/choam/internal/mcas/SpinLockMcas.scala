@@ -49,9 +49,6 @@ private final class SpinLockMcas(
   private[choam] final override def isThreadSafe =
     true
 
-  private[choam] final override def hasVersionFailure: Boolean =
-    false
-
   private[this] val commitTs: AtomicLong =
     new AtomicLong(Version.Start)
 

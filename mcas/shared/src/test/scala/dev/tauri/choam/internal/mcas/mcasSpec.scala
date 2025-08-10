@@ -282,7 +282,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     if (isEmcas) assert(ds ne d7) else assert(ds eq d7)
     // perform:
     assertEquals(ctx.tryPerform(d7), McasStatus.Successful)
-    val newVer = d7.newVersion
+    val newVer = d7.validTs + 1L
     assertEquals(ctx.readVersion(r1), newVer)
     assertEquals(ctx.readVersion(r2), newVer)
     assertSameInstance(ctx.readDirect(r1), "aa")
@@ -356,14 +356,9 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     assert(!d3.readOnly)
     // simulate concurrent change to r2:
     assert(ctx.tryPerformSingleCas(r2, "b", "x"))
-    val ver = ctx.readVersion(r2)
     // the ongoing op should fail:
     val res = ctx.tryPerform(d4)
-    if (!mcasImpl.hasVersionFailure) {
-      assertEquals(res, McasStatus.FailedVal)
-    } else {
-      assertEquals(res, ver)
-    }
+    assertEquals(res, McasStatus.FailedVal)
     assertSameInstance(ctx.readDirect(r1), "a")
     assertSameInstance(ctx.readDirect(r2), "x")
   }
@@ -374,21 +369,25 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     assert(ctx.tryPerform(d0) == McasStatus.Successful)
   }
 
-  test("singleCasDirect should work without changing the global commitTs") {
-    assume(mcasImpl.hasVersionFailure)
+  test("singleCasDirect also changes the global commitTs") {
     val ctx = mcasImpl.currentContext()
     val r1 = unsafe("a")
     val startTs = ctx.start().validTs
     // successful:
     assert(ctx.singleCasDirect(r1, "a", "b"))
-    assertEquals(ctx.start().validTs, startTs)
-    assertEquals(ctx.readVersion(r1), startTs)
+    assertEquals(ctx.start().validTs, startTs + 1L)
+    assertEquals(ctx.readVersion(r1), startTs + 1L)
     assertSameInstance(ctx.readDirect(r1), "b")
     // failed:
     assert(!ctx.singleCasDirect(r1, "a", "b"))
-    assertEquals(ctx.start().validTs, startTs)
-    assertEquals(ctx.readVersion(r1), startTs)
+    assertEquals(ctx.start().validTs, startTs + 1L)
+    assertEquals(ctx.readVersion(r1), startTs + 1L)
     assertSameInstance(ctx.readDirect(r1), "b")
+    // successful:
+    assert(ctx.singleCasDirect(r1, "b", "c"))
+    assertEquals(ctx.start().validTs, startTs + 2L)
+    assertEquals(ctx.readVersion(r1), startTs + 2L)
+    assertSameInstance(ctx.readDirect(r1), "c")
   }
 
   test("Merging disjoint descriptors should work") {
@@ -470,11 +469,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
       assertSameInstance(l2(1).address, r1)
     }
     val d3 = ctx.addVersionCas(d2)
-    val (expSize, offset) = if (!mcasImpl.hasVersionFailure) {
-      (2, 0)
-    } else {
-      (3, 1)
-    }
+    val (expSize, offset) = (2, 0)
     assertEquals(d3.size, expSize)
     val l3 = d3.hwdIterator.toList
     assertEquals(l3.length, expSize)
@@ -519,16 +514,6 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     assertEquals(d4, d3)
     assertEquals(d4.##, d3.##)
     assertEquals(d4.toString, d3.toString)
-    val d4h = d4.##
-    val d4s = d4.toString
-    val d5 = d4.withNoNewVersion
-    val d5h = d5.##
-    val d5s = d5.toString
-    if (!this.isEmcas) {
-      assertNotEquals(d5, d4)
-    }
-    assertNotEquals(d5h, d4h) // with high probability
-    assertNotEquals(d5s, d4s)
   }
 
   test("readOnly for descriptors") {
@@ -590,11 +575,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     assertNotEquals(ver, d1.getOrElseNull(ref).oldVersion)
     val d2 = d1.overwrite(d1.getOrElseNull(ref).withNv("X"))
     val res = ctx.tryPerform(d2)
-    if (!mcasImpl.hasVersionFailure) {
-      assertEquals(res, McasStatus.FailedVal)
-    } else {
-      assertEquals(res, ver)
-    }
+    assertEquals(res, McasStatus.FailedVal)
     assertEquals(ctx.readVersion(ref), ver)
   }
 

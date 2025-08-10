@@ -36,8 +36,6 @@ abstract class AbstractDescriptor extends AbstractDescriptorPlatform {
 
   def validTsBoxed: java.lang.Long
 
-  def versionIncr: Long
-
   def toImmutable: Descriptor
 
   final def size: Int =
@@ -49,11 +47,6 @@ abstract class AbstractDescriptor extends AbstractDescriptorPlatform {
     this.size > 0
 
   private[mcas] def hasVersionCas: Boolean
-
-  private[mcas] def addVersionCas(commitTsRef: MemoryLocation[Long]): AbstractDescriptor.Aux[D]
-
-  private[mcas] final def newVersion: Long = // TODO: this is incorrect for EMCAS
-    this.validTs + this.versionIncr
 
   private[choam] def hwdIterator: Iterator[LogEntry[Any]]
 
@@ -103,6 +96,4 @@ abstract class AbstractDescriptor extends AbstractDescriptorPlatform {
     ctx: Mcas.ThreadContext,
     additionalHwd: LogEntry[?], // can be null
   ): AbstractDescriptor.Aux[D]
-
-  private[mcas] def withNoNewVersion: AbstractDescriptor.Aux[D]
 }

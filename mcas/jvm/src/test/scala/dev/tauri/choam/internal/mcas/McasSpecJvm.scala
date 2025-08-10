@@ -60,7 +60,7 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
       val newHwd = hwd.withNv("bb")
       val dx2 = dx.overwrite(newHwd)
       assertEquals(ctx.tryPerform(dx2), McasStatus.Successful)
-      val newVer = dx2.newVersion
+      val newVer = dx2.validTs + 1L
       assertEquals(ctx.readVersion(r2), newVer)
       assert(newVer > d2.validTs)
       assert(newVer > ctx.readVersion(r1))
@@ -96,7 +96,7 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     assert(!d6.readOnly)
     // perform:
     assertEquals(ctx.tryPerform(d6), McasStatus.Successful)
-    val newVer = d6.newVersion
+    val newVer = d6.validTs + 1L
     assertEquals(ctx.readVersion(r1), newVer)
     assertEquals(ctx.readVersion(r2), newVer)
     assertSameInstance(ctx.readDirect(r1), "aa")
@@ -128,7 +128,7 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
       assertSameInstance(ov2, "b")
       val dx4 = dx3.overwrite(dx3.getOrElseNull(r2).withNv("y"))
       assertEquals(ctx.tryPerform(dx4), McasStatus.Successful)
-      val newVer = dx4.newVersion
+      val newVer = dx4.validTs + 1L
       assertEquals(ctx.readVersion(r1), newVer)
       assertEquals(ctx.readVersion(r2), newVer)
       assert(newVer > dx4.validTs)
@@ -188,8 +188,6 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     val r3 = MemoryLocation.unsafeUnpadded("c", this.rigInstance)
     val d0 = ctx.start()
     val startTs = d0.validTs
-    val v1 = ctx.readVersion(r1)
-    val v2 = ctx.readVersion(r2)
     // swap contents:
     val Some((ov1, d1)) = ctx.readMaybeFromLog(r1, d0, canExtend = true) : @unchecked
     assertSameInstance(ov1, "a")
@@ -219,26 +217,13 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     // try to finish the swap:
     val res = ctx.tryPerform(d4)
     val endTs = ctx.start().validTs
-    // EMCAS should be able to handle this (disjoint op), but
-    // others should fail due to the version-CAS failing:
-    if (!mcasImpl.hasVersionFailure) {
-      assertEquals(res, McasStatus.Successful)
-      assertEquals(endTs, startTs + (2 * Version.Incr))
-      assertSameInstance(ctx.readDirect(r1), "b")
-      assertEquals(ctx.readVersion(r1), endTs)
-      assertSameInstance(ctx.readDirect(r2), "a")
-      assertEquals(ctx.readVersion(r2), endTs)
-      assertEquals(ctx.readVersion(r3), endTs - Version.Incr)
-    } else {
-      assertEquals(res, newVer)
-      assert(VersionFunctions.isValid(res))
-      assertEquals(endTs, startTs + Version.Incr)
-      assertSameInstance(ctx.readDirect(r1), "a")
-      assertEquals(ctx.readVersion(r1), v1)
-      assertSameInstance(ctx.readDirect(r2), "b")
-      assertEquals(ctx.readVersion(r2), v2)
-      assertEquals(ctx.readVersion(r3), endTs)
-    }
+    assertEquals(res, McasStatus.Successful)
+    assertEquals(endTs, startTs + (2 * Version.Incr))
+    assertSameInstance(ctx.readDirect(r1), "b")
+    assertEquals(ctx.readVersion(r1), endTs)
+    assertSameInstance(ctx.readDirect(r2), "a")
+    assertEquals(ctx.readVersion(r2), endTs)
+    assertEquals(ctx.readVersion(r3), endTs - Version.Incr)
     assertSameInstance(ctx.readDirect(r3), "cc")
   }
 
@@ -274,28 +259,6 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     // try to merge; the logs are disjoint, but inconsistent:
     // `d2a` cannot be extended; will need to rollback/retry
     assert(ctx.addAll(d2a.toImmutable, d2b.toImmutable, canExtend = true) eq null)
-  }
-
-  test("CommitTs ref must be the first (JVM)") {
-    assume(mcasImpl.hasVersionFailure)
-    val r1 = MemoryLocation.unsafeUnpadded[String]("foo", this.rigInstance)
-    val r2 = MemoryLocation.unsafeUnpadded[String]("bar", this.rigInstance)
-    val ctx = this.mcasImpl.currentContext()
-    val d0 = ctx.start()
-    val d1 = ctx.addCasFromInitial(d0, r1, "foo", "bar")
-    val d2 = ctx.addCasFromInitial(d1, r2, "bar", "foo")
-    val d3 = ctx.addVersionCas(d2)
-    val lb = List.newBuilder[MemoryLocation[?]]
-    val it = d3.hwdIterator
-    while (it.hasNext) {
-      lb += it.next().address
-    }
-    val lst: List[MemoryLocation[?]] = lb.result()
-    assertEquals(lst.length, 3)
-    assert((lst(1) eq r1) || (lst(1) eq r2))
-    assert((lst(2) eq r1) || (lst(2) eq r2))
-    assert(lst(0) ne r1)
-    assert(lst(0) ne r2)
   }
 
   test("Stripes multithreaded") {

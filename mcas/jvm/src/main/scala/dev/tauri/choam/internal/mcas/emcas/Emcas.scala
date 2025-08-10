@@ -1037,9 +1037,6 @@ private[mcas] final class Emcas(
   private[choam] final override def isThreadSafe =
     true
 
-  private[choam] final override def hasVersionFailure: Boolean =
-    false
-
   private[mcas] final def tryPerformInternal(desc: AbstractDescriptor, ctx: EmcasThreadContext, optimism: Long): Long = {
     tryPerformDebug(desc = desc, ctx = ctx, optimism = optimism)
   }

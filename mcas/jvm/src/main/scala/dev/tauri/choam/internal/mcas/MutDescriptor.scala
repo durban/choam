@@ -26,7 +26,6 @@ import emcas.EmcasDescriptor
 final class MutDescriptor private (
   private[this] val map: LogMapMut[Any],
   private[this] var _validTs: Long,
-  private[this] var _versionIncr: Long,
 ) extends AbstractDescriptor {
 
   final override type D = MutDescriptor
@@ -40,14 +39,10 @@ final class MutDescriptor private (
   final override def validTsBoxed: java.lang.Long =
     null
 
-  final override def versionIncr: Long =
-    this._versionIncr
-
   final override def toImmutable: Descriptor = {
     Descriptor.fromLogMapAndVer(
       map = this.map.copyToImmutable(),
       validTs = this.validTs,
-      versionIncr = this.versionIncr,
     )
   }
 
@@ -56,10 +51,6 @@ final class MutDescriptor private (
 
   private[mcas] final override def hasVersionCas: Boolean =
     false
-
-  private[mcas] final override def addVersionCas(commitTsRef: MemoryLocation[Long]): AbstractDescriptor.Aux[MutDescriptor] = {
-    impossible("MutDescriptor#addVersionCas")
-  }
 
   private[choam] final override def getOrElseNull[A](ref: MemoryLocation[A]): LogEntry[A] = {
     this.map.asInstanceOf[LogMapMut[A]].getOrElseNull(ref.id)
@@ -150,11 +141,6 @@ final class MutDescriptor private (
     }
   }
 
-  private[mcas] final override def withNoNewVersion: MutDescriptor = {
-    this._versionIncr = 0L
-    this
-  }
-
   private[choam] final override def hwdIterator: Iterator[LogEntry[Any]] = {
     this.map.valuesIterator
   }
@@ -166,12 +152,7 @@ final class MutDescriptor private (
 
   final override def toString: String = {
     val m = this.map.toString(pre = "[", post = "]")
-    val vi = if (versionIncr == MutDescriptor.DefaultVersionIncr) {
-      ""
-    } else {
-      s", versionIncr = ${versionIncr}"
-    }
-    s"mcas.MutDescriptor(${m}, validTs = ${validTs}, readOnly = ${readOnly}${vi})"
+    s"mcas.MutDescriptor(${m}, validTs = ${validTs}, readOnly = ${readOnly})"
   }
 
   final override def equals(that: Any): Boolean = {
@@ -179,7 +160,6 @@ final class MutDescriptor private (
       case that: MutDescriptor =>
         (this eq that) || (
           (this.validTs == that.validTs) &&
-          (this.versionIncr == that.versionIncr) &&
           (this.map == that.hamt)
         )
       case _ =>
@@ -189,7 +169,6 @@ final class MutDescriptor private (
 
   final override def hashCode: Int = {
     var h = MurmurHash3.mix(0x9bae16ae, this.validTs.##)
-    h = MurmurHash3.mix(h, this.versionIncr.##)
     h = MurmurHash3.mix(h, this.map.##)
     MurmurHash3.finalizeHash(h, this.map.size)
   }
@@ -204,7 +183,6 @@ object MutDescriptor {
     new MutDescriptor(
       LogMapMut.newEmpty(),
       _validTs = currentTs,
-      _versionIncr = DefaultVersionIncr,
     )
   }
 }

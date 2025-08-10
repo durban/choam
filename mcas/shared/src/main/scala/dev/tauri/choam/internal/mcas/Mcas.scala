@@ -45,9 +45,6 @@ sealed trait Mcas {
   /** True iff `this` can be used to perform concurrent ops on separate threads */
   private[choam] def isThreadSafe: Boolean
 
-  /** True iff `this` can fail due to a global-version-CAS failing */
-  private[choam] def hasVersionFailure: Boolean
-
   /** Only for testing/benchmarking */
   private[choam] def getRetryStats(): Mcas.RetryStats = {
     // implementations should override if
@@ -293,24 +290,22 @@ object Mcas extends McasCompanionPlatform {
       Descriptor.merge(to, from, this, canExtend)
     }
 
-    /**
-     * Tries to perform a "bare" 1-CAS, without
-     * changing the global version. This breaks
-     * opacity guarantees! It may change the value
-     * of a ref without changing its version!
-     */
     final def singleCasDirect[A](ref: MemoryLocation[A], ov: A, nv: A): Boolean = {
+      // TODO: This method used to perform a "bare" 1-CAS, without
+      // TODO: changing the global version. This broke opacity
+      // TODO: guarantees, but we only used it in a safe way (in
+      // TODO: Exchanger). It changed the value of a ref without
+      // TODO: changing its version.
+      // TODO:
+      // TODO: However, now that all MCAS impls handle versions
+      // TODO: like EMCAS do, it is essentially a 1-long MCAS.
+      // TODO: We should figure out if we can safely do a 1-CAS instead.
       _assert(!equ(ov, nv))
       val hwd = this.readIntoHwd(ref)
-      val d0 = this.start() // do this after reading, so version is deemed valid
+      val d0 = this.start() // do this AFTER reading, so version is deemed valid // TODO: is this still true?
       _assert(d0.isValidHwd(hwd))
       if (equ(hwd.ov, ov)) {
-        // create a (dangerous) descriptor, which will set
-        // the new version to `validTs` (which may equal the
-        // old version):
-        val d1 = d0.add(hwd.withNv(nv)).withNoNewVersion
-        _assert(d1.newVersion == d1.validTs)
-        // we're intentionally NOT having a version-CAS:
+        val d1 = d0.add(hwd.withNv(nv))
         this.tryPerformInternal(d1, optimism = Consts.PESSIMISTIC) == McasStatus.Successful
       } else {
         false
