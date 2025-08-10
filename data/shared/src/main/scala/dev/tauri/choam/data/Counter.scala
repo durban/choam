@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import core.{ Rxn, Ref }
+import core.{ Rxn, Ref, StripedRef }
 
 // TODO: elimination counter (what do with different add values?)
 // TODO: do some benchmarks (`val`s may not worth it)
@@ -49,12 +49,9 @@ object Counter {
   }
 
   final def striped(str: Ref.AllocationStrategy): Rxn[Counter] = {
-    val arrStr = // TODO: use flat = true when it supports padding
-      Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = str.padded)
-    Rxn.unsafe.suspendContext { ctx =>
-      Ref.array(size = ctx.stripes, initial = 0L, strategy = arrStr).map { arr =>
-        new StripedCounter(arr)
-      }
+    Rxn.unsafe.delayContext { ctx =>
+      val sref = StripedRef.unsafe(0L, str, ctx)
+      new StripedCounter(sref)
     }
   }
 
@@ -76,19 +73,10 @@ object Counter {
       ref.get
   }
 
-  private[this] final class StripedCounter(arr: Ref.Array[Long]) extends Counter {
+  private[this] final class StripedCounter(sref: StripedRef[Long]) extends Counter {
 
-    // TODO: Create a reusable "striped ref array"
-    // TODO: data type (and use it here).
-    // TODO: Look at java.util.concurrent.atomic.Striped64,
-    // TODO: which seems similar.
-
-    private[this] final def getStripeId: Rxn[Int] =
-      Rxn.unsafe.delayContext(_.stripeId)
-
-    final override def add(n: Long): Rxn[Unit] = getStripeId.flatMap { stripeId =>
-      val ref = arr.unsafeGet(stripeId)
-      ref.update { cnt => cnt + n }
+    final override def add(n: Long): Rxn[Unit] = {
+      sref.current.update { cnt => cnt + n }
     }
 
     final override val incr: Rxn[Unit] =
@@ -98,18 +86,9 @@ object Counter {
       add(-1L)
 
     final override val count: Rxn[Long] = {
-      val len = arr.length
-      def go(idx: Int, acc: Long): Rxn[Long] = {
-        if (idx >= len) {
-          Rxn.pure(acc)
-        } else {
-          val ref = arr.unsafeGet(idx)
-          ref.get.flatMap { c =>
-            go(idx + 1, acc + c)
-          }
-        }
+      sref.fold(Rxn.pure(0L)) { (acc, ref) =>
+        acc.flatMap { count => ref.get.map(c => count + c) }
       }
-      go(idx = 0, acc = 0L)
     }
   }
 }
