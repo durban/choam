@@ -319,6 +319,43 @@ trait PubSubSpecTicked[F[_]]
       } yield ()
       t.replicateA_(if (isJvm()) 50 else 5)
     }
+
+    test(s"$name - subscribe/close/publish race (ticked)") {
+      val t = for {
+        hub <- newHub[Int](str)
+        rr <- F.both(
+          F.both(
+            hub.subscribeWithInitial(str, Rxn.pure(1)).compile.toVector.start,
+            hub.emit(9).run,
+          ),
+          F.both(
+            hub.subscribeWithInitial(str, Rxn.pure(2)).compile.toVector.start,
+            F.cede *> hub.close.run,
+          ),
+        )
+        ((fib1, emitResult), (fib2, closeResult)) = rr
+        _ <- if (closeResult eq PubSub.Backpressured) {
+          hub.awaitShutdown
+        } else {
+          assertEqualsF(closeResult, PubSub.Success)
+        }
+        r1 <- fib1.joinWithNever
+        r2 <- fib2.joinWithNever
+        _ <- if (emitResult eq PubSub.Closed) {
+          for {
+            _ <- assertF((clue(r1) == Vector()) || (r1 == Vector(1)))
+            _ <- assertF((clue(r2) == Vector()) || (r2 == Vector(2)))
+          } yield ()
+        } else {
+          for {
+            _ <- assertEqualsF(emitResult, PubSub.Success)
+            _ <- assertF((clue(r1) == Vector()) || (r1 == Vector(1)) || (r1 == Vector(1, 9)))
+            _ <- assertF((clue(r2) == Vector()) || (r2 == Vector(2)) || (r2 == Vector(2, 9)))
+          } yield ()
+        }
+      } yield ()
+      t.replicateA_(if (isJs()) 1 else 50)
+    }
   }
 
   private def droppingTests(
