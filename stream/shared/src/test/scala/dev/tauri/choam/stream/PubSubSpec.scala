@@ -147,7 +147,7 @@ trait PubSubSpec[F[_]]
         _ <- assertF((clue(r2) == Vector()) || (r2 == Vector(2)))
         _ <- assertF((clue(r3) == Vector()) || (r3 == Vector(3)))
       } yield ()
-      t.replicateA_(if (isJs()) 1 else 50)
+      t.replicateA_(if (isJs()) 1 else 500)
     }
 
     test(s"$name - subscribe/close/publish race") {
