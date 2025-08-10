@@ -262,6 +262,7 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
   }
 
   test("Stripes multithreaded") {
+    this.assume(this.mcasImpl.isThreadSafe)
     val N = 64
     val ctx0 = this.mcasImpl.currentContext()
     val stripes = new TrieMap[Int, Unit]
