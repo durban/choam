@@ -24,16 +24,12 @@ import scala.util.hashing.MurmurHash3
 final class Descriptor private (
   protected final override val map: LogMap2[Any],
   final override val validTs: Long,
-  final override val validTsBoxed: java.lang.Long,
-  private final val versionCas: LogEntry[java.lang.Long], // can be null // TODO: remove this
 ) extends DescriptorPlatform {
-
-  require((versionCas eq null) && ((validTsBoxed eq null) || (validTsBoxed.longValue == validTs)))
 
   final override type D = Descriptor
 
   final override val readOnly: Boolean =
-    this.map.definitelyReadOnly && (!this.hasVersionCas)
+    this.map.definitelyReadOnly
 
   final def isEmpty: Boolean =
     (this.size == 0)
@@ -43,10 +39,6 @@ final class Descriptor private (
 
   protected final override def hamt: AbstractHamt[?, ?, ?, ?, ?, ?] =
     this.map
-
-  private[mcas] final override def hasVersionCas: Boolean = {
-    this.versionCas ne null
-  }
 
   private[choam] final override def getOrElseNull[A](ref: MemoryLocation[A]): LogEntry[A] = {
     val r = this.map.asInstanceOf[LogMap2[A]].getOrElseNull(ref.id)
@@ -116,30 +108,13 @@ final class Descriptor private (
     this.map.revalidate(ctx)
   }
 
-  private[mcas] final override def validateAndTryExtend(
-    commitTsRef: MemoryLocation[Long],
-    ctx: Mcas.ThreadContext,
-    additionalHwd: LogEntry[?], // can be null
-  ): Descriptor = {
-    require(this.versionCas eq null)
-    // NB: we must read the commitTs *before* the `ctx.validate...`
-    val newValidTsBoxed: java.lang.Long =
-      (ctx.readDirect(commitTsRef) : Any).asInstanceOf[java.lang.Long]
-    this.validateAndTryExtendInternal(newValidTsBoxed.longValue, newValidTsBoxed, ctx, additionalHwd)
-  }
-
   private[mcas] final def validateAndTryExtendVer(
     currentTs: Long,
     ctx: Mcas.ThreadContext,
     additionalHwd: LogEntry[?], // can be null
   ): Descriptor = {
-    // We're passing `newValidTsBoxed = null`. This is ugly,
-    // but nothing will actually need it (we're doing EMCAS
-    // if we're here), and this way we avoid allocating
-    // an extra `java.lang.Long`.
     this.validateAndTryExtendInternal(
       newValidTs = currentTs,
-      newValidTsBoxed = null, // see above
       ctx = ctx,
       additionalHwd = additionalHwd,
     )
@@ -147,7 +122,6 @@ final class Descriptor private (
 
   private[this] final def validateAndTryExtendInternal(
     newValidTs: Long,
-    newValidTsBoxed: java.lang.Long, // can be null
     ctx: Mcas.ThreadContext,
     additionalHwd: LogEntry[?], // can be null
   ): Descriptor = {
@@ -160,8 +134,6 @@ final class Descriptor private (
         new Descriptor(
           map = this.map,
           validTs = newValidTs,
-          validTsBoxed = newValidTsBoxed,
-          versionCas = this.versionCas,
         )
       } else {
         null
@@ -173,13 +145,7 @@ final class Descriptor private (
   }
 
   private[choam] final override def hwdIterator: Iterator[LogEntry[Any]] = {
-    val values = this.map.valuesIterator
-    val vc = this.versionCas
-    if (vc eq null) {
-      values
-    } else {
-      Iterator.single(vc.cast[Any]).concat(values)
-    }
+    this.map.valuesIterator
   }
 
   private final def withLogMap(newMap: LogMap2[Any]): Descriptor = {
@@ -189,42 +155,31 @@ final class Descriptor private (
       new Descriptor(
         map = newMap,
         validTs = this.validTs,
-        validTsBoxed = this.validTsBoxed,
-        versionCas = this.versionCas,
       )
     }
   }
 
-  private final def withLogMapAndValidTs(newMap: LogMap2[Any], newValidTs: Long, newValidTsBoxed: java.lang.Long): Descriptor = {
-    if ((newMap eq this.map) && (newValidTs == this.validTs) && (newValidTsBoxed eq this.validTsBoxed)) {
+  private final def withLogMapAndValidTs(newMap: LogMap2[Any], newValidTs: Long): Descriptor = {
+    if ((newMap eq this.map) && (newValidTs == this.validTs)) {
       this
     } else {
       new Descriptor(
         map = newMap,
         validTs = newValidTs,
-        validTsBoxed = newValidTsBoxed,
-        versionCas = this.versionCas,
       )
     }
   }
 
   final override def toString: String = {
     val m = this.map.toString(pre = "[", post = "]")
-    val vc = if (versionCas eq null) {
-      ""
-    } else {
-      s", versionCas = ${versionCas}"
-    }
-    s"mcas.Descriptor(${m}, validTs = ${validTs}, readOnly = ${readOnly}${vc})"
+    s"mcas.Descriptor(${m}, validTs = ${validTs}, readOnly = ${readOnly})"
   }
 
   final override def equals(that: Any): Boolean = {
     that match {
       case that: Descriptor =>
         (this eq that) || (
-          (this.versionCas == that.versionCas) &&
           (this.validTs == that.validTs) &&
-          (this.validTsBoxed eq that.validTsBoxed) &&
           (this.map == that.map)
         )
       case _ =>
@@ -234,35 +189,17 @@ final class Descriptor private (
 
   final override def hashCode: Int = {
     var h = MurmurHash3.mix(0xefebde66, this.validTs.##)
-    h = MurmurHash3.mix(h, this.versionCas.##)
-    h = MurmurHash3.mix(h, this.map.##)
+    h = MurmurHash3.mixLast(h, this.map.##)
     MurmurHash3.finalizeHash(h, this.map.size)
   }
 }
 
 object Descriptor {
 
-  private[mcas] final def empty(commitTsRef: MemoryLocation[Long], ctx: Mcas.ThreadContext): Descriptor = {
-    val validTsBoxed: java.lang.Long =
-      (ctx.readDirect(commitTsRef) : Any).asInstanceOf[java.lang.Long]
-    new Descriptor(
-      LogMap2.empty,
-      validTs = validTsBoxed.longValue,
-      validTsBoxed = validTsBoxed,
-      versionCas = null,
-    )
-  }
-
   private[mcas] final def emptyFromVer(currentTs: Long): Descriptor = {
-    // We're passing `validTsBoxed = null`. This is ugly,
-    // but nothing will actually need it (we're doing EMCAS
-    // if we're here), and this way we avoid allocating
-    // an extra `java.lang.Long`.
     new Descriptor(
       LogMap2.empty,
       validTs = currentTs,
-      validTsBoxed = null, // see above
-      versionCas = null,
     )
   }
 
@@ -273,8 +210,6 @@ object Descriptor {
     new Descriptor(
       map = map,
       validTs = validTs,
-      validTsBoxed = null, // see above
-      versionCas = null,
     )
   }
 
@@ -284,7 +219,6 @@ object Descriptor {
     ctx: Mcas.ThreadContext,
     canExtend: Boolean,
   ): Descriptor = {
-    _assert((a.versionCas eq null) && (b.versionCas eq null))
     // throws `Hamt.IllegalInsertException` in case of conflict:
     val mergedMap = a.map.insertedAllFrom(b.map)
 
@@ -343,15 +277,11 @@ object Descriptor {
     // so we can safely replace `into`'s `validTs`
     // with `from`'s `validTs`.
     if (into ne null) {
-      _assert((!into.hasVersionCas) && (!from.hasVersionCas))
-      into.withLogMapAndValidTs(logMap, newValidTs = from.validTs, newValidTsBoxed = from.validTsBoxed)
+      into.withLogMapAndValidTs(logMap, newValidTs = from.validTs)
     } else {
-      _assert(!from.hasVersionCas)
       new Descriptor(
         map = logMap,
         validTs = from.validTs,
-        validTsBoxed = from.validTsBoxed,
-        versionCas = null,
       )
     }
   }

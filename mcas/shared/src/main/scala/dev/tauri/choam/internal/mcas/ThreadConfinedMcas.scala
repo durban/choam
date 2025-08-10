@@ -104,9 +104,6 @@ private final class ThreadConfinedMcas(
     final override def start(): Descriptor =
       Descriptor.emptyFromVer(_commitTs.get())
 
-    protected[mcas] final override def addVersionCas(desc: AbstractDescriptor): AbstractDescriptor.Aux[desc.D] =
-      desc // we increment the global commit version differently
-
     def validateAndTryExtend(
       desc: AbstractDescriptor,
       hwd: LogEntry[?],

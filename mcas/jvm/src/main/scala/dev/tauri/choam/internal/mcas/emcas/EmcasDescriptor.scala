@@ -43,11 +43,6 @@ private[mcas] final class EmcasDescriptor private[this] (
   private def this(wordsToCopy: Array[WdLike[?]]) =
     this(null, wordsToCopy, instRo = true)
 
-  // EMCAS handles the global version
-  // separately, so the descriptor must
-  // not have a CAS for changing it:
-  _assert((half eq null) || (!half.hasVersionCas))
-
   /*
    * While the status is `Active`, this array
    * is never mutated. After the op is finalized,

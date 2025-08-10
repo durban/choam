@@ -468,10 +468,9 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
       assertSameInstance(l2(0).address, r2)
       assertSameInstance(l2(1).address, r1)
     }
-    val d3 = ctx.addVersionCas(d2)
     val (expSize, offset) = (2, 0)
-    assertEquals(d3.size, expSize)
-    val l3 = d3.hwdIterator.toList
+    assertEquals(d2.size, expSize)
+    val l3 = d2.hwdIterator.toList
     assertEquals(l3.length, expSize)
     if (MemoryLocation.orderingInstance[String].lt(r1, r2)) {
       assertSameInstance(l3(0 + offset).address, r1)

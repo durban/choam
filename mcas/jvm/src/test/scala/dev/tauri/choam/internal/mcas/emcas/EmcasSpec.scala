@@ -285,9 +285,7 @@ class EmcasSpec extends BaseSpec {
     var weakMark: WeakReference[AnyRef] = null
     val t1 = new Thread(() => {
       val ctx = inst.currentContext()
-      val hDesc = ctx.addVersionCas(
-        ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "x", "a"), r2, "y", "b")
-      )
+      val hDesc = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "x", "a"), r2, "y", "b")
       val desc = new EmcasDescriptor(hDesc, instRo = false)
       val it = desc.getWordIterator()
       val d0 = it.next().asInstanceOf[EmcasWordDesc[String]]
@@ -404,9 +402,7 @@ class EmcasSpec extends BaseSpec {
     var ok0 = false
     val t1 = new Thread(() => {
       val ctx = inst.currentContext()
-      val hDesc = ctx.addVersionCas(
-        ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "x", "a"), r2, "y", "b")
-      )
+      val hDesc = ctx.addCasFromInitial(ctx.addCasFromInitial(ctx.start(), r1, "x", "a"), r2, "y", "b")
       val desc = new EmcasDescriptor(hDesc, instRo = false)
       val it = desc.getWordIterator()
       val d0 = it.next().asInstanceOf[EmcasWordDesc[String]]
@@ -668,8 +664,7 @@ class EmcasSpec extends BaseSpec {
     val d0 = ctx.start()
     val d1 = ctx.addCasFromInitial(d0, r1, "foo", "bar")
     val d2 = ctx.addCasFromInitial(d1, r2, "bar", "foo")
-    val d3 = ctx.addVersionCas(d2)
-    val d = new EmcasDescriptor(d3, instRo = false)
+    val d = new EmcasDescriptor(d2, instRo = false)
     val lb = List.newBuilder[MemoryLocation[?]]
     val it = d.getWordIterator()
     while (it.hasNext()) {

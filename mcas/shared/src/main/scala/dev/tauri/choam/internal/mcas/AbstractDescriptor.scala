@@ -34,19 +34,15 @@ abstract class AbstractDescriptor extends AbstractDescriptorPlatform {
 
   def validTs: Long
 
-  def validTsBoxed: java.lang.Long
-
   def toImmutable: Descriptor
 
   final def size: Int =
-    this.hamt.size + (if (this.hasVersionCas) 1 else 0)
+    this.hamt.size
 
   protected def hamt: AbstractHamt[?, ?, ?, ?, ?, ?]
 
   private[choam] final def nonEmpty: Boolean =
     this.size > 0
-
-  private[mcas] def hasVersionCas: Boolean
 
   private[choam] def hwdIterator: Iterator[LogEntry[Any]]
 
@@ -84,12 +80,6 @@ abstract class AbstractDescriptor extends AbstractDescriptorPlatform {
    * @return true, iff `this` is still valid.
    */
   private[mcas] def revalidate(ctx: Mcas.ThreadContext): Boolean
-
-  private[mcas] def validateAndTryExtend(
-    commitTsRef: MemoryLocation[Long],
-    ctx: Mcas.ThreadContext,
-    additionalHwd: LogEntry[?], // can be null
-  ): AbstractDescriptor.Aux[D]
 
   private[mcas] def validateAndTryExtendVer(
     currentTs: Long,

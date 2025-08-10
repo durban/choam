@@ -68,7 +68,7 @@ private final class SpinLockMcas(
 
     final override def tryPerformInternal(desc: AbstractDescriptor, optimism: Long): Long = {
       val ops = desc.hwdIterator.toList
-      _assert((!desc.hasVersionCas) && ops.nonEmpty)
+      _assert(ops.nonEmpty)
       perform(ops)
     }
 
@@ -130,9 +130,6 @@ private final class SpinLockMcas(
 
     final override def start(): Descriptor =
       Descriptor.emptyFromVer(commitTs.get())
-
-    protected[mcas] final override def addVersionCas(desc: AbstractDescriptor): AbstractDescriptor.Aux[desc.D] =
-      desc // we increment the global commit version differently
 
     final override def validateAndTryExtend(
       desc: AbstractDescriptor,

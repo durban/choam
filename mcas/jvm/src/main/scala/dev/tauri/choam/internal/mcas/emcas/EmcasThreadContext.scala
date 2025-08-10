@@ -153,9 +153,6 @@ private final class EmcasThreadContext(
   final override def startSnap(): Descriptor =
     Descriptor.emptyFromVer(this.impl.getCommitTs())
 
-  protected[mcas] final override def addVersionCas(desc: AbstractDescriptor): AbstractDescriptor.Aux[desc.D] =
-    desc // we increment the global commit version differently
-
   final override def validateAndTryExtend(
     desc: AbstractDescriptor,
     hwd: LogEntry[?],

@@ -36,9 +36,6 @@ final class MutDescriptor private (
   final override def validTs: Long =
     this._validTs
 
-  final override def validTsBoxed: java.lang.Long =
-    null
-
   final override def toImmutable: Descriptor = {
     Descriptor.fromLogMapAndVer(
       map = this.map.copyToImmutable(),
@@ -48,9 +45,6 @@ final class MutDescriptor private (
 
   protected final override def hamt: AbstractHamt[?, ?, ?, ?, ?, ?] =
     this.map
-
-  private[mcas] final override def hasVersionCas: Boolean =
-    false
 
   private[choam] final override def getOrElseNull[A](ref: MemoryLocation[A]): LogEntry[A] = {
     this.map.asInstanceOf[LogMapMut[A]].getOrElseNull(ref.id)
@@ -108,14 +102,6 @@ final class MutDescriptor private (
    */
   private[mcas] final override def revalidate(ctx: Mcas.ThreadContext): Boolean = {
     this.map.revalidate(ctx)
-  }
-
-  private[mcas] final override def validateAndTryExtend(
-    commitTsRef: MemoryLocation[Long],
-    ctx: Mcas.ThreadContext,
-    additionalHwd: LogEntry[?],
-  ): AbstractDescriptor.Aux[MutDescriptor] = {
-    impossible("MutDescriptor#validateAndTryExtend")
   }
 
   private[mcas] final override def validateAndTryExtendVer(

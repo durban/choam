@@ -102,8 +102,6 @@ object Mcas extends McasCompanionPlatform {
       this.snapshot(this.start())
     }
 
-    private[mcas] def addVersionCas(desc: AbstractDescriptor): AbstractDescriptor.Aux[desc.D]
-
     /**
      * @return the current value of `ref`, as
      *         if read by `readIntoHwd(ref).nv`.
@@ -218,8 +216,7 @@ object Mcas extends McasCompanionPlatform {
         // so nothing to do here
         McasStatus.Successful
       } else {
-        val finalDesc = this.addVersionCas(desc)
-        val res = this.tryPerformInternal(finalDesc, optimism = optimism)
+        val res = this.tryPerformInternal(desc, optimism = optimism)
         _assert(
           (res == McasStatus.Successful) ||
           (res == McasStatus.FailedVal) ||

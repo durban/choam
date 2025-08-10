@@ -140,25 +140,23 @@ final class LogMap2Spec extends ScalaCheckSuite with SpecDefaultMcas { self =>
 
       final override type START = Descriptor
 
-      private[mcas] def addVersionCas(desc: AbstractDescriptor): AbstractDescriptor.Aux[desc.D] =
+      final override def impl: Mcas =
         self.fail("not implemented")
-      def impl: Mcas =
-        self.fail("not implemented")
-      def random: ThreadLocalRandom =
+      final override def random: ThreadLocalRandom =
         ThreadLocalRandom.current()
-      def readDirect[A](ref: MemoryLocation[A]): A =
+      final override def readDirect[A](ref: MemoryLocation[A]): A =
         self.fail("not implemented")
-      def readIntoHwd[A](ref: MemoryLocation[A]): LogEntry[A] =
+      final override def readIntoHwd[A](ref: MemoryLocation[A]): LogEntry[A] =
         self.fail("not implemented")
-      private[choam] def readVersion[A](ref: MemoryLocation[A]): Long =
+      private[choam] final override def readVersion[A](ref: MemoryLocation[A]): Long =
         if (ref eq r1) r1Version else 42L // we simulate one of the refs changing version
-      def refIdGen: RefIdGen =
+      final override def refIdGen: RefIdGen =
         self.rigInstance
-      def start(): Descriptor =
+      final override def start(): Descriptor =
         self.fail("not implemented")
-      private[mcas] def tryPerformInternal(desc: AbstractDescriptor, optimism: Long): Long =
+      private[mcas] final override def tryPerformInternal(desc: AbstractDescriptor, optimism: Long): Long =
         self.fail("not implemented")
-      def validateAndTryExtend(desc: AbstractDescriptor, hwd: LogEntry[?]): AbstractDescriptor.Aux[desc.D] =
+      final override def validateAndTryExtend(desc: AbstractDescriptor, hwd: LogEntry[?]): AbstractDescriptor.Aux[desc.D] =
         self.fail("not implemented")
     }
 
