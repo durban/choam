@@ -20,6 +20,7 @@ package internal
 package mcas
 
 import java.util.concurrent.ThreadLocalRandom
+import java.util.concurrent.atomic.AtomicLong
 
 private final class ThreadConfinedMcas(
   private[choam] final override val osRng: OsRng,
@@ -32,7 +33,7 @@ private final class ThreadConfinedMcas(
     ()
 
   private[choam] final override def hasVersionFailure: Boolean =
-    true
+    false
 
   private[this] val _ctx = new Mcas.UnsealedThreadContext {
 
@@ -61,12 +62,10 @@ private final class ThreadConfinedMcas(
             case wd: LogEntry[a] =>
               val witness = wd.address.unsafeGetP()
               val witnessVer = wd.address.unsafeGetVersionV()
-              val isGlobalVerCas = (wd.address eq _commitTs)
-              if ((equ[a](witness, wd.ov)) && (isGlobalVerCas || (witnessVer == wd.version))) {
+              if ((equ[a](witness, wd.ov)) && (witnessVer == wd.version)) {
                 prepare(it)
               } else {
-                if (isGlobalVerCas) witness.asInstanceOf[Long]
-                else McasStatus.FailedVal
+                McasStatus.FailedVal
               }
           }
         } else {
@@ -79,8 +78,7 @@ private final class ThreadConfinedMcas(
         if (it.hasNext) {
           it.next() match {
             case wd: LogEntry[_] =>
-              val old = wd.address.unsafeGetP()
-              _assert(equ(old, wd.ov))
+              _assert(equ(wd.address.unsafeGetP(), wd.ov))
               wd.address.unsafeSetP(wd.nv)
               val ov = wd.address.unsafeGetVersionV()
               val wit = wd.address.unsafeCmpxchgVersionV(ov, newVersion)
@@ -91,9 +89,15 @@ private final class ThreadConfinedMcas(
         }
       }
 
+      def incrTs(): Long = {
+        val ts = _commitTs.incrementAndGet()
+        Predef.assert(VersionFunctions.isValid(ts)) // detect version overflow
+        ts
+      }
+
       val prepResult = prepare(desc.hwdIterator)
       if (prepResult == McasStatus.Successful) {
-        execute(desc.hwdIterator, desc.newVersion)
+        execute(desc.hwdIterator, incrTs())
         McasStatus.Successful
       } else {
         prepResult
@@ -101,16 +105,16 @@ private final class ThreadConfinedMcas(
     }
 
     final override def start(): Descriptor =
-      Descriptor.empty(_commitTs, this)
+      Descriptor.emptyFromVer(_commitTs.get())
 
     protected[mcas] final override def addVersionCas(desc: AbstractDescriptor): AbstractDescriptor.Aux[desc.D] =
-      desc.addVersionCas(_commitTs)
+      desc // we increment the global commit version differently
 
     def validateAndTryExtend(
       desc: AbstractDescriptor,
       hwd: LogEntry[?],
     ): AbstractDescriptor.Aux[desc.D] =
-      desc.validateAndTryExtend(_commitTs, this, additionalHwd = hwd)
+      desc.validateAndTryExtendVer(_commitTs.get(), this, additionalHwd = hwd)
 
     // NB: it is a `def`, not a `val`
     final override def random: ThreadLocalRandom =
@@ -120,6 +124,6 @@ private final class ThreadConfinedMcas(
       RefIdGen.newGlobal().newThreadLocal()
   }
 
-  private[this] val _commitTs: MemoryLocation[Long] =
-    MemoryLocation.unsafeUnpadded(Version.Start, _ctx.refIdGen)
+  private[this] val _commitTs: AtomicLong =
+    new AtomicLong(Version.Start)
 }
