@@ -71,47 +71,47 @@ abstract class EmcasThreadContextBase {
   private int _maxBloomFilterSize; // = 0
   private Map<Object, Object> _statistics = Map$.MODULE$.empty();
 
-  protected long getCommitsO() {
+  protected final long getCommitsO() {
     return (long) COMMITS.getOpaque(this);
   }
 
-  protected long getRetriesO() {
+  protected final long getRetriesO() {
     return (long) RETRIES.getOpaque(this);
   }
 
-  protected long getExtensionsO() {
+  protected final long getExtensionsO() {
     return (long) EXTENSIONS.getOpaque(this);
   }
 
-  protected long getMcasAttemptsO() {
+  protected final long getMcasAttemptsO() {
     return (long) MCAS_ATTEMPTS.getOpaque(this);
   }
 
-  protected long getCommittedRefsO() {
+  protected final long getCommittedRefsO() {
     return (long) COMMITTED_REFS.getOpaque(this);
   }
 
-  protected int getCyclesDetectedO() {
+  protected final int getCyclesDetectedO() {
     return (int) CYCLES_DETECTED.getOpaque(this);
   }
 
-  protected long getMaxRetriesO() {
+  protected final long getMaxRetriesO() {
     return (long) MAX_RETRIES_EVER.getOpaque(this);
   }
 
-  protected int getMaxCommittedRefsO() {
+  protected final int getMaxCommittedRefsO() {
     return (int) MAX_COMMITTED_REFS_EVER.getOpaque(this);
   }
 
-  protected int getMaxBloomFilterSizeO() {
+  protected final int getMaxBloomFilterSizeO() {
     return (int) MAX_BLOOM_FILTER_SIZE.getOpaque(this);
   }
 
-  protected void recordEmcasFinalizedO() {
+  protected final void recordEmcasFinalizedO() {
     MCAS_ATTEMPTS.setOpaque(this, this._mcasAttempts + 1L);
   }
 
-  protected void recordCommitO(int retries, int committedRefs, int descExtensions) {
+  protected final void recordCommitO(int retries, int committedRefs, int descExtensions) {
     // Only one thread writes, so `+=`-like
     // increment is fine here. There is a
     // race though: a reader can read values
@@ -134,35 +134,35 @@ abstract class EmcasThreadContextBase {
     }
   }
 
-  protected void recordCycleDetectedO(int bloomFilterSize) {
+  protected final void recordCycleDetectedO(int bloomFilterSize) {
     CYCLES_DETECTED.setOpaque(this, this._cyclesDetected + 1);
     if (bloomFilterSize > this._maxBloomFilterSize) {
       MAX_BLOOM_FILTER_SIZE.setOpaque(this, bloomFilterSize);
     }
   }
 
-  protected int getMaxReuseEverP() {
+  protected final int getMaxReuseEverP() {
     return this._maxReuseEver;
   }
 
-  protected int getMaxReuseEverO() {
+  protected final int getMaxReuseEverO() {
     return (int) MAX_REUSE_EVER.getOpaque(this);
   }
 
-  protected void setMaxReuseEverP(int nv) {
+  protected final void setMaxReuseEverP(int nv) {
     this._maxReuseEver = nv;
   }
 
   // TODO: this is a hack, should have a proper type
-  protected Map<Object, Object> _getStatisticsP() {
+  protected final Map<Object, Object> _getStatisticsP() {
     return this._statistics;
   }
 
-  protected Map<Object, Object> _getStatisticsO() {
+  protected final Map<Object, Object> _getStatisticsO() {
     return (Map<Object, Object>) STATISTICS.getOpaque(this);
   }
 
-  protected void _setStatisticsP(Map<Object, Object> nv) {
+  protected final void _setStatisticsP(Map<Object, Object> nv) {
     this._statistics = nv;
   }
 }

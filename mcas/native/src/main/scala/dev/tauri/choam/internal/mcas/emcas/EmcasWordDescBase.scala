@@ -16,28 +16,19 @@
  */
 
 package dev.tauri.choam
+package internal
+package mcas
+package emcas
 
-trait MUnitUtilsPlatform {
+private[emcas] abstract class EmcasWordDescBase[A](__ov: A, __nv: A) {
 
-  final def isJvm(): Boolean =
-    false
+  private[this] var _ov: A = __ov
 
-  final def isJs(): Boolean =
-    true
+  private[this] var _nv: A = __nv
 
-  final def isNative(): Boolean =
-    false
+  final def ov: A = ???
 
-  final def isVmSupportsLongCas(): Boolean = {
-    true // LOL!
-  }
+  final def nv: A = ???
 
-  final def getJvmVersion(): Int = {
-    // scala-js has no `Runtime.version()`
-    System.getProperty("java.version").split('.')(0).toInt
-  }
-
-  final def isGraal(): Boolean = {
-    false // this is JS!
-  }
+  final def wasFinalized(wasSuccessful: Boolean, sentinel: A): Unit = ???
 }

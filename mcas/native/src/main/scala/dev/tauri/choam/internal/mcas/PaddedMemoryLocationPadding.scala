@@ -19,14 +19,5 @@ package dev.tauri.choam
 package internal
 package mcas
 
-private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanionPlatform {
-
-  private[choam] final override def newDefaultMcas(osRng: OsRng, numCpu: Int): Mcas =
-    this.newEmcas(osRng, numCpu)
-
-  private[choam] final def newEmcas(osRng: OsRng, numCpu: Int): Mcas =
-    new emcas.Emcas(osRng, numCpu)
-
-  private[choam] final def newSpinLockMcas(osRng: OsRng, numCpu: Int): Mcas =
-    new SpinLockMcas(osRng, numCpu)
+private[mcas] abstract class PaddedMemoryLocationPadding { // TODO: figure out padding in SN
 }

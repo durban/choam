@@ -15,29 +15,12 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam
+package dev.tauri.choam.internal.mcas
 
-trait MUnitUtilsPlatform {
+// Note: this class/object is duplicated for JVM and JS/Native
+object VersionFunctions {
 
-  final def isJvm(): Boolean =
-    false
-
-  final def isJs(): Boolean =
-    true
-
-  final def isNative(): Boolean =
-    false
-
-  final def isVmSupportsLongCas(): Boolean = {
-    true // LOL!
-  }
-
-  final def getJvmVersion(): Int = {
-    // scala-js has no `Runtime.version()`
-    System.getProperty("java.version").split('.')(0).toInt
-  }
-
-  final def isGraal(): Boolean = {
-    false // this is JS!
+  final def isValid(ver: Long): Boolean = {
+    (ver >= Version.Start) && (ver < Version.Reserved)
   }
 }

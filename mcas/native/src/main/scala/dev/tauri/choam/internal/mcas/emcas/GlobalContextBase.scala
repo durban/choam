@@ -16,28 +16,28 @@
  */
 
 package dev.tauri.choam
+package internal
+package mcas
+package emcas
 
-trait MUnitUtilsPlatform {
+private[emcas] abstract class GlobalContextBase {
 
-  final def isJvm(): Boolean =
-    false
+  final def getCommitTs(): Long = ???
 
-  final def isJs(): Boolean =
-    true
+  final def cmpxchgCommitTs(ov: Long, nv: Long): Long = ???
 
-  final def isNative(): Boolean =
-    false
+  final def getAndIncrThreadCtxCount(): Long = ???
 
-  final def isVmSupportsLongCas(): Boolean = {
-    true // LOL!
+  final def getAndAddThreadCtxCount(x: Long): Long = ???
+}
+
+private[emcas] object GlobalContextBase {
+
+  final def registerEmcasJmxStats(emcas: Emcas): String = {
+    null
   }
 
-  final def getJvmVersion(): Int = {
-    // scala-js has no `Runtime.version()`
-    System.getProperty("java.version").split('.')(0).toInt
-  }
-
-  final def isGraal(): Boolean = {
-    false // this is JS!
+  final def unregisterEmcasJmxStats(objNameStr: String): Unit = {
+    _assert(objNameStr eq null)
   }
 }

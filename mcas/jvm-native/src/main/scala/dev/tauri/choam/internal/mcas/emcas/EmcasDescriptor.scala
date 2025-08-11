@@ -122,7 +122,7 @@ private[mcas] final class EmcasDescriptor private[this] (
       _assert(fb.getWordsP()(0) ne EmcasWordDesc.Invalid)
       // but we have to store it carefully,
       // someone else might've beat us:
-      this.getOrInitFallback(fb)
+      this.getOrInitFallback(fb) : Unit
     }
 
     this.wasFinalized(EmcasStatusFunctions.isSuccessful(finalResult))

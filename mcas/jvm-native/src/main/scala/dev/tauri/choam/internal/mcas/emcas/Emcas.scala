@@ -1149,13 +1149,7 @@ private[mcas] final class Emcas(
   // JMX MBean for stats:
   private[this] val registeredObjectName: String = {
     if (Consts.statsEnabled) {
-      val objNameStr = f"${GlobalContextBase.emcasJmxStatsNamePrefix}%s-${System.identityHashCode(this)}%08x"
-      val objName = new javax.management.ObjectName(objNameStr)
-      java.lang.management.ManagementFactory.getPlatformMBeanServer().registerMBean(
-        new EmcasJmxStats(this),
-        objName,
-      )
-      objNameStr
+      GlobalContextBase.registerEmcasJmxStats(this)
     } else {
       null
     }
@@ -1163,18 +1157,7 @@ private[mcas] final class Emcas(
 
   private[choam] final override def close(): Unit = {
     if (Consts.statsEnabled) {
-      this.registeredObjectName match {
-        case null =>
-          // in theory this is impossible,
-          // but it's too late, as we're
-          // in `close`; and we don't
-          // really want to throw during
-          // resource release anyway
-        case objNameStr =>
-          java.lang.management.ManagementFactory.getPlatformMBeanServer().unregisterMBean(
-            new javax.management.ObjectName(objNameStr)
-          )
-      }
+      GlobalContextBase.unregisterEmcasJmxStats(this.registeredObjectName)
     }
   }
 }

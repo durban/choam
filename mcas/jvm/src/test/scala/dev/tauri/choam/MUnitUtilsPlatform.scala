@@ -39,6 +39,9 @@ trait MUnitUtilsPlatform {
   final def isJs(): Boolean =
     false
 
+  final def isNative(): Boolean =
+    false
+
   final def isVmSupportsLongCas(): Boolean = {
     val u = AtomicLongFieldUpdater.newUpdater(classOf[ClassWithLongField], "field")
     val n = u.getClass().getName()

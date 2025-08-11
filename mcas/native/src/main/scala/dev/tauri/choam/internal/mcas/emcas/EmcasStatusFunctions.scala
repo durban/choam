@@ -16,28 +16,13 @@
  */
 
 package dev.tauri.choam
+package internal
+package mcas
+package emcas
 
-trait MUnitUtilsPlatform {
+private[emcas] object EmcasStatusFunctions {
 
-  final def isJvm(): Boolean =
-    false
-
-  final def isJs(): Boolean =
-    true
-
-  final def isNative(): Boolean =
-    false
-
-  final def isVmSupportsLongCas(): Boolean = {
-    true // LOL!
-  }
-
-  final def getJvmVersion(): Int = {
-    // scala-js has no `Runtime.version()`
-    System.getProperty("java.version").split('.')(0).toInt
-  }
-
-  final def isGraal(): Boolean = {
-    false // this is JS!
+  final def isSuccessful(s: Long): Boolean = {
+    VersionFunctions.isValid(s)
   }
 }

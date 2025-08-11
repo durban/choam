@@ -16,28 +16,24 @@
  */
 
 package dev.tauri.choam
+package internal
+package mcas
 
-trait MUnitUtilsPlatform {
+private[mcas] abstract class RefIdGenBase extends PaddedMemoryLocationPadding {
 
-  final def isJvm(): Boolean =
-    false
+  private[mcas] final def getAndAddCtrO(x: Long): Long = ???
+}
 
-  final def isJs(): Boolean =
-    true
+private[mcas] object RefIdGenBase {
 
-  final def isNative(): Boolean =
-    false
-
-  final def isVmSupportsLongCas(): Boolean = {
-    true // LOL!
-  }
-
-  final def getJvmVersion(): Int = {
-    // scala-js has no `Runtime.version()`
-    System.getProperty("java.version").split('.')(0).toInt
-  }
-
-  final def isGraal(): Boolean = {
-    false // this is JS!
-  }
+  /**
+   * Constant for Fibonacci hashing
+   *
+   * See Knuth, Donald E. "The Art of Computer Programming"
+   * vol. 3 "Sorting and Searching", section 6.4 "Hashing"
+   * (page 518 in the 2nd edition)
+   *
+   * See also https://en.wikipedia.org/wiki/Hash_function#Fibonacci_hashing
+   */
+  final val GAMMA = 0x9e3779b97f4a7c15L
 }

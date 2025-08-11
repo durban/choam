@@ -23,21 +23,21 @@ trait MUnitUtilsPlatform {
     false
 
   final def isJs(): Boolean =
-    true
-
-  final def isNative(): Boolean =
     false
 
+  final def isNative(): Boolean =
+    true
+
   final def isVmSupportsLongCas(): Boolean = {
-    true // LOL!
+    true // probably...
   }
 
   final def getJvmVersion(): Int = {
-    // scala-js has no `Runtime.version()`
+    // scala-native has no `Runtime.version()`
     System.getProperty("java.version").split('.')(0).toInt
   }
 
   final def isGraal(): Boolean = {
-    false // this is JS!
+    false // this is SN!
   }
 }

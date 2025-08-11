@@ -424,7 +424,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
     ),
   )
 
-lazy val mcas = crossProject(JVMPlatform, JSPlatform)
+lazy val mcas = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .withoutSuffixFor(JVMPlatform)
   .crossType(CrossType.Full)
   .in(file("mcas"))
@@ -433,6 +433,7 @@ lazy val mcas = crossProject(JVMPlatform, JSPlatform)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
+  .nativeSettings(commonSettingsNative)
   .dependsOn(internal % "compile->compile;test->test")
   .settings(
     mimaBinaryIssueFilters ++= Seq(

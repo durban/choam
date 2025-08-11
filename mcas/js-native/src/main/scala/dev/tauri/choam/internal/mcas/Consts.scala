@@ -19,7 +19,7 @@ package dev.tauri.choam
 package internal
 package mcas
 
-// Note: this class/object is duplicated for JVM/JS
+// Note: this class/object is duplicated for JVM and JS/Native
 object Consts {
 
   @inline
@@ -40,7 +40,7 @@ object Consts {
 
   @inline
   final val statsEnabled =
-    false // no stats on JS
+    false // TODO: on SN we should make it possible to enable stats
 
   /**
    * Next power of 2 which is `>= x`.

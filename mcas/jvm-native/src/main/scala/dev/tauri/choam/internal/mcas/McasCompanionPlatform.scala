@@ -16,28 +16,17 @@
  */
 
 package dev.tauri.choam
+package internal
+package mcas
 
-trait MUnitUtilsPlatform {
+private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanionPlatform {
 
-  final def isJvm(): Boolean =
-    false
+  private[choam] final override def newDefaultMcas(osRng: OsRng, numCpu: Int): Mcas =
+    this.newEmcas(osRng, numCpu)
 
-  final def isJs(): Boolean =
-    true
+  private[choam] final def newEmcas(osRng: OsRng, numCpu: Int): Mcas =
+    ??? // new emcas.Emcas(osRng, numCpu)
 
-  final def isNative(): Boolean =
-    false
-
-  final def isVmSupportsLongCas(): Boolean = {
-    true // LOL!
-  }
-
-  final def getJvmVersion(): Int = {
-    // scala-js has no `Runtime.version()`
-    System.getProperty("java.version").split('.')(0).toInt
-  }
-
-  final def isGraal(): Boolean = {
-    false // this is JS!
-  }
+  private[choam] final def newSpinLockMcas(osRng: OsRng, numCpu: Int): Mcas =
+    new SpinLockMcas(osRng, numCpu)
 }

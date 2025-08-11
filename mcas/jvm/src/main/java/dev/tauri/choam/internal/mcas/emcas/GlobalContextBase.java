@@ -80,4 +80,26 @@ abstract class GlobalContextBase extends PaddedMemoryLocationPadding {
   final long getAndAddThreadCtxCount(long x) {
     return (long) THREAD_CTX_COUNT.getAndAddAcquire(this, x);
   }
+
+  protected final static String registerEmcasJmxStats(Emcas emcas) throws javax.management.JMException {
+    String objNameStr = String.format("%s-%08x", emcasJmxStatsNamePrefix, System.identityHashCode(emcas));
+    var objName = new javax.management.ObjectName(objNameStr);
+    var ejs = new EmcasJmxStats(emcas);
+    java.lang.management.ManagementFactory.getPlatformMBeanServer().registerMBean(ejs, objName);
+    return objNameStr;
+  }
+
+  protected final static void unregisterEmcasJmxStats(String objNameStr) throws javax.management.JMException {
+    if (objNameStr == null) {
+      // in theory this is impossible,
+      // but it's too late, as we're
+      // in `close`; and we don't
+      // really want to throw during
+      // resource release anyway
+    } else {
+      java.lang.management.ManagementFactory.getPlatformMBeanServer().unregisterMBean(
+        new javax.management.ObjectName(objNameStr)
+      );
+    }
+  }
 }

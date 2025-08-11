@@ -15,12 +15,16 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.internal.mcas
+package dev.tauri.choam
 
-// Note: this class/object is duplicated for JVM/JS
-object VersionFunctions {
+final class NativeEnvironmentSpec extends munit.FunSuite with MUnitUtils { // TODO: merge this into EnvironmentSpec (in core)
 
-  final def isValid(ver: Long): Boolean = {
-    (ver >= Version.Start) && (ver < Version.Reserved)
+  test("Scala Native environment") {
+    println(s"isJvm == ${isJvm()}")
+    println(s"isJs == ${isJs()}")
+    println(s"isNative == ${isNative()}")
+    println(s"isVmSupportsLongCas == ${isVmSupportsLongCas()}")
+    println(s"getJvmVersion == ${getJvmVersion()}")
+    println(s"isGraal == ${isGraal()}")
   }
 }

@@ -17,7 +17,7 @@
 
 package dev.tauri.choam.internal.mcas;
 
-// Note: this class/object is duplicated for JVM/JS
+// Note: this class/object is duplicated for JVM and JS/Native
 public final class VersionFunctions {
 
   private VersionFunctions() {
