@@ -20,15 +20,39 @@ package internal
 package mcas
 package emcas
 
-private[emcas] abstract class EmcasWordDescBase[A](__ov: A, __nv: A) {
+import scala.scalanative.annotation.alwaysinline
 
-  private[this] var _ov: A = __ov
+private[emcas] abstract class EmcasWordDescBase[A](
+  private[this] var _ov: A,
+  private[this] var _nv: A,
+) {
 
-  private[this] var _nv: A = __nv
+  protected def address(): MemoryLocation[A]
 
-  final def ov: A = ???
+  final def ov: A = {
+    this._ov
+  }
 
-  final def nv: A = ???
+  final def nv: A = {
+    this._nv
+  }
 
-  final def wasFinalized(wasSuccessful: Boolean, sentinel: A): Unit = ???
+  @alwaysinline
+  private[this] final def atomicOv: AtomicHandle[A] = {
+    AtomicHandle(this, "_ov")
+  }
+
+  @alwaysinline
+  private[this] final def atomicNv: AtomicHandle[A] = {
+    AtomicHandle(this, "_nv")
+  }
+
+  final def wasFinalized(wasSuccessful: Boolean, sentinel: A): Unit = {
+    if (wasSuccessful) {
+      atomicOv.setOpaque(sentinel)
+      address().unsafeNotifyListeners()
+    } else {
+      atomicNv.setOpaque(sentinel)
+    }
+  }
 }

@@ -19,13 +19,7 @@ package dev.tauri.choam
 package internal
 package skiplist
 
-import scala.scalanative.runtime.{ Intrinsics, fromRawPtr }
 import scala.scalanative.annotation.alwaysinline
-import scala.scalanative.libc.stdatomic.{
-  AtomicRef,
-  PtrToAtomicRef,
-}
-import scala.scalanative.libc.stdatomic.memory_order.{ memory_order_acquire, memory_order_seq_cst }
 
 private[skiplist] abstract class SkipListMapNodeBase[V, N <: SkipListMapNodeBase[V, N]] protected[this] (
   v: V,
@@ -35,7 +29,7 @@ private[skiplist] abstract class SkipListMapNodeBase[V, N <: SkipListMapNodeBase
   // plain writes are fine here, since
   // new `Node`s are alway published
   // with a volatile-CAS:
-  @unused private[this] var value: AnyRef = box(v)
+  @unused private[this] var value: V = v
   @unused private[this] var next: N = n
 
   protected[this] final def yesWeNeedTheseFieldsEvenOnDotty(): Unit = {
@@ -44,28 +38,28 @@ private[skiplist] abstract class SkipListMapNodeBase[V, N <: SkipListMapNodeBase
   }
 
   @alwaysinline
-  private[this] final def atomicValue: AtomicRef[AnyRef] = {
-    fromRawPtr[AnyRef](Intrinsics.classFieldRawPtr(this, "value")).atomic
+  private[this] final def atomicValue: AtomicHandle[V] = {
+    AtomicHandle(this, "value")
   }
 
   @alwaysinline
-  private[this] final def atomicNext: AtomicRef[N] = {
-    fromRawPtr[N](Intrinsics.classFieldRawPtr(this, "next")).atomic
+  private[this] final def atomicNext: AtomicHandle[N] = {
+    AtomicHandle(this, "next")
   }
 
   final def getValue(): V = {
-    atomicValue.load(memory_order_acquire).asInstanceOf[V]
+    atomicValue.getAcquire
   }
 
   final def casValue(ov: V, nv: V): Boolean = {
-    atomicValue.compareExchangeStrong(box(ov), box(nv), memory_order_seq_cst, memory_order_acquire)
+    atomicValue.compareAndSet(ov, nv)
   }
 
   final def getNext(): N = {
-    atomicNext.load(memory_order_acquire)
+    atomicNext.getAcquire
   }
 
   final def casNext(ov: N, nv: N): Boolean = {
-    atomicNext.compareExchangeStrong(ov, nv, memory_order_seq_cst, memory_order_acquire)
+    atomicNext.compareAndSet(ov, nv)
   }
 }

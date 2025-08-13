@@ -19,10 +19,7 @@ package dev.tauri.choam
 package internal
 package skiplist
 
-import scala.scalanative.runtime.{ Intrinsics, fromRawPtr }
 import scala.scalanative.annotation.alwaysinline
-import scala.scalanative.libc.stdatomic.{ AtomicRef, PtrToAtomicRef }
-import scala.scalanative.libc.stdatomic.memory_order.{ memory_order_acquire, memory_order_seq_cst }
 
 private[skiplist] abstract class SkipListMapIndexBase[I <: SkipListMapIndexBase[I]] protected[this] (
   // plain writes are fine here, since
@@ -32,12 +29,12 @@ private[skiplist] abstract class SkipListMapIndexBase[I <: SkipListMapIndexBase[
 ) {
 
   @alwaysinline
-  private[this] final def atomicRight: AtomicRef[I] = {
-    fromRawPtr[I](Intrinsics.classFieldRawPtr(this, "right")).atomic
+  private[this] final def atomicRight: AtomicHandle[I] = {
+    AtomicHandle(this, "right")
   }
 
   final def getRight(): I = {
-    atomicRight.load(memory_order_acquire)
+    atomicRight.getAcquire
   }
 
   final def setRightP(nv: I): Unit = {
@@ -45,6 +42,6 @@ private[skiplist] abstract class SkipListMapIndexBase[I <: SkipListMapIndexBase[
   }
 
   final def casRight(ov: I, nv: I): Boolean = {
-    atomicRight.compareExchangeStrong(ov, nv, memory_order_seq_cst, memory_order_acquire)
+    atomicRight.compareAndSet(ov, nv)
   }
 }
