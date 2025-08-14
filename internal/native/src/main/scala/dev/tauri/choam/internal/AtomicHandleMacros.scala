@@ -51,26 +51,57 @@ private[choam] object AtomicHandleMacros {
     }
   }
 
+  final def intImpl[O <: AnyRef](c: Context)(
+    obj: c.Expr[O],
+    fieldName: c.Expr[String],
+  )(implicit O: c.WeakTypeTag[O]): c.Expr[AtomicIntHandle] = {
+    val factory = c.typeOf[AtomicIntHandle].companion.member(
+      c.universe.TermName("newAtomicIntHandleDoNotCallThisMethod")
+    )
+    numericImpl[O, AtomicIntHandle](c)(
+      obj,
+      fieldName,
+      expFieldTpe = c.typeOf[Int],
+      factoryMethod = factory,
+    )
+  }
+
   final def longImpl[O <: AnyRef](c: Context)(
     obj: c.Expr[O],
     fieldName: c.Expr[String],
   )(implicit O: c.WeakTypeTag[O]): c.Expr[AtomicLongHandle] = {
+    val factory = c.typeOf[AtomicLongHandle].companion.member(
+      c.universe.TermName("newAtomicLongHandleDoNotCallThisMethod")
+    )
+    numericImpl[O, AtomicLongHandle](c)(
+      obj,
+      fieldName,
+      expFieldTpe = c.typeOf[Long],
+      factoryMethod = factory,
+    )
+  }
+
+  private[this] final def numericImpl[O <: AnyRef, R <: AnyVal](c: Context)(
+    obj: c.Expr[O],
+    fieldName: c.Expr[String],
+    expFieldTpe: c.Type,
+    factoryMethod: c.universe.Symbol,
+  )(implicit O: c.WeakTypeTag[O]): c.Expr[R] = {
 
     import c.universe._
 
     val macroPos = c.macroApplication.pos
-    val longTpe = typeOf[Long]
     val (nme, fieldTpe) = commonChecks(c)(obj, fieldName)
-    if (fieldTpe =:= longTpe) {
-      c.Expr[AtomicLongHandle](
-        q"""_root_.dev.tauri.choam.internal.AtomicLongHandle.newAtomicLongHandleDoNotCallThisMethod(
-          _root_.scala.scalanative.runtime.fromRawPtr[${longTpe}](
+    if (fieldTpe =:= expFieldTpe) {
+      c.Expr[R](
+        q"""${factoryMethod}(
+          _root_.scala.scalanative.runtime.fromRawPtr[${expFieldTpe}](
             _root_.scala.scalanative.runtime.Intrinsics.classFieldRawPtr[$O]($obj, $fieldName)
           )
         )"""
       )
     } else {
-      c.abort(macroPos, s"field ${nme}: ${fieldTpe} doesn't have type Long")
+      c.abort(macroPos, s"field ${nme}: ${fieldTpe} doesn't have type ${expFieldTpe}")
     }
   }
 
