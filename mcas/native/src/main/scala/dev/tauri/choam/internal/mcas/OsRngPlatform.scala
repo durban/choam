@@ -19,7 +19,42 @@ package dev.tauri.choam
 package internal
 package mcas
 
+import scala.scalanative.unsigned.UnsignedRichInt
+import scala.scalanative.unsafe.{ CSize, CInt, Ptr, UnsafeRichArray }
+import scala.scalanative.posix.unistd.getentropy
+import scala.scalanative.libc.errno
+
 private[mcas] abstract class OsRngPlatform {
 
-  final def mkNew(): OsRng = ???
+  final def mkNew(): OsRng = {
+    new NativeOsRng
+  }
+}
+
+private final class NativeOsRng extends OsRng {
+
+  final override def nextBytes(dest: Array[Byte]): Unit = {
+    val ptr = dest.at(0)
+    nextBytes(ptr, dest.length.toCSize)
+  }
+
+  @tailrec
+  private[this] final def nextBytes(start: Ptr[Byte], remaining: CSize): Unit = {
+    val max = 256.toUSize
+    val size = if (remaining > max) max else remaining
+    val res = getentropy(start, size) // TODO: what about windows?
+    if (res == 0) {
+      val rem = remaining - size
+      if (rem > 0.toUSize) {
+        nextBytes(start + size, rem)
+      } // else: we're done
+    } else {
+      val no: CInt = errno.errno
+      throw new RuntimeException(s"getentropy returned ${res} (errno == ${no})")
+    }
+  }
+
+  final override def close(): Unit = {
+    ()
+  }
 }
