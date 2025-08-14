@@ -20,27 +20,97 @@ package internal
 package mcas
 package emcas
 
+import java.lang.invoke.VarHandle
+
+import scala.scalanative.annotation.alwaysinline
+
 private[emcas] abstract class EmcasDescriptorBase {
 
-  private[emcas] final def getStatusV(): Long = ???
+  // TODO: padding (although, it might increase GC pressure?)
+  @volatile
+  @nowarn("cat=unused-privates")
+  private[this] var _status: Long =
+    Version.Active
 
-  private[emcas] final def getStatusA(): Long = ???
+  @nowarn("cat=unused-privates")
+  private[this] var _words: Array[WdLike[?]] =
+    _
 
-  private[emcas] final def cmpxchgStatus(ov: Long, nv: Long): Long = ???
+  @volatile
+  @nowarn("cat=unused-privates")
+  private[this] var _fallback: EmcasDescriptor =
+    _
 
-  private[emcas] final def getWordsP(): Array[WdLike[?]] = ???
+  @alwaysinline
+  private[this] final def atomicStatus: AtomicLongHandle = {
+    AtomicLongHandle(this, "_status")
+  }
 
-  private[emcas] final def getWordsO(): Array[WdLike[?]] = ???
+  @alwaysinline
+  private[this] final def atomicWords: AtomicHandle[Array[WdLike[?]]] = {
+    AtomicHandle(this, "_words")
+  }
 
-  private[emcas] final def setWordsO(words: Array[WdLike[?]]): Unit = ???
+  @alwaysinline
+  private[this] final def atomicFallback: AtomicHandle[EmcasDescriptor] = {
+    AtomicHandle(this, "_fallback")
+  }
 
-  final def getFallbackA(): EmcasDescriptor = ???
+  private[emcas] final def getStatusV(): Long = {
+    this._status // volatile
+  }
 
-  final def cmpxchgFallbackA(ov: EmcasDescriptor, nv: EmcasDescriptor): EmcasDescriptor = ???
+  private[emcas] final def getStatusA(): Long = {
+    atomicStatus.getAcquire
+  }
 
-  final def getOrInitFallback(candidate: EmcasDescriptor): EmcasDescriptor = ???
+  private[emcas] final def cmpxchgStatus(ov: Long, nv: Long): Long = {
+    atomicStatus.compareAndExchange(ov, nv)
+  }
 
-  final def wasFinalized(wasSuccessful: Boolean): Unit = ???
+  private[emcas] final def getWordsP(): Array[WdLike[?]] = {
+    this._words
+  }
+
+  private[emcas] final def getWordsO(): Array[WdLike[?]] = {
+    atomicWords.getOpaque
+  }
+
+  private[emcas] final def setWordsO(words: Array[WdLike[?]]): Unit = {
+    atomicWords.setOpaque(words)
+  }
+
+  final def getFallbackA(): EmcasDescriptor = {
+    atomicFallback.getAcquire
+  }
+
+  final def cmpxchgFallbackA(ov: EmcasDescriptor, nv: EmcasDescriptor): EmcasDescriptor = {
+    atomicFallback.compareAndExchangeAcquire(ov, nv)
+  }
+
+  final def getOrInitFallback(candidate: EmcasDescriptor): EmcasDescriptor = {
+    val wit: EmcasDescriptor = atomicFallback.compareAndExchangeRelAcq(null : EmcasDescriptor, candidate)
+    if (wit eq null) {
+      candidate
+    } else {
+      wit
+    }
+  }
+
+  final def wasFinalized(wasSuccessful: Boolean): Unit = {
+    val words = this.getWordsO()
+    val len = words.length
+    VarHandle.releaseFence()
+    this.setWordsO(null)
+    val sentinel = EmcasDescriptorBase.CLEARED
+    var idx = 0
+    while (idx < len) {
+      val wd = words(idx).asInstanceOf[WdLike[AnyRef]]
+      words(idx) = null // TODO: should be opaque store
+      wd.wasFinalized(wasSuccessful, sentinel)
+      idx += 1
+    }
+  }
 }
 
 private[emcas] object EmcasDescriptorBase {

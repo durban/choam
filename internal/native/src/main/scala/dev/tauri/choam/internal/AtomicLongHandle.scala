@@ -26,10 +26,12 @@ import scala.scalanative.libc.stdatomic.{
   atomic_store_explicit,
   atomic_compare_exchange_strong_explicit,
   atomic_fetch_add_explicit,
+  memory_order,
 }
 import scala.scalanative.libc.stdatomic.memory_order.{
   memory_order_relaxed,
   memory_order_acquire,
+  memory_order_acq_rel,
   memory_order_release,
   memory_order_seq_cst,
 }
@@ -72,9 +74,21 @@ private[choam] final class AtomicLongHandle private (private val ptr: Ptr[atomic
   }
 
   final def compareAndExchange(ov: Long, nv: Long): Long = {
+    _compareAndExchange(ov, nv, memory_order_seq_cst, memory_order_acquire)
+  }
+
+  final def compareAndExchangeAcquire(ov: Long, nv: Long): Long = {
+    _compareAndExchange(ov, nv, memory_order_acquire, memory_order_acquire)
+  }
+
+  final def compareAndExchangeRelAcq(ov: Long, nv: Long): Long = {
+    _compareAndExchange(ov, nv, memory_order_acq_rel, memory_order_acquire)
+  }
+
+  private[this] final def _compareAndExchange(ov: Long, nv: Long, moSuccess: memory_order, moFailure: memory_order): Long = {
     val expected: Ptr[Long] = stackalloc[Long]()
     !expected = ov
-    atomic_compare_exchange_strong_explicit(ptr, expected, nv, memory_order_seq_cst, memory_order_acquire) : Unit
+    atomic_compare_exchange_strong_explicit(ptr, expected, nv, moSuccess, moFailure) : Unit
     !expected
   }
 

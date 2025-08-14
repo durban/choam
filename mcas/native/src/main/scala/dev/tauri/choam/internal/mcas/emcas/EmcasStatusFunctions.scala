@@ -22,6 +22,7 @@ package emcas
 
 private[emcas] object EmcasStatusFunctions {
 
+  @inline
   final def isSuccessful(s: Long): Boolean = {
     VersionFunctions.isValid(s)
   }

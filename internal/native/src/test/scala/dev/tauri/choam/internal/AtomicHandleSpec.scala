@@ -20,7 +20,9 @@ package internal
 
 import scala.scalanative.annotation.alwaysinline
 
-final class AtomicHandleSpec extends munit.FunSuite {
+import munit.{ FunSuite, Location }
+
+final class AtomicHandleSpec extends FunSuite {
 
   test("AtomicHandle/AtomicLongHandle") {
     val msc1 = new MySubClass
@@ -67,20 +69,67 @@ final class AtomicHandleSpec extends munit.FunSuite {
     val wit6 = x.cmpxchgN(wit5, 99L)
     assertEquals(wit6, wit5)
     checkState(x, 100, msc2, 99L)
+    // cmpxchg (acq):
+    val wit7 = x.cmpxchgAA(99, 101)
+    assertEquals(wit7, 100)
+    checkState(x, 100, msc2, 99L)
+    val wit8 = x.cmpxchgAA(wit7, 200)
+    assertEquals(wit8, wit7)
+    checkState(x, 200, msc2, 99L)
+    val wit9 = x.cmpxchgBA(null, msc2)
+    assert(wit9 eq msc2)
+    checkState(x, 200, msc2, 99L)
+    val wit10 = x.cmpxchgBA(msc2, msc1)
+    assert(wit10 eq msc2)
+    checkState(x, 200, msc1, 99L)
+    val wit11 = x.cmpxchgNA(42L, 100L)
+    assertEquals(wit11, 99L)
+    checkState(x, 200, msc1, 99L)
+    val wit12 = x.cmpxchgNA(wit11, 100L)
+    assertEquals(wit12, wit11)
+    checkState(x, 200, msc1, 100L)
+    // cmpxchg (relacq):
+    setState(x, 100, msc2, 99L)
+    val wit13 = x.cmpxchgAA(99, 101)
+    assertEquals(wit13, 100)
+    checkState(x, 100, msc2, 99L)
+    val wit14 = x.cmpxchgAA(wit13, 200)
+    assertEquals(wit14, wit13)
+    checkState(x, 200, msc2, 99L)
+    val wit15 = x.cmpxchgBA(null, msc2)
+    assert(wit15 eq msc2)
+    checkState(x, 200, msc2, 99L)
+    val wit16 = x.cmpxchgBA(msc2, msc1)
+    assert(wit16 eq msc2)
+    checkState(x, 200, msc1, 99L)
+    val wit17 = x.cmpxchgNA(42L, 100L)
+    assertEquals(wit17, 99L)
+    checkState(x, 200, msc1, 99L)
+    val wit18 = x.cmpxchgNA(wit17, 100L)
+    assertEquals(wit18, wit17)
+    checkState(x, 200, msc1, 100L)
     // faa:
+    x.setNR(99L)
     assertEquals(x.faaN(1L), 99L)
-    checkState(x, 100, msc2, 100L)
+    checkState(x, 200, msc1, 100L)
     assertEquals(x.faaN(42L), 100L)
-    checkState(x, 100, msc2, 142L)
+    checkState(x, 200, msc1, 142L)
   }
 
-  private def checkState(x: MyClass2, expA: Int, expB: MySubClass, expN: Long): Unit = {
+  private def checkState(x: MyClass2, expA: Int, expB: MySubClass, expN: Long)(implicit loc: Location): Unit = {
     assertEquals(x.getAP, expA)
     assertEquals(x.getAO, expA)
     assertEquals(x.getBP, expB)
     assertEquals(x.getBO, expB)
     assertEquals(x.getNP, expN)
     assertEquals(x.getNO, expN)
+  }
+
+  private def setState(x: MyClass2, expA: Int, expB: MySubClass, expN: Long)(implicit loc: Location): Unit = {
+    x.setAR(expA)
+    x.setBR(expB)
+    x.setNR(expN)
+    checkState(x, expA, expB, expN)
   }
 }
 
@@ -125,6 +174,12 @@ sealed abstract class MyClass1[A, B <: MyTrait](
   final def cmpxchgA(ov: A, nv: A): A =
     atomicA.compareAndExchange(ov, nv)
 
+  final def cmpxchgAA(ov: A, nv: A): A =
+    atomicA.compareAndExchangeAcquire(ov, nv)
+
+  final def cmpxchgARA(ov: A, nv: A): A =
+    atomicA.compareAndExchangeRelAcq(ov, nv)
+
   final def getBP: B =
     this.b
 
@@ -140,6 +195,12 @@ sealed abstract class MyClass1[A, B <: MyTrait](
   final def cmpxchgB(ov: B, nv: B): B =
     atomicB.compareAndExchange(ov, nv)
 
+  final def cmpxchgBA(ov: B, nv: B): B =
+    atomicB.compareAndExchangeAcquire(ov, nv)
+
+  final def cmpxchgBRA(ov: B, nv: B): B =
+    atomicB.compareAndExchangeRelAcq(ov, nv)
+
   final def getNP: Long =
     this.n
 
@@ -154,6 +215,12 @@ sealed abstract class MyClass1[A, B <: MyTrait](
 
   final def cmpxchgN(ov: Long, nv: Long): Long =
     atomicN.compareAndExchange(ov, nv)
+
+  final def cmpxchgNA(ov: Long, nv: Long): Long =
+    atomicN.compareAndExchangeAcquire(ov, nv)
+
+  final def cmpxchgNRA(ov: Long, nv: Long): Long =
+    atomicN.compareAndExchangeRelAcq(ov, nv)
 
   final def faaN(delta: Long): Long =
     atomicN.getAndAddAcquire(delta)
