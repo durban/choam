@@ -154,7 +154,7 @@ sealed trait MyTrait
 final class MySubClass extends MyTrait
 
 final class MyClass2(_i: Int, _j: Int, k: Int, x: MySubClass, _n: Long)
-  extends MyClass1[Int, MySubClass](_i, _j, k, x, _n)
+  extends MyClass1[Int, MySubClass](k, _i, _j, x, _n)
 
 sealed abstract class MyClass1[A, B <: MyTrait](
   private[this] var a: A,
