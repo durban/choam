@@ -20,15 +20,43 @@ package internal
 package mcas
 package emcas
 
+import scala.scalanative.annotation.alwaysinline
+
 private[emcas] abstract class GlobalContextBase { // TODO: padding!
 
-  final def getCommitTs(): Long = ???
+  @volatile
+  @nowarn("cat=unused-privates")
+  private[this] var commitTs: Long = Version.Start
+  // TODO: add padding between commitTs and threadCtxCount
+  @volatile
+  @nowarn("cat=unused-privates")
+  private[this] var threadCtxCount: Long = _
 
-  final def cmpxchgCommitTs(ov: Long, nv: Long): Long = ???
+  @alwaysinline
+  private[this] final def atomicCommitTs: AtomicLongHandle = {
+    AtomicLongHandle(this, "commitTs")
+  }
 
-  final def getAndIncrThreadCtxCount(): Long = ???
+  @alwaysinline
+  private[this] final def atomicThreadCtxCount: AtomicLongHandle = {
+    AtomicLongHandle(this, "threadCtxCount")
+  }
 
-  final def getAndAddThreadCtxCount(x: Long): Long = ???
+  final def getCommitTs(): Long = {
+    this.commitTs // volatile
+  }
+
+  final def cmpxchgCommitTs(ov: Long, nv: Long): Long = {
+    atomicCommitTs.compareAndExchange(ov, nv)
+  }
+
+  final def getAndIncrThreadCtxCount(): Long = {
+    this.getAndAddThreadCtxCount(1L)
+  }
+
+  final def getAndAddThreadCtxCount(x: Long): Long = {
+    atomicThreadCtxCount.getAndAddAcquire(x)
+  }
 }
 
 private[emcas] object GlobalContextBase {

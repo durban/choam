@@ -26,6 +26,7 @@ final class AtomicHandleSpec extends munit.FunSuite {
     val msc1 = new MySubClass
     val msc2 = new MySubClass
     val x = new MyClass2(3, msc1, 0L)
+    // set:
     checkState(x, 3, msc1, 0L)
     x.setAR(4)
     checkState(x, 4, msc1, 0L)
@@ -33,6 +34,7 @@ final class AtomicHandleSpec extends munit.FunSuite {
     checkState(x, 4, msc2, 0L)
     x.setNR(-1L)
     checkState(x, 4, msc2, -1L)
+    // cas:
     assertEquals(x.casA(42, 99), false)
     checkState(x, 4, msc2, -1L)
     assertEquals(x.casA(4, 99), true)
@@ -46,6 +48,30 @@ final class AtomicHandleSpec extends munit.FunSuite {
     checkState(x, 99, msc1, -1L)
     assertEquals(x.casN(-1L, 1024L), true)
     checkState(x, 99, msc1, 1024L)
+    // cmpxchg:
+    val wit1 = x.cmpxchgA(100, 101)
+    assertEquals(wit1, 99)
+    checkState(x, 99, msc1, 1024L)
+    val wit2 = x.cmpxchgA(99, 100)
+    assertEquals(wit2, 99)
+    checkState(x, 100, msc1, 1024L)
+    val wit3 = x.cmpxchgB(null, msc2)
+    assert(wit3 eq msc1)
+    checkState(x, 100, msc1, 1024L)
+    val wit4 = x.cmpxchgB(msc1, msc2)
+    assert(wit4 eq msc1)
+    checkState(x, 100, msc2, 1024L)
+    val wit5 = x.cmpxchgN(42L, 99L)
+    assertEquals(wit5, 1024L)
+    checkState(x, 100, msc2, 1024L)
+    val wit6 = x.cmpxchgN(wit5, 99L)
+    assertEquals(wit6, wit5)
+    checkState(x, 100, msc2, 99L)
+    // faa:
+    assertEquals(x.faaN(1L), 99L)
+    checkState(x, 100, msc2, 100L)
+    assertEquals(x.faaN(42L), 100L)
+    checkState(x, 100, msc2, 142L)
   }
 
   private def checkState(x: MyClass2, expA: Int, expB: MySubClass, expN: Long): Unit = {
@@ -96,6 +122,9 @@ sealed abstract class MyClass1[A, B <: MyTrait](
   final def casA(ov: A, nv: A): Boolean =
     atomicA.compareAndSet(ov, nv)
 
+  final def cmpxchgA(ov: A, nv: A): A =
+    atomicA.compareAndExchange(ov, nv)
+
   final def getBP: B =
     this.b
 
@@ -108,6 +137,9 @@ sealed abstract class MyClass1[A, B <: MyTrait](
   final def casB(ov: B, nv: B): Boolean =
     atomicB.compareAndSet(ov, nv)
 
+  final def cmpxchgB(ov: B, nv: B): B =
+    atomicB.compareAndExchange(ov, nv)
+
   final def getNP: Long =
     this.n
 
@@ -119,4 +151,10 @@ sealed abstract class MyClass1[A, B <: MyTrait](
 
   final def casN(ov: Long, nv: Long): Boolean =
     atomicN.compareAndSet(ov, nv)
+
+  final def cmpxchgN(ov: Long, nv: Long): Long =
+    atomicN.compareAndExchange(ov, nv)
+
+  final def faaN(delta: Long): Long =
+    atomicN.getAndAddAcquire(delta)
 }

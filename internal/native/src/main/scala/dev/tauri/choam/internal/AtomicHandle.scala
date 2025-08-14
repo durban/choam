@@ -74,4 +74,11 @@ private[choam] final class AtomicHandle[A] private (private val ptr: Ptr[AnyRef]
       memory_order_acquire,
     )
   }
+
+  final def compareAndExchange(ov: A, nv: A): A = {
+    val expected: Ptr[AnyRef] = stackalloc[AnyRef]()
+    !expected = ov.asInstanceOf[AnyRef]
+    atomic_compare_exchange_strong_explicit(ptr, expected, nv.asInstanceOf[AnyRef], memory_order_seq_cst, memory_order_acquire) : Unit
+    (!expected).asInstanceOf[A]
+  }
 }
