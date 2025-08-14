@@ -21,6 +21,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
+import java.lang.ref.Reference;
 
 import dev.tauri.choam.internal.VarHandleHelper;
 import dev.tauri.choam.internal.mcas.VersionJ;
@@ -79,6 +80,10 @@ abstract class GlobalContextBase extends PaddedMemoryLocationPadding {
 
   final long getAndAddThreadCtxCount(long x) {
     return (long) THREAD_CTX_COUNT.getAndAddAcquire(this, x);
+  }
+
+  final void reachabilityFence(Object ref) {
+    Reference.reachabilityFence(ref);
   }
 
   protected final static String registerEmcasJmxStats(Emcas emcas) throws javax.management.JMException {

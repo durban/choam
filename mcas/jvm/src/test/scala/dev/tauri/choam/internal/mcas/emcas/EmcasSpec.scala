@@ -34,7 +34,7 @@ import munit.{ Location, TestOptions }
 // TODO: `SimpleMemoryLocation`; we should run them
 // TODO: with actual `Ref`s too (or instead?)
 
-class EmcasSpec extends BaseSpec {
+class EmcasSpec extends BaseSpec { // TODO: move this to jvm-native
 
   private[this] val inst: Emcas =
     new Emcas(this.osRngInstance, java.lang.Runtime.getRuntime().availableProcessors())

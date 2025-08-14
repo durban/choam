@@ -57,6 +57,11 @@ private[emcas] abstract class GlobalContextBase { // TODO: padding!
   final def getAndAddThreadCtxCount(x: Long): Long = {
     atomicThreadCtxCount.getAndAddAcquire(x)
   }
+
+  @inline
+  final def reachabilityFence(ref: AnyRef): Unit = {
+    // TODO: we're assuming SN doesn't collect locals before a method returns...
+  }
 }
 
 private[emcas] object GlobalContextBase {

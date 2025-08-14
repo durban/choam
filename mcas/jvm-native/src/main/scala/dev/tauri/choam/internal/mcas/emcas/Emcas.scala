@@ -20,7 +20,7 @@ package internal
 package mcas
 package emcas
 
-import java.lang.ref.{ Reference, WeakReference }
+import java.lang.ref.WeakReference
 
 /**
  * Efficient Multi-word Compare and Swap (EMCAS):
@@ -296,7 +296,7 @@ private[mcas] final class Emcas(
               val successful = (parentStatus != McasStatus.FailedVal) && (parentStatus != EmcasStatus.CycleDetected)
               val a = if (successful) wd.cast[A].nv else wd.cast[A].ov
               val currVer = if (successful) parentStatus else wd.oldVersion
-              Reference.reachabilityFence(mark)
+              reachabilityFence(mark)
               LogEntry(ref, ov = a, nv = a, version = currVer)
             }
           }
@@ -637,20 +637,20 @@ private[mcas] final class Emcas(
 
       val wordDescOv = wordDesc.ov
       if (equ(wordDescOv, EmcasDescriptorBase.CLEARED)) {
-        Reference.reachabilityFence(mark)
+        reachabilityFence(mark)
         // we have been finalized (by a helping thread), no reason to continue
         EmcasStatus.Break
       } else if (!equ(value, wordDescOv)) {
-        Reference.reachabilityFence(mark)
+        reachabilityFence(mark)
         // Expected value is different:
         McasStatus.FailedVal
       } else if (version != wordDesc.oldVersion) {
-        Reference.reachabilityFence(mark)
+        reachabilityFence(mark)
         // The expected value is the same,
         // but the expected version isn't:
         McasStatus.FailedVal
       } else if (desc.getStatusV() != McasStatus.Active) {
-        Reference.reachabilityFence(mark)
+        reachabilityFence(mark)
         // we have been finalized (by a helping thread), no reason to continue
         EmcasStatus.Break
       } else {
@@ -676,13 +676,13 @@ private[mcas] final class Emcas(
         // on our next retry, we may see a ref with a value *and*
         // a non-empty weakref (but this case is also handled, see above).
         if (weakRefOk && address.unsafeCasV(content, wordDesc.castToData)) {
-          Reference.reachabilityFence(mark)
+          reachabilityFence(mark)
           McasStatus.Successful
         } else {
           // either we couldn't install the new mark, or
           // the CAS on the `Ref` failed; in either case,
           // we'll retry:
-          Reference.reachabilityFence(mark)
+          reachabilityFence(mark)
           tryWord(wordDesc, newSeen)
         }
       }
