@@ -20,7 +20,7 @@ package internal
 package mcas
 package emcas
 
-private[emcas] abstract class GlobalContextBase {
+private[emcas] abstract class GlobalContextBase { // TODO: padding!
 
   final def getCommitTs(): Long = ???
 
