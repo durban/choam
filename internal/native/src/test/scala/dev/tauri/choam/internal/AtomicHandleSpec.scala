@@ -110,10 +110,19 @@ final class AtomicHandleSpec extends FunSuite {
     checkState(x, 200, msc1, 100L)
     // faa:
     x.setNR(99L)
-    assertEquals(x.faaN(1L), 99L)
+    assertEquals(x.faaNO(1L), 99L)
     checkState(x, 200, msc1, 100L)
-    assertEquals(x.faaN(42L), 100L)
+    assertEquals(x.faaNO(42L), 100L)
     checkState(x, 200, msc1, 142L)
+    assertEquals(x.faaNO(-143L), 142L)
+    checkState(x, 200, msc1, -1L)
+    x.setNR(99L)
+    assertEquals(x.faaNA(1L), 99L)
+    checkState(x, 200, msc1, 100L)
+    assertEquals(x.faaNA(42L), 100L)
+    checkState(x, 200, msc1, 142L)
+    assertEquals(x.faaNA(-143L), 142L)
+    checkState(x, 200, msc1, -1L)
   }
 
   private def checkState(x: MyClass2, expA: Int, expB: MySubClass, expN: Long)(implicit loc: Location): Unit = {
@@ -222,6 +231,9 @@ sealed abstract class MyClass1[A, B <: MyTrait](
   final def cmpxchgNRA(ov: Long, nv: Long): Long =
     atomicN.compareAndExchangeRelAcq(ov, nv)
 
-  final def faaN(delta: Long): Long =
+  final def faaNA(delta: Long): Long =
     atomicN.getAndAddAcquire(delta)
+
+  final def faaNO(delta: Long): Long =
+    atomicN.getAndAddOpaque(delta)
 }

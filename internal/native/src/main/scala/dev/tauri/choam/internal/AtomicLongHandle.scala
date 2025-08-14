@@ -92,6 +92,10 @@ private[choam] final class AtomicLongHandle private (private val ptr: Ptr[atomic
     !expected
   }
 
+  final def getAndAddOpaque(delta: Long): Long = {
+    atomic_fetch_add_explicit(ptr, delta, memory_order_relaxed)
+  }
+
   final def getAndAddAcquire(delta: Long): Long = {
     atomic_fetch_add_explicit(ptr, delta, memory_order_acquire)
   }

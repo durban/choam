@@ -19,9 +19,22 @@ package dev.tauri.choam
 package internal
 package mcas
 
+import scala.scalanative.annotation.alwaysinline
+
 private[mcas] abstract class RefIdGenBase extends PaddedMemoryLocationPadding {
 
-  private[mcas] final def getAndAddCtrO(x: Long): Long = ???
+  @nowarn("cat=unused-privates")
+  private[this] var ctr: Long =
+    Long.MinValue // TODO: start from something more "random"
+
+  @alwaysinline
+  private[this] final def atomicCtr: AtomicLongHandle = {
+    AtomicLongHandle(this, "ctr")
+  }
+
+  private[mcas] final def getAndAddCtrO(x: Long): Long = {
+    atomicCtr.getAndAddOpaque(x)
+  }
 }
 
 private[mcas] object RefIdGenBase {
