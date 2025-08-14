@@ -17,7 +17,6 @@
 
 package dev.tauri.choam
 package internal
-package skiplist
 
 final class AssertSpec extends munit.FunSuite {
 

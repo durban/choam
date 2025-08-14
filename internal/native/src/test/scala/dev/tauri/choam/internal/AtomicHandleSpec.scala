@@ -22,41 +22,51 @@ import scala.scalanative.annotation.alwaysinline
 
 final class AtomicHandleSpec extends munit.FunSuite {
 
-  test("Basics") {
+  test("AtomicHandle/AtomicLongHandle") {
     val msc1 = new MySubClass
     val msc2 = new MySubClass
-    val x = new MyClass2(3, msc1)
-    checkState(x, 3, msc1)
+    val x = new MyClass2(3, msc1, 0L)
+    checkState(x, 3, msc1, 0L)
     x.setAR(4)
-    checkState(x, 4, msc1)
+    checkState(x, 4, msc1, 0L)
     x.setBR(msc2)
-    checkState(x, 4, msc2)
+    checkState(x, 4, msc2, 0L)
+    x.setNR(-1L)
+    checkState(x, 4, msc2, -1L)
     assertEquals(x.casA(42, 99), false)
-    checkState(x, 4, msc2)
+    checkState(x, 4, msc2, -1L)
     assertEquals(x.casA(4, 99), true)
-    checkState(x, 99, msc2)
+    checkState(x, 99, msc2, -1L)
     assertEquals(x.casB(msc1, null), false)
-    checkState(x, 99, msc2)
+    checkState(x, 99, msc2, -1L)
     assertEquals(x.casB(msc2, null), true)
-    checkState(x, 99, null)
+    checkState(x, 99, null, -1L)
+    x.setBR(msc1)
+    assertEquals(x.casN(42L, 1024L), false)
+    checkState(x, 99, msc1, -1L)
+    assertEquals(x.casN(-1L, 1024L), true)
+    checkState(x, 99, msc1, 1024L)
   }
 
-  private def checkState(x: MyClass2, expA: Int, expB: MySubClass): Unit = {
+  private def checkState(x: MyClass2, expA: Int, expB: MySubClass, expN: Long): Unit = {
     assertEquals(x.getAP, expA)
     assertEquals(x.getAO, expA)
     assertEquals(x.getBP, expB)
     assertEquals(x.getBO, expB)
+    assertEquals(x.getNP, expN)
+    assertEquals(x.getNO, expN)
   }
 }
 
 sealed trait MyTrait
 final class MySubClass extends MyTrait
 
-final class MyClass2(k: Int, x: MySubClass) extends MyClass1[Int, MySubClass](k, x)
+final class MyClass2(k: Int, x: MySubClass, _n: Long) extends MyClass1[Int, MySubClass](k, x, _n)
 
 sealed abstract class MyClass1[A, B <: MyTrait](
   private[this] var a: A,
   private[this] var b: B,
+  private[this] var n: Long,
 ) {
 
   @alwaysinline
@@ -67,6 +77,11 @@ sealed abstract class MyClass1[A, B <: MyTrait](
   @alwaysinline
   private[this] final def atomicB: AtomicHandle[B] = {
     AtomicHandle(this, "b")
+  }
+
+  @alwaysinline
+  private[this] final def atomicN: AtomicLongHandle = {
+    AtomicLongHandle(this, "n")
   }
 
   final def getAP: A =
@@ -92,4 +107,16 @@ sealed abstract class MyClass1[A, B <: MyTrait](
 
   final def casB(ov: B, nv: B): Boolean =
     atomicB.compareAndSet(ov, nv)
+
+  final def getNP: Long =
+    this.n
+
+  final def getNO: Long =
+    atomicN.getOpaque
+
+  final def setNR(nv: Long): Unit =
+    atomicN.setRelease(nv)
+
+  final def casN(ov: Long, nv: Long): Boolean =
+    atomicN.compareAndSet(ov, nv)
 }
