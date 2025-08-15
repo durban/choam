@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package internal
 
-private[choam] abstract class ChoamUtilsBase {
+private[choam] abstract class ChoamUtilsBase extends ChoamUtilsBasePlatform {
 
   private[choam] final type tailrec = scala.annotation.tailrec
 

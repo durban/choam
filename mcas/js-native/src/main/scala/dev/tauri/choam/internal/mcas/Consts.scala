@@ -48,7 +48,7 @@ object Consts {
    * `clp2` from Hacker's Delight by Henry S. Warren, Jr. (section 3–2).
    */
   @inline final def nextPowerOf2(x: Int): Int = {
-    Predef.assert((x > 0) && (x <= (1 << 30))) // scala-js is sometimes weird with arrays, so we leave this here
+    jsAssert((x > 0) && (x <= (1 << 30))) // scala-js is sometimes weird with arrays, so we leave this here
     0x80000000 >>> (Integer.numberOfLeadingZeros(x - 1) - 1)
   }
 
