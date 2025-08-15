@@ -21,7 +21,7 @@ package mcas
 
 import scala.scalanative.meta.LinktimeInfo
 import scala.scalanative.unsigned.{ UnsignedRichInt, UInt }
-import scala.scalanative.unsafe.{ extern, CSize, CVoidPtr, CUnsignedLong, CInt, Ptr, UnsafeRichArray }
+import scala.scalanative.unsafe.{ extern, link, CSize, CVoidPtr, CUnsignedLong, CInt, Ptr, UnsafeRichArray }
 import scala.scalanative.posix.unistd
 import scala.scalanative.libc.errno
 
@@ -92,6 +92,7 @@ private final class NativeOsRng extends OsRng {
 }
 
 @extern
+@link("bcrypt")
 private object Bcrypt { // win Bcrypt.h
   def BCryptGenRandom(
     hAlgorithm: CVoidPtr,
