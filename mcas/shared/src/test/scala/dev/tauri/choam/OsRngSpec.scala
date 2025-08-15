@@ -38,10 +38,19 @@ final class OsRngSpec extends CatsEffectSuite {
       assert(Either.catchOnly[IllegalArgumentException] { rng.nextBytes(Int.MinValue) }.isLeft)
       checkNextBytes(rng, size = 0)
       checkNextBytes(rng, size = 1)
+      checkNextBytes(rng, size = 2)
+      checkNextBytes(rng, size = 7)
+      checkNextBytes(rng, size = 8)
+      checkNextBytes(rng, size = 9)
+      checkNextBytes(rng, size = 10)
       checkNextBytes(rng, size = 256)
       checkNextBytes(rng, size = 257)
       checkNextBytes(rng, size = 4096)
+      checkNextBytes(rng, size = 4098)
       checkNextBytes(rng, size = 32768)
+      checkNextBytes(rng, size = 32769)
+      checkNextBytes(rng, size = 32770)
+      checkNextBytes(rng, size = 32771)
       assert(rng.nextBytes(4).exists(_ != 0.toByte))
     } finally {
       rng.close()
@@ -59,7 +68,7 @@ final class OsRngSpec extends CatsEffectSuite {
     }
   }
 
-  final val N = 256
+  final val N = 301
 
   val full0 = new Array[Byte](N)
 
@@ -81,9 +90,15 @@ final class OsRngSpec extends CatsEffectSuite {
 
   private def useInParallel(rngs: List[OsRng]): IO[Unit] = {
     rngs.parTraverse { rng =>
-      IO(new Array[Byte](N)).flatMap { buff =>
-        val once = IO(rng.nextBytes(buff)) >> IO(assert(!Arrays.equals(buff, full0))) >> IO(Arrays.fill(buff, 0.toByte))
-        (once >> IO.cede).replicateA_(4096)
+      IO(new Array[Byte](N)).flatMap { buff1 =>
+        IO(new Array[Byte](N)).flatMap { buff2 =>
+          val once = IO { rng.nextBytes(buff1); rng.nextBytes(buff2) } >> IO {
+            assert(!Arrays.equals(buff1, full0))
+            assert(!Arrays.equals(buff2, full0))
+            assert(!Arrays.equals(buff1, buff2))
+          } >> IO { Arrays.fill(buff1, 0.toByte); Arrays.fill(buff2, 0.toByte) }
+          (once >> IO.cede).replicateA_(4096)
+        }
       }
     }.void
   }
