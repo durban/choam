@@ -19,23 +19,16 @@ package dev.tauri.choam
 
 import java.util.Arrays
 
+import cats.syntax.all._
 import cats.effect.kernel.Resource
 import cats.effect.IO
 import cats.effect.instances.spawn.parallelForGenSpawn
 
+import munit.CatsEffectSuite
+
 import internal.mcas.OsRng
 
-final class OsRngSpecIO
-  extends BaseSpecIO
-  with OsRngSpec[IO]
-  with SpecNoMcas
-
-final class OsRngSpecZIO
-  extends BaseSpecZIO
-  with OsRngSpec[zio.Task]
-  with SpecNoMcas
-
-trait OsRngSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
+final class OsRngSpec extends CatsEffectSuite {
 
   test("OsRng#nextBytes") {
     val rng = OsRng.mkNew()
@@ -70,8 +63,8 @@ trait OsRngSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   val full0 = new Array[Byte](N)
 
-  private val osRngResource: Resource[F, OsRng] = {
-    Resource.make(F.blocking { OsRng.mkNew() })(osRng => F.blocking { osRng.close() })
+  private val osRngResource: Resource[IO, OsRng] = {
+    Resource.make(IO.blocking { OsRng.mkNew() })(osRng => IO.blocking { osRng.close() })
   }
 
   test("Multi-threaded use") {
@@ -86,11 +79,11 @@ trait OsRngSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     }
   }
 
-  private def useInParallel(rngs: List[OsRng]): F[Unit] = {
+  private def useInParallel(rngs: List[OsRng]): IO[Unit] = {
     rngs.parTraverse { rng =>
-      F.delay(new Array[Byte](N)).flatMap { buff =>
-        val once = F.delay(rng.nextBytes(buff)) >> F.delay(assert(!Arrays.equals(buff, full0))) >> F.delay(Arrays.fill(buff, 0.toByte))
-        (once >> F.cede).replicateA_(4096)
+      IO(new Array[Byte](N)).flatMap { buff =>
+        val once = IO(rng.nextBytes(buff)) >> IO(assert(!Arrays.equals(buff, full0))) >> IO(Arrays.fill(buff, 0.toByte))
+        (once >> IO.cede).replicateA_(4096)
       }
     }.void
   }
