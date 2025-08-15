@@ -20,10 +20,11 @@ package internal
 package mcas
 package emcas
 
-import java.lang.ref.{ Reference, WeakReference }
-import java.util.concurrent.{ ConcurrentLinkedQueue, ConcurrentSkipListSet, CountDownLatch, ThreadLocalRandom }
+import java.lang.ref.WeakReference
+import java.util.concurrent.{ ConcurrentLinkedQueue, CountDownLatch, ThreadLocalRandom }
 
 import scala.concurrent.duration._
+import scala.collection.concurrent.TrieMap
 import scala.runtime.VolatileObjectRef
 
 import cats.syntax.all._
@@ -189,6 +190,7 @@ class EmcasSpec extends BaseSpec { // TODO: move this to jvm-native
   }
 
   test("EMCAS should not clean up an object referenced from another thread") {
+    assume(!isNative()) // TODO: this test hangs on SN
     val ref = MemoryLocation.unsafeUnpadded[String]("s", this.rigInstance)
     val ctx = inst.currentContextInternal()
     val hDesc = ctx.addCasFromInitial(ctx.start(), ref, "s", "x")
@@ -208,7 +210,7 @@ class EmcasSpec extends BaseSpec { // TODO: move this to jvm-native
       assert(mark ne null)
       latch1.countDown()
       latch2.await()
-      Reference.reachabilityFence(mark)
+      inst.reachabilityFence(mark)
       ok = true
     })
     t.start()
@@ -268,6 +270,7 @@ class EmcasSpec extends BaseSpec { // TODO: move this to jvm-native
   }
 
   test("EMCAS op should be finalizable even if a thread dies mid-op".tag(SLOW)) {
+    assume(!isNative()) // TODO: this test hangs on SN
     threadDeathTest(runGcBetween = false, finishWithAnotherOp = true)
     threadDeathTest(runGcBetween = false, finishWithAnotherOp = false)
     threadDeathTest(runGcBetween = true, finishWithAnotherOp = true)
@@ -297,7 +300,7 @@ class EmcasSpec extends BaseSpec { // TODO: move this to jvm-native
       latch1.countDown()
       latch2.await()
       // and the thread dies here, with an active CAS
-      Reference.reachabilityFence(mark)
+      inst.reachabilityFence(mark)
     })
     t1.start()
     latch1.await()
@@ -339,6 +342,7 @@ class EmcasSpec extends BaseSpec { // TODO: move this to jvm-native
   }
 
   test("ThreadContext should be collected by the JVM GC if a thread terminates") {
+    assume(isJvm()) // TODO: on SN we don't have the ThreadContexts in the skiplist
     inst.currentContext()
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)
@@ -387,7 +391,16 @@ class EmcasSpec extends BaseSpec { // TODO: move this to jvm-native
     val ctx = impl.currentContext()
     var ok = false
     val t = new Thread({ () =>
-      ok = (!impl.isCurrentContext(ctx)) && (!impl.threadContextExists(Thread.currentThread().getId()))
+      ok = if (impl.isCurrentContext(ctx)) {
+        false
+      } else {
+        if (isJvm()) {
+          !impl.threadContextExists(Thread.currentThread().getId())
+        } else {
+          // TODO: on SN we don't have the ThreadContexts in the skiplist
+          true
+        }
+      }
     })
     t.start()
     t.join()
@@ -413,7 +426,7 @@ class EmcasSpec extends BaseSpec { // TODO: move this to jvm-native
       // and the thread pauses here, with an active CAS
       latch1.countDown()
       latch2.await()
-      Reference.reachabilityFence(mark)
+      inst.reachabilityFence(mark)
       ok0 = true
     })
     t1.start()
@@ -468,7 +481,7 @@ class EmcasSpec extends BaseSpec { // TODO: move this to jvm-native
     assertEquals(ctx.readDirect(r2), "y")
     assert(EmcasStatusFunctions.isSuccessful(other.getStatusV()))
     // we hold a strong ref, since we're pretending we're another op
-    Reference.reachabilityFence(mark)
+    inst.reachabilityFence(mark)
   }
 
   test("EMCAS read should roll back the other op if necessary") {
@@ -488,7 +501,7 @@ class EmcasSpec extends BaseSpec { // TODO: move this to jvm-native
     assertEquals(ctx.readDirect(r2), "r2")
     assert(other.getStatusV() == McasStatus.FailedVal)
     // we hold a strong ref, since we're pretending we're another op
-    Reference.reachabilityFence(mark)
+    inst.reachabilityFence(mark)
   }
 
   test("ThreadContexts should be thread-local") {
@@ -683,20 +696,20 @@ class EmcasSpec extends BaseSpec { // TODO: move this to jvm-native
   }
 
   test("Threads should have different `ThreadLocalRefIdGen`s") {
-    val ids = new ConcurrentSkipListSet[Long]
+    val ids = new TrieMap[Long, Unit]
     val rig1 = inst.currentContext().refIdGen
-    ids.add(rig1.nextId())
+    ids.put(rig1.nextId(), ())
     var rig2: RefIdGen = null
     val t = new Thread(() => {
       val r = inst.currentContext().refIdGen
-      ids.add(r.nextId())
-      ids.add(r.nextId())
-      ids.add(r.nextId())
+      ids.put(r.nextId(), ())
+      ids.put(r.nextId(), ())
+      ids.put(r.nextId(), ())
       rig2 = r
     })
     t.start()
-    ids.add(rig1.nextId())
-    ids.add(rig1.nextId())
+    ids.put(rig1.nextId(), ())
+    ids.put(rig1.nextId(), ())
     t.join()
     rig2 match {
       case null =>
@@ -704,7 +717,7 @@ class EmcasSpec extends BaseSpec { // TODO: move this to jvm-native
       case rig2 =>
         assert(rig1 ne rig2)
     }
-    assertEquals(ids.size(), 6)
+    assertEquals(ids.size, 6)
   }
 
   test("EmcasDescriptor#instRo") {
