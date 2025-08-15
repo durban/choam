@@ -27,6 +27,10 @@ private[mcas] abstract class RefIdGenBase extends PaddedMemoryLocationPadding {
   private[this] var ctr: Long =
     Long.MinValue // TODO: start from something more "random"
 
+  protected[this] final def yesWeNeedTheseFieldsEvenOnDotty(): Unit = {
+    this.ctr
+  }
+
   @alwaysinline
   private[this] final def atomicCtr: AtomicLongHandle = {
     AtomicLongHandle(this, "ctr")

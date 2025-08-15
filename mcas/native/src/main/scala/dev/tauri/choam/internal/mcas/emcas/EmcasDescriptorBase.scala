@@ -41,6 +41,10 @@ private[emcas] abstract class EmcasDescriptorBase {
   private[this] var _fallback: EmcasDescriptor =
     _
 
+  protected[this] final def yesWeNeedTheseFieldsEvenOnDotty(): Unit = {
+    this._fallback
+  }
+
   @alwaysinline
   private[this] final def atomicStatus: AtomicLongHandle = {
     AtomicLongHandle(this, "_status")

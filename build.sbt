@@ -546,6 +546,7 @@ lazy val zi = crossProject(JVMPlatform, JSPlatform)
   .settings(
     libraryDependencies ++= dependencies.zioEverything.value,
     tlVersionIntroduced := Map("2.13" -> "0.4.11", "3" -> "0.4.11"),
+    Test / scalacOptions -= "-Xcheck-macros", // some zio macro somewhere generates invalid code
   )
 
 lazy val testAssert = project.in(file("test-assert"))
@@ -855,6 +856,7 @@ lazy val commonSettings = Seq[Setting[_]](
         "-Wunused:all",
         // TODO: "-Ysafe-init", // https://github.com/lampepfl/dotty/issues/17997
         "-Ycheck-all-patmat",
+        "-Xcheck-macros",
         // TODO: "-Ycheck-reentrant",
         // TODO: "-Ylog:checkReentrant",
         // TODO: "-Yexplicit-nulls",

@@ -34,12 +34,7 @@ import scala.scalanative.libc.stdatomic.memory_order.{
   memory_order_seq_cst,
 }
 
-private[choam] object AtomicHandle {
-
-  import scala.language.experimental.macros
-
-  final def apply[O <: AnyRef, H](obj: O, fieldName: String): AtomicHandle[H] =
-    macro AtomicHandleMacros.applyImpl[O, H]
+private[choam] object AtomicHandle extends AtomicHandleCompanionScalaVer {
 
   @alwaysinline
   final def newAtomicHandleDoNotCallThisMethod[A](ptr: Ptr[AnyRef]): AtomicHandle[A] = {

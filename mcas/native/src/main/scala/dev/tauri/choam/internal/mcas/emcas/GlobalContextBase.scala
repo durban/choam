@@ -32,6 +32,10 @@ private[emcas] abstract class GlobalContextBase { // TODO: padding!
   @nowarn("cat=unused-privates")
   private[this] var threadCtxCount: Long = _
 
+  protected[this] final def yesWeNeedTheseFieldsEvenOnDotty(): Unit = {
+    this.threadCtxCount
+  }
+
   @alwaysinline
   private[this] final def atomicCommitTs: AtomicLongHandle = {
     AtomicLongHandle(this, "commitTs")

@@ -36,15 +36,10 @@ import scala.scalanative.libc.stdatomic.memory_order.{
   memory_order_seq_cst,
 }
 
-private[choam] object AtomicIntHandle {
-
-  import scala.language.experimental.macros
-
-  final def apply[O <: AnyRef](obj: O, fieldName: String): AtomicIntHandle =
-    macro AtomicHandleMacros.intImpl[O]
+private[choam] object AtomicIntHandle extends AtomicIntHandleCompanionScalaVer {
 
   @alwaysinline
-  final def newAtomicIntHandleDoNotCallThisMethod[A](ptr: Ptr[atomic_int]): AtomicIntHandle = {
+  final def newAtomicIntHandleDoNotCallThisMethod(ptr: Ptr[atomic_int]): AtomicIntHandle = {
     new AtomicIntHandle(ptr)
   }
 }

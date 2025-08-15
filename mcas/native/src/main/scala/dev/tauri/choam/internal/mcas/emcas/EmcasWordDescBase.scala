@@ -27,7 +27,7 @@ private[emcas] abstract class EmcasWordDescBase[A](
   private[this] var _nv: A,
 ) {
 
-  protected def address(): MemoryLocation[A]
+  protected def address: MemoryLocation[A]
 
   final def ov: A = {
     this._ov
@@ -50,7 +50,7 @@ private[emcas] abstract class EmcasWordDescBase[A](
   final def wasFinalized(wasSuccessful: Boolean, sentinel: A): Unit = {
     if (wasSuccessful) {
       atomicOv.setOpaque(sentinel)
-      address().unsafeNotifyListeners()
+      address.unsafeNotifyListeners()
     } else {
       atomicNv.setOpaque(sentinel)
     }
