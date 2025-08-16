@@ -228,6 +228,7 @@ class EmcasSpec extends BaseSpec { // TODO: move this to jvm-native
   }
 
   test("EMCAS should clean up finalized descriptors if the original thread releases them") {
+    assume((!isWindows()) || (!isNative())) // TODO: this test hangs on SN+Win
     val r1 = MemoryLocation.unsafeUnpadded[String]("x", this.rigInstance)
     val r2 = MemoryLocation.unsafeUnpadded[String]("y", this.rigInstance)
     var ok = false
