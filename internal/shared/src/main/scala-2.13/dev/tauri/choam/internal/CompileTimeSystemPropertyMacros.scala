@@ -16,32 +16,23 @@
  */
 
 package dev.tauri.choam
+package internal
 
-trait MUnitUtilsPlatform {
+import scala.reflect.macros.whitebox.Context
 
-  @inline
-  final def isJvm(): Boolean =
-    false
+private[choam] object CompileTimeSystemPropertyMacros {
 
-  @inline
-  final def isJs(): Boolean =
-    true
+  final def impl(c: Context)(name: c.Expr[String]): c.Expr[Boolean] = {
 
-  @inline
-  final def isNative(): Boolean =
-    false
+    import c.universe._
 
-  final def isVmSupportsLongCas(): Boolean = {
-    true // LOL!
-  }
-
-  final def getJvmVersion(): Int = {
-    // scala-js has no `Runtime.version()`
-    System.getProperty("java.version").split('.')(0).toInt
-  }
-
-  @inline
-  final def isGraal(): Boolean = {
-    false // this is JS!
+    val macroPos = c.macroApplication.pos
+    name match {
+      case Expr(Literal(Constant(propName: String))) =>
+        val result = java.lang.Boolean.getBoolean(propName)
+        c.Expr(Literal(Constant(result)))
+      case x =>
+        c.abort(macroPos, s"name has to be a literal String, got: ${showRaw(x)}")
+    }
   }
 }

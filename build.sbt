@@ -439,6 +439,7 @@ lazy val mcas = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     mimaBinaryIssueFilters ++= Seq(
       // there is no backward compat for `choam-mcas`:
     ),
+    Test / javaOptions += "-Ddev.tauri.choam.testProperty=true",
   )
 
 lazy val internal = crossProject(JVMPlatform, JSPlatform, NativePlatform)
@@ -456,7 +457,8 @@ lazy val internal = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .settings(
     libraryDependencies ++= Seq(
       dependencies.catsKernel.value,
-    ),
+    ) ++ dependencies.macros.value,
+    Test / javaOptions += "-Ddev.tauri.choam.testProperty=true",
   )
 
 lazy val data = crossProject(JVMPlatform, JSPlatform)
@@ -622,6 +624,7 @@ lazy val testExt = crossProject(JVMPlatform, JSPlatform)
     Test / fork := true,
     Test / javaOptions ++= List(
       "-Ddev.tauri.choam.stats=true",
+      "-Ddev.tauri.choam.testProperty=true",
     ),
   )
 
@@ -1028,6 +1031,14 @@ lazy val dependencies = new {
     zioCats.value,
     zioStm.value,
   ))
+
+  val macros = Def.setting[Seq[ModuleID]] {
+    if (ScalaArtifacts.isScala3(scalaVersion.value)) {
+      Nil
+    } else {
+      Seq(scalaOrganization.value % "scala-reflect" % scalaVersion.value % Provided)
+    }
+  }
 
   val test = Def.setting[Seq[ModuleID]] {
     Seq(

@@ -16,32 +16,13 @@
  */
 
 package dev.tauri.choam
+package internal
 
-trait MUnitUtilsPlatform {
+import scala.language.experimental.macros
 
-  @inline
-  final def isJvm(): Boolean =
-    false
+private[choam] object CompileTimeSystemProperty {
 
-  @inline
-  final def isJs(): Boolean =
-    true
-
-  @inline
-  final def isNative(): Boolean =
-    false
-
-  final def isVmSupportsLongCas(): Boolean = {
-    true // LOL!
-  }
-
-  final def getJvmVersion(): Int = {
-    // scala-js has no `Runtime.version()`
-    System.getProperty("java.version").split('.')(0).toInt
-  }
-
-  @inline
-  final def isGraal(): Boolean = {
-    false // this is JS!
+  transparent inline final def getBoolean(inline name: String): Boolean = {
+    java.lang.Boolean.getBoolean(name)
   }
 }
