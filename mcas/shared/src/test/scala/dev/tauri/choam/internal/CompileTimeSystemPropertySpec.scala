@@ -21,9 +21,9 @@ package internal
 final class CompileTimeSystemPropertySpec extends BaseSpec {
 
   test("getBoolean") {
-    assert(CompileTimeSystemPropertySpec.shouldBeTrue)
-    assert(!CompileTimeSystemPropertySpec.shouldBeFalse)
-    assert(!CompileTimeSystemPropertySpec.shouldBeFalseButTrueRuntime)
+    assert(CompileTimeSystemPropertySpec.shouldBeTrue : true)
+    assert(!(CompileTimeSystemPropertySpec.shouldBeFalse : false))
+    assert(!(CompileTimeSystemPropertySpec.shouldBeFalseButTrueRuntime : false))
     if (isJvm()) {
       assert(getBoolean(CompileTimeSystemPropertySpec.testPropertyName))
     }
