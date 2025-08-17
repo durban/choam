@@ -35,7 +35,7 @@ import munit.{ Location, TestOptions }
 // TODO: `SimpleMemoryLocation`; we should run them
 // TODO: with actual `Ref`s too (or instead?)
 
-class EmcasSpec extends BaseSpec { // TODO: move this to jvm-native
+class EmcasSpec extends BaseSpec {
 
   private[this] val inst: Emcas =
     new Emcas(this.osRngInstance, java.lang.Runtime.getRuntime().availableProcessors())
@@ -344,7 +344,7 @@ class EmcasSpec extends BaseSpec { // TODO: move this to jvm-native
   }
 
   test("ThreadContext should be collected by the JVM GC if a thread terminates") {
-    assume(isJvm()) // TODO: on SN we don't have the ThreadContexts in the skiplist
+    assume(!isNative()) // TODO: this test hangs on SN
     inst.currentContext()
     val latch1 = new CountDownLatch(1)
     val latch2 = new CountDownLatch(1)
@@ -396,12 +396,7 @@ class EmcasSpec extends BaseSpec { // TODO: move this to jvm-native
       ok = if (impl.isCurrentContext(ctx)) {
         false
       } else {
-        if (isJvm()) {
-          !impl.threadContextExists(Thread.currentThread().getId())
-        } else {
-          // TODO: on SN we don't have the ThreadContexts in the skiplist
-          true
-        }
+        !impl.threadContextExists(Thread.currentThread().getId())
       }
     })
     t.start()

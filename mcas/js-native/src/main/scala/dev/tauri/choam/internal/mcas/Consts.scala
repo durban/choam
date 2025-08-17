@@ -40,7 +40,7 @@ object Consts {
 
   @inline
   final val statsEnabled =
-    false // TODO: on SN we should make it possible to enable stats
+    CompileTimeSystemProperty.getBoolean(statsEnabledProp)
 
   /**
    * Next power of 2 which is `>= x`.
