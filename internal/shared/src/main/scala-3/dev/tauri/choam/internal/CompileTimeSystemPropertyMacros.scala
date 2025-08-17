@@ -18,10 +18,14 @@
 package dev.tauri.choam
 package internal
 
-import scala.language.experimental.macros
+import scala.compiletime.constValue
+import scala.quoted.{ Quotes, Expr }
 
-private[choam] object CompileTimeSystemProperty {
+private[choam] object CompileTimeSystemPropertyMacros {
 
-  transparent inline final def getBoolean(inline name: String): Boolean =
-    ${ CompileTimeSystemPropertyMacros.impl('name) }
+  final def impl(name: Expr[String])(using Quotes): Expr[Boolean] = {
+    val propName: String = name.valueOrAbort
+    val result = java.lang.Boolean.getBoolean(propName)
+    Expr(result)
+  }
 }
