@@ -21,8 +21,6 @@ package profiler
 import java.util.concurrent.atomic.AtomicInteger
 
 import cats.effect.IO
-import cats.effect.instances.spawn.parallelForGenSpawn
-import cats.syntax.all._
 
 import munit.CatsEffectSuite
 
@@ -176,19 +174,20 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
       }
       // parallel runs, there should be additional retries:
       _ <- if (this.isJvm()) {
-        def mkABC(ref: Ref[Int]): (F[Int], F[Int], F[Int]) = {
+        def mkABCD(ref: Ref[Int]): (F[Int], F[Int], F[Int], F[Int]) = {
           (
             succeedAfter(2, Some(ref)).flatMap(_.run[F]),
             succeedAfter(2, Some(ref)).flatMap(_.run[F]),
-            succeedAfter(2, Some(ref)).flatMap(_.run[F])
+            succeedAfter(2, Some(ref)).flatMap(_.run[F]),
+            succeedAfter(2, Some(ref)).flatMap(_.run[F]),
           )
         }
         for {
           ref <- Ref(0).run[F]
-          tasks <- F.delay(mkABC(ref)).replicateA(100)
-          tsk = tasks.parTraverse_ {
-            case (rpA, rpB, rpC) =>
-              F.both(rpA, F.both(rpB, rpC))
+          tasks <- F.delay(mkABCD(ref)).replicateA(100)
+          tsk = tasks.traverse_ {
+            case (rpA, rpB, rpC, rpD) =>
+              F.both(F.both(F.cede *> rpA, F.cede *> rpB), F.both(F.cede *> rpC, F.cede *> rpD))
           }
           _ <- simulateRun { _ => tsk.start.flatMap(_.joinWithNever) } { r =>
             F.delay {
