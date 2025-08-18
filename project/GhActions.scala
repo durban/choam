@@ -34,6 +34,6 @@ object GhActions {
     ("actions", "setup-java") -> "c5195efecf7bdfc987ee8bae7a71cb8b11521c00", // 4.7.1
     (uploadArtifactV4.owner, uploadArtifactV4.repo) -> uploadArtifactV4.ref, // 4.6.2
     ("scalacenter", "sbt-dependency-submission") -> "f3c0455a87097de07b66c3dc1b8619b5976c1c89", // 2.3.1
-    ("sbt", "setup-sbt") -> "26ab4b0fa1c47fa62fc1f6e51823a658fb6c760c", // 1.1.7
+    ("sbt", "setup-sbt") -> "f20dc1bc1f8be605c44ffbcec6f17f708a4af9d1", // 1.1.12
   )
 }

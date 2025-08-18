@@ -185,7 +185,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup sbt
-        uses: sbt/setup-sbt@26ab4b0fa1c47fa62fc1f6e51823a658fb6c760c
+        uses: sbt/setup-sbt@f20dc1bc1f8be605c44ffbcec6f17f708a4af9d1
 
       - name: Setup Java (temurin@11)
         id: setup-java-temurin-11
@@ -368,7 +368,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup sbt
-        uses: sbt/setup-sbt@26ab4b0fa1c47fa62fc1f6e51823a658fb6c760c
+        uses: sbt/setup-sbt@f20dc1bc1f8be605c44ffbcec6f17f708a4af9d1
 
       - name: Setup Java (temurin@11)
         id: setup-java-temurin-11
