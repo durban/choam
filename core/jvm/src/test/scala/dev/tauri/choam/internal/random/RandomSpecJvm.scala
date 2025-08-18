@@ -27,7 +27,7 @@ import cats.effect.std.Random
 
 import org.scalacheck.effect.PropF
 
-import core.Rxn
+import core.{ Rxn, SplittableRandom }
 
 final class RandomSpecJvm_Emcas_SyncIO
   extends BaseSpecSyncIO
