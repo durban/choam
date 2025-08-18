@@ -42,7 +42,7 @@ private[emcas] abstract class EmcasDescriptorBase {
     _
 
   protected[this] final def yesWeNeedTheseFieldsEvenOnDotty(): Unit = {
-    this._fallback
+    this._fallback : Unit
   }
 
   @alwaysinline

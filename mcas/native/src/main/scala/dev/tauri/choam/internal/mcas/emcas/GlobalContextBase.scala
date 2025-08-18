@@ -33,7 +33,7 @@ private[emcas] abstract class GlobalContextBase { // TODO: padding!
   private[this] var threadCtxCount: Long = _
 
   protected[this] final def yesWeNeedTheseFieldsEvenOnDotty(): Unit = {
-    this.threadCtxCount
+    this.threadCtxCount : Unit
   }
 
   @alwaysinline

@@ -28,7 +28,7 @@ private[mcas] abstract class RefIdGenBase extends PaddedMemoryLocationPadding {
     Long.MinValue // TODO: start from something more "random"
 
   protected[this] final def yesWeNeedTheseFieldsEvenOnDotty(): Unit = {
-    this.ctr
+    this.ctr : Unit
   }
 
   @alwaysinline
