@@ -40,7 +40,7 @@ object Consts {
 
   @inline
   final val statsEnabled =
-    CompileTimeSystemProperty.getBoolean("dev.tauri.choam.stats")
+    CompileTimeSystemProperty.getBoolean(statsEnabledProp)
 
   /**
    * Next power of 2 which is `>= x`.

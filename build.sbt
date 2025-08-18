@@ -605,6 +605,13 @@ lazy val unidocs = project
       zi.jvm,
       profiler,
     ),
+    ScalaUnidoc / unidoc / scalacOptions ++= {
+      if (!ScalaArtifacts.isScala3(scalaVersion.value)) {
+        Seq("-Ymacro-expand:none")
+      } else {
+        Seq()
+      }
+    },
     bspEnabled := false,
   )
 
@@ -817,7 +824,7 @@ lazy val commonSettingsJs = Seq[Setting[_]](
     dependencies.scalaJsLocale.value.map(_ % TestInternal),
     dependencies.zioEverything.value.map(_ % TestInternal),
     Seq(dependencies.scalaJsSecRnd.value % TestInternal),
-  ).flatten
+  ).flatten,
 )
 
 lazy val commonSettingsNative = Seq[Setting[_]](
@@ -880,6 +887,13 @@ lazy val commonSettings = Seq[Setting[_]](
     "-Wnonunit-statement",
     "-Wvalue-discard",
   ),
+  Compile / doc / scalacOptions ++= {
+    if (!ScalaArtifacts.isScala3(scalaVersion.value)) {
+      Seq("-Ymacro-expand:none")
+    } else {
+      Seq()
+    }
+  },
   // Somewhat counter-intuitively, to really run
   // tests sequentially, we need to set this to true:
   Test / parallelExecution := true,
