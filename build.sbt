@@ -1130,7 +1130,7 @@ addCommandAlias("checkScalafix", "scalafixAll --check")
 addCommandAlias("staticAnalysis", ";headerCheckAll;Test/compile;checkScalafix")
 addCommandAlias("stressTest", stressTestCommand)
 addCommandAlias("validate", ";staticAnalysis;test;stressTest")
-addCommandAlias("compatCheck", ";mimaReportBinaryIssues") // TODO: versionPolicyReportDependencyIssues
+addCommandAlias("compatCheck", ";mimaReportBinaryIssues;unidocs/doc") // TODO: versionPolicyReportDependencyIssues
 addCommandAlias("runLincheckTests", "stressLinchk/test")
 addCommandAlias("release", ";reload;tlRelease") // TODO: +versionPolicyReportDependencyIssues
 addCommandAlias("releaseHash", ";reload;tlRelease")
