@@ -150,6 +150,9 @@ object Mcas extends McasCompanionPlatform {
     /** @return the `RefIdGen` of the current thread (or a thread-safe one) */
     def refIdGen: RefIdGen
 
+    /** @return a thread-local temporary buffer which is 16 bytes long */
+    def buffer16B: Array[Byte]
+
     // concrete:
 
     private[choam] final def stripes: Int =

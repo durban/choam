@@ -18,6 +18,7 @@
 package dev.tauri.choam.internal.random;
 
 import java.util.UUID;
+import java.util.Arrays;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.nio.ByteOrder;
@@ -51,9 +52,11 @@ final class RxnUuidGen {
   }
 
   static final UUID unsafeRandomUuidInternal(Mcas.ThreadContext ctx) {
-    var buff = new byte[16]; // TODO: don't allocate (use a thread-local buffer)
+    byte[] buff = ctx.buffer16B();
     ctx.impl().osRng().nextBytes(buff);
-    return uuidFromRandomBytesInternal(buff);
+    UUID result = uuidFromRandomBytesInternal(buff);
+    Arrays.fill(buff, (byte) 0);
+    return result;
   }
 
   static final UUID uuidFromRandomBytes(byte[] buff) {

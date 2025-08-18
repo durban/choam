@@ -117,6 +117,9 @@ private final class ThreadConfinedMcas(
     final override def random: ThreadLocalRandom =
       ThreadLocalRandom.current()
 
+    final override def buffer16B: Array[Byte] =
+      new Array[Byte](16)
+
     final override val refIdGen =
       RefIdGen.newGlobal().newThreadLocal(isVirtualThread = false)
   }

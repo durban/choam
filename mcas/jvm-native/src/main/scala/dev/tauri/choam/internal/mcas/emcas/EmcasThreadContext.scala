@@ -42,6 +42,9 @@ private final class EmcasThreadContext(
   final override val random: ThreadLocalRandom =
     ThreadLocalRandom.current()
 
+  final override val buffer16B: Array[Byte] =
+    new Array[Byte](16)
+
   // NB: it is a `val`, not a `def`
   private[choam] final override val stripeId: Int =
     java.lang.Long.remainderUnsigned(Consts.staffordMix13(tid), this.stripes.toLong).toInt

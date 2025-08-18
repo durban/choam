@@ -144,6 +144,8 @@ final class LogMap2Spec extends ScalaCheckSuite with SpecDefaultMcas { self =>
         self.fail("not implemented")
       final override def random: ThreadLocalRandom =
         ThreadLocalRandom.current()
+      final override def buffer16B: Array[Byte] =
+        new Array[Byte](16)
       final override def readDirect[A](ref: MemoryLocation[A]): A =
         self.fail("not implemented")
       final override def readIntoHwd[A](ref: MemoryLocation[A]): LogEntry[A] =

@@ -19,7 +19,7 @@ package dev.tauri.choam
 package internal
 package random
 
-import java.util.UUID
+import java.util.{ Arrays, UUID }
 import java.nio.{ ByteBuffer, ByteOrder }
 
 import internal.mcas.Mcas
@@ -44,9 +44,11 @@ private object RxnUuidGen {
     0x8000000000000000L
 
   final def unsafeRandomUuidInternal(ctx: Mcas.ThreadContext): UUID = {
-    val buff = new Array[Byte](16) // TODO: don't allocate (use a thread-local buffer)
+    val buff = ctx.buffer16B
     ctx.impl.osRng.nextBytes(buff)
-    uuidFromRandomBytesInternal(buff)
+    val res = uuidFromRandomBytesInternal(buff)
+    Arrays.fill(buff, 0.toByte)
+    res
   }
 
   final def uuidFromRandomBytes(buff: Array[Byte]): UUID = {
