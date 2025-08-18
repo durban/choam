@@ -88,8 +88,8 @@ private[choam] object RefIdGen {
 
 private[choam] final class GlobalRefIdGen private[mcas] () extends RefIdGenBase with RefIdGen {
 
-  private[this] final val initialBlockSize =
-    2 // TODO: maybe start with bigger for platform threads?
+  private[this] final def initialBlockSize(isVirtualThread: Boolean) =
+    if (isVirtualThread) 2 else 64
 
   private[GlobalRefIdGen] final def allocateThreadLocalBlock(size: Int): Long = {
     require(size > 0)
@@ -99,12 +99,12 @@ private[choam] final class GlobalRefIdGen private[mcas] () extends RefIdGenBase 
     n
   }
 
-  final def newThreadLocal(): RefIdGen = {
+  final def newThreadLocal(isVirtualThread: Boolean): RefIdGen = {
     new GlobalRefIdGen.ThreadLocalRefIdGen(
       parent = this,
       next = 0L, // unused, because:
       remaining = 0, // initially no more remaining
-      nextBlockSize = initialBlockSize,
+      nextBlockSize = initialBlockSize(isVirtualThread),
     )
   }
 

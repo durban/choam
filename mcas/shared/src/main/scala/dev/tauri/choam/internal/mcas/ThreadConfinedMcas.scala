@@ -118,7 +118,7 @@ private final class ThreadConfinedMcas(
       ThreadLocalRandom.current()
 
     final override val refIdGen =
-      RefIdGen.newGlobal().newThreadLocal()
+      RefIdGen.newGlobal().newThreadLocal(isVirtualThread = false)
   }
 
   private[this] val _commitTs: AtomicLong =

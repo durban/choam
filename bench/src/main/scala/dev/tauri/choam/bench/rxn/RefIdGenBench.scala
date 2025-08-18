@@ -47,7 +47,7 @@ class RefIdGenBench {
 
   @Benchmark
   def createThreadLocal(g: GlobalSt): Long = {
-    g.global.newThreadLocal().nextId()
+    g.global.newThreadLocal(isVirtualThread = false).nextId()
   }
 
   @Benchmark
@@ -67,7 +67,7 @@ class RefIdGenBench {
 
   @Benchmark
   def arrayCreateThreadLocal(s: ArraySt, g: GlobalSt): Long = {
-    g.global.newThreadLocal().nextArrayIdBase(s.size)
+    g.global.newThreadLocal(isVirtualThread = false).nextArrayIdBase(s.size)
   }
 }
 

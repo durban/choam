@@ -56,8 +56,11 @@ private[mcas] abstract class GlobalContext
   private[this] val threadContextKey =
     new ThreadLocal[EmcasThreadContext]()
 
-  private[this] final def newThreadContext(): EmcasThreadContext =
-    new EmcasThreadContext(this, this.globalRig.newThreadLocal())
+  private[this] final def newThreadContext(): EmcasThreadContext = {
+    new EmcasThreadContext(this, this.globalRig.newThreadLocal(
+      isVirtualThread = GlobalContextBase.isVirtualThread(Thread.currentThread())
+    ))
+  }
 
   /** Gets or creates the context for the current thread */
   private[emcas] final def currentContextInternal(): EmcasThreadContext = {

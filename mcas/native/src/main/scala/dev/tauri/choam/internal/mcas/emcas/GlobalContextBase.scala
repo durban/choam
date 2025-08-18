@@ -70,6 +70,10 @@ private[emcas] abstract class GlobalContextBase { // TODO: padding!
 
 private[emcas] object GlobalContextBase {
 
+  final def isVirtualThread(t: Thread): Boolean = { // TODO: in the future SN might support virtual threads
+    false
+  }
+
   final def registerEmcasJmxStats(emcas: Emcas): String = {
     null
   }

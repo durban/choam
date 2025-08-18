@@ -35,9 +35,9 @@ final class RefIdGenSpec extends ChoamCatsEffectSuite with BaseSpec {
 
   test("Stepping") {
     val rig = new GlobalRefIdGen
-    val t1 = rig.newThreadLocal()
+    val t1 = rig.newThreadLocal(isVirtualThread = true)
     val id11 = t1.nextId()
-    val t2 = rig.newThreadLocal()
+    val t2 = rig.newThreadLocal(isVirtualThread = true)
     val id21 = t2.nextId()
     val id12 = t1.nextId()
     val id22 = t2.nextId()
@@ -46,7 +46,7 @@ final class RefIdGenSpec extends ChoamCatsEffectSuite with BaseSpec {
     assertEquals(id12 - id11, GAMMA)
     assertEquals(id22 - id21, GAMMA)
     assertEquals(id21 - id12, GAMMA)
-    val t3 = rig.newThreadLocal()
+    val t3 = rig.newThreadLocal(isVirtualThread = true)
     val id13 = t1.nextId()
     val id23 = t2.nextId()
     val id31 = t3.nextId()
@@ -55,7 +55,7 @@ final class RefIdGenSpec extends ChoamCatsEffectSuite with BaseSpec {
     assertEquals(id13 - id22, GAMMA)
     assertEquals(id23 - id13, 4 * GAMMA)
     assertEquals(id31 - id23, 4 * GAMMA)
-    val t4 = rig.newThreadLocal()
+    val t4 = rig.newThreadLocal(isVirtualThread = true)
     val id41 = t4.nextId()
     val id42 = t4.nextId()
     val id32 = t3.nextId()
@@ -67,7 +67,7 @@ final class RefIdGenSpec extends ChoamCatsEffectSuite with BaseSpec {
 
   test("Stepping with arrays") {
     val rig = new GlobalRefIdGen
-    val t1 = rig.newThreadLocal()
+    val t1 = rig.newThreadLocal(isVirtualThread = true)
     val id11 = t1.nextId()
     val arrBase1 = t1.nextArrayIdBase(8) // get it from new block, leak id11+1
     val id12 = t1.nextId()
@@ -80,7 +80,7 @@ final class RefIdGenSpec extends ChoamCatsEffectSuite with BaseSpec {
     val arr18 = RefIdGen.compute(arrBase1, 7)
     assertEquals(arr18 - arr11, 7L * GAMMA)
     assertEquals(id12 - arr18, GAMMA)
-    val t2 = rig.newThreadLocal()
+    val t2 = rig.newThreadLocal(isVirtualThread = true)
     val id21 = t2.nextId()
     val id22 = t2.nextId()
     assertEquals(id21 - id12, 16L * GAMMA)
@@ -98,7 +98,7 @@ final class RefIdGenSpec extends ChoamCatsEffectSuite with BaseSpec {
 
   test("Really big array") {
     val rig = new GlobalRefIdGen
-    val t = rig.newThreadLocal()
+    val t = rig.newThreadLocal(isVirtualThread = true)
     val arrBase1: Long = t.nextArrayIdBase(Int.MaxValue)
     val a1 = RefIdGen.compute(arrBase1, 0)
     val arrBase2: Long = rig.nextArrayIdBaseGlobal(Int.MaxValue)
@@ -108,7 +108,7 @@ final class RefIdGenSpec extends ChoamCatsEffectSuite with BaseSpec {
 
   test("Racing") {
     def generate(rig: GlobalRefIdGen, arr: Array[Long]): IO[Unit] = IO.cede *> IO.delay {
-      val tc = rig.newThreadLocal()
+      val tc = rig.newThreadLocal(isVirtualThread = true)
       val len = arr.length
       var i = 0
       while (i < len) {
@@ -137,7 +137,7 @@ final class RefIdGenSpec extends ChoamCatsEffectSuite with BaseSpec {
   test("Lots of IDs from one thread") {
     this.assumeOpenJdk()
     val rig = new GlobalRefIdGen
-    val t = rig.newThreadLocal()
+    val t = rig.newThreadLocal(isVirtualThread = true)
     var acc = 0L
     var i = Integer.MIN_VALUE
     while (i < Integer.MAX_VALUE) {
@@ -148,13 +148,13 @@ final class RefIdGenSpec extends ChoamCatsEffectSuite with BaseSpec {
     acc ^= t.nextId()
     acc ^= t.nextId()
     assertNotEquals(acc, 0L)
-    assertNotEquals(rig.newThreadLocal().nextId(), acc)
+    assertNotEquals(rig.newThreadLocal(isVirtualThread = true).nextId(), acc)
   }
 
   test("One ID from lots of threads each") {
     this.assumeOpenJdk()
     val rig = new GlobalRefIdGen
-    val first = rig.newThreadLocal().nextId() // uses 0, leaks 1
+    val first = rig.newThreadLocal(isVirtualThread = true).nextId() // uses 0, leaks 1
     var acc = 0L
     var last = 0L
     var i = 0L
@@ -164,7 +164,7 @@ final class RefIdGenSpec extends ChoamCatsEffectSuite with BaseSpec {
       // ...
       //      uses 2*(i+1)
       // last one is i=MAX => uses 2*(MAX+1)
-      last = rig.newThreadLocal().nextId()
+      last = rig.newThreadLocal(isVirtualThread = true).nextId()
       acc ^= last
       i += 1L
     }
@@ -175,7 +175,7 @@ final class RefIdGenSpec extends ChoamCatsEffectSuite with BaseSpec {
 
   test("nextPowerOf2 underflow") {
     val glo = new GlobalRefIdGen
-    val loc = glo.newThreadLocal()
+    val loc = glo.newThreadLocal(isVirtualThread = true)
     assert(Either.catchOnly[IllegalArgumentException] { glo.nextArrayIdBase(0) }.isLeft)
     assert(Either.catchOnly[IllegalArgumentException] { loc.nextArrayIdBase(0) }.isLeft)
   }
