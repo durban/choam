@@ -89,7 +89,7 @@ object RandomBench {
     val rndMinimal2: Random[Rxn] =
       internal.random.minimalRandom2(ThreadLocalRandom.current().nextLong()).unsafePerform(McasImplStateBase.mcasImpl)
     val rndSecure: SecureRandom[Rxn] =
-      Rxn.secureRandom
+      Rxn.slowRandom
     val uuidGen: UUIDGen[Rxn] =
       Rxn.uuidGenInstance
   }

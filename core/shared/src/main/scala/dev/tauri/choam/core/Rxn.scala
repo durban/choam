@@ -459,7 +459,7 @@ object Rxn extends RxnInstances0 {
   final def fastRandom: Random[Rxn] =
     _fastRandom
 
-  final def secureRandom: SecureRandom[Rxn] =
+  final def slowRandom: SecureRandom[Rxn] =
     _secureRandom
 
   final def deterministicRandom(

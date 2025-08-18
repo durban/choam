@@ -298,10 +298,10 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
     - and classloaders sometimes also might use locks
   - `ThreadLocalRandom`, `ThreadLocal`
 - Certain `Rxn` operations require extra assumptions:
-  - `Rxn.secureRandom` and `UUIDGen` use the OS RNG, which might block
+  - `Rxn.slowRandom` and `UUIDGen` use the OS RNG, which might block
     (although we *really* try to use the non-blocking ones)
   - in `choam-async` we assume that calling a CE `Async` callback is lock-free
-    (in `cats.effect.IO`, as of version 3.5.7, this is not technically true)
+    (in `cats.effect.IO`, as of version 3.6.3, this is not technically true)
 - Executing a `Rxn` with a `Rxn.Strategy` other than `Rxn.Strategy.Spin`
   is not necessarily lock-free
 - Only the default `Mcas` is lock-free, other `Mcas` implementations may not be

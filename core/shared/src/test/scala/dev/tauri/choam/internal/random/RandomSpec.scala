@@ -69,14 +69,14 @@ trait RandomSpec[F[_]]
     }
   }
 
-  test("secureRandom must implement cats.effect.std.SecureRandom") {
-    Rxn.secureRandom : SecureRandom[Rxn]
+  test("slowRandom must implement cats.effect.std.SecureRandom") {
+    Rxn.slowRandom : SecureRandom[Rxn]
   }
 
   // TODO: more tests for Rxn.*Random
 
   checkRandom("Rxn.fastRandom", _ => F.pure(Rxn.fastRandom))
-  checkRandom("Rxn.secureRandom", _ => F.pure(Rxn.secureRandom))
+  checkRandom("Rxn.slowRandom", _ => F.pure(Rxn.slowRandom))
   checkRandom(
     "Rxn.deterministicRandom",
     seed => Rxn.deterministicRandom(seed).run[F].widen[Random[Rxn]],
