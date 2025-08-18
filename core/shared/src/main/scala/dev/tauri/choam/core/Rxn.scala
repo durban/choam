@@ -465,7 +465,7 @@ object Rxn extends RxnInstances0 {
   final def deterministicRandom(
     initialSeed: Long,
     str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default
-  ): Rxn[random.SplittableRandom[Rxn]] = {
+  ): Rxn[SplittableRandom[Rxn]] = {
     random.deterministicRandom(initialSeed, str)
   }
 

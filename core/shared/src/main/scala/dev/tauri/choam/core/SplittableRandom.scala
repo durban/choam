@@ -16,18 +16,21 @@
  */
 
 package dev.tauri.choam
-package internal
-package random
+package core
 
 import cats.effect.std.Random
 
-/** A splittable variant of [[cats.effect.std.Random]]. */
-sealed trait SplittableRandom[F[_]] extends Random[F] { // TODO:0.5: move this somewhere non-internal
+/**
+ * A splittable variant of [[cats.effect.std.Random]].
+ *
+ * @see [[java.util.SplittableRandom]]
+ */
+sealed trait SplittableRandom[F[_]] extends Random[F] {
   def split: F[SplittableRandom[F]]
 }
 
-private object SplittableRandom {
+private[choam] object SplittableRandom {
 
-  private[random] trait UnsealedSplittableRandom[F[_]]
+  private[choam] trait UnsealedSplittableRandom[F[_]]
     extends SplittableRandom[F]
 }
