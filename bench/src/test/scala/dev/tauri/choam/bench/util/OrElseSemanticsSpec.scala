@@ -33,29 +33,24 @@ import zio.{ stm => zstm }
 import core.{ Rxn, Ref }
 
 /**
- * This test shows that the current semantics of
+ * This test shows that the semantics of
  * the `+` (choice) combinator of `Rxn` are different
  * from the semantics of `orElse` in typical STM
  * implementations (cats-stm, zstm and scala-stm are
  * shown here).
  *
  * We inherited the current behavior from reagents.
- * It is not clear, whether this is an intentional
- * divergence from STM, although the "disjunction
- * of conjunctions" mentioned in section 3.8 seems
- * to imply the current behavior.
+ * It seems, that this behavior is useful for elimination.
  *
  * The reagents paper mentions (in section 7.2) an
  * intentional difference from Haskell STM `orElse`,
  * but that is about a different issue: trying the
  * right-hand side even if the failure is transient
  * (unlike Haskell STM). `Rxn` doesn't even have
- * permanent failure, so in this case we don't really
- * have a choice: `+` doesn't even make sense if we
- * don't try the right-hand side on a transient
- * failure.
- *
- * TODO: Figure out which `+` semantics we really want.
+ * permanent failure (except in .unsafe), so in this
+ * case we don't really have a choice: `+` doesn't
+ * even make sense if we don't try the right-hand
+ * side on a transient failure.
  *
  * Questions:
  *
@@ -63,7 +58,8 @@ import core.{ Rxn, Ref }
  *    fails, do we (A) try `t2`, or do we (B) retry `t1`?
  *    Elimination requires (A), that's probably why
  *    reagents (sec. 7.2) do (A); is there any other use
- *    case for it? STMs do (B); why?
+ *    case for it? STMs do (B), because for a "deterministic"
+ *    `retry` that's better.
  *
  * 2. Let's consider `(t1 orElse t2) *> t3`. If `t1` succeeds,
  *    then `t3` retries, do we (A) restart with `t2` or
@@ -72,6 +68,8 @@ import core.{ Rxn, Ref }
  *    be a transient failure.
  *
  * This test class shows the 2. question.
+ *
+ * @see `OrElseRetrySpec`
  */
 final class OrElseSemanticsSpec extends BaseSpecIO with SpecDefaultMcas {
 
