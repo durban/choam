@@ -242,7 +242,7 @@ ThisBuild / githubWorkflowBuild := List(
 )
 ThisBuild / githubWorkflowJavaVersions := Seq(jvmTemurins, jvmGraals, jvmOpenj9s).flatten
 ThisBuild / githubWorkflowOSes := Seq(linux, linux86, windows, windowsArm, macos, macosIntel)
-ThisBuild / githubWorkflowSbtCommand := "sbt -v --no-server"
+ThisBuild / githubWorkflowSbtCommand := "sbt -v -Dsbt.server.forcestart=true"
 ThisBuild / githubWorkflowBuildMatrixAdditions ++= Map("ci" -> _quickCiAliases.keys.toList)
 ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
   List(windows, windowsArm).map { win => MatrixExclude(Map("os" -> win)) }, // but see inclusions

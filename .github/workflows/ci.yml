@@ -199,7 +199,7 @@ jobs:
       - name: sbt update
         if: matrix.java == 'temurin@11' && steps.setup-java-temurin-11.outputs.cache-hit == 'false'
         shell: bash
-        run: sbt -v --no-server +update
+        run: sbt -v -Dsbt.server.forcestart=true +update
 
       - name: Setup Java (temurin@21)
         id: setup-java-temurin-21
@@ -213,7 +213,7 @@ jobs:
       - name: sbt update
         if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
         shell: bash
-        run: sbt -v --no-server +update
+        run: sbt -v -Dsbt.server.forcestart=true +update
 
       - name: Setup Java (temurin@24)
         id: setup-java-temurin-24
@@ -227,7 +227,7 @@ jobs:
       - name: sbt update
         if: matrix.java == 'temurin@24' && steps.setup-java-temurin-24.outputs.cache-hit == 'false'
         shell: bash
-        run: sbt -v --no-server +update
+        run: sbt -v -Dsbt.server.forcestart=true +update
 
       - name: Setup Java (graalvm@21)
         id: setup-java-graalvm-21
@@ -241,7 +241,7 @@ jobs:
       - name: sbt update
         if: matrix.java == 'graalvm@21' && steps.setup-java-graalvm-21.outputs.cache-hit == 'false'
         shell: bash
-        run: sbt -v --no-server +update
+        run: sbt -v -Dsbt.server.forcestart=true +update
 
       - name: Setup Java (graalvm@24)
         id: setup-java-graalvm-24
@@ -255,7 +255,7 @@ jobs:
       - name: sbt update
         if: matrix.java == 'graalvm@24' && steps.setup-java-graalvm-24.outputs.cache-hit == 'false'
         shell: bash
-        run: sbt -v --no-server +update
+        run: sbt -v -Dsbt.server.forcestart=true +update
 
       - name: Setup Java (semeru@23)
         id: setup-java-semeru-23
@@ -269,51 +269,51 @@ jobs:
       - name: sbt update
         if: matrix.java == 'semeru@23' && steps.setup-java-semeru-23.outputs.cache-hit == 'false'
         shell: bash
-        run: sbt -v --no-server +update
+        run: sbt -v -Dsbt.server.forcestart=true +update
 
       - name: Check that workflows are up to date
         shell: bash
-        run: sbt -v --no-server githubWorkflowCheck
+        run: sbt -v -Dsbt.server.forcestart=true githubWorkflowCheck
 
       - if: (!((matrix.java == 'semeru@23'))) && (!(contains(github.event.head_commit.message, 'full CI')))
         shell: bash
-        run: sbt -v --no-server '++ ${{ matrix.scala }}' '${{ matrix.ci }}'
+        run: sbt -v -Dsbt.server.forcestart=true '++ ${{ matrix.scala }}' '${{ matrix.ci }}'
 
       - if: (!((matrix.java == 'semeru@23'))) && (contains(github.event.head_commit.message, 'full CI'))
         shell: bash
-        run: sbt -v --no-server '++ ${{ matrix.scala }}' '${{ matrix.ci }}Full'
+        run: sbt -v -Dsbt.server.forcestart=true '++ ${{ matrix.scala }}' '${{ matrix.ci }}Full'
 
       - if: ((matrix.java == 'semeru@23'))
         shell: bash
-        run: 'sbt -v --no-server ''++ ${{ matrix.scala }}'' -J-Xgcpolicy:balanced ''${{ matrix.ci }}'''
+        run: 'sbt -v -Dsbt.server.forcestart=true ''++ ${{ matrix.scala }}'' -J-Xgcpolicy:balanced ''${{ matrix.ci }}'''
 
       - if: (matrix.os == 'ubuntu-24.04-arm') && (matrix.java == 'temurin@24') && (matrix.scala == '2.13.16')
         shell: bash
-        run: sbt -v --no-server '++ ${{ matrix.scala }}' checkScalafix
+        run: sbt -v -Dsbt.server.forcestart=true '++ ${{ matrix.scala }}' checkScalafix
 
       - if: (((matrix.os != 'windows-2025') && (matrix.os != 'windows-11-arm')) && ((matrix.java == 'temurin@21') ||(matrix.java == 'graalvm@21'))) && (contains(github.event.head_commit.message, 'stressLinchk'))
         shell: bash
-        run: sbt -v --no-server '++ ${{ matrix.scala }}' runLincheckTests
+        run: sbt -v -Dsbt.server.forcestart=true '++ ${{ matrix.scala }}' runLincheckTests
 
       - if: (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@24')) && (contains(github.event.head_commit.message, 'stressMcas'))
         shell: bash
-        run: sbt -v --no-server '++ ${{ matrix.scala }}' stressMcas/Jcstress/run
+        run: sbt -v -Dsbt.server.forcestart=true '++ ${{ matrix.scala }}' stressMcas/Jcstress/run
 
       - if: (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@24')) && (contains(github.event.head_commit.message, 'stressCore'))
         shell: bash
-        run: sbt -v --no-server '++ ${{ matrix.scala }}' stressCore/Jcstress/run
+        run: sbt -v -Dsbt.server.forcestart=true '++ ${{ matrix.scala }}' stressCore/Jcstress/run
 
       - if: (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@24')) && (contains(github.event.head_commit.message, 'stressData'))
         shell: bash
-        run: sbt -v --no-server '++ ${{ matrix.scala }}' stressData/Jcstress/run
+        run: sbt -v -Dsbt.server.forcestart=true '++ ${{ matrix.scala }}' stressData/Jcstress/run
 
       - if: (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@24')) && (contains(github.event.head_commit.message, 'stressAsync'))
         shell: bash
-        run: sbt -v --no-server '++ ${{ matrix.scala }}' stressAsync/Jcstress/run
+        run: sbt -v -Dsbt.server.forcestart=true '++ ${{ matrix.scala }}' stressAsync/Jcstress/run
 
       - if: (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@24')) && (contains(github.event.head_commit.message, 'stressExperiments'))
         shell: bash
-        run: sbt -v --no-server '++ ${{ matrix.scala }}' stressExperiments/Jcstress/run
+        run: sbt -v -Dsbt.server.forcestart=true '++ ${{ matrix.scala }}' stressExperiments/Jcstress/run
 
       - name: Upload JCStress results
         if: (success() || failure()) && (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@24')) && ((contains(github.event.head_commit.message, 'stressMcas') || contains(github.event.head_commit.message, 'stressCore') || contains(github.event.head_commit.message, 'stressData') || contains(github.event.head_commit.message, 'stressAsync') || contains(github.event.head_commit.message, 'stressExperiments'))) && (matrix.ci == 'ciJVM')
@@ -381,7 +381,7 @@ jobs:
 
       - name: sbt update
         if: matrix.java == 'temurin@11' && steps.setup-java-temurin-11.outputs.cache-hit == 'false'
-        run: sbt -v --no-server +update
+        run: sbt -v -Dsbt.server.forcestart=true +update
 
       - name: Setup Java (temurin@21)
         id: setup-java-temurin-21
@@ -394,7 +394,7 @@ jobs:
 
       - name: sbt update
         if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
-        run: sbt -v --no-server +update
+        run: sbt -v -Dsbt.server.forcestart=true +update
 
       - name: Setup Java (temurin@24)
         id: setup-java-temurin-24
@@ -407,7 +407,7 @@ jobs:
 
       - name: sbt update
         if: matrix.java == 'temurin@24' && steps.setup-java-temurin-24.outputs.cache-hit == 'false'
-        run: sbt -v --no-server +update
+        run: sbt -v -Dsbt.server.forcestart=true +update
 
       - name: Setup Java (graalvm@21)
         id: setup-java-graalvm-21
@@ -420,7 +420,7 @@ jobs:
 
       - name: sbt update
         if: matrix.java == 'graalvm@21' && steps.setup-java-graalvm-21.outputs.cache-hit == 'false'
-        run: sbt -v --no-server +update
+        run: sbt -v -Dsbt.server.forcestart=true +update
 
       - name: Setup Java (graalvm@24)
         id: setup-java-graalvm-24
@@ -433,7 +433,7 @@ jobs:
 
       - name: sbt update
         if: matrix.java == 'graalvm@24' && steps.setup-java-graalvm-24.outputs.cache-hit == 'false'
-        run: sbt -v --no-server +update
+        run: sbt -v -Dsbt.server.forcestart=true +update
 
       - name: Setup Java (semeru@23)
         id: setup-java-semeru-23
@@ -446,7 +446,7 @@ jobs:
 
       - name: sbt update
         if: matrix.java == 'semeru@23' && steps.setup-java-semeru-23.outputs.cache-hit == 'false'
-        run: sbt -v --no-server +update
+        run: sbt -v -Dsbt.server.forcestart=true +update
 
       - name: Submit Dependencies
         uses: scalacenter/sbt-dependency-submission@f3c0455a87097de07b66c3dc1b8619b5976c1c89
