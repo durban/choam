@@ -110,6 +110,10 @@ final class OsRngSpec extends CatsEffectSuite {
             IO(rng.nextBytes(buff2)),
           ) *> IO {
             assert(!Arrays.equals(buff1, buff2))
+            val shifted1 = Arrays.copyOfRange(buff1, 1, 6)
+            val shifted2 = Arrays.copyOfRange(buff2, 1, 6)
+            assert(!Arrays.equals(shifted1, Arrays.copyOfRange(buff2, 0, 5)))
+            assert(!Arrays.equals(shifted2, Arrays.copyOfRange(buff1, 0, 5)))
           }
         }
       }
