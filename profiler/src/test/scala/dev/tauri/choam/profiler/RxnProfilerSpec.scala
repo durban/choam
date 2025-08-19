@@ -184,7 +184,7 @@ trait RxnProfilerSpec[F[_]] extends CatsEffectSuite with BaseSpecAsyncF[F] { thi
         }
         for {
           ref <- Ref(0).run[F]
-          tasks <- F.delay(mkABCD(ref)).replicateA(100)
+          tasks <- F.delay(mkABCD(ref)).replicateA(1000)
           tsk = tasks.traverse_ {
             case (rpA, rpB, rpC, rpD) =>
               F.both(F.both(F.cede *> rpA, F.cede *> rpB), F.both(F.cede *> rpC, F.cede *> rpD))
