@@ -19,6 +19,8 @@ package dev.tauri.choam
 package internal
 package mcas
 
+import java.util.Arrays
+
 import scala.collection.concurrent.TrieMap
 
 final class McasSpecJvmEmcas
@@ -287,5 +289,24 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
       assert(k < stripeCount)
       assert(k >= 0)
     }
+  }
+
+  test("Temporary buffer multithreaded") {
+    val ctx0 = this.mcasImpl.currentContext()
+    val buff = ctx0.buffer16B
+    assertEquals(buff.length, 16)
+    Arrays.fill(buff, 42.toByte)
+    var other: List[Byte] = null
+    val t = new Thread(() => {
+      val ctx1 = this.mcasImpl.currentContext()
+      val buff = ctx1.buffer16B
+      val copy = buff.toList
+      Arrays.fill(buff, 0xff.toByte)
+      other = copy
+    })
+    t.start()
+    t.join()
+    assertEquals(other, List.fill(16)(0.toByte))
+    assertEquals(buff.toList, List.fill(16)(42.toByte))
   }
 }

@@ -628,4 +628,10 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     assert(stripeId0 >= 0)
     assert(stripeId0 < stripes0)
   }
+
+  test("Temporary buffer") {
+    val ctx0 = this.mcasImpl.currentContext()
+    val buff = ctx0.buffer16B
+    assertEquals(buff.length, 16)
+  }
 }

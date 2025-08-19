@@ -56,8 +56,8 @@ final class FlakyEMCAS extends Mcas.UnsealedMcas { self =>
     final override def random: ThreadLocalRandom =
       emcasCtx.random
 
-    final override def buffer16B: Array[Byte] =
-      emcasCtx.buffer16B
+    final override def buffer16BImpl: Array[Byte] =
+      emcasCtx.buffer16BImpl
 
     final override def refIdGen =
       emcasCtx.refIdGen

@@ -64,7 +64,7 @@ private final class SpinLockMcas(
     final override def random =
       ThreadLocalRandom.current()
 
-    final override def buffer16B: Array[Byte] =
+    final override def buffer16BImpl: Array[Byte] =
       new Array[Byte](16)
 
     final override def refIdGen =

@@ -151,9 +151,15 @@ object Mcas extends McasCompanionPlatform {
     def refIdGen: RefIdGen
 
     /** @return a thread-local temporary buffer which is 16 bytes long */
-    def buffer16B: Array[Byte]
+    def buffer16BImpl: Array[Byte]
 
     // concrete:
+
+    final def buffer16B: Array[Byte] = {
+      val buff = this.buffer16BImpl
+      _assert(buff.length == 16)
+      buff
+    }
 
     private[choam] final def stripes: Int =
       this.impl.stripes
