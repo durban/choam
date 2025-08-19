@@ -68,30 +68,28 @@ final class OsRngSpec extends CatsEffectSuite {
     }
   }
 
-  final val N = 301
-
-  val full0 = new Array[Byte](N)
-
   private val osRngResource: Resource[IO, OsRng] = {
     Resource.make(IO.blocking { OsRng.mkNew() })(osRng => IO.blocking { osRng.close() })
   }
 
   test("Multi-threaded use") {
     osRngResource.use { rng =>
-      useInParallel(List.fill(4)(rng))
+      val rngs = List.fill(4)(rng)
+      useInParallel(rngs, n = 301) *> useInParallel(rngs, n = 6)
     }
   }
 
   test("Use different RNGs") {
     osRngResource.replicateA(4).use { rngs =>
-      useInParallel(rngs)
+      useInParallel(rngs, n = 301) *> useInParallel(rngs, n = 6)
     }
   }
 
-  private def useInParallel(rngs: List[OsRng]): IO[Unit] = {
+  private def useInParallel(rngs: List[OsRng], n: Int): IO[Unit] = {
     rngs.parTraverse { rng =>
-      IO(new Array[Byte](N)).flatMap { buff1 =>
-        IO(new Array[Byte](N)).flatMap { buff2 =>
+      val full0 = new Array[Byte](n)
+      IO(new Array[Byte](n)).flatMap { buff1 =>
+        IO(new Array[Byte](n)).flatMap { buff2 =>
           val once = IO { rng.nextBytes(buff1); rng.nextBytes(buff2) } >> IO {
             assert(!Arrays.equals(buff1, full0))
             assert(!Arrays.equals(buff2, full0))
@@ -101,5 +99,21 @@ final class OsRngSpec extends CatsEffectSuite {
         }
       }
     }.void
+  }
+
+  test("Race") {
+    osRngResource.use { rng =>
+      val t = IO(new Array[Byte](6)).flatMap { buff1 =>
+        IO(new Array[Byte](6)).flatMap { buff2 =>
+          IO.both(
+            IO(rng.nextBytes(buff1)),
+            IO(rng.nextBytes(buff2)),
+          ) *> IO {
+            assert(!Arrays.equals(buff1, buff2))
+          }
+        }
+      }
+      t.replicateA_(4096)
+    }
   }
 }

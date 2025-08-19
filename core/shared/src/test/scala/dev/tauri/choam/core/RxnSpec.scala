@@ -1414,8 +1414,15 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     val inst = cats.effect.std.UUIDGen[Rxn]
     for {
       u1 <- inst.randomUUID.run[F]
+      _ <- assertEqualsF(u1.version, 4)
+      _ <- assertEqualsF(u1.variant, 2)
       u2 <- inst.randomUUID.run[F]
+      _ <- assertEqualsF(u2.version, 4)
+      _ <- assertEqualsF(u2.variant, 2)
       _ <- assertNotEqualsF(u1, u2)
+      _ <- assertNotEqualsF(u1.getLeastSignificantBits, u2.getLeastSignificantBits)
+      _ <- assertNotEqualsF(u1.getMostSignificantBits, u2.getMostSignificantBits)
+      _ <- assertNotEqualsF(u1.##, u2.##)
     } yield ()
   }
 
