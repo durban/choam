@@ -1649,8 +1649,8 @@ object Rxn extends RxnInstances0 {
           _assert(contK.isEmpty() && contT.isEmpty())
           new Done(res)
         case 6 => // ContCommitPostCommit
-          a = postCommitResultMarker : Any
-          commit.asInstanceOf[Rxn[Any]]
+          a = postCommitResultMarker
+          commit
         case 7 => // ContUpdWith
           impossible("ContUpdWith")
         case 8 => // ContAs
