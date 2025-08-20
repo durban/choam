@@ -16,20 +16,11 @@
  */
 
 package dev.tauri.choam
-package unsafe
+package internal
+package refs
 
-import cats.effect.IO
+abstract class RefIdOnlyN(private[this] val _id: Long) extends RefToStringN {
 
-final class AtomicallySpec_DefaultMcas_IO
-  extends BaseSpecIO
-  with SpecDefaultMcas
-  with AtomicallySpec[IO]
-
-trait AtomicallySpec[F[_]] extends UnsafeApiSpecBase[F] { this: McasImplSpec =>
-
-  final override def runBlock[A](block: InRxn => A): F[A] = {
-    F.delay {
-      api.atomically(block)
-    }
-  }
+  final def id: Long =
+    _id
 }

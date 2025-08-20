@@ -41,7 +41,7 @@ private[mcas] abstract class RefIdGenBase extends PaddedMemoryLocationPadding {
   }
 }
 
-private[mcas] object RefIdGenBase {
+private[choam] object RefIdGenBase {
 
   /**
    * Constant for Fibonacci hashing

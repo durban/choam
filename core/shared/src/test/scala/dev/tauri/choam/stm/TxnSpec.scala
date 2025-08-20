@@ -32,11 +32,6 @@ final class TxnSpec_DefaultMcas_IO
   with SpecDefaultMcas
   with TxnSpec[IO]
 
-final class TxnSpec_DefaultMcas_ZIO
-  extends BaseSpecZIO
-  with SpecDefaultMcas
-  with TxnSpec[zio.Task]
-
 trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
 
   final class MyException extends Exception

@@ -29,11 +29,6 @@ final class TRefSpec_DefaultMcas_IO
   with SpecDefaultMcas
   with TRefSpec[IO]
 
-final class TRefSpec_DefaultMcas_ZIO
-  extends BaseSpecZIO
-  with SpecDefaultMcas
-  with TRefSpec[zio.Task]
-
 trait TRefSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
 
   protected def newTRef[A](initial: A): F[TRef[A]] =

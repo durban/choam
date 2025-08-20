@@ -26,11 +26,6 @@ final class StripedRefSpec_DefaultMcas_IO
   with SpecDefaultMcas
   with StripedRefSpec[IO]
 
-final class StripedRefSpec_DefaultMcas_ZIO
-  extends BaseSpecZIO
-  with SpecDefaultMcas
-  with StripedRefSpec[zio.Task]
-
 trait StripedRefSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   private def length[A](sr: StripedRef[A]): Int = {

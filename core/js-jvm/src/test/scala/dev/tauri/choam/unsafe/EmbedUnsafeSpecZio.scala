@@ -18,18 +18,7 @@
 package dev.tauri.choam
 package unsafe
 
-import cats.effect.IO
-
-final class AtomicallySpec_DefaultMcas_IO
-  extends BaseSpecIO
+final class EmbedUnsafeSpec_DefaultMcas_ZIO
+  extends BaseSpecZIO
   with SpecDefaultMcas
-  with AtomicallySpec[IO]
-
-trait AtomicallySpec[F[_]] extends UnsafeApiSpecBase[F] { this: McasImplSpec =>
-
-  final override def runBlock[A](block: InRxn => A): F[A] = {
-    F.delay {
-      api.atomically(block)
-    }
-  }
-}
+  with EmbedUnsafeSpec[zio.Task]

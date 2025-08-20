@@ -16,19 +16,16 @@
  */
 
 package dev.tauri.choam
-package internal
-package refs
 
-import core.Ref2
-import mcas.RefIdGen
+import internal.mcas.Consts
 
-private[refs] abstract class RefsPackagePlatform {
+abstract class EnvironmentSpecPlatform extends BaseSpec {
 
-  private[choam] final def unsafeP1P1[A, B](a: A, b: B, rig: RefIdGen): Ref2[A, B] = {
-    new refs.RefP1P1[A, B](a, b, rig.nextId(), rig.nextId())
+  test("Check (fake, native) JVM version") {
+    println(s"Runtime.version().version() == ${Runtime.version().version()}")
   }
 
-  private[choam] final def unsafeP2[A, B](a: A, b: B, rig: RefIdGen): Ref2[A, B] = {
-    new refs.RefP2[A, B](a, b, rig.nextId(), rig.nextId())
+  test("Check Consts.statsEnabled") {
+    println(s"Consts.statsEnabled == ${Consts.statsEnabled}")
   }
 }

@@ -16,20 +16,16 @@
  */
 
 package dev.tauri.choam
-package unsafe
+package internal
+package random
 
-import cats.effect.IO
+private abstract class RandomBasePlatform extends RandomBasePlatformBase {
 
-final class AtomicallySpec_DefaultMcas_IO
-  extends BaseSpecIO
-  with SpecDefaultMcas
-  with AtomicallySpec[IO]
+  @inline
+  protected final def strictMathSqrt(a: Double): Double =
+    StrictMath.sqrt(a)
 
-trait AtomicallySpec[F[_]] extends UnsafeApiSpecBase[F] { this: McasImplSpec =>
-
-  final override def runBlock[A](block: InRxn => A): F[A] = {
-    F.delay {
-      api.atomically(block)
-    }
-  }
+  @inline
+  protected final def strictMathLog(a: Double): Double =
+    StrictMath.log(a)
 }

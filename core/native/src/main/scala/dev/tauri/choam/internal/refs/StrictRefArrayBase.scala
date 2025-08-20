@@ -16,20 +16,17 @@
  */
 
 package dev.tauri.choam
-package unsafe
+package internal
+package refs
 
-import cats.effect.IO
+private abstract class StrictRefArrayBase[A](
+  size: Int, init: AnyRef, idBase: Long
+) extends RefArrayBase[A](size, init, idBase, sparse = false) {
 
-final class AtomicallySpec_DefaultMcas_IO
-  extends BaseSpecIO
-  with SpecDefaultMcas
-  with AtomicallySpec[IO]
+  private[this] val versions: Array[Long] =
+    RefArrayBase.initVersions(size)
 
-trait AtomicallySpec[F[_]] extends UnsafeApiSpecBase[F] { this: McasImplSpec =>
+  protected[refs] final override def getVersionV(idx: Int): Long = ???
 
-  final override def runBlock[A](block: InRxn => A): F[A] = {
-    F.delay {
-      api.atomically(block)
-    }
-  }
+  protected[refs] final override def cmpxchgVersionV(idx: Int, ov: Long, nv: Long): Long = ???
 }

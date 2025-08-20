@@ -16,20 +16,24 @@
  */
 
 package dev.tauri.choam
-package unsafe
+package internal
+package refs
 
-import cats.effect.IO
+import java.lang.ref.WeakReference
 
-final class AtomicallySpec_DefaultMcas_IO
-  extends BaseSpecIO
-  with SpecDefaultMcas
-  with AtomicallySpec[IO]
-
-trait AtomicallySpec[F[_]] extends UnsafeApiSpecBase[F] { this: McasImplSpec =>
-
-  final override def runBlock[A](block: InRxn => A): F[A] = {
-    F.delay {
-      api.atomically(block)
-    }
-  }
+private trait Ref2Impl[A, B] {
+  def unsafeGet2V(): B
+  def unsafeGet2P(): B
+  def unsafeCas2V(ov: B, nv: B): Boolean
+  def unsafeCmpxchg2V(ov: B, nv: B): B
+  def unsafeCmpxchg2R(ov: B, nv: B): B
+  def unsafeSet2V(nv: B): Unit
+  def unsafeSet2P(nv: B): Unit
+  def unsafeGetVersion2V(): Long
+  def unsafeCmpxchgVersion2V(ov: Long, nv: Long): Long
+  def unsafeGetMarker2V(): WeakReference[AnyRef]
+  def unsafeCasMarker2V(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean
+  def unsafeCmpxchgMarker2R(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef]
+  def id1(): Long
+  def dummyImpl2(v: Byte): Long
 }

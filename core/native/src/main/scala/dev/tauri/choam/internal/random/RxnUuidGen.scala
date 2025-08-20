@@ -1,0 +1,76 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright 2016-2025 Daniel Urban and contributors listed in NOTICE.txt
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package dev.tauri.choam
+package internal
+package random
+
+import java.util.{ Arrays, UUID }
+
+import scala.scalanative.unsafe.{ Ptr, UnsafeRichArray }
+
+import internal.mcas.Mcas
+
+// Note: this class/object is duplicated for JVM/JS/Native
+private object RxnUuidGen {
+
+  @inline
+  private[this] final val versionNegMask =
+    0xffffffffffff0fffL
+
+  @inline
+  private[this] final val version =
+    0x0000000000004000L
+
+  @inline
+  private[this] final val variantNegMask =
+    0x3fffffffffffffffL
+
+  @inline
+  private[this] final val variant =
+    0x8000000000000000L
+
+  final def unsafeRandomUuidInternal(ctx: Mcas.ThreadContext): UUID = {
+    val buff = ctx.buffer16B
+    ctx.impl.osRng.nextBytes(buff)
+    val res = uuidFromRandomBytesInternal(buff)
+    Arrays.fill(buff, 0.toByte)
+    res
+  }
+
+  final def uuidFromRandomBytes(buff: Array[Byte]): UUID = {
+    uuidFromRandomBytesInternal(buff)
+  }
+
+  private[this] final def uuidFromRandomBytesInternal(buff: Array[Byte]): UUID = {
+    var msbs = getLongAtP(buff, 0)
+    var lsbs = getLongAtP(buff, 8)
+    msbs &= versionNegMask
+    msbs |= version
+    lsbs &= variantNegMask
+    lsbs |= variant
+    new UUID(msbs, lsbs)
+  }
+
+  // TODO: ^^^ deduplicate with JS
+
+  private[this] final def getLongAtP(arr: Array[Byte], offset: Int): Long = {
+    val ptrByte: Ptr[Byte] = arr.at(offset)
+    val ptr = ptrByte.asInstanceOf[Ptr[Long]]
+    !ptr // TODO: does byte order matter here?
+  }
+}

@@ -16,20 +16,14 @@
  */
 
 package dev.tauri.choam
-package unsafe
+package internal
+package refs
 
-import cats.effect.IO
+import core.Ref
 
-final class AtomicallySpec_DefaultMcas_IO
-  extends BaseSpecIO
-  with SpecDefaultMcas
-  with AtomicallySpec[IO]
+private object RefsPlatform {
 
-trait AtomicallySpec[F[_]] extends UnsafeApiSpecBase[F] { this: McasImplSpec =>
+  def unsafeNewRefU1[A](initial: A, id: Long): Ref[A] = ???
 
-  final override def runBlock[A](block: InRxn => A): F[A] = {
-    F.delay {
-      api.atomically(block)
-    }
-  }
+  def unsafeNewRefP1[A](initial: A, id: Long): Ref[A] = ???
 }

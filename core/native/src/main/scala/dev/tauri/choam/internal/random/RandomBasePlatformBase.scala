@@ -16,20 +16,16 @@
  */
 
 package dev.tauri.choam
-package unsafe
+package internal
+package random
 
-import cats.effect.IO
+private abstract class RandomBasePlatformBase {
 
-final class AtomicallySpec_DefaultMcas_IO
-  extends BaseSpecIO
-  with SpecDefaultMcas
-  with AtomicallySpec[IO]
+  protected[this] final def getLongAt0P(arr: Array[Byte]): Long = {
+    ??? // return (long) BYTE_ARRAY_VIEW.get(arr, 0);
+  }
 
-trait AtomicallySpec[F[_]] extends UnsafeApiSpecBase[F] { this: McasImplSpec =>
-
-  final override def runBlock[A](block: InRxn => A): F[A] = {
-    F.delay {
-      api.atomically(block)
-    }
+  protected[this] final def putLongAtIdxP(arr: Array[Byte], idx: Int, nv: Long): Unit = {
+    ??? // BYTE_ARRAY_VIEW.set(arr, idx, nv);
   }
 }

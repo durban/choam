@@ -398,7 +398,7 @@ lazy val _jvmOnlyProjects: Seq[ProjectReference] = Seq(
   layout,
 )
 
-lazy val core = crossProject(JVMPlatform, JSPlatform)
+lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .withoutSuffixFor(JVMPlatform)
   .crossType(CrossType.Full)
   .in(file("core"))
@@ -407,6 +407,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
+  .nativeSettings(commonSettingsNative)
   .dependsOn(mcas % "compile->compile;test->test")
   .settings(
     libraryDependencies ++= Seq(

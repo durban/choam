@@ -27,11 +27,6 @@ final class AtomicallyInAsyncSpec_DefaultMcas_IO
   with SpecDefaultMcas
   with AtomicallyInAsyncSpec[IO]
 
-final class AtomicallyInAsyncSpec_DefaultMcas_ZIO
-  extends BaseSpecZIO
-  with SpecDefaultMcas
-  with AtomicallyInAsyncSpec[zio.Task]
-
 trait AtomicallyInAsyncSpec[F[_]] extends UnsafeApiSpecBase[F] { this: McasImplSpec =>
 
   private[this] val str: RetryStrategy =

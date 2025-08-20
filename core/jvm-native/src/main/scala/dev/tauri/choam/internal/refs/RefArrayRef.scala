@@ -48,19 +48,19 @@ private final class RefArrayRef[A](
     array.getP(itemIdx).asInstanceOf[A]
 
   final override def unsafeSetV(nv: A): Unit =
-    array.setV(itemIdx, nv)
+    array.setV(itemIdx, box(nv)) // TODO: can we avoid the `box` calls here (and below)?
 
   final override def unsafeSetP(nv: A): Unit =
-    array.setP(itemIdx, nv)
+    array.setP(itemIdx, box(nv))
 
   final override def unsafeCasV(ov: A, nv: A): Boolean =
-    array.casV(itemIdx, ov, nv)
+    array.casV(itemIdx, box(ov), box(nv))
 
   final override def unsafeCmpxchgV(ov: A, nv: A): A =
-    array.cmpxchgV(itemIdx, ov, nv).asInstanceOf[A]
+    array.cmpxchgV(itemIdx, box(ov), box(nv)).asInstanceOf[A]
 
   final override def unsafeCmpxchgR(ov: A, nv: A): A =
-    array.cmpxchgR(itemIdx, ov, nv).asInstanceOf[A]
+    array.cmpxchgR(itemIdx, box(ov), box(nv)).asInstanceOf[A]
 
   final override def unsafeGetVersionV(): Long =
     array.getVersionV(logicalIdx)

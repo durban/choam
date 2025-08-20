@@ -66,7 +66,7 @@ private final class Ref2Ref1[A, B](self: Ref2ImplBase[A, B])
     self.unsafeCmpxchgMarker1R(ov, nv)
 
   override def id: Long =
-    self.id0
+    self.id0()
 
   final override def hashCode: Int =
     this.id.toInt
@@ -120,7 +120,7 @@ private final class Ref2Ref2[A, B](self: Ref2Impl[A, B])
     self.unsafeCmpxchgMarker2R(ov, nv)
 
   override def id: Long =
-    self.id1
+    self.id1()
 
   final override def hashCode: Int =
     this.id.toInt

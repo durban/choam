@@ -25,7 +25,7 @@ private final class StrictRefArray[A](
   __size: Int,
   initial: A,
   _idBase: Long,
-) extends StrictRefArrayBase[A](__size, initial, _idBase)
+) extends StrictRefArrayBase[A](__size, box(initial), _idBase) // TODO: try to avoid `box`
   with Ref.UnsealedArray[A] {
 
   require((__size > 0) && (((__size - 1) * 3 + 2) > (__size - 1))) // avoid overflow

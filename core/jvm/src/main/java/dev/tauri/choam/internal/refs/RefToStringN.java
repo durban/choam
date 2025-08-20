@@ -17,8 +17,6 @@
 
 package dev.tauri.choam.internal.refs;
 
-import dev.tauri.choam.core.RefGetAxn;
-
 abstract class RefToStringN {
 
   protected abstract String refToString();

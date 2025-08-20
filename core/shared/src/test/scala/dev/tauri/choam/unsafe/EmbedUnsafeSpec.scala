@@ -29,11 +29,6 @@ final class EmbedUnsafeSpec_DefaultMcas_IO
   with SpecDefaultMcas
   with EmbedUnsafeSpec[IO]
 
-final class EmbedUnsafeSpec_DefaultMcas_ZIO
-  extends BaseSpecZIO
-  with SpecDefaultMcas
-  with EmbedUnsafeSpec[zio.Task]
-
 trait EmbedUnsafeSpec[F[_]]
   extends CommonImperativeApiSpec[F]
   with EmbedUnsafeSpecPlatform[F] { this: McasImplSpec =>

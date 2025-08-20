@@ -127,8 +127,6 @@ trait BaseSpecSyncF[F[_]] extends BaseSpecF[F] { this: McasImplSpec =>
     new Reactive.SyncReactive[F](this.mcasImpl)(using F)
 }
 
-
-
 abstract class BaseSpecIO
   extends ChoamCatsEffectSuite
   with BaseSpecAsyncF[IO]
