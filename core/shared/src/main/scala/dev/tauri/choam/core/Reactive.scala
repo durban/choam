@@ -30,7 +30,7 @@ import internal.mcas.Mcas
 
 sealed trait Reactive[F[_]] extends ~>[Rxn, F] {
 
-  def apply[A, B](r: Rxn[B], s: RetryStrategy.Spin = RetryStrategy.Default): F[B]
+  def apply[A, B](r: Rxn[B], s: RetryStrategy.Spin = RetryStrategy.Default): F[B] // TODO:0.5: rename to `run`
 
   final def run[A](a: Rxn[A], s: RetryStrategy.Spin = RetryStrategy.Default): F[A] =
     this.apply[Any, A](a, s)

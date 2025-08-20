@@ -23,7 +23,7 @@ import cats.effect.kernel.{ Async, Sync, Resource }
 import internal.mcas.Mcas
 
 sealed trait AsyncReactive[F[_]] extends Reactive.UnsealedReactive[F] { self =>
-  def applyAsync[A, B](r: Rxn[B], s: RetryStrategy = RetryStrategy.Default): F[B]
+  def applyAsync[A, B](r: Rxn[B], s: RetryStrategy = RetryStrategy.Default): F[B] // TODO:0.5: rename to `runAsync`
   private[choam] def asyncInst: Async[F]
 }
 

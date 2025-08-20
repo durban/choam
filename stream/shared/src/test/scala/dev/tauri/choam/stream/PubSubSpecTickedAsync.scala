@@ -22,6 +22,7 @@ import scala.concurrent.duration._
 
 import cats.effect.IO
 import fs2.Chunk
+import fs2.concurrent.Topic
 
 import core.Ref
 
@@ -262,5 +263,41 @@ trait PubSubSpecTickedAsync[F[_]] extends PubSubSpecTicked[F] { this: McasImplSp
       } yield ()
       t.replicateA_(if (isJvm()) 50 else 5)
     }
+  }
+
+  test("FS2 Topic") {
+    for {
+      hub <- newHub[Int](PubSub.OverflowStrategy.backpressure(64))
+      topic = hub.asFs2
+      _ <- assertResultF(topic.isClosed, false)
+      waitingFib <- topic.closed.start
+      _ <- this.tickAll
+      _ <- assertResultF(topic.subscribers.take(1).compile.toList, List(0))
+      sizeFib <- topic.subscribers.compile.toList.start
+      _ <- this.tickAll
+      fib1 <- topic.subscribe(64).compile.toList.start
+      _ <- this.tickAll
+      fc <- topic.subscribeAwait(64).allocated.flatMap { case (s, close) =>
+        s.compile.toList.start.map { fib => (fib, close) }
+      }
+      (fib2, close2) = fc
+      fib3 <- hub.subscribe.compile.toList.start
+      _ <- this.tickAll
+      _ <- assertResultF(topic.publish1(1), Right(()))
+      _ <- assertResultF(topic.publish1(2), Right(()))
+      _ <- assertResultF(hub.emit(3).run, PubSub.Success)
+      _ <- assertResultF(hub.publish(4), PubSub.Success)
+      _ <- assertResultF(topic.publish1(5), Right(()))
+      _ <- assertResultF(topic.close, Right(()))
+      _ <- assertResultF(topic.isClosed, true)
+      _ <- waitingFib.joinWithNever
+      _ <- assertResultF(topic.close, Left(Topic.Closed))
+      _ <- assertResultF(hub.close.run, PubSub.Closed)
+      _ <- assertResultF(fib1.joinWithNever, List(1, 2, 3, 4, 5))
+      _ <- assertResultF(fib2.joinWithNever, List(1, 2, 3, 4, 5))
+      _ <- close2
+      _ <- assertResultF(fib3.joinWithNever, List(1, 2, 3, 4, 5))
+      _ <- assertResultF(sizeFib.joinWithNever, List(0, 1, 2, 3))
+    } yield ()
   }
 }

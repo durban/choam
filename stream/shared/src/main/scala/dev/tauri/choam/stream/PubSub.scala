@@ -24,9 +24,10 @@ import scala.collection.immutable.LongMap
 
 import cats.~>
 import cats.syntax.all._
-import cats.effect.kernel.{ Async, Cont, MonadCancel }
+import cats.effect.kernel.{ Async, Cont, MonadCancel, Resource }
 import cats.effect.syntax.all._
-import fs2.{ Stream, Chunk, Pull }
+import fs2.{ Stream, Chunk, Pull, Pipe }
+import fs2.concurrent.Topic
 
 import core.{ Rxn, Ref, AsyncReactive }
 import async.{ Promise, WaitList, GenWaitList }
@@ -36,7 +37,7 @@ sealed abstract class PubSub[A]
   extends PubSub.Simple[A]
   with PubSub.Publish[A] {
 
-  // TODO: asFs2 : Topic[F, A] (or asTopic?)
+  def asFs2[F[_]: AsyncReactive]: Topic[F, A]
 }
 
 object PubSub {
@@ -102,8 +103,39 @@ object PubSub {
     Rxn.unsafe.delay { new AtomicLong }.flatMap { nextId =>
       Ref(LongMap.empty[Subscription[A, _]], allocStr).flatMap { subscriptions =>
         Ref(false, allocStr).flatMap { isClosed =>
-          Promise[Unit](allocStr).map { awaitClosed =>
-            new PubSubImpl[A](nextId, subscriptions, isClosed, awaitClosed, overflowStr, publishCanSuspend)
+          Promise[Unit](allocStr).flatMap { awaitClosed =>
+            if (publishCanSuspend) {
+              // TODO: Every PubSub.async has an internal
+              // TODO: PubSub.simple[Int], which is to be
+              // TODO: able to publish changes to the
+              // TODO: subscriber count. This is necessary
+              // TODO: solely to support the FS2 Topic API.
+              impl[Int](
+                OverflowStrategy.dropNewest(1),
+                Ref.AllocationStrategy.Default,
+                publishCanSuspend = false,
+              ).map { sizeSignal =>
+                new PubSubImpl[A](
+                  nextId,
+                  subscriptions,
+                  isClosed,
+                  awaitClosed,
+                  overflowStr,
+                  publishCanSuspend = true,
+                  sizeSignal = sizeSignal,
+                )
+              }
+            } else {
+              Rxn.pure(new PubSubImpl[A](
+                nextId,
+                subscriptions,
+                isClosed,
+                awaitClosed,
+                overflowStr,
+                publishCanSuspend = false,
+                sizeSignal = null,
+              ))
+            }
           }
         }
       }
@@ -119,6 +151,8 @@ object PubSub {
   private[this] val _axnClosed = Rxn.pure(Closed)
   private[this] val _axnBackpressured = Rxn.pure(Backpressured)
   private[this] val _axnSuccess = Rxn.pure(Success)
+  private[this] val _rightUnit: Right[Nothing, Unit] = Right(())
+  private[this] val _leftTopicClosed: Left[Topic.Closed, Nothing] = Left(Topic.Closed)
 
   private[this] final class SignalChunk[A](a: A) extends Chunk[A] {
 
@@ -383,7 +417,7 @@ object PubSub {
   }
 
   private[this] sealed trait HandleSubscriptions {
-    def removeSubscription(id: Long): Rxn[Unit]
+    def removeSubscription(id: Long): Rxn[Int]
     def isClosed: Ref[Boolean]
   }
 
@@ -396,7 +430,10 @@ object PubSub {
     awaitClosed: Promise[Unit],
     defaultStrategy: OverflowStrategy,
     publishCanSuspend: Boolean,
-  ) extends PubSub[A] with HandleSubscriptions {
+    sizeSignal: PubSub[Int],
+  ) extends PubSub[A] with HandleSubscriptions { self =>
+
+    _assert(publishCanSuspend == (sizeSignal ne null))
 
     final override def subscribe[F[_]](implicit F: AsyncReactive[F]): Stream[F, A] =
       this.subscribe(this.defaultStrategy)
@@ -404,37 +441,73 @@ object PubSub {
     final override def subscribe[F[_]](strategy: PubSub.OverflowStrategy)(implicit F: AsyncReactive[F]): Stream[F, A] =
       this.subscribeWithInitial(strategy, Rxn.nullOf[A]).drop(1)
 
-    final override def removeSubscription(id: Long): Rxn[Unit] =
-      this.subscriptions.update(_.removed(id))
+    final override def removeSubscription(id: Long): Rxn[Int] = {
+      this.subscriptions.modify { map =>
+        val newSize = map.size - 1 // TODO: size is O(n)
+        (map.removed(id), newSize)
+      }
+    }
 
     private[choam] final override def subscribeWithInitial[F[_], B >: A](
       strategy: PubSub.OverflowStrategy,
       initial: Rxn[B],
     )(implicit F: AsyncReactive[F]): Stream[F, B] = {
+      Stream.bracket(_acqSubs(strategy, initial))(_relSubs(_)).flatMap { subs =>
+        if (subs eq null) Stream.empty
+        else subs.stream
+      }
+    }
+
+    private[this] final def _acqSubs[F[_], B >: A](
+      strategy: PubSub.OverflowStrategy,
+      initial: Rxn[B],
+    )(implicit F: AsyncReactive[F]): F[Subscription[A, B]] = {
       implicit val FF: Async[F] = F.asyncInst
-      val acqSubs = FF.delay(nextId.getAndIncrement()).flatMap { id =>
+      FF.delay(nextId.getAndIncrement()).flatMap { id =>
         Promise[Unit].run[F].flatMap { sp =>
-          val act: Rxn[Subscription[A, B]] = isClosed.get.flatMap { isClosed =>
+          val act: Rxn[(Subscription[A, B], Int)] = isClosed.get.flatMap { isClosed =>
             if (isClosed) {
-              Rxn.pure(null : Subscription[A, B])
+              Rxn.pure((null, 0))
             } else {
               strategy.newBuffer[F, B](canSuspend = publishCanSuspend).flatMap { buf =>
                 initial.flatMap { elem => buf.enqueueSignal(signalChunk(elem)) } *> {
                   val subs = new Subscription[B, B](id, buf, sp, this)
-                  subscriptions.update(_.updated(id, subs)).as(subs)
+                  subscriptions.modify { map =>
+                    val newSize = map.size + 1 // TODO: size is O(n)
+                    (map.updated(id, subs), (subs, newSize))
+                  }
                 }
               }
             }
           }
-          F.apply(act)
+          val subsF = F.apply(act)
+          val sig = sizeSignal
+          val subsAndNotify = if (sig ne null) {
+            subsF.flatTap { case (subs, newSize) =>
+              if (subs ne null) sig.emit(newSize).run[F].void
+              else FF.unit
+            }
+          } else {
+            subsF
+          }
+          subsAndNotify.map(_._1)
         }
       }
-      Stream.bracket(acqSubs) { subs =>
-        if (subs eq null) FF.unit
-        else subs.closeInternal
-      }.flatMap { subs =>
-        if (subs eq null) Stream.empty
-        else subs.stream
+    }
+
+    private[this] final def _relSubs[F[_], B >: A](subs: Subscription[A, B])(implicit F: AsyncReactive[F]): F[Unit] = {
+      implicit val FF: Async[F] = F.asyncInst
+      if (subs eq null) {
+        FF.unit
+      } else {
+        val sig = sizeSignal
+        if (sig ne null) {
+          subs.closeInternal.flatMap { newSize =>
+            sig.emit(newSize).run[F].void
+          }
+        } else {
+          subs.closeInternal.void
+        }
       }
     }
 
@@ -599,7 +672,7 @@ object PubSub {
         if (wasClosed) {
           _axnClosed
         } else {
-          awaitClosed.complete(()) *> subscriptions.get.flatMap { subsMap =>
+          val doClose = awaitClosed.complete(()) *> subscriptions.get.flatMap { subsMap =>
             val itr = subsMap.valuesIterator
             var acc = Rxn.unit
             var cnt = 0L
@@ -609,6 +682,14 @@ object PubSub {
               acc = acc *> subs.closeExternal
             }
             acc.as(if (cnt > 0L) Backpressured else Success)
+          }
+          val sig = sizeSignal
+          if (sig ne null) {
+            doClose.flatTap { _ =>
+              sig.close.void
+            }
+          } else {
+            doClose
           }
         }
       }
@@ -629,6 +710,62 @@ object PubSub {
         }
 
         go
+      }
+    }
+
+    final override def asFs2[F[_]](implicit F: AsyncReactive[F]): Topic[F, A] = {
+      _assert(publishCanSuspend)
+      implicit val FF: Async[F] = F.asyncInst
+      new Topic[F, A] {
+
+        final override def publish: Pipe[F, A, Nothing] = { s =>
+          (s ++ Stream.exec(self.close.run[F].void)).evalMap(this.publish1).takeWhile(_.isRight).drain
+        }
+
+        final override def publish1(a: A): F[Either[Topic.Closed, Unit]] = {
+          self.publish(a).map {
+            case Success => _rightUnit
+            case Closed => _leftTopicClosed
+            case Backpressured => impossible("PubSub#publish returned Backpressured")
+          }
+        }
+
+        final override def subscribe(maxQueued: Int): Stream[F, A] = {
+          self.subscribe(OverflowStrategy.backpressure(maxQueued))
+        }
+
+        final override def subscribeAwait(maxQueued: Int): Resource[F, Stream[F, A]] = {
+          Resource.make(self._acqSubs[F, A](OverflowStrategy.backpressure(maxQueued), Rxn.nullOf[A]))(
+            self._relSubs(_)
+          ).map { subs =>
+            if (subs eq null) Stream.empty
+            else subs.stream.drop(1)
+          }
+        }
+
+        final override def subscribers: Stream[F, Int] = {
+          _assert(self.sizeSignal ne null)
+          self.sizeSignal.subscribeWithInitial(
+            OverflowStrategy.dropNewest(1),
+            self.subscriptions.get.map(_.size),
+          )
+        }
+
+        final override def close: F[Either[Topic.Closed, Unit]] = {
+          self.close.run[F].map {
+            case Success => _rightUnit
+            case Backpressured => _rightUnit
+            case Closed => _leftTopicClosed
+          }
+        }
+
+        final override def isClosed: F[Boolean] = {
+          self.isClosed.get.run[F]
+        }
+
+        final override def closed: F[Unit] = {
+          self.awaitClosed.get[F]
+        }
       }
     }
 
@@ -701,9 +838,9 @@ object PubSub {
       queue.enqueueSignal(null)
     }
 
-    final def closeInternal[F[_]](implicit F: AsyncReactive[F]): F[Unit] = {
+    final def closeInternal[F[_]](implicit F: AsyncReactive[F]): F[Int] = {
       implicit val FF: Async[F] = F.asyncInst
-      F.apply(hub.removeSubscription(this.id)).guarantee(
+      F.run(hub.removeSubscription(this.id)).guarantee(
         awaitShutdown.complete(()).run[F].void
       )
     }
