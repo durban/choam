@@ -2525,7 +2525,7 @@ private sealed abstract class RxnInstances2 extends RxnInstances3 { this: Rxn.ty
 private sealed abstract class RxnInstances3 extends RxnInstances4 { self: Rxn.type =>
 
   implicit final def uniqueInstance: Unique[Rxn] =
-    _uniqueInstance.asInstanceOf[Unique[Rxn]]
+    _uniqueInstance
 
   private[this] val _uniqueInstance: Unique[Rxn] = new Unique[Rxn] {
     final override def applicative: Applicative[Rxn] =
@@ -2560,7 +2560,7 @@ private sealed abstract class RxnInstances5 extends RxnInstances6 { this: Rxn.ty
 private sealed abstract class RxnInstances6 extends RxnInstances7 { self: Rxn.type =>
 
   implicit final def deferInstance: Defer[Rxn] =
-    _deferInstance.asInstanceOf[Defer[Rxn]]
+    _deferInstance
 
   private[this] val _deferInstance: Defer[Rxn] = new Defer[Rxn] {
     final override def defer[A](fa: => Rxn[A]): Rxn[A] = Rxn.unsafe.suspend(fa)
@@ -2640,7 +2640,7 @@ private sealed abstract class RxnInstances7 extends RxnInstances8 { self: Rxn.ty
 private sealed abstract class RxnInstances8 extends RxnInstances9 { self: Rxn.type =>
 
   implicit final def alignInstance: Align[Rxn] =
-    _alignInstance.asInstanceOf[Align[Rxn]]
+    _alignInstance
 
   private[this] val _alignInstance: Align[Rxn] = new Align[Rxn] {
     final override def functor: Functor[Rxn] =
