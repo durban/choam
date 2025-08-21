@@ -135,7 +135,7 @@ trait RefArraySpec extends BaseSpec with SpecDefaultMcas {
     val size = this.platform match {
       case Jvm => 0x01ffffff
       case Js => 0x001fffff
-      case Native => 0x7fffff
+      case Native => 0x3fffff
     }
     val arr = mkRefArray("foo", size)
     val r = arr.unsafeGet(size / 2)
