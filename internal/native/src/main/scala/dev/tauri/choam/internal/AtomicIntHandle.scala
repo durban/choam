@@ -46,6 +46,10 @@ private[choam] object AtomicIntHandle extends AtomicIntHandleCompanionScalaVer {
 
 private[choam] final class AtomicIntHandle private (private val ptr: Ptr[atomic_int]) extends AnyVal {
 
+  final def getVolatile: Int = {
+    atomic_load_explicit(ptr, memory_order_seq_cst)
+  }
+
   final def getAcquire: Int = {
     atomic_load_explicit(ptr, memory_order_acquire)
   }

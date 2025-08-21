@@ -68,7 +68,7 @@ final class PaddedMemoryLocation<A>
     // IDs are globally unique, so the
     // default `equals` (based on object
     // identity) is fine for us.
-    return (int) this.id();
+    return (int) this._id;
   }
 
   @Override

@@ -18,22 +18,10 @@
 package dev.tauri.choam
 package core
 
-import cats.effect.IO
-
-final class AxnSpecJvm_SpinLockMcas_IO
-  extends BaseSpecIO
-  with SpecSpinLockMcas
-  with AxnSpec[IO]
-
 final class AxnSpecJvm_SpinLockMcas_ZIO
   extends BaseSpecZIO
   with SpecSpinLockMcas
   with AxnSpec[zio.Task]
-
-final class AxnSpecJvm_Emcas_IO
-  extends BaseSpecIO
-  with SpecEmcas
-  with AxnSpec[IO]
 
 final class AxnSpecJvm_Emcas_ZIO
   extends BaseSpecZIO

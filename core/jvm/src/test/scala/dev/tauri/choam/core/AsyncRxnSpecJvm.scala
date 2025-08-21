@@ -16,30 +16,14 @@
  */
 
 package dev.tauri.choam
-package internal
-package random
+package core
 
-import java.security.SecureRandom
-
-import cats.effect.SyncIO
-
-final class RandomSpecJvm_Emcas_SyncIO
-  extends BaseSpecSyncIO
+final class AsyncRxnSpec_Emcas_ZIO
+  extends BaseSpecZIO
   with SpecEmcas
-  with RandomSpecJvm[SyncIO]
+  with AsyncRxnSpec[zio.Task]
 
-final class RandomSpecJvm_ThreadConfinedMcas_SyncIO
-  extends BaseSpecSyncIO
-  with SpecThreadConfinedMcas
-  with RandomSpecJvm[SyncIO]
-
-trait RandomSpecJvm[F[_]] extends RandomSpecJvmNat[F] { this: McasImplSpec =>
-
-  test("SecureRandom (JVM)") {
-    val bt = System.nanoTime()
-    val s = new SecureRandom()
-    s.nextBytes(new Array[Byte](20)) // force seed
-    val at = System.nanoTime()
-    println(s"Default SecureRandom: ${s.toString} (in ${at - bt}ns)")
-  }
-}
+final class AsyncRxnSpec_SpinLockMcas_ZIO
+  extends BaseSpecZIO
+  with SpecSpinLockMcas
+  with AsyncRxnSpec[zio.Task]

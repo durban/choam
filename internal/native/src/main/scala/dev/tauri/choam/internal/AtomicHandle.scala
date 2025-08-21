@@ -44,6 +44,10 @@ private[choam] object AtomicHandle extends AtomicHandleCompanionScalaVer {
 
 private[choam] final class AtomicHandle[A] private (private val ptr: Ptr[AnyRef]) extends AnyVal {
 
+  final def getVolatile: A = {
+    atomic_load_explicit(ptr, memory_order_seq_cst).asInstanceOf[A]
+  }
+
   final def getAcquire: A = {
     atomic_load_explicit(ptr, memory_order_acquire).asInstanceOf[A]
   }

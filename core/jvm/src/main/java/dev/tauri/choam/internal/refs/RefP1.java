@@ -72,17 +72,6 @@ final class RefP1<A>
   }
 
   @Override
-  public final int hashCode() {
-    // `RefIdGen` generates IDs with
-    // Fibonacci hashing, so no need
-    // to hash them here even further.
-    // IDs are globally unique, so the
-    // default `equals` (based on object
-    // identity) is fine for us.
-    return (int) this.id();
-  }
-
-  @Override
   @SuppressWarnings("unchecked")
   public final <B> MemoryLocation<B> cast() {
     return (MemoryLocation<B>) this;

@@ -28,4 +28,15 @@ abstract class RefIdAndPadding<A> extends Padding<A> {
   public final long id() {
     return this._id;
   }
+
+  @Override
+  public final int hashCode() {
+    // `RefIdGen` generates IDs with
+    // Fibonacci hashing, so no need
+    // to hash them here even further.
+    // IDs are globally unique, so the
+    // default `equals` (based on object
+    // identity) is fine for us.
+    return (int) this._id;
+  }
 }

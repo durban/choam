@@ -23,9 +23,9 @@ private abstract class RandomBasePlatform extends RandomBasePlatformBase {
 
   @inline
   protected final def strictMathSqrt(a: Double): Double =
-    StrictMath.sqrt(a)
+    Math.sqrt(a) // TODO: ¯\_(ツ)_/¯
 
   @inline
   protected final def strictMathLog(a: Double): Double =
-    StrictMath.log(a)
+    Math.log(a) // TODO: ¯\_(ツ)_/¯
 }

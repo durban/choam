@@ -27,6 +27,7 @@ import internal.AtomicHandle
 private abstract class PrimaryExchangerImplJvmBase {
 
   @volatile
+  @nowarn("cat=unused-privates")
   private[this] var __incoming: AtomicReferenceArray[ExchangerNode[?]] =
     _
 
@@ -34,6 +35,7 @@ private abstract class PrimaryExchangerImplJvmBase {
     __incoming
 
   @volatile
+  @nowarn("cat=unused-privates")
   private[this] var __outgoing: AtomicReferenceArray[ExchangerNode[?]] =
     _
 

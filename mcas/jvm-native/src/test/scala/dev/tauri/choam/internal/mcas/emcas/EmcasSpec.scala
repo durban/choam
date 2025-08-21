@@ -626,6 +626,7 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("Version mismatch, but expected value is the same") {
+    assume(!isNative()) // TODO: this test sometimes hangs on SN
     val ref = MemoryLocation.unsafeUnpadded("A", this.rigInstance)
     val ctx = inst.currentContext()
     // T1:

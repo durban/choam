@@ -19,13 +19,19 @@ package dev.tauri.choam
 package internal
 package random
 
+import scala.scalanative.unsafe.{ Ptr, UnsafeRichArray }
+
 private abstract class RandomBasePlatformBase {
 
-  protected[this] final def getLongAt0P(arr: Array[Byte]): Long = {
-    ??? // return (long) BYTE_ARRAY_VIEW.get(arr, 0);
+  private[random] final def getLongAt0P(arr: Array[Byte]): Long = {
+    val ptr: Ptr[Byte] = arr.at(0)
+    val longPtr: Ptr[Long] = ptr.asInstanceOf[Ptr[Long]] // TODO: is this cast safe?
+    !longPtr
   }
 
-  protected[this] final def putLongAtIdxP(arr: Array[Byte], idx: Int, nv: Long): Unit = {
-    ??? // BYTE_ARRAY_VIEW.set(arr, idx, nv);
+  private[random] final def putLongAtIdxP(arr: Array[Byte], idx: Int, nv: Long): Unit = {
+    val ptr: Ptr[Byte] = arr.at(idx)
+    val longPtr: Ptr[Long] = ptr.asInstanceOf[Ptr[Long]] // TODO: is this cast safe?
+    !longPtr = nv
   }
 }

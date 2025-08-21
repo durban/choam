@@ -38,21 +38,6 @@ final class RxnImplSpec_SpinLockMcas_IO
   with SpecSpinLockMcas
   with RxnImplSpec[IO]
 
-final class RxnImplSpec_Emcas_ZIO
-  extends BaseSpecZIO
-  with SpecEmcas
-  with RxnImplSpec[zio.Task]
-
-final class RxnImplSpec_FlakyEMCAS_ZIO
-  extends BaseSpecZIO
-  with SpecFlakyEMCAS
-  with RxnImplSpec[zio.Task]
-
-final class RxnImplSpec_SpinLockMcas_ZIO
-  extends BaseSpecZIO
-  with SpecSpinLockMcas
-  with RxnImplSpec[zio.Task]
-
 /** Specific implementation tests, which should also pass with `SpecFlakyEMCAS` */
 trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 

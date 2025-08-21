@@ -26,7 +26,11 @@ private abstract class StrictRefArrayBase[A](
   private[this] val versions: Array[Long] =
     RefArrayBase.initVersions(size)
 
-  protected[refs] final override def getVersionV(idx: Int): Long = ???
+  protected[refs] final override def getVersionV(idx: Int): Long = {
+    AtomicArray.getVolatile(versions, idx)
+  }
 
-  protected[refs] final override def cmpxchgVersionV(idx: Int, ov: Long, nv: Long): Long = ???
+  protected[refs] final override def cmpxchgVersionV(idx: Int, ov: Long, nv: Long): Long = {
+    AtomicArray.compareAndExchange(versions, idx, ov, nv)
+  }
 }

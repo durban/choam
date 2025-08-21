@@ -25,10 +25,10 @@ import java.nio.{ ByteBuffer, ByteOrder }
 private abstract class RandomBasePlatform {
 
   protected final def strictMathSqrt(a: Double): Double =
-    Math.sqrt(a) // ¯\_(ツ)_/¯
+    Math.sqrt(a) // TODO: ¯\_(ツ)_/¯
 
   protected final def strictMathLog(a: Double): Double =
-    Math.log(a) // ¯\_(ツ)_/¯
+    Math.log(a) // TODO: ¯\_(ツ)_/¯
 
   // TODO: These ByteBuffers are probably pretty
   // TODO: bad for performance, but this is JS.

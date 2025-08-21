@@ -19,8 +19,6 @@ package dev.tauri.choam
 
 import java.security.{ SecureRandom => JSecureRandom, Provider }
 
-import internal.mcas.Consts
-
 abstract class EnvironmentSpecPlatform extends BaseSpec {
 
   test("Check SecureRandom") {
@@ -30,10 +28,6 @@ abstract class EnvironmentSpecPlatform extends BaseSpec {
 
   test("Check JVM version") {
     println(s"Runtime.version().version() == ${Runtime.version().version()}")
-  }
-
-  test("Check Consts.statsEnabled") {
-    println(s"Consts.statsEnabled == ${Consts.statsEnabled}")
   }
 
   private def printSecureRandomInfo(sr: JSecureRandom, prefix: String): Unit = {

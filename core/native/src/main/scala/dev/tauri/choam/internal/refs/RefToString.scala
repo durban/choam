@@ -17,29 +17,14 @@
 
 package dev.tauri.choam
 package internal
-package random
+package refs
 
-import java.security.SecureRandom
+import core.RefGetAxn
 
-import cats.effect.SyncIO
+private abstract class RefToString[A] extends RefGetAxn[A] {
 
-final class RandomSpecJvm_Emcas_SyncIO
-  extends BaseSpecSyncIO
-  with SpecEmcas
-  with RandomSpecJvm[SyncIO]
+  protected[this] def refToString(): String
 
-final class RandomSpecJvm_ThreadConfinedMcas_SyncIO
-  extends BaseSpecSyncIO
-  with SpecThreadConfinedMcas
-  with RandomSpecJvm[SyncIO]
-
-trait RandomSpecJvm[F[_]] extends RandomSpecJvmNat[F] { this: McasImplSpec =>
-
-  test("SecureRandom (JVM)") {
-    val bt = System.nanoTime()
-    val s = new SecureRandom()
-    s.nextBytes(new Array[Byte](20)) // force seed
-    val at = System.nanoTime()
-    println(s"Default SecureRandom: ${s.toString} (in ${at - bt}ns)")
-  }
+  final override def toString: String =
+    this.refToString()
 }

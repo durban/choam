@@ -17,29 +17,22 @@
 
 package dev.tauri.choam
 package internal
-package random
+package refs
 
-import java.security.SecureRandom
+private abstract class RefIdOnly[A](
+  private[this] val _id: Long,
+) extends RefToString[A] {
 
-import cats.effect.SyncIO
+  final def id: Long =
+    _id
 
-final class RandomSpecJvm_Emcas_SyncIO
-  extends BaseSpecSyncIO
-  with SpecEmcas
-  with RandomSpecJvm[SyncIO]
-
-final class RandomSpecJvm_ThreadConfinedMcas_SyncIO
-  extends BaseSpecSyncIO
-  with SpecThreadConfinedMcas
-  with RandomSpecJvm[SyncIO]
-
-trait RandomSpecJvm[F[_]] extends RandomSpecJvmNat[F] { this: McasImplSpec =>
-
-  test("SecureRandom (JVM)") {
-    val bt = System.nanoTime()
-    val s = new SecureRandom()
-    s.nextBytes(new Array[Byte](20)) // force seed
-    val at = System.nanoTime()
-    println(s"Default SecureRandom: ${s.toString} (in ${at - bt}ns)")
+  final override def hashCode: Int = {
+    // `RefIdGen` generates IDs with
+    // Fibonacci hashing, so no need
+    // to hash them here even further.
+    // IDs are globally unique, so the
+    // default `equals` (based on object
+    // identity) is fine for us.
+    this.id.toInt
   }
 }

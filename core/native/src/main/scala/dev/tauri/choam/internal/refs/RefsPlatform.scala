@@ -23,7 +23,9 @@ import core.Ref
 
 private object RefsPlatform {
 
-  def unsafeNewRefU1[A](initial: A, id: Long): Ref[A] = ???
+  def unsafeNewRefU1[A](initial: A, id: Long): Ref[A] =
+    new RefU1(initial, id)
 
-  def unsafeNewRefP1[A](initial: A, id: Long): Ref[A] = ???
+  def unsafeNewRefP1[A](initial: A, id: Long): Ref[A] =
+    new RefP1(initial, id)
 }

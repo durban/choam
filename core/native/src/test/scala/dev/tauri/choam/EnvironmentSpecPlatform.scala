@@ -17,15 +17,4 @@
 
 package dev.tauri.choam
 
-import internal.mcas.Consts
-
-abstract class EnvironmentSpecPlatform extends BaseSpec {
-
-  test("Check (fake, native) JVM version") {
-    println(s"Runtime.version().version() == ${Runtime.version().version()}")
-  }
-
-  test("Check Consts.statsEnabled") {
-    println(s"Consts.statsEnabled == ${Consts.statsEnabled}")
-  }
-}
+abstract class EnvironmentSpecPlatform extends BaseSpec

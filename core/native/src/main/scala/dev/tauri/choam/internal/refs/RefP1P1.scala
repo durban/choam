@@ -21,6 +21,9 @@ package refs
 
 import java.lang.ref.WeakReference
 
+import scala.scalanative.annotation.alwaysinline
+
+import mcas.Version
 import core.Ref
 
 private final class RefP1P1[A, B](
@@ -30,32 +33,103 @@ private final class RefP1P1[A, B](
   i1: Long,
 ) extends PaddingForP1P1[A, B](a, i0) with Ref2Impl[A, B] {
 
+  private[this] val _id1: Long =
+    i1
+
+  @volatile
+  private[this] var valueB: B =
+    b
+
+  @volatile
+  @nowarn("cat=unused-privates")
+  private[this] var versionB: Long =
+    Version.Start
+
+  @volatile
+  @nowarn("cat=unused-privates")
+  private[this] var markerB: WeakReference[AnyRef] =
+    _
+
   private[this] val refB: Ref[B] =
     new Ref2Ref2[A, B](this)
+
+  @alwaysinline
+  private[this] final def atomicValueB: AtomicHandle[B] = {
+    AtomicHandle(this, "valueB")
+  }
+
+  @alwaysinline
+  private[this] final def atomicVersionB: AtomicLongHandle = {
+    AtomicLongHandle(this, "versionB")
+  }
+
+  @alwaysinline
+  private[this] final def atomicMarkerB: AtomicHandle[WeakReference[AnyRef]] = {
+    AtomicHandle(this, "markerB")
+  }
 
   final override def _2: Ref[B] =
     this.refB
 
   protected[this] final override def refToString(): String = {
-    return refStringFrom2(this.id0(), this.id1())
+    refStringFrom2(this.id0(), this.id1())
   }
 
   final override def dummyImpl1(v: Byte): Long = {
     this.dummyImpl(v.toLong)
   }
 
-  final override def dummyImpl2(v: Byte): Long = ???
-  final override def id1(): Long = ???
-  final override def unsafeCas2V(ov: B, nv: B): Boolean = ???
-  final override def unsafeCasMarker2V(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean = ???
-  final override def unsafeCmpxchg2R(ov: B, nv: B): B = ???
-  final override def unsafeCmpxchg2V(ov: B, nv: B): B = ???
-  final override def unsafeCmpxchgMarker2R(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef] = ???
-  final override def unsafeCmpxchgVersion2V(ov: Long, nv: Long): Long = ???
-  final override def unsafeGet2P(): B = ???
-  final override def unsafeGet2V(): B = ???
-  final override def unsafeGetMarker2V(): WeakReference[AnyRef] = ???
-  final override def unsafeGetVersion2V(): Long = ???
-  final override def unsafeSet2P(nv: B): Unit = ???
-  final override def unsafeSet2V(nv: B): Unit = ???
+  final override def id1(): Long =
+    _id1
+
+  final override def unsafeCas2V(ov: B, nv: B): Boolean = {
+    atomicValueB.compareAndSet(ov, nv)
+  }
+
+  final override def unsafeCasMarker2V(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean = {
+    atomicMarkerB.compareAndSet(ov, nv)
+  }
+
+  final override def unsafeCmpxchg2R(ov: B, nv: B): B = {
+    atomicValueB.compareAndExchangeRelAcq(ov, nv) // TODO: release-only
+  }
+
+  final override def unsafeCmpxchg2V(ov: B, nv: B): B = {
+    atomicValueB.compareAndExchange(ov, nv)
+  }
+
+  final override def unsafeCmpxchgMarker2R(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef] = {
+    atomicMarkerB.compareAndExchangeRelAcq(ov, nv) // TODO: release-only
+  }
+
+  final override def unsafeCmpxchgVersion2V(ov: Long, nv: Long): Long = {
+    atomicVersionB.compareAndExchange(ov, nv)
+  }
+
+  final override def unsafeGet2P(): B = {
+    atomicValueB.getOpaque // TODO: plain
+  }
+
+  final override def unsafeGet2V(): B = {
+    this.valueB
+  }
+
+  final override def unsafeGetMarker2V(): WeakReference[AnyRef] = {
+    this.markerB
+  }
+
+  final override def unsafeGetVersion2V(): Long = {
+    this.versionB
+  }
+
+  final override def unsafeSet2P(nv: B): Unit = {
+    atomicValueB.setOpaque(nv) // TODO: plain
+  }
+
+  final override def unsafeSet2V(nv: B): Unit = {
+    this.valueB = nv
+  }
+
+  final override def dummyImpl2(v: Byte): Long =
+    this.dummyImpl(v.toLong)
 }

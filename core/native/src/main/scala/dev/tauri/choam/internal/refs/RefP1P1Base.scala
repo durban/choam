@@ -36,10 +36,12 @@ private abstract class RefP1P1Base[A, B](a: A, i0: Long)
     a
 
   @volatile
+  @nowarn("cat=unused-privates")
   private[this] var versionA: Long =
     Version.Start
 
   @volatile
+  @nowarn("cat=unused-privates")
   private[this] var markerA: WeakReference[AnyRef] =
     _
 

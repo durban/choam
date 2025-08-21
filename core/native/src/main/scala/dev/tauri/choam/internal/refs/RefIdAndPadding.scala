@@ -16,15 +16,23 @@
  */
 
 package dev.tauri.choam
+package internal
+package refs
 
-final class NativeEnvironmentSpec extends munit.FunSuite with MUnitUtils { // TODO: merge this into EnvironmentSpec (in core)
+private abstract class RefIdAndPadding[A](
+  private[this] val _id: Long,
+) extends Padding[A] {
 
-  test("Scala Native environment") {
-    println(s"isJvm == ${isJvm()}")
-    println(s"isJs == ${isJs()}")
-    println(s"isNative == ${isNative()}")
-    println(s"isVmSupportsLongCas == ${isVmSupportsLongCas()}")
-    println(s"getJvmVersion == ${getJvmVersion()}")
-    println(s"isGraal == ${isGraal()}")
+  final def id: Long =
+    _id
+
+  final override def hashCode: Int = {
+    // `RefIdGen` generates IDs with
+    // Fibonacci hashing, so no need
+    // to hash them here even further.
+    // IDs are globally unique, so the
+    // default `equals` (based on object
+    // identity) is fine for us.
+    this.id.toInt
   }
 }

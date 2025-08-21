@@ -29,6 +29,6 @@ private[refs] abstract class RefsPackagePlatform {
   }
 
   private[choam] final def unsafeP2[A, B](a: A, b: B, rig: RefIdGen): Ref2[A, B] = {
-    ??? //new refs.RefP2[A, B](a, b, rig.nextId(), rig.nextId())
+    new refs.RefP2[A, B](a, b, rig.nextId(), rig.nextId())
   }
 }

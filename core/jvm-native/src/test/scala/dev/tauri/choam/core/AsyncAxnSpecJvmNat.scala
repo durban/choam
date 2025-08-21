@@ -25,17 +25,7 @@ final class AsyncRxnSpec_Emcas_IO
   with SpecEmcas
   with AsyncRxnSpec[IO]
 
-final class AsyncRxnSpec_Emcas_ZIO
-  extends BaseSpecZIO
-  with SpecEmcas
-  with AsyncRxnSpec[zio.Task]
-
 final class AsyncRxnSpec_SpinLockMcas_IO
   extends BaseSpecIO
   with SpecSpinLockMcas
   with AsyncRxnSpec[IO]
-
-final class AsyncRxnSpec_SpinLockMcas_ZIO
-  extends BaseSpecZIO
-  with SpecSpinLockMcas
-  with AsyncRxnSpec[zio.Task]

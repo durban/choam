@@ -22,4 +22,8 @@ package mcas
 private class PaddedMemoryLocation[A]( // TODO: figure out padding in SN
   _initial: A,
   _id: Long,
-) extends SimpleMemoryLocation[A](_initial)(_id)
+) extends SimpleMemoryLocation[A](_initial)(_id) {
+
+  // TODO: When this class no longer inherits SimpleMemoryLocation,
+  // TODO: we'll have to override `hashCode` here!
+}

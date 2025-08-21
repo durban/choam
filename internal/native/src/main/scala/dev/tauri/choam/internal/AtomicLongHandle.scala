@@ -46,6 +46,10 @@ private[choam] object AtomicLongHandle extends AtomicLongHandleCompanionScalaVer
 
 private[choam] final class AtomicLongHandle private (private val ptr: Ptr[atomic_llong]) extends AnyVal {
 
+  final def getVolatile: Long = {
+    atomic_load_explicit(ptr, memory_order_seq_cst)
+  }
+
   final def getAcquire: Long = {
     atomic_load_explicit(ptr, memory_order_acquire)
   }

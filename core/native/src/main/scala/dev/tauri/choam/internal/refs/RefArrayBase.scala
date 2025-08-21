@@ -30,7 +30,7 @@ private object RefArrayBase {
       vers(i) = Version.Start
       i += 1
     }
-    return vers;
+    vers
   }
 }
 
@@ -75,23 +75,39 @@ private abstract class RefArrayBase[A](
 
   protected[refs] def cmpxchgVersionV(idx: Int, ov: Long, nv: Long): Long
 
-  protected[refs] final def getV(idx: Int): AnyRef = ???
+  protected[refs] final def getV(idx: Int): AnyRef = {
+    AtomicArray.getVolatile(this.array, idx)
+  }
 
-  protected[refs] final def getO(idx: Int): AnyRef = ???
+  protected[refs] final def getO(idx: Int): AnyRef = {
+    AtomicArray.getOpaque(this.array, idx)
+  }
 
-  protected[refs] final def getP(idx: Int): AnyRef = ???
+  protected[refs] final def getP(idx: Int): AnyRef = {
+    this.array(idx)
+  }
 
-  protected[refs] final def setV(idx: Int, nv: AnyRef): Unit = ???
+  protected[refs] final def setV(idx: Int, nv: AnyRef): Unit = {
+    AtomicArray.setVolatile(this.array, idx, nv)
+  }
 
-  protected[refs] final def setP(idx: Int, nv: AnyRef): Unit = ???
+  protected[refs] final def setP(idx: Int, nv: AnyRef): Unit = {
+    this.array(idx) = nv
+  }
 
-  protected[refs] final def casV(idx: Int, ov: AnyRef, nv: AnyRef): Boolean = ???
+  protected[refs] final def casV(idx: Int, ov: AnyRef, nv: AnyRef): Boolean = {
+    AtomicArray.compareAndSet(this.array, idx, ov, nv)
+  }
 
-  protected[refs] final def cmpxchgV(idx: Int, ov: AnyRef, nv: AnyRef): AnyRef = ???
+  protected[refs] final def cmpxchgV(idx: Int, ov: AnyRef, nv: AnyRef): AnyRef = {
+    AtomicArray.compareAndExchange(this.array, idx, ov, nv)
+  }
 
-  protected[refs] final def cmpxchgR(idx: Int, ov: AnyRef, nv: AnyRef): AnyRef = ???
+  protected[refs] final def cmpxchgR(idx: Int, ov: AnyRef, nv: AnyRef): AnyRef = {
+    AtomicArray.compareAndExchangeRel(this.array, idx, ov, nv)
+  }
 
-  protected[refs] final def cmpxchgO(idx: Int, ov: AnyRef, nv: AnyRef): AnyRef = ???
-
-
+  protected[refs] final def cmpxchgO(idx: Int, ov: AnyRef, nv: AnyRef): AnyRef = {
+    AtomicArray.compareAndExchangeOpaque(this.array, idx, ov, nv)
+  }
 }

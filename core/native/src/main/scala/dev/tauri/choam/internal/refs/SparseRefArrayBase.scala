@@ -21,12 +21,16 @@ package refs
 
 import scala.scalanative.annotation.alwaysinline
 
+import mcas.Version
+
 private abstract class SparseRefArrayBase[A](
   size: Int,
   init: AnyRef,
   idBase: Long,
 ) extends RefArrayBase[A](size, init, idBase, sparse = true) {
 
+  @volatile
+  @nowarn("cat=unused-privates")
   private[this] var versions: Array[Long] =
     null
 
@@ -34,9 +38,19 @@ private abstract class SparseRefArrayBase[A](
   private[this] final def atomicVersions: AtomicHandle[Array[Long]] =
     AtomicHandle(this, "versions")
 
-  protected[refs] final override def getVersionV(idx: Int): Long = ???
+  protected[refs] final override def getVersionV(idx: Int): Long = {
+    // volatile read, so that even if it's `null`, we still have ordering:
+    val vers: Array[Long] = this.versions
+    if (vers eq null) {
+      Version.Start
+    } else {
+      AtomicArray.getVolatile(vers, idx)
+    }
+  }
 
-  protected[refs] final override def cmpxchgVersionV(idx: Int, ov: Long, nv: Long): Long = ???
+  protected[refs] final override def cmpxchgVersionV(idx: Int, ov: Long, nv: Long): Long = {
+    AtomicArray.compareAndExchange(this.getOrInitVersions(), idx, ov, nv)
+  }
 
   private[this] final def getOrInitVersions(): Array[Long] = {
     val vers = atomicVersions.getAcquire

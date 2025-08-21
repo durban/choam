@@ -17,9 +17,13 @@
 
 package dev.tauri.choam
 
-import internal.mcas.OsRng
+import internal.mcas.{ OsRng, Consts }
 
 final class EnvironmentSpec extends EnvironmentSpecPlatform {
+
+  test("Check Consts.statsEnabled") {
+    println(s"Consts.statsEnabled == ${Consts.statsEnabled}")
+  }
 
   test("Check environment") {
     for (prop <- sysProps) {
@@ -42,6 +46,7 @@ final class EnvironmentSpec extends EnvironmentSpecPlatform {
     println(s"isMac() == ${isMac()}")
     println(s"isJvm() == ${isJvm()}")
     println(s"isJs() == ${isJs()}")
+    println(s"isNative() == ${isNative()}")
     println(s"isArm() == ${isArm()}")
     println(s"isVmSupportsLongCas() == ${isVmSupportsLongCas()}")
     println(s"isIntCached(42) == ${isIntCached(42)}")
