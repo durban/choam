@@ -47,7 +47,7 @@ trait ResourceSpec[F[_]] extends BaseSpec {
 
   test("Reactive.from") {
     Reactive.from[F](crt).use { reactive =>
-      reactive(Rxn.pure(42)).flatMap { v =>
+      reactive.run(Rxn.pure(42)).flatMap { v =>
         F.delay { assertEquals(v, 42) }
       }
     }
@@ -55,14 +55,14 @@ trait ResourceSpec[F[_]] extends BaseSpec {
 
   test("Reactive.fromIn") {
     val (reactive, close) = Reactive.fromIn[SyncIO, F](crt).allocated.unsafeRunSync()
-    reactive(Rxn.pure(42)).flatMap { v =>
+    reactive.run(Rxn.pure(42)).flatMap { v =>
       F.delay { assertEquals(v, 42) }
     }.guarantee(close.to[F])
   }
 
   test("AsyncReactive.from") {
     AsyncReactive.from[F](crt).use { reactive =>
-      reactive.applyAsync(Rxn.pure(42)).flatMap { v =>
+      reactive.runAsync(Rxn.pure(42)).flatMap { v =>
         F.delay { assertEquals(v, 42) }
       }
     }
@@ -70,7 +70,7 @@ trait ResourceSpec[F[_]] extends BaseSpec {
 
   test("AsyncReactive.fromIn") {
     val (reactive, close) = AsyncReactive.fromIn[SyncIO, F](crt).allocated.unsafeRunSync()
-    reactive.applyAsync(Rxn.pure(42)).flatMap { v =>
+    reactive.runAsync(Rxn.pure(42)).flatMap { v =>
       F.delay { assertEquals(v, 42) }
     }.guarantee(close.to[F])
   }
@@ -82,10 +82,10 @@ trait ResourceSpec[F[_]] extends BaseSpec {
     Reactive.from[F](crt).use { reactive1 =>
       Reactive.from[F](crt2).use { reactive2 =>
         for {
-          ref <- reactive1(Ref(42))
-          v <- reactive1(ref.updateAndGet(_ + 1))
+          ref <- reactive1.run(Ref(42))
+          v <- reactive1.run(ref.updateAndGet(_ + 1))
           _ <- F.delay(assertEquals(v, 43))
-          r <- reactive2(ref.updateAndGet(_ + 1)).attempt
+          r <- reactive2.run(ref.updateAndGet(_ + 1)).attempt
           _ <- F.delay(assert(r.isLeft)) // IllegalArgumentException from MutDescriptor
         } yield ()
       }

@@ -47,7 +47,7 @@ class VirtualThreadsBench {
         r2.get
       }
     }
-    val tsk = st.reactive(rxn).start
+    val tsk = st.reactive.run(rxn).start
     tsk.replicateA(n).flatMap { fibers =>
       fibers.traverse_(_.joinWithNever)
     }

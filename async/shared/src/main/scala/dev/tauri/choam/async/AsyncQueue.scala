@@ -27,7 +27,7 @@ sealed trait AsyncQueue[A]
   with AsyncQueue.SourceSink[A] {
 
   final override def put[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
-    F.apply(this.add(a))
+    F.run(this.add(a))
 }
 
 /**

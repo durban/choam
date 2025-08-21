@@ -57,20 +57,20 @@ trait AsyncRxnSpec[F[_]]
       randomizeSleep = false,
     )
     for {
-      _ <- assertResultF(AsyncReactive[F].applyAsync(r, sSpin), 3)
-      _ <- assertResultF(AsyncReactive[F].applyAsync(r, sCede), 3)
-      _ <- assertResultF(AsyncReactive[F].applyAsync(r, sSleep), 3)
-      _ <- assertRaisesF(AsyncReactive[F].applyAsync(never, sSpin), _.isInstanceOf[Rxn.MaxRetriesExceeded])
-      _ <- assertRaisesF(AsyncReactive[F].applyAsync(never, sCede), _.isInstanceOf[Rxn.MaxRetriesExceeded])
-      _ <- assertRaisesF(AsyncReactive[F].applyAsync(never, sSleep), _.isInstanceOf[Rxn.MaxRetriesExceeded])
+      _ <- assertResultF(AsyncReactive[F].runAsync(r, sSpin), 3)
+      _ <- assertResultF(AsyncReactive[F].runAsync(r, sCede), 3)
+      _ <- assertResultF(AsyncReactive[F].runAsync(r, sSleep), 3)
+      _ <- assertRaisesF(AsyncReactive[F].runAsync(never, sSpin), _.isInstanceOf[Rxn.MaxRetriesExceeded])
+      _ <- assertRaisesF(AsyncReactive[F].runAsync(never, sCede), _.isInstanceOf[Rxn.MaxRetriesExceeded])
+      _ <- assertRaisesF(AsyncReactive[F].runAsync(never, sSleep), _.isInstanceOf[Rxn.MaxRetriesExceeded])
     } yield ()
   }
 
   test("Exception passthrough (AsyncReactive)") {
     throwingRxns.traverse_[F, Unit] { r =>
-      AsyncReactive[F].applyAsync(r, RetryStrategy.Default).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
-      AsyncReactive[F].applyAsync(r, RetryStrategy.Default.withCede(true)).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
-      AsyncReactive[F].applyAsync(r, RetryStrategy.Default.withSleep(true)).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
+      AsyncReactive[F].runAsync(r, RetryStrategy.Default).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
+      AsyncReactive[F].runAsync(r, RetryStrategy.Default.withCede(true)).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
+      AsyncReactive[F].runAsync(r, RetryStrategy.Default.withSleep(true)).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
     }
   }
 }

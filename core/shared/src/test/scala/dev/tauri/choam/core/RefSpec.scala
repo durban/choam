@@ -288,7 +288,7 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       r <- newRef("a")
       s0b = r.set("b")
       s0c = r.set("c")
-      _ <- assertResultF(rF.apply(s0b), ())
+      _ <- assertResultF(rF.run(s0b), ())
       _ <- assertResultF(r.get.run[F], "b")
       _ <- assertResultF(s0c.run[F], ())
       _ <- assertResultF(r.get.run[F], "c")
@@ -348,7 +348,7 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("CatsRef[Rxn, A]") {
     for {
       r <- implicitly[CatsRef.Make[Rxn]].refOf("a").run[F]
-      _ <- testCatsRef[Rxn](r, initial = "a", run = this.rF)
+      _ <- testCatsRef[Rxn](r, initial = "a", run = FunctionK.lift(this.rF.run))
     } yield ()
   }
 

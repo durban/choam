@@ -28,15 +28,12 @@ import internal.mcas.Mcas
 // TODO: data structure might just run things
 // TODO: with the `Default` (e.g., CDL#asCats).
 
-sealed trait Reactive[F[_]] extends ~>[Rxn, F] {
+sealed trait Reactive[F[_]] {
 
-  def apply[A, B](r: Rxn[B], s: RetryStrategy.Spin = RetryStrategy.Default): F[B] // TODO:0.5: rename to `run`
+  def run[A](a: Rxn[A], s: RetryStrategy.Spin): F[A]
 
-  final def run[A](a: Rxn[A], s: RetryStrategy.Spin = RetryStrategy.Default): F[A] =
-    this.apply[Any, A](a, s)
-
-  final override def apply[A](a: Rxn[A]): F[A] =
-    this.run(a, RetryStrategy.Default)
+  final def run[A](a: Rxn[A]): F[A] =
+    run(a, RetryStrategy.Default)
 
   private[choam] def mcasImpl: Mcas
 
@@ -60,7 +57,7 @@ object Reactive {
     final override val mcasImpl: Mcas,
   )(implicit F: Sync[F]) extends Reactive[F] {
 
-    final override def apply[A, B](r: Rxn[B], s: RetryStrategy.Spin): F[B] = {
+    final override def run[A](r: Rxn[A], s: RetryStrategy.Spin): F[A] = {
       F.delay { r.unsafePerform(mcas = this.mcasImpl, strategy = s) }
     }
 
@@ -72,8 +69,8 @@ object Reactive {
     underlying: Reactive[F],
     t: F ~> G,
   )(implicit G: Monad[G]) extends Reactive[G] {
-    final override def apply[A, B](r: Rxn[B], s: RetryStrategy.Spin): G[B] =
-      t(underlying.apply(r, s))
+    final override def run[A](r: Rxn[A], s: RetryStrategy.Spin): G[A] =
+      t(underlying.run(r, s))
     final override def mcasImpl: Mcas =
       underlying.mcasImpl
     final override def monad: Monad[G] =

@@ -24,7 +24,6 @@ import scala.concurrent.duration._
 
 import cats.kernel.Monoid
 import cats.{ ~>, Applicative, StackSafeMonad, Align, Defer }
-import cats.arrow.FunctionK
 import cats.data.Ior
 import cats.effect.IO
 import cats.effect.kernel.{ Ref => CatsRef }
@@ -1434,10 +1433,6 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("Reactive is a FunctionK") {
-    Reactive[F] : FunctionK[Rxn, F]
-  }
-
   private val never = Rxn.unsafe.retry[Int]
 
   test("maxRetries") {
@@ -1474,7 +1469,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       .withMaxSpin(1024)
       .withMaxRetries(Some(42))
     assertRaisesF(
-      Reactive[F].apply(never, s),
+      Reactive[F].run(never, s),
       _.isInstanceOf[Rxn.MaxRetriesExceeded],
     )
   }
@@ -1487,7 +1482,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   test("Running with Strategy.spin") {
     val r: Rxn[Int] = Rxn.pure(3)
-    assertResultF(Reactive[F].apply(r, sSpin), 3)
+    assertResultF(Reactive[F].run(r, sSpin), 3)
   }
 
   test("Running with Strategy.spin, but with interpretAsync") {

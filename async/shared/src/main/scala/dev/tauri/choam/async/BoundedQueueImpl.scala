@@ -123,6 +123,6 @@ private[choam] object BoundedQueueImpl {
     final override def offer(a: A): F[Unit] =
       self.put(a)
     final override def tryOffer(a: A): F[Boolean] =
-      F.apply(self.offer(a))
+      F.run(self.offer(a))
   }
 }

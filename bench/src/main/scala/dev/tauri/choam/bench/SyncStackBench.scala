@@ -43,7 +43,7 @@ class SyncStackBench extends BenchUtils {
   @Benchmark
   def rxnTreiberStack(s: TreiberSt, ct: McasImplState): Unit = {
     val tsk = for {
-      _ <- ct.reactive.apply(s.treiberStack.push("foo"))
+      _ <- ct.reactive.run(s.treiberStack.push("foo"))
       pr <- ct.reactive.run(s.treiberStack.tryPop)
       _ <- if (pr eq None) {
         IO.raiseError(Errors.EmptyStack)
@@ -55,7 +55,7 @@ class SyncStackBench extends BenchUtils {
   @Benchmark
   def rxnEliminationStack(s: EliminationSt, ct: McasImplState): Unit = {
     val tsk = for {
-      _ <- ct.reactive.apply(s.eliminationStack.push("foo"))
+      _ <- ct.reactive.run(s.eliminationStack.push("foo"))
       pr <- ct.reactive.run(s.eliminationStack.tryPop)
       _ <- if (pr eq None) {
         IO.raiseError(Errors.EmptyStack)

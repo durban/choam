@@ -480,7 +480,7 @@ object PubSub {
               }
             }
           }
-          val subsF = F.apply(act)
+          val subsF = F.run(act)
           val sig = sizeSignal
           val subsAndNotify = if (sig ne null) {
             subsF.flatTap { case (subs, newSize) =>
@@ -699,7 +699,7 @@ object PubSub {
       implicit val FF: Async[F] = F.asyncInst
       awaitClosed.get[F] *> {
         def go: F[Unit] = {
-          F.apply(subscriptions.get).flatMap { subscriptions =>
+          F.run(subscriptions.get).flatMap { subscriptions =>
             val itr = subscriptions.valuesIterator
             if (itr.hasNext) {
               itr.next().awaitShutdown.get *> go // there could be others
@@ -805,7 +805,7 @@ object PubSub {
 
     private[this] final def consume[F[_]](acc: Chunk[A])(implicit F: AsyncReactive[F]): Pull[F, B, Unit] = {
       implicit val FF: Async[F] = F.asyncInst
-      Pull.eval(F.apply(queue.tryDequeue)).flatMap {
+      Pull.eval(F.run(queue.tryDequeue)).flatMap {
         case Some(null) =>
           // `close` is signalling us that we're done:
           Pull.output(acc) *> Pull.done
@@ -813,7 +813,7 @@ object PubSub {
           // collect multiple chunks into a bigger one:
           consume(acc ++ chunk) // TODO: add a sizeLimit parameter
         case None =>
-          Pull.output[F, B](acc) *> Pull.eval(F.apply(hub.isClosed.get)).flatMap { isClosed =>
+          Pull.output[F, B](acc) *> Pull.eval(F.run(hub.isClosed.get)).flatMap { isClosed =>
             if (isClosed) {
               // double check queue, because there is a
               // race between `output` above, and more

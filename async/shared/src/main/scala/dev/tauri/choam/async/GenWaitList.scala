@@ -55,7 +55,7 @@ private[choam] sealed trait WaitList[A] extends GenWaitList[A] { self =>
     this.set(a).as(true)
 
   final override def asyncSet[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] = {
-    F.apply(this.set(a).void)
+    F.run(this.set(a).void)
   }
 
   final override def asyncSetCb(a: A, cb: Either[Throwable, Unit] => Unit, firstTry: Boolean, flag: GenWaitList.Flag): Rxn[Right[Nothing, Unit]] = {
