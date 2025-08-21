@@ -19,14 +19,8 @@ package dev.tauri.choam
 
 trait MUnitUtilsPlatform {
 
-  final def isJvm(): Boolean =
-    false
-
-  final def isJs(): Boolean =
-    false
-
-  final def isNative(): Boolean =
-    true
+  final def platform: MUnitUtils.Platform =
+    MUnitUtils.Native
 
   final def isVmSupportsLongCas(): Boolean = {
     true // probably...

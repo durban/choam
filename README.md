@@ -279,6 +279,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
       implementation needs to be available (see [here](https://github.com/scala-js/scala-js-java-securerandom))
   - Scala Native:
     - support is completely experimental
+    - support on Windows is even more experimental
     - no backwards compatibility
 - Scala versions: cross-compiled for 2.13 and 3.3
 

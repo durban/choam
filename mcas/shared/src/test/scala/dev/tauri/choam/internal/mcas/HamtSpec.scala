@@ -37,7 +37,12 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
 
   override protected def scalaCheckTestParameters: org.scalacheck.Test.Parameters = {
     val p = super.scalaCheckTestParameters
-    p.withMaxSize(p.maxSize * (if (isJvm()) 32 else 2))
+    val multiplier = this.platform match {
+      case Jvm => 32
+      case Js => 2
+      case Native => 4
+    }
+    p.withMaxSize(p.maxSize * multiplier)
   }
 
   test("Val/SpecVal") {
@@ -543,7 +548,11 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
   }
 
   test("Lots of elements") {
-    val N = if (isJvm()) 1000000 else 1000
+    val N = this.platform match {
+      case Jvm => 1000000
+      case Js => 1000
+      case Native => 100000
+    }
     val lst = List(42L, 99L, 1024L, Long.MinValue, Long.MaxValue)
     var i = 0
     var hamt = LongHamt.empty

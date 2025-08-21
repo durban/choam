@@ -132,13 +132,17 @@ trait RefArraySpec extends BaseSpec with SpecDefaultMcas {
   }
 
   test("big array") {
-    val size = if (isJvm()) 0x01ffffff else 0x001fffff
+    val size = this.platform match {
+      case Jvm => 0x01ffffff
+      case Js => 0x001fffff
+      case Native => 0x7fffff
+    }
     val arr = mkRefArray("foo", size)
     val r = arr.unsafeGet(size / 2)
     r.update { ov => assertEquals(ov, "foo"); "bar" }.unsafePerform(this.defaultMcasInstance)
     r.update { ov => assertEquals(ov, "bar"); "xyz" }.unsafePerform(this.defaultMcasInstance)
     assertSameInstance(r.get.unsafePerform(this.defaultMcasInstance), "xyz")
-    if (isJvm()) {
+    if (isMultithreaded()) {
       assert(r.loc.unsafeGetMarkerV() ne null)
     }
     val r2 = arr.unsafeGet(size - 1)

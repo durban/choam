@@ -91,7 +91,7 @@ trait CountDownLatchSpec[F[_]]
     } yield ()
 
     assumeF(this.mcasImpl.isThreadSafe) *> (
-      tsk.parReplicateA_(if (this.isJvm()) 5000 else 1)(using cats.effect.instances.spawn.parallelForGenSpawn)
+      tsk.parReplicateA_(if (isJvm() || isNative()) 5000 else 1)(using cats.effect.instances.spawn.parallelForGenSpawn)
     )
   }
 

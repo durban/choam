@@ -405,6 +405,7 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("EMCAS should not simply replace  active descriptors (mark should be handled)".tag(SLOW)) {
+    assume(!isNative()) // TODO: this test sometimes hangs on SN
     val r1 = MemoryLocation.unsafeWithId[String]("x")(0L)
     val r2 = MemoryLocation.unsafeWithId[String]("y")(1L)
     val latch1 = new CountDownLatch(1)

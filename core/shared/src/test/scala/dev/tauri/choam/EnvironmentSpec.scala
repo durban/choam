@@ -47,6 +47,8 @@ final class EnvironmentSpec extends EnvironmentSpecPlatform {
     println(s"isJvm() == ${isJvm()}")
     println(s"isJs() == ${isJs()}")
     println(s"isNative() == ${isNative()}")
+    println(s"isMultithreaded() == ${isMultithreaded()}")
+    println(s"platform == ${this.platform}")
     println(s"isArm() == ${isArm()}")
     println(s"isVmSupportsLongCas() == ${isVmSupportsLongCas()}")
     println(s"isIntCached(42) == ${isIntCached(42)}")

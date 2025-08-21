@@ -61,8 +61,22 @@ object BaseSpec {
 
 trait MUnitUtils extends MUnitUtilsPlatform { this: FunSuite =>
 
+  final type Platform = MUnitUtils.Platform
+  final val Jvm = MUnitUtils.Jvm
+  final val Js = MUnitUtils.Js
+  final val Native = MUnitUtils.Native
+
   final protected val SLOW =
     new munit.Tag("SLOW")
+
+  final def isJvm(): Boolean =
+    this.platform eq Jvm
+
+  final def isJs(): Boolean =
+    this.platform eq Js
+
+  final def isNative(): Boolean =
+    this.platform eq Native
 
   def assertSameInstance[A](
     obtained: A,
@@ -103,27 +117,38 @@ trait MUnitUtils extends MUnitUtilsPlatform { this: FunSuite =>
     this.assume(predicate(ver), s"this test doesn't run on JVM version ${ver}")
   }
 
-  def isOpenJdk(): Boolean = {
+  final def isOpenJdk(): Boolean = {
     val vmName = java.lang.System.getProperty("java.vm.name")
     (vmName.contains("HotSpot") || vmName.contains("OpenJDK")) && (
       !this.isGraal() // Graal very much looks like an OpenJDK
     )
   }
 
-  def isOpenJ9(): Boolean = {
+  final def isOpenJ9(): Boolean = {
     val vmName = java.lang.System.getProperty("java.vm.name")
     vmName.contains("OpenJ9")
   }
 
-  def isWindows(): Boolean = {
+  final def isWindows(): Boolean = {
     System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("windows")
   }
 
-  def isMac(): Boolean = {
+  final def isMac(): Boolean = {
     System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("mac os x")
   }
 
-  def isArm(): Boolean = {
+  final def isArm(): Boolean = {
     System.getProperty("os.arch", "").toLowerCase(java.util.Locale.ROOT).equals("aarch64")
   }
+
+  final def isMultithreaded(): Boolean = {
+    this.isJvm() || this.isNative()
+  }
+}
+
+object MUnitUtils {
+  sealed abstract class Platform
+  final object Jvm extends Platform
+  final object Js extends Platform
+  final object Native extends Platform
 }
