@@ -94,6 +94,9 @@ object PubSub {
     impl(overflowStr, allocStr, publishCanSuspend = true)
   }
 
+  private[this] val defaultSizeSignalStr: OverflowStrategy =
+    OverflowStrategy.dropNewest(2)
+
   private[this] final def impl[A](
     overflowStr: OverflowStrategy,
     allocStr: Ref.AllocationStrategy,
@@ -111,7 +114,7 @@ object PubSub {
               // TODO: subscriber count. This is necessary
               // TODO: solely to support the FS2 Topic API.
               impl[Int](
-                OverflowStrategy.dropNewest(1),
+                defaultSizeSignalStr,
                 Ref.AllocationStrategy.Default,
                 publishCanSuspend = false,
               ).map { sizeSignal =>
@@ -746,7 +749,7 @@ object PubSub {
         final override def subscribers: Stream[F, Int] = {
           _assert(self.sizeSignal ne null)
           self.sizeSignal.subscribeWithInitial(
-            OverflowStrategy.dropNewest(1),
+            defaultSizeSignalStr,
             self.subscriptions.get.map(_.size),
           )
         }
