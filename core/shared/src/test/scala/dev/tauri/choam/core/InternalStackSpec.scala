@@ -226,6 +226,7 @@ final class InternalStackSpec extends BaseSpec {
   }
 
   test("ByteStack nextPowerOf2 overflow") {
+    assume(!isNative()) // SN: Heap_exitWithOutOfMemory
     val bs = new ByteStack(initSize = 1 << 30)
     var idx = 0
     while (idx < (1 << 30)) {
