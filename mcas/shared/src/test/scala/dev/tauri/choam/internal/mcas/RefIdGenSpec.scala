@@ -27,10 +27,10 @@ import RefIdGenBase.GAMMA
 @nowarn("cat=lint-constant") // yes, we have overflows
 final class RefIdGenSpec extends ChoamCatsEffectSuite with BaseSpec {
 
-  private val M = if (isJvm() || isNative()) {
-    1024 * 1024
-  } else {
-    8
+  private val M = this.platform match {
+    case Jvm => 1024 * 1024
+    case Js => 8
+    case Native => 1024
   }
 
   test("Stepping") {
