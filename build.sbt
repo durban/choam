@@ -834,6 +834,7 @@ lazy val commonSettingsNative = Seq[Setting[_]](
       .withGC(GC.commix)
       .withMultithreading(true)
       .withSourceLevelDebuggingConfig(_.enableAll)
+      .withCompileOptions(_ :+ "-DGC_ASSERTIONS")
   }
 )
 
