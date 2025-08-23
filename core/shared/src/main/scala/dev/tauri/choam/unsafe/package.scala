@@ -94,6 +94,10 @@ package object unsafe {
     ir.imperativeTicketRead(ref.loc)
   }
 
+  final def panic(ex: Throwable)(implicit ir: InRxn): Nothing = {
+    Rxn.unsafe.imperativePanicImpl(ex)
+  }
+
   private[choam] final def alwaysRetry()(implicit ir: InRxn): Nothing = {
     throw RetryException.notPermanentFailure
   }

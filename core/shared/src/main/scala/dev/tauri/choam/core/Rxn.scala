@@ -624,7 +624,15 @@ object Rxn extends RxnInstances0 {
       panicImpl(ex)
 
     private[choam] final def panicImpl[A](ex: Throwable): RxnImpl[A] =
-      delayImpl[A] { throw ex }
+      delayImpl[A] { imperativePanicImpl[A](ex) }
+
+    private[choam] final def imperativePanicImpl[A](ex: Throwable): A = {
+      if (ex.isInstanceOf[unsafe2.RetryException]) {
+        throw new IllegalArgumentException(ex)
+      } else {
+        throw ex
+      }
+    }
 
     private[choam] final def assert(cond: Boolean): Rxn[Unit] =
       if (cond) unit else panic[Unit](new AssertionError)

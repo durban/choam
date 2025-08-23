@@ -184,6 +184,14 @@ trait CommonImperativeApiSpec[F[_]]
     }
   } yield ()
 
+  test("panic") {
+    val ex = new MyException(null)
+    val fa: F[Int] = runBlock { implicit ir =>
+      panic(ex) : Int
+    }
+    assertResultF(fa.attempt, Left(ex))
+  }
+
   test("Forced retries (1)") {
     for {
       ctr <- F.delay(new AtomicInteger)
