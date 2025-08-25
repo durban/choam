@@ -66,6 +66,18 @@ trait TRefSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("TRef#flatModify") {
+    for {
+      ref <- newTRef(42)
+      ctr <- newTRef(0)
+      _ <- assertResultF(ref.flatModify { ov =>
+        (ov + 1, ctr.update(_ + 1))
+      }.*>(ctr.get).commit, 1)
+      _ <- assertResultF(ref.get.commit, 43)
+      _ <- assertResultF(ctr.get.commit, 1)
+    } yield ()
+  }
+
   test("TRef should have .withListeners") {
     def incr(ref: TRef[Int]): F[Unit] =
       ref.get.flatMap { ov => ref.set(ov + 1) }.commit

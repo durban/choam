@@ -21,6 +21,7 @@ package stm
 import internal.mcas.Mcas
 
 sealed trait TRef[A] {
+
   def get: Txn[A]
   def set(a: A): Txn[Unit]
   def update(f: A => A): Txn[Unit]
@@ -28,6 +29,9 @@ sealed trait TRef[A] {
   def getAndSet(a: A): Txn[A]
   def getAndUpdate(f: A => A): Txn[A]
   def updateAndGet(f: A => A): Txn[A]
+
+  final def flatModify[B](f: A => (A, Txn[B])): Txn[B] =
+    modify(f).flatten
 }
 
 object TRef {
