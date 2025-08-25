@@ -34,10 +34,18 @@ trait TRefSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
   protected def newTRef[A](initial: A): F[TRef[A]] =
     TRef[A](initial).commit
 
+  test("TRef#set") {
+    for {
+      r <- newTRef(0)
+      _ <- assertResultF((r.set(42) *> r.get).commit, 42)
+      _ <- assertResultF(r.get.commit, 42)
+    } yield ()
+  }
+
   test("TRef#update") {
     for {
       r <- newTRef(0)
-      _ <- assertResultF(r.update(_ + 1).commit, ())
+      _ <- assertResultF((r.update(_ + 1) *> r.get).commit, 1)
       _ <- assertResultF(r.get.commit, 1)
     } yield ()
   }

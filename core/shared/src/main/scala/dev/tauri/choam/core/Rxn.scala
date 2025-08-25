@@ -472,18 +472,15 @@ object Rxn extends RxnInstances0 {
   final def memoize[A](rxn: Rxn[A], str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Rxn[Memo[A]] =
     Memo(rxn, str)
 
-  private[choam] final object ref {
-
-    private[choam] final def updSet1[A](r: Ref[A], nv: A): Rxn[Unit] =
-      new Rxn.UpdSet1(r.loc, nv)
-
-    private[choam] final def updUpdate1[A](r: Ref[A])(f: A => A): Rxn[Unit] =
-      new Rxn.UpdUpdate1(r.loc, f)
-  }
-
   private[choam] final object loc {
 
-    private[choam] final def modify[A, B](r: MemoryLocation[A])(f: A => (A, B)): RxnImpl[B] =
+    private[choam] final def set[A](r: MemoryLocation[A], nv: A): RxnImpl[Unit] =
+      new Rxn.UpdSet1[A](r, nv)
+
+    private[choam] final def update[A](r: MemoryLocation[A], f: A => A): RxnImpl[Unit] =
+      new Rxn.UpdUpdate1(r, f)
+
+    private[choam] final def modify[A, B](r: MemoryLocation[A], f: A => (A, B)): RxnImpl[B] =
       new Rxn.UpdFull(r, f)
   }
 

@@ -40,13 +40,13 @@ sealed trait Ref[A] extends RefLike.UnsealedRefLike[A] { this: MemoryLocation[A]
     this
 
   final override def modify[B](f: A => (A, B)): Rxn[B] =
-    Rxn.loc.modify(this)(f)
+    Rxn.loc.modify(this, f)
 
   final override def set(a: A): Rxn[Unit] =
-    Rxn.ref.updSet1(this, a)
+    Rxn.loc.set(this, a)
 
   final override def update(f: A => A): Rxn[Unit] =
-    Rxn.ref.updUpdate1(this)(f)
+    Rxn.loc.update(this, f)
 
   final override def asCats[F[_]](implicit F: core.Reactive[F]): CatsRef[F, A] =
     new Ref.CatsRefFromRef[F, A](this) {}

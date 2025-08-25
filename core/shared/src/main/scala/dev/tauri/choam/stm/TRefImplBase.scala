@@ -23,13 +23,13 @@ import internal.mcas.MemoryLocation
 private trait TRefImplBase[A] extends MemoryLocation[A] with TRef.UnsealedTRef[A] {
 
   final override def set(a: A): Txn[Unit] =
-    core.Rxn.loc.modify(this) { _ => (a, ()) }
+    core.Rxn.loc.set(this, a)
 
   final override def update(f: A => A): Txn[Unit] =
-    this.modify { ov => (f(ov), ()) }
+    core.Rxn.loc.update(this, f)
 
   final override def modify[B](f: A => (A, B)): Txn[B] =
-    core.Rxn.loc.modify(this) { ov => f(ov) }
+    core.Rxn.loc.modify(this, f)
 
   final override def getAndSet(a: A): Txn[A] =
     this.modify { ov => (a, ov) }
