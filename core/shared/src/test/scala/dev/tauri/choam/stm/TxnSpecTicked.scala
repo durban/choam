@@ -20,8 +20,8 @@ package stm
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import cats.effect.kernel.Deferred
-import cats.effect.Outcome.{ Canceled, Succeeded, Errored }
+import cats.effect.kernel.{ Deferred, Outcome }
+import cats.effect.kernel.Outcome.{ Canceled, Succeeded, Errored }
 import cats.effect.IO
 
 import internal.mcas.MemoryLocation
@@ -73,7 +73,7 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
       _ <- this.tickAll
       _ <- assertResultF(d.tryGet, Some("1"))
       _ <- assertResultF(d.get, "1")
-      _ <- fib.joinWithNever
+      _ <- assertResultF(fib.joinWithNever, "1")
     } yield ()
   }
 
@@ -86,6 +86,7 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
       _ <- fib.cancel
       _ <- this.tickAll
       _ <- assertResultF(d.tryGet, Some("cancelled"))
+      _ <- assertResultF(fib.join, Outcome.canceled[F, Throwable, String])
     } yield ()
   }
 
@@ -99,7 +100,7 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
       _ <- r.set(4).commit
       _ <- this.tickAll
       _ <- assertResultF(d.tryGet, Some("4"))
-      _ <- fib.joinWithNever
+      _ <- assertResultF(fib.joinWithNever, "4")
     } yield ()
   }
 
@@ -131,7 +132,7 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
       _ <- r2.set(2).commit
       _ <- this.tickAll
       _ <- assertResultF(d1.tryGet, Some("2"))
-      _ <- fib1.joinWithNever
+      _ <- assertResultF(fib1.joinWithNever, "2")
       // reset:
       _ <- r2.set(-1).commit
       // 1st alt:
@@ -141,7 +142,7 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
       _ <- r1.set(1).commit
       _ <- this.tickAll
       _ <- assertResultF(d2.tryGet, Some("1"))
-      _ <- fib2.joinWithNever
+      _ <- assertResultF(fib2.joinWithNever, "1")
     } yield ()
   }
 

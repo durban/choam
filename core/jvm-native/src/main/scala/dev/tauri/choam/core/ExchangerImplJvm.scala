@@ -30,7 +30,7 @@ private sealed trait ExchangerImplJvm[A, B]
 
   import ExchangerImplJvm.{ size => _, _ }
 
-  protected def debugId: Option[Long]
+  protected def debugId: Option[Long] // TODO:0.5: remove this
 
   // TODO: could we use a single elimination array?
   protected def incoming: AtomicReferenceArray[ExchangerNode[?]]
