@@ -300,4 +300,39 @@ trait PubSubSpecTickedAsync[F[_]] extends PubSubSpecTicked[F] { this: McasImplSp
       _ <- assertResultF(sizeFib.joinWithNever, List(0, 1, 2, 3))
     } yield ()
   }
+
+  test("FS2 Topic backpressure") {
+    val t = for {
+      hub <- newHub[Int](PubSub.OverflowStrategy.backpressure(64))
+      topic = hub.asFs2
+      cb <- cats.effect.std.CyclicBarrier(2)
+      fib1 <- topic.subscribe(64).compile.toList.start
+      _ <- this.tickAll
+      fib2 <- topic.subscribe(2).evalTap { _ => cb.await }.compile.toList.start
+      _ <- this.tickAll
+      d <- F.deferred[Unit]
+      pubFib <- F.uncancelable { poll =>
+        poll(
+          topic.publish1(1) *>
+          F.sleep(1.second) *> // wait for streams to suspend
+          topic.publish1(2) *>
+          topic.publish1(3) *>
+          topic.publish1(4)
+        ).flatTap { _ =>
+          d.complete(()).void
+        }
+      }.start
+      _ <- assertResultF(d.tryGet, None)
+      _ <- this.tickAll
+      _ <- assertResultF(d.tryGet, None)
+      _ <- cb.await.replicateA_(4)
+      _ <- this.tickAll
+      _ <- assertResultF(d.tryGet, Some(()))
+      _ <- pubFib.joinWithNever
+      _ <- assertResultF(topic.close, Right(()))
+      _ <- assertResultF(fib1.joinWithNever, List(1, 2, 3, 4))
+      _ <- assertResultF(fib2.joinWithNever, List(1, 2, 3, 4))
+    } yield ()
+    t.replicateA_(if (isJs()) 5 else 50)
+  }
 }
