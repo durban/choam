@@ -18,11 +18,13 @@
 package dev.tauri.choam
 package stm
 
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 
 import cats.kernel.Monoid
-import cats.{ ~>, Defer, Monad, StackSafeMonad }
+import cats.{ ~>, Defer, Monad, StackSafeMonad, Applicative }
 import cats.effect.kernel.Unique
+import cats.effect.std.UUIDGen
 import cats.effect.IO
 
 import core.RetryStrategy
@@ -174,6 +176,21 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("Txn.newUuid") {
+    for {
+      t1 <- Txn.newUuid.commit
+      t23 <- (Txn.newUuid, Txn.newUuid).tupled.commit
+      (t2, t3) = t23
+      _ <- assertEqualsF(Set(t1, t2, t3).size, 3)
+      _ <- F.delay {
+        for (u <- List(t1, t2, t3)) {
+          assertEquals(u.variant, 2)
+          assertEquals(u.version, 4)
+        }
+      }
+    } yield ()
+  }
+
   test("Txn.unsafe.delayContext") {
     Txn.unsafe.delayContext { ctx =>
       ctx eq this.mcasImpl.currentContext()
@@ -291,9 +308,20 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("Unique[Txn[F, *]] instance") {
+  test("Unique[Txn] instance") {
     def generic[G[_]](implicit G: Unique[G]): G[(Unique.Token, Unique.Token)] = {
       G.applicative.map2(G.unique, G.unique)(Tuple2.apply)
+    }
+    for {
+      t12 <- generic[Txn].commit
+      (t1, t2) = t12
+      _ <- assertNotEqualsF(t1, t2)
+    } yield ()
+  }
+
+  test("UUIDGen[Txn] instance") {
+    def generic[G[_]](implicit G: Applicative[G], gen: UUIDGen[G]): G[(UUID, UUID)] = {
+      G.map2(gen.randomUUID, gen.randomUUID)(Tuple2.apply)
     }
     for {
       t12 <- generic[Txn].commit

@@ -18,9 +18,12 @@
 package dev.tauri.choam
 package stm
 
+import java.util.UUID
+
 import cats.kernel.Monoid
 import cats.{ ~>, Applicative, Defer, StackSafeMonad }
 import cats.effect.kernel.Unique
+import cats.effect.std.UUIDGen
 
 import core.{ Rxn, RxnImpl }
 import internal.mcas.Mcas
@@ -78,6 +81,9 @@ object Txn extends TxnInstances0 {
 
   final def unique: Txn[Unique.Token] =
     Rxn.uniqueImpl
+
+  final def newUuid: Txn[UUID] =
+    Rxn.newUuidImpl
 
   private[choam] final object unsafe {
 
@@ -179,6 +185,14 @@ private[stm] sealed abstract class TxnInstances0 extends TxnInstances1 { self: T
       self.monadInstance
     final override def unique: Txn[Unique.Token] =
       Txn.unique
+  }
+
+  implicit final def uuidGenInstance: UUIDGen[Txn] =
+    _uuidGenInstance
+
+  private[this] val _uuidGenInstance: UUIDGen[Txn] = new UUIDGen[Txn] {
+    final override def randomUUID: Txn[UUID] =
+      self.newUuid
   }
 }
 

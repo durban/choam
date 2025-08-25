@@ -453,7 +453,7 @@ object Rxn extends RxnInstances0 {
   final def newUuid: Rxn[UUID] =
     newUuidImpl
 
-  private[core] final val newUuidImpl: RxnImpl[UUID] =
+  private[choam] final val newUuidImpl: RxnImpl[UUID] =
     random.newUuidImpl
 
   final def fastRandom: Random[Rxn] =
