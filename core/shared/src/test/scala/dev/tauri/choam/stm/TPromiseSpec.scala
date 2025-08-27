@@ -20,6 +20,8 @@ package stm
 
 import java.util.concurrent.ThreadLocalRandom
 
+import scala.concurrent.duration._
+
 import cats.syntax.all._
 import cats.effect.IO
 import cats.effect.instances.spawn._
@@ -38,9 +40,9 @@ trait TPromiseSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     val t = for {
       p <- TPromise[Int].commit
       latches <- F.deferred[Unit].replicateA(N)
-      fibs <- (1 to N).toList.traverse { idx => (latches(idx - 1).complete(()) *> p.get.commit).start }
-      _ <- F.cede
+      fibs <- (0 until N).toList.traverse { idx => (latches(idx).complete(()) *> p.get.commit).start }
       _ <- latches.traverse_(_.get)
+      _ <- F.sleep(10.millis)
       _ <- assertResultF(p.tryGet.commit, None)
       results <- (1 to M).toList.parTraverse { i =>
         F.cede *> p.complete(i).commit.map { ok => (i, ok) }
@@ -62,9 +64,9 @@ trait TPromiseSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     val t = for {
       p <- TPromise[Int].commit
       latches <- F.deferred[Unit].replicateA(N)
-      fibs <- (1 to N).toList.traverse { idx => (latches(idx - 1).complete(()) *> p.get.commit).start }
-      _ <- F.cede
+      fibs <- (0 until N).toList.traverse { idx => (latches(idx).complete(()) *> p.get.commit).start }
       _ <- latches.traverse_(_.get)
+      _ <- F.sleep(10.millis)
       _ <- assertResultF(p.tryGet.commit, None)
       toCancel = rng.shuffle(fibs).take(N >> 1)
       results <- F.both(
@@ -77,13 +79,88 @@ trait TPromiseSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       _ <- assertEqualsF(okResults.size, 1)
       okIdx = okResults.head
       _ <- assertResultF(p.tryGet.commit, Some(okIdx))
-      fibOutcomes <- fibs.traverse(_.join)
-      _ <- assertResultF(fibOutcomes.forallM {
-        case Outcome.Canceled() => F.pure(true)
-        case Outcome.Succeeded(fa) => fa.map { a => (a == okIdx) }
-        case Outcome.Errored(err) => F.raiseError(err)
+      fibOutcomes <- fibs.traverse { fib =>
+        fib.join.map { oc => (oc, toCancel.contains(fib)) }
+      }
+      _ <- assertResultF(fibOutcomes.forallM { case (oc, wasCancelled) =>
+        oc match {
+          case Outcome.Canceled() => F.pure(wasCancelled)
+          case Outcome.Succeeded(fa) => fa.map { a => (clue(a) == okIdx) }
+          case Outcome.Errored(err) => F.raiseError(err)
+        }
       }, true)
-    } yield ()
-    t.replicateA_(if (isJs()) 10 else 100)
+      someWasCancelled = if (isJvm()) {
+        fibOutcomes.exists(_._1.isCanceled)
+      } else {
+        true // SN scheduling is to different; JS doesn't really matter here
+      }
+    } yield someWasCancelled
+    t.replicateA(if (isJs()) 10 else 100).flatMap { cancellations =>
+      assertF(cancellations.exists(ok => ok))
+    }
+  }
+
+  test("complete left side of orElse") {
+    val t = orElseTest(leftSide = true, N = 1024, M = 16)
+    t.replicateA(if (isJs()) 10 else 100).flatMap { cancellations =>
+      assertF(cancellations.exists(ok => ok))
+    }
+  }
+
+  test("complete right side of orElse") {
+    val t = orElseTest(leftSide = false, N = 1024, M = 16)
+    t.replicateA(if (isJs()) 10 else 100).flatMap { cancellations =>
+      assertF(cancellations.exists(ok => ok))
+    }
+  }
+
+  private[this] def orElseTest(leftSide: Boolean, N: Int, M: Int): F[Boolean] = {
+    val rng = new scala.util.Random(ThreadLocalRandom.current().nextLong())
+    for {
+      p1 <- TPromise[Int].commit
+      p2 <- TPromise[Int].commit
+      latches <- F.deferred[Unit].replicateA(N)
+      fibs <- (0 until N).toList.traverse { idx =>
+        (latches(idx).complete(()) *> (p1.get orElse p2.get).commit).start
+      }
+      _ <- latches.traverse_(_.get)
+      _ <- F.sleep(10.millis)
+      _ <- assertResultF(p1.tryGet.commit, None)
+      _ <- assertResultF(p2.tryGet.commit, None)
+      p = if (leftSide) p1 else p2
+      other = if (leftSide) p2 else p1
+      toCancel =  rng.shuffle(fibs).take(N >> 1)
+      results <- F.both(
+        (1 to M).toList.parTraverse { i =>
+          F.cede *> p.complete(i).commit.map { ok => (i, ok) }
+        },
+        toCancel.parTraverseVoid(_.cancel)
+      ).map(_._1)
+      okResults = results.collect { case (i, true) => i }
+      _ <- assertEqualsF(okResults.size, 1)
+      okIdx = okResults.head
+      _ <- assertResultF(p.tryGet.commit, Some(okIdx))
+      _ <- assertResultF(other.tryGet.commit, None)
+      fibOutcomes <- fibs.traverse { fib =>
+        fib.join.map { oc => (oc, toCancel.contains(fib)) }
+      }
+      _ <- assertResultF(fibOutcomes.forallM { case (oc, wasCancelled) =>
+        oc match {
+          case Outcome.Canceled() => F.pure(wasCancelled)
+          case Outcome.Succeeded(fa) => fa.map { a => (a == okIdx) }
+          case Outcome.Errored(err) => F.raiseError(err)
+        }
+      }, true)
+      someWasCancelled = if (isJvm()) {
+        fibOutcomes.exists(_._1.isCanceled)
+      } else {
+        true // SN scheduling is to different; JS doesn't really matter here
+      }
+      _ <- assertResultF(p.tryGet.commit, Some(okIdx))
+      _ <- assertResultF(other.tryGet.commit, None)
+      _ <- other.complete(42).commit
+      _ <- assertResultF(p.tryGet.commit, Some(okIdx))
+      _ <- assertResultF(other.tryGet.commit, Some(42))
+    } yield someWasCancelled
   }
 }
