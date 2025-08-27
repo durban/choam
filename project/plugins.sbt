@@ -39,7 +39,7 @@ addSbtPlugin("org.portable-scala" % "sbt-scala-native-crossproject" % "1.3.2") /
 addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.19.0") // https://www.scala-js.org/
 addSbtPlugin("org.scala-native" % "sbt-scala-native" % "0.5.8") // https://github.com/scala-native/scala-native
 addSbtPlugin("net.bzzt" % "sbt-strict-scala-versions" % "0.0.1") // https://github.com/raboof/sbt-strict-scala-versions
-addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.11.1") // https://github.com/sbt/sbt-native-packager
+addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.11.3") // https://github.com/sbt/sbt-native-packager
 addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.13.1") // https://github.com/sbt/sbt-buildinfo
 
 ThisBuild / semanticdbEnabled := true
