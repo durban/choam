@@ -2324,6 +2324,12 @@ object Rxn extends RxnInstances0 {
               case s: SuspendUntil =>
                 this.beforeSuspend()
                 val sus: F[Rxn[Any]] = s.toF[F](mcas, ctx)
+                // TODO: There is a cancellation point right inside
+                // TODO: the `poll` on the next line. That's not
+                // TODO: ideal, as `sus` might not be cancellable
+                // TODO: otherwise. Instead, we should pass `poll`
+                // TODO: to `toF`, and let it decide, where it is
+                // TODO: cancellable exactly.
                 F.flatMap(poll(sus)) { nxt => step(ctxHint = ctx, debugNext = nxt) }
               case r =>
                 this.beforeResult()
