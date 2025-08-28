@@ -70,11 +70,11 @@ trait TPromiseSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       _ <- assertResultF(p.tryGet.commit, None)
       toCancel = rng.shuffle(fibs).take(N >> 1)
       results <- F.both(
+        toCancel.parTraverseVoid(_.cancel),
         (1 to M).toList.parTraverse { i =>
           F.cede *> p.complete(i).commit.map { ok => (i, ok) }
         },
-        toCancel.parTraverseVoid(_.cancel)
-      ).map(_._1)
+      ).map(_._2)
       okResults = results.collect { case (i, true) => i }
       _ <- assertEqualsF(okResults.size, 1)
       okIdx = okResults.head
@@ -92,24 +92,24 @@ trait TPromiseSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       someWasCancelled = if (isJvm()) {
         fibOutcomes.exists(_._1.isCanceled)
       } else {
-        true // SN scheduling is to different; JS doesn't really matter here
+        true // SN scheduling is too different; JS doesn't really matter here
       }
     } yield someWasCancelled
-    t.replicateA(if (isJs()) 10 else 100).flatMap { cancellations =>
+    t.replicateA(if (isJs()) 10 else 200).flatMap { cancellations =>
       assertF(cancellations.exists(ok => ok))
     }
   }
 
   test("complete left side of orElse") {
     val t = orElseTest(leftSide = true, N = 1024, M = 16)
-    t.replicateA(if (isJs()) 10 else 100).flatMap { cancellations =>
+    t.replicateA(if (isJs()) 10 else 200).flatMap { cancellations =>
       assertF(cancellations.exists(ok => ok))
     }
   }
 
   test("complete right side of orElse") {
     val t = orElseTest(leftSide = false, N = 1024, M = 16)
-    t.replicateA(if (isJs()) 10 else 100).flatMap { cancellations =>
+    t.replicateA(if (isJs()) 10 else 200).flatMap { cancellations =>
       assertF(cancellations.exists(ok => ok))
     }
   }
@@ -131,11 +131,11 @@ trait TPromiseSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       other = if (leftSide) p2 else p1
       toCancel =  rng.shuffle(fibs).take(N >> 1)
       results <- F.both(
+        toCancel.parTraverseVoid(_.cancel),
         (1 to M).toList.parTraverse { i =>
           F.cede *> p.complete(i).commit.map { ok => (i, ok) }
         },
-        toCancel.parTraverseVoid(_.cancel)
-      ).map(_._1)
+      ).map(_._2)
       okResults = results.collect { case (i, true) => i }
       _ <- assertEqualsF(okResults.size, 1)
       okIdx = okResults.head
@@ -154,7 +154,7 @@ trait TPromiseSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       someWasCancelled = if (isJvm()) {
         fibOutcomes.exists(_._1.isCanceled)
       } else {
-        true // SN scheduling is to different; JS doesn't really matter here
+        true // SN scheduling is too different; JS doesn't really matter here
       }
       _ <- assertResultF(p.tryGet.commit, Some(okIdx))
       _ <- assertResultF(other.tryGet.commit, None)
