@@ -20,6 +20,7 @@ package stm
 package data
 
 import cats.effect.IO
+import cats.effect.kernel.Outcome
 
 final class TQueueSpecTicked_DefaultMcas_IO
   extends BaseSpecTickedIO
@@ -41,6 +42,51 @@ trait TQueueSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =
       _ <- (q.put(3) *> q.put(4)).commit
       _ <- assertResultF(q.take.commit, 3)
       _ <- assertResultF(q.take.commit, 4)
+    } yield ()
+    t.replicateA_(if (isJs()) 10 else 100)
+  }
+
+  test("TQueue cancel take") {
+    val t = for {
+      q <- TQueue.unbounded[Int].commit
+      take1 <- q.take.commit.start
+      take2 <- q.take.commit.start
+      _ <- this.tickAll
+      _ <- take1.cancel
+      _ <- q.put(1).commit
+      _ <- q.put(2).commit
+      r1 <- take1.join
+      r2 <- take2.joinWithNever
+      _ <- assertEqualsF(r2, 1)
+      _ <- assertF(r1.isCanceled)
+      _ <- (q.put(3) *> q.put(4)).commit
+      _ <- assertResultF(q.take.commit, 2)
+      _ <- assertResultF(q.take.commit, 3)
+      _ <- assertResultF(q.take.commit, 4)
+    } yield ()
+    t.replicateA_(if (isJs()) 10 else 100)
+  }
+
+  test("TQueue cancel take + put race") {
+    val t = for {
+      q <- TQueue.unbounded[Int].commit
+      take1 <- q.take.commit.start
+      take2 <- q.take.commit.start
+      _ <- this.tickAll
+      _ <- F.both(take1.cancel, q.put(1).commit)
+      _ <- q.put(2).commit
+      r1 <- take1.join
+      r2 <- take2.joinWithNever
+      _ <- r1 match {
+        case Outcome.Canceled() =>
+          assertEqualsF(r2, 1) *> assertResultF(q.take.commit, 2)
+        case Outcome.Errored(err) =>
+          F.raiseError(err)
+        case Outcome.Succeeded(fa) =>
+          fa.flatMap { r1 =>
+            assertEqualsF(Set(r1, r2), Set(1, 2))
+          }
+      }
     } yield ()
     t.replicateA_(if (isJs()) 10 else 100)
   }
