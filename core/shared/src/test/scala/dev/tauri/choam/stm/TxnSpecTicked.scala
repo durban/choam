@@ -20,7 +20,7 @@ package stm
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import cats.effect.kernel.{ Deferred, Outcome }
+import cats.effect.kernel.Deferred
 import cats.effect.kernel.Outcome.{ Canceled, Succeeded, Errored }
 import cats.effect.IO
 
@@ -80,14 +80,9 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
 
   test("Txn.retry with no refs read") {
     val t = for {
-      d <- Deferred[F, String]
-      fib <- txnToDef(Txn.retry[String], d).start
-      _ <- this.tickAll
-      _ <- assertResultF(d.tryGet, None)
-      _ <- fib.cancel
-      _ <- this.tickAll
-      _ <- assertResultF(d.tryGet, Some("cancelled"))
-      _ <- assertResultF(fib.join, Outcome.canceled[F, Throwable, String])
+      r <- Txn.retry[String].commit.attempt
+      _ <- assertF(r.isLeft)
+      _ <- assertF(r.swap.getOrElse(fail("what?")).isInstanceOf[IllegalStateException])
     } yield ()
     t.replicateA_(if (isJs()) 10 else 100)
   }

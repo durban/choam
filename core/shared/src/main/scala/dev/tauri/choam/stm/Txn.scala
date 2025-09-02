@@ -67,6 +67,11 @@ object Txn extends TxnInstances0 {
   final def unit: Txn[Unit] =
     Rxn.unitImpl
 
+  /**
+   * @see [[Txn#orElse]]
+   *
+   * @note It is an error to retry if the read-set is empty.
+   */
   final def retry[A]: Txn[A] =
     Rxn.StmImpl.retryWhenChanged[A]
 

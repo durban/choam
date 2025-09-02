@@ -956,7 +956,7 @@ object Rxn extends RxnInstances0 {
           }
         })
       } else {
-        F.never // TODO: should we just throw an error?
+        F.raiseError(new IllegalStateException(s"Retry with empty read-set"))
       }
     }
 
