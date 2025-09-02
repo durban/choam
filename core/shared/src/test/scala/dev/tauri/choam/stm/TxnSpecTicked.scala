@@ -63,7 +63,7 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
   }
 
   test("Txn.retry") {
-    for {
+    val t = for {
       r <- TRef[Int](-1).commit
       d <- Deferred[F, String]
       fib <- txn1Def(r, d).start
@@ -75,10 +75,11 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
       _ <- assertResultF(d.get, "1")
       _ <- assertResultF(fib.joinWithNever, "1")
     } yield ()
+    t.replicateA_(if (isJs()) 10 else 100)
   }
 
   test("Txn.retry with no refs read") {
-    for {
+    val t = for {
       d <- Deferred[F, String]
       fib <- txnToDef(Txn.retry[String], d).start
       _ <- this.tickAll
@@ -88,10 +89,11 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
       _ <- assertResultF(d.tryGet, Some("cancelled"))
       _ <- assertResultF(fib.join, Outcome.canceled[F, Throwable, String])
     } yield ()
+    t.replicateA_(if (isJs()) 10 else 100)
   }
 
   test("Txn.check") {
-    for {
+    val t = for {
       r <- TRef[Int](1).commit
       d <- Deferred[F, String]
       fib <- txnToDef(getEven(r), d).start
@@ -102,10 +104,11 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
       _ <- assertResultF(d.tryGet, Some("4"))
       _ <- assertResultF(fib.joinWithNever, "4")
     } yield ()
+    t.replicateA_(if (isJs()) 10 else 100)
   }
 
   test("Txn.retry should be cancellable") {
-    for {
+    val t = for {
       r <- TRef[Int](-1).commit
       d <- F.deferred[Unit]
       fib <- txn1(r).commit.guarantee(d.complete(()).void).start
@@ -115,10 +118,11 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
       _ <- assertResultF(fib.join, Canceled[F, Throwable, String]())
       _ <- assertResultF(d.tryGet, Some(()))
     } yield ()
+    t.replicateA_(if (isJs()) 10 else 100)
   }
 
   test("Txn.retry should retry if a TRef read in any alt changes") {
-    for {
+    val t = for {
       r1 <- TRef[Int](-1).commit
       r2 <- TRef[Int](-1).commit
       d1 <- Deferred[F, String]
@@ -144,6 +148,7 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
       _ <- assertResultF(d2.tryGet, Some("1"))
       _ <- assertResultF(fib2.joinWithNever, "1")
     } yield ()
+    t.replicateA_(if (isJs()) 10 else 100)
   }
 
   private final def numberOfListeners[A](ref: TRef[A]): F[Int] = F.delay {
@@ -151,7 +156,7 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
   }
 
   test("Txn.retry should unsubscribe from TRefs when cancelled") {
-    for {
+    val t = for {
       r0 <- TRef[Int](0).commit
       r1 <- TRef[Int](0).commit
       r2 <- TRef[Int](0).commit
@@ -167,10 +172,11 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
       _ <- assertResultF(numberOfListeners(r1), 0)
       _ <- assertResultF(numberOfListeners(r2), 0)
     } yield ()
+    t.replicateA_(if (isJs()) 10 else 100)
   }
 
   test("Txn.retry should unsubscribe from TRefs when completed") {
-    for {
+    val t = for {
       r0 <- TRef[Int](0).commit
       r1 <- TRef[Int](0).commit
       r2 <- TRef[Int](0).commit
@@ -186,10 +192,11 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
       _ <- assertResultF(numberOfListeners(r1), 0)
       _ <- assertResultF(numberOfListeners(r2), 0)
     } yield ()
+    t.replicateA_(if (isJs()) 10 else 100)
   }
 
   test("Txn.retry should unsubscribe from TRefs when it doesn't suspend (due to concurrent change)") {
-    for {
+    val t = for {
       d <- F.deferred[Unit]
       r0 <- TRef[Int](0).commit
       r1 <- TRef[Int](0).commit
@@ -207,6 +214,7 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
       _ <- assertResultF(numberOfListeners(r0), 0)
       _ <- assertResultF(numberOfListeners(r1), 0)
     } yield ()
+    t.replicateA_(if (isJs()) 10 else 100)
   }
 
   test("Txn.retry should unsubscribe from TRefs when it's cancelled when it doesn't suspend (due to concurrent change)") {
