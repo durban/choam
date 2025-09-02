@@ -209,8 +209,8 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("Txn.retry should not be cancellable when it doesn't suspend (due to concurrent change)".fail) {
-    for {
+  test("Txn.retry should unsubscribe from TRefs when it's cancelled when it doesn't suspend (due to concurrent change)") {
+    val t = for {
       d <- F.deferred[Unit]
       r0 <- TRef[Int](0).commit
       r1 <- TRef[Int](0).commit
@@ -226,11 +226,13 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
       cancelFib <- fib.cancel.start
       _ <- stepper.stepAndTickAll // mustn't suspend
       _ <- assertResultF(d.tryGet, Some(()))
-      _ <- fib.joinWithNever
+      oc <- fib.join
+      _ <- assertF(oc.isCanceled || oc.isSuccess)
       _ <- assertResultF(numberOfListeners(r0), 0)
       _ <- assertResultF(numberOfListeners(r1), 0)
       _ <- cancelFib.joinWithNever
     } yield ()
+    t.replicateA_(if (isJs()) 10 else 100)
   }
 
   test("Run with Stepper") {
