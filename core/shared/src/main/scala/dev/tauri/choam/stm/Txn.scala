@@ -28,65 +28,150 @@ import cats.effect.std.UUIDGen
 import core.{ Rxn, RxnImpl }
 import internal.mcas.Mcas
 
-sealed trait Txn[+B] {
+sealed trait Txn[+A] {
 
-  def map[C](f: B => C): Txn[C]
+  /**
+   * Performs `this`, then applies
+   * `f` to its result.
+   *
+   * @see [[cats.Functor.map]]
+   */
+  def map[B](f: A => B): Txn[B]
 
-  def as[C](c: C): Txn[C]
+  /**
+   * Equivalent to `.map(_ => b)`.
+   *
+   * @see [[cats.Functor.as]]
+   */
+  def as[B](b: B): Txn[B]
 
+  /**
+   * Equivalent to `.map(_ => ())`.
+   *
+   * @see [[cats.Functor.void]]
+   */
   def void: Txn[Unit]
 
-  def map2[C, D](that: Txn[C])(f: (B, C) => D): Txn[D]
+  /**
+   * Performs `this`, then `that`, then
+   * applies `f` to the 2 results.
+   *
+   * @see [[cats.Apply.map2]]
+   */
+  def map2[B, C](that: Txn[B])(f: (A, B) => C): Txn[C]
 
-  def productR[C](that: Txn[C]): Txn[C]
+  /**
+   * Performs `this`, then `that`; the
+   * result will be the result of `that`.
+   *
+   * @see [[cats.Apply.productR]]
+   */
+  def productR[B](that: Txn[B]): Txn[B]
 
-  def *> [C](that: Txn[C]): Txn[C]
+  /**
+   * Equivalent to `productR`.
+   *
+   * @see [[cats.Apply.productR]]
+   */
+  def *> [B](that: Txn[B]): Txn[B]
 
-  def productL[C](that: Txn[C]): Txn[B]
+  /**
+   * Performs `this`, then `that`; the
+   * result will be the result of `this`.
+   *
+   * @see [[cats.Apply.productL]]
+   */
+  def productL[B](that: Txn[B]): Txn[A]
 
-  def <* [C](that: Txn[C]): Txn[B]
+  /**
+   * Equivalent to `productL`.
+   *
+   * @see [[cats.Apply.productL]]
+   */
+  def <* [B](that: Txn[B]): Txn[A]
 
-  def product [C](that: Txn[C]): Txn[(B, C)]
+  /**
+   * Performs `this`, then `that`; the
+   * result will be a tuple of both
+   * results.
+   *
+   * @see [[cats.Apply.product]]
+   */
+  def product[B](that: Txn[B]): Txn[(A, B)]
 
-  def flatMap[C](f: B => Txn[C]): Txn[C]
+  /**
+   * Performs `this`, then applies `f`
+   * to its result, then performs the
+   * result of `f`.
+   *
+   * @see [[cats.FlatMap.flatMap]]
+   */
+  def flatMap[B](f: A => Txn[B]): Txn[B]
 
-  def flatten[C](implicit ev: B <:< Txn[C]): Txn[C]
+  /**
+   * Equivalent to `.flatMap(a => a)`.
+   *
+   * @see [[cats.FlatMap.flatten]]
+   */
+  def flatten[B](implicit ev: A <:< Txn[B]): Txn[B]
 
-  def orElse[Y >: B](that: Txn[Y]): Txn[Y]
+  /**
+   * Creates a `Txn` with 2 alternatives: `this`
+   * (left side) and `that` (right side).
+   *
+   * Thus, `a orElse b` is a `Txn` which: if
+   * `a` completes, completes with the result of
+   * `a`; otherwise, it tries to perform `b`.
+   */
+  def orElse[X >: A](that: Txn[X]): Txn[X]
 
-  private[choam] def impl: RxnImpl[B]
+  private[choam] def impl: RxnImpl[A]
 }
 
 object Txn extends TxnInstances0 {
 
   private[choam] trait UnsealedTxn[+B] extends Txn[B]
 
+  /** @see [[cats.Applicative#pure]] */
   final def pure[A](a: A): Txn[A] =
     Rxn.pureImpl(a)
 
+  /** @see [[cats.Applicative#unit]] */
   final def unit: Txn[Unit] =
     Rxn.unitImpl
 
   /**
-   * @see [[Txn#orElse]]
+   * Retries the current `Txn`.
    *
    * @note It is an error to retry if the read-set is empty.
+   *
+   * @see [[Txn#orElse]]
    */
   final def retry[A]: Txn[A] =
     Rxn.StmImpl.retryWhenChanged[A]
 
+  /**
+   * If `cond` is `false`, retries;
+   * otherwise, completes with `()`.
+   *
+   * @see [[Txn.retry]]
+   */
   final def check(cond: Boolean): Txn[Unit] =
     if (cond) unit else retry
 
+  /** @see [[cats.Monad#tailRecM]] */
   final def tailRecM[A, B](a: A)(f: A => Txn[Either[A, B]]): Txn[B] =
     Rxn.tailRecMImpl(a)(f.asInstanceOf[Function1[A, Rxn[Either[A, B]]]])
 
+  /** @see [[cats.Defer#defer]] */
   final def defer[A](fa: => Txn[A]): Txn[A] =
     Rxn.unsafe.suspendImpl { fa.impl }
 
+  /** Generates a unique token */
   final def unique: Txn[Unique.Token] =
     Rxn.uniqueImpl
 
+  /** Generates a random [[java.util.UUID]] */
   final def newUuid: Txn[UUID] =
     Rxn.newUuidImpl
 
