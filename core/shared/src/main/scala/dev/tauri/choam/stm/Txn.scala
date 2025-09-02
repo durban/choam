@@ -120,8 +120,8 @@ sealed trait Txn[+A] {
    * (left side) and `that` (right side).
    *
    * Thus, `a orElse b` is a `Txn` which: if
-   * `a` completes, completes with the result of
-   * `a`; otherwise, it tries to perform `b`.
+   * `a` succeeds, succeeds with the result of
+   * `a`; otherwise, it performs `b`.
    */
   def orElse[X >: A](that: Txn[X]): Txn[X]
 
@@ -132,11 +132,19 @@ object Txn extends TxnInstances0 {
 
   private[choam] trait UnsealedTxn[+B] extends Txn[B]
 
-  /** @see [[cats.Applicative#pure]] */
+  /**
+   * Succeeds with `a`.
+   *
+   * @see [[cats.Applicative#pure]]
+   */
   final def pure[A](a: A): Txn[A] =
     Rxn.pureImpl(a)
 
-  /** @see [[cats.Applicative#unit]] */
+  /**
+   * Equivalent to `pure(())`.
+   *
+   * @see [[cats.Applicative#unit]]
+   */
   final def unit: Txn[Unit] =
     Rxn.unitImpl
 
@@ -152,14 +160,27 @@ object Txn extends TxnInstances0 {
 
   /**
    * If `cond` is `false`, retries;
-   * otherwise, completes with `()`.
+   * otherwise, succeeds with `()`.
    *
    * @see [[Txn.retry]]
    */
   final def check(cond: Boolean): Txn[Unit] =
     if (cond) unit else retry
 
-  /** @see [[cats.Monad#tailRecM]] */
+  /**
+   * Equivalent to the following implementation:
+   *
+   * {{{
+   * def tailRecM[A, B](a: A)(f: A => Txn[Either[A, B]]): Txn[B] = {
+   *   flatMap(f(a)) {
+   *     case Left(a)  => tailRecM(a)(f)
+   *     case Right(b) => pure(b)
+   *   }
+   * }
+   * }}}
+   *
+   * @see [[cats.Monad#tailRecM]]
+   */
   final def tailRecM[A, B](a: A)(f: A => Txn[Either[A, B]]): Txn[B] =
     Rxn.tailRecMImpl(a)(f.asInstanceOf[Function1[A, Rxn[Either[A, B]]]])
 
