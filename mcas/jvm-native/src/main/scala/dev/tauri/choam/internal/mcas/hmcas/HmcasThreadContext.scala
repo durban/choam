@@ -21,9 +21,6 @@ package mcas
 package hmcas
 
 import java.util.concurrent.ThreadLocalRandom
-import java.util.concurrent.atomic.AtomicLong
-
-import HmcasThreadContext.RDCSSDesc
 
 final class HmcasThreadContext(
   final override val impl: Hmcas,
@@ -52,61 +49,7 @@ final class HmcasThreadContext(
 
   final override val buffer16BImpl: Array[Byte] =
     new Array[Byte](16)
-
-  @tailrec
-  private[this] final def RDCSS[A](d: RDCSSDesc[A]): A = {
-    val r = d.a2.unsafeCmpxchgV(d.o2, d.castToData)
-    r match {
-      case other: RDCSSDesc[a] =>
-        RDCSSComplete(other)
-        RDCSS(d)
-      case r =>
-        if (equ(r, d.o2)) {
-          RDCSSComplete(d)
-          r
-        } else {
-          r
-        }
-    }
-  }
-
-  @tailrec
-  private[this] final def RDCSSRead[A](addr: MemoryLocation[A]): A = {
-    val r = addr.unsafeGetV()
-    r match {
-      case d: RDCSSDesc[a] =>
-        RDCSSComplete(d)
-        RDCSSRead(addr)
-      case a =>
-        a
-    }
-  }
-
-  private[this] final def RDCSSComplete[A](d: RDCSSDesc[A]): Unit = {
-    val v = d.a1.get()
-    if (v == d.o1) {
-      d.a2.unsafeCasV(d.castToData, d.n2) : Unit
-    } else {
-      d.a2.unsafeCasV(d.castToData, d.o2) : Unit
-    }
-  }
 }
 
 object HmcasThreadContext {
-
-  final class RDCSSDesc[A](
-    val a1: AtomicLong,
-    val o1: Long,
-    val a2: MemoryLocation[A],
-    val o2: A,
-    val n2: A,
-  ) {
-
-    final def castToData: A =
-      this.asInstanceOf[A]
-  }
-
-  final class CASNDesc(
-    val hwds: Array[LogEntry[_]],
-  )
 }
