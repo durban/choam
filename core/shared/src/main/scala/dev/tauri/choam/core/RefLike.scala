@@ -35,32 +35,19 @@ sealed trait RefLike[A] {
 
   def update(f: A => A): Rxn[Unit]
 
-  // derived:
+  // derived (implemented in RefGetAxn):
 
-  final def getAndSet(nv: A): Rxn[A] =
-    getAndUpdate { _ => nv }
+  def getAndSet(nv: A): Rxn[A]
 
-  /** Returns `false` iff the update failed */
-  final def tryUpdate(f: A => A): Rxn[Boolean] =
-    update(f).maybe
+  def tryUpdate(f: A => A): Rxn[Boolean]
 
-  /** Returns previous value */
-  final def getAndUpdate(f: A => A): Rxn[A] =
-    modify { oa => (f(oa), oa) }
+  def getAndUpdate(f: A => A): Rxn[A]
 
-  /** Returns new value */
-  final def updateAndGet(f: A => A): Rxn[A] = {
-    modify { oa =>
-      val na = f(oa)
-      (na, na)
-    }
-  }
+  def updateAndGet(f: A => A): Rxn[A]
 
-  final def tryModify[B](f: A => (A, B)): Rxn[Option[B]] =
-    modify(f).?
+  def tryModify[B](f: A => (A, B)): Rxn[Option[B]]
 
-  final def flatModify[B](f: A => (A, Rxn[B])): Rxn[B] =
-    modify(f).flatten
+  def flatModify[B](f: A => (A, Rxn[B])): Rxn[B]
 
   // interop:
 

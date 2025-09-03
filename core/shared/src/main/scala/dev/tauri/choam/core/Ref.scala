@@ -36,19 +36,7 @@ import internal.refs.CompatPlatform.AtomicReferenceArray
  */
 sealed trait Ref[A] extends RefLike.UnsealedRefLike[A] { this: MemoryLocation[A] & core.RefGetAxn[A] =>
 
-  final override def get: Rxn[A] =
-    this
-
-  final override def modify[B](f: A => (A, B)): Rxn[B] =
-    Rxn.loc.modify(this, f)
-
-  final override def set(a: A): Rxn[Unit] =
-    Rxn.loc.set(this, a)
-
-  final override def update(f: A => A): Rxn[Unit] =
-    Rxn.loc.update(this, f)
-
-  final override def asCats[F[_]](implicit F: core.Reactive[F]): CatsRef[F, A] =
+  override def asCats[F[_]](implicit F: core.Reactive[F]): CatsRef[F, A] =
     new Ref.CatsRefFromRef[F, A](this) {}
 
   private[choam] final def loc: MemoryLocation[A] =

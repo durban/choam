@@ -24,7 +24,7 @@ import cats.data.State
 import fs2.Stream
 import fs2.concurrent.SignallingRef
 
-import core.{ Rxn, Ref, RefLike, AsyncReactive }
+import core.{ Rxn, Ref, RefLike, RefLikeDefaults, AsyncReactive }
 
 private final class Fs2SignallingRefWrapper[F[_], A](
   underlying: Ref[A],
@@ -36,7 +36,7 @@ private final class Fs2SignallingRefWrapper[F[_], A](
   final def refLike: RefLike[A] =
     _refLike
 
-  private[this] val _refLike: RefLike[A] = new RefLike.UnsealedRefLike[A] {
+  private[this] val _refLike: RefLike[A] = new RefLikeDefaults[A] {
 
     final override def get: Rxn[A] =
       underlying.get

@@ -24,7 +24,7 @@ import cats.kernel.Hash
 import cats.data.Chain
 import cats.collections.HashMap
 
-import core.{ Rxn, Ref, RefLike }
+import core.{ Rxn, Ref, RefLike, RefLikeDefaults }
 
 private final class SimpleMap[K, V] private (
   repr: Ref[HashMap[K, V]],
@@ -107,7 +107,7 @@ private final class SimpleMap[K, V] private (
     }
   }
 
-  final override def refLike(key: K, default: V): RefLike[V] = new RefLike.UnsealedRefLike[V] {
+  final override def refLike(key: K, default: V): RefLike[V] = new RefLikeDefaults[V] {
 
     final def get: Rxn[V] =
       self.get(key).map(_.getOrElse(default))

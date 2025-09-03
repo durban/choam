@@ -24,7 +24,7 @@ import cats.kernel.Order
 import cats.data.Chain
 import cats.collections.AvlMap
 
-import core.{ Rxn, Ref, RefLike }
+import core.{ Rxn, Ref, RefLike, RefLikeDefaults }
 
 private final class SimpleOrderedMap[K, V] private (
   repr: Ref[AvlMap[K, V]]
@@ -120,7 +120,7 @@ private final class SimpleOrderedMap[K, V] private (
     }
   }
 
-  final override def refLike(key: K, default: V): RefLike[V] = new RefLike.UnsealedRefLike[V] {
+  final override def refLike(key: K, default: V): RefLike[V] = new RefLikeDefaults[V] {
 
     final def get: Rxn[V] =
       self.get(key).map(_.getOrElse(default))

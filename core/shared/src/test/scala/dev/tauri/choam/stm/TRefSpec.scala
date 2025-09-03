@@ -86,7 +86,16 @@ trait TRefSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("TRef should have .withListeners") {
+  test("Internal: TRef should be a Ref") {
+    for {
+      tr <- newTRef(42)
+      rr = tr.asInstanceOf[core.Ref[Int]]
+      _ <- assertResultF(rr.updateAndGet(_ + 1).run, 43)
+      _ <- assertResultF(tr.get.commit, 43)
+    } yield ()
+  }
+
+  test("Internal: TRef should have .withListeners") {
     def incr(ref: TRef[Int]): F[Unit] =
       ref.get.flatMap { ov => ref.set(ov + 1) }.commit
     def getVersion(loc: MemoryLocation[Int]): F[Long] =

@@ -28,6 +28,7 @@ private final class TRefImpl[A](
   initial: A,
   final override val id: Long,
 ) extends core.RefGetAxn[A]
+  with core.UnsealedRef[A]
   with MemoryLocation.WithListeners
   with TRefImplBase[A] {
 
@@ -95,9 +96,6 @@ private final class TRefImpl[A](
 
   final override def unsafeCmpxchgMarkerR(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef] =
     impossible("TRefImpl#unsafeCmpxchgMarkerR called on JS")
-
-  final override def get: Txn[A] =
-    this
 
   final override def hashCode: Int = {
     // `RefIdGen` generates IDs with

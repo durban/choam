@@ -268,7 +268,7 @@ private[choam] sealed abstract class RxnImpl[+B]
   final override def attempt: Rxn[Option[B]] =
     this.map(Some(_)) + Rxn.none
 
-  final override def maybe: Rxn[Boolean] =
+  final override def maybe: RxnImpl[Boolean] =
     this.as(true) + Rxn.false_
 
   final override def map[C](f: B => C): RxnImpl[C] =
@@ -356,8 +356,44 @@ private[choam] sealed abstract class RxnImpl[+B]
 }
 
 /** This is specifically only for `Ref` to use! */
-private[choam] abstract class RefGetAxn[B] extends RxnImpl[B] {
-  private[choam] def cast[A]: MemoryLocation[A]
+private[choam] abstract class RefGetAxn[B] extends RxnImpl[B] with MemoryLocation[B] {
+
+  final def get: RxnImpl[B] =
+    this
+
+  final def set(a: B): RxnImpl[Unit] =
+    Rxn.loc.set(this, a)
+
+  final def update(f: B => B): RxnImpl[Unit] =
+    Rxn.loc.update(this, f)
+
+  final def modify[C](f: B => (B, C)): RxnImpl[C] =
+    Rxn.loc.modify(this, f)
+
+  final def getAndSet(nv: B): RxnImpl[B] =
+    getAndUpdate { _ => nv }
+
+  /** Returns `false` iff the update failed */
+  final def tryUpdate(f: B => B): RxnImpl[Boolean] =
+    update(f).maybe
+
+  /** Returns previous value */
+  final def getAndUpdate(f: B => B): RxnImpl[B] =
+    modify { oa => (f(oa), oa) }
+
+  /** Returns new value */
+  final def updateAndGet(f: B => B): RxnImpl[B] = {
+    modify { oa =>
+      val na = f(oa)
+      (na, na)
+    }
+  }
+
+  final def tryModify[C](f: B => (B, C)): Rxn[Option[C]] =
+    modify(f).?
+
+  final def flatModify[C](f: B => (B, Rxn[C])): Rxn[C] =
+    modify(f).flatten
 }
 
 object Rxn extends RxnInstances0 {
@@ -604,10 +640,13 @@ object Rxn extends RxnInstances0 {
       delayImpl(uf).flatten // TODO: optimize
 
     private[choam] final def delayContext[B](uf: Mcas.ThreadContext => B): Rxn[B] =
-      new Rxn.Ctx1[B](uf)
+      delayContextImpl(uf)
 
     private[choam] final def suspendContext[B](uf: Mcas.ThreadContext => Rxn[B]): Rxn[B] =
-      delayContext(uf).flatten
+      suspendContextImpl(uf)
+
+    private[choam] final def suspendContextImpl[B](uf: Mcas.ThreadContext => Rxn[B]): RxnImpl[B] =
+      delayContextImpl(uf).flatten
 
     /**
      * Calling `unsafePerform` (or similar) inside

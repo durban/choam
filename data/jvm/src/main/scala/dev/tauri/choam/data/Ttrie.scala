@@ -25,7 +25,7 @@ import scala.util.hashing.byteswap32
 import cats.kernel.{ Hash, Order }
 import cats.syntax.all._
 
-import core.{ Rxn, Ref, RefLike }
+import core.{ Rxn, Ref, RefLike, RefLikeDefaults }
 import internal.skiplist.SkipListMap
 import internal.mcas.Mcas
 
@@ -278,7 +278,7 @@ private final class Ttrie[K, V] private (
     }
   }
 
-  final override def refLike(key: K, default: V): RefLike[V] = new RefLike.UnsealedRefLike[V] {
+  final override def refLike(key: K, default: V): RefLike[V] = new RefLikeDefaults[V] {
 
     final def get: Rxn[V] =
       self.get(key).map(_.getOrElse(default))
