@@ -48,13 +48,13 @@ object RxnModelTest {
       RxnLinchkSpec.defaultMcasForTesting
 
     private[this] val r1 =
-      Ref.unsafeUnpadded("a", emcas.currentContext().refIdGen)
+      Ref.unsafe("a", Ref.AllocationStrategy.Unpadded, emcas.currentContext().refIdGen)
 
     private[this] val r2 =
-      Ref.unsafeUnpadded("b", emcas.currentContext().refIdGen)
+      Ref.unsafe("b", Ref.AllocationStrategy.Unpadded, emcas.currentContext().refIdGen)
 
     private[this] val r3 =
-      Ref.unsafeUnpadded("c", emcas.currentContext().refIdGen)
+      Ref.unsafe("c", Ref.AllocationStrategy.Unpadded, emcas.currentContext().refIdGen)
 
     private[this] def select2(i: Int): (Ref[String], Ref[String]) = {
       java.lang.Math.abs(i % 6) match {

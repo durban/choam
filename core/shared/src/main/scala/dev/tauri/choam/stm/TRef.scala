@@ -41,8 +41,14 @@ object TRef {
   final def apply[A](a: A): Txn[TRef[A]] =
     Txn.unsafe.delayContext(unsafe[A](a))
 
-  private[choam] final def unsafe[A](a: A)(ctx: Mcas.ThreadContext): TRef[A] = {
-    val id = ctx.refIdGen.nextId()
+  private[choam] final def unsafe[A](a: A)(ctx: Mcas.ThreadContext): TRef[A] =
+    impl(a, ctx.refIdGen.nextId())
+
+  /** Creates a `Ref` which is also a `TRef`; use with caution! */
+  private[choam] final def unsafeRefWithId[A](a: A, id: Long): core.Ref[A] =
+    impl(a, id)
+
+  private[this] final def impl[A](a: A, id: Long): TRefImpl[A] = {
     new TRefImpl[A](a, id)
   }
 }

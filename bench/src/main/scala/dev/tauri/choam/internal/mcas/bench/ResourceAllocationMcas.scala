@@ -89,7 +89,7 @@ object ResourceAllocationMcas {
       Vector.fill(nRes)(scala.util.Random.nextString(10))
 
     val rss: Array[MemoryLocation[String]] =
-      initialValues.map(Ref.unsafePadded(_, this.mcasImpl.currentContext().refIdGen).loc).toArray
+      initialValues.map(Ref.unsafe(_, Ref.AllocationStrategy.Padded, this.mcasImpl.currentContext().refIdGen).loc).toArray
 
     @TearDown
     def checkResults(): Unit = {

@@ -34,10 +34,10 @@ import core.{ Rxn, Ref }
 class ZombieTestSwap extends StressTestBase {
 
   private[this] val ref1 =
-    Ref.unsafePadded("a", this.rig)
+    Ref.unsafe("a", Ref.AllocationStrategy.Padded, this.rig)
 
   private[this] val ref2 =
-    Ref.unsafePadded("b", this.rig)
+    Ref.unsafe("b", Ref.AllocationStrategy.Padded, this.rig)
 
   // atomically swap the contents of the refs:
   private[this] val swap: Rxn[Unit] =

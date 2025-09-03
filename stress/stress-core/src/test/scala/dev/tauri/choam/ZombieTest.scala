@@ -38,10 +38,10 @@ import core.{ Rxn, Ref }
 class ZombieTest extends StressTestBase {
 
   private[this] val ref1 =
-    Ref.unsafePadded("a", this.rig)
+    Ref.unsafe("a", Ref.AllocationStrategy.Padded, this.rig)
 
   private[this] val ref2 =
-    Ref.unsafePadded("a", this.rig)
+    Ref.unsafe("a", Ref.AllocationStrategy.Padded, this.rig)
 
   // a 2-CAS, setting both atomically "a" -> "b":
   private[this] val upd: Rxn[Unit] =

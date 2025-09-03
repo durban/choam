@@ -27,7 +27,7 @@ private[choam] object BoundedQueueImpl {
 
   private[choam] final def linked[A](bound: Int): Rxn[AsyncQueue.SourceSinkWithSize[A]] = {
     require(bound > 0)
-    (Queue.unbounded[A] * Ref.unpadded[Int](0)).flatMap {
+    (Queue.unbounded[A] * Ref[Int](0)).flatMap {
       case (q, size) =>
         GenWaitList[A](
           q.poll.flatMap {

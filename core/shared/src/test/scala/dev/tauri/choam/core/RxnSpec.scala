@@ -1390,7 +1390,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       }
       _ <- assertEqualsF(ctr.get(), 0)
       _ <- assertResultF(rxn0.run[F], "result")
-      ref <- Ref.unpadded("-").run[F]
+      ref <- Ref("-").run[F]
       rxn1 = inst.fix[Int] { rec =>
         Rxn.unsafe.cas(ref, "a", "b").as(42) + (Rxn.unsafe.delay {
           if (!ref.loc.unsafeCasV("-", "a")) { throw new AssertionError }
@@ -1542,7 +1542,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   }
 
   test("Executing a Rxn which doesn't change Refs shouldn't change the global version") {
-    val r = Ref.unpadded("foo").flatMap { ref =>
+    val r = Ref("foo").flatMap { ref =>
       Rxn.unsafe.delay { new Exception }.map { ex =>
         (ref, ex)
       }

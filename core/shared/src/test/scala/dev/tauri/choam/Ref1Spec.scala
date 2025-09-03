@@ -23,13 +23,13 @@ import internal.mcas.Mcas
 final class Ref1SpecP1 extends Ref1Spec {
 
   override def mkRef1[A](a: A, ctx: Mcas.ThreadContext): Ref[A] =
-    Ref.unsafeUnpadded(a, ctx.refIdGen)
+    Ref.unsafe(a, Ref.AllocationStrategy.Padded, ctx.refIdGen)
 }
 
 final class Ref1SpecU1 extends Ref1Spec {
 
   override def mkRef1[A](a: A, ctx: Mcas.ThreadContext): Ref[A] =
-    Ref.unsafeUnpadded(a, ctx.refIdGen)
+    Ref.unsafe(a, Ref.AllocationStrategy.Unpadded, ctx.refIdGen)
 }
 
 abstract class Ref1Spec extends BaseSpec with SpecDefaultMcas {

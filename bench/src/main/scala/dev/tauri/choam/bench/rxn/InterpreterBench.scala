@@ -63,31 +63,31 @@ object InterpreterBench {
   abstract class BaseSt extends McasImplStateBase {
 
     private[this] val ref1s: Array[Ref[String]] =
-      Array.fill(N) { Ref.unsafePadded("1", this.mcasImpl.currentContext().refIdGen) }
+      Array.fill(N) { Ref.unsafe("1", Ref.AllocationStrategy.Padded, this.mcasImpl.currentContext().refIdGen) }
 
     private[this] val ref2s: Array[Ref[String]] =
-      Array.fill(N) { Ref.unsafePadded("2", this.mcasImpl.currentContext().refIdGen) }
+      Array.fill(N) { Ref.unsafe("2", Ref.AllocationStrategy.Padded, this.mcasImpl.currentContext().refIdGen) }
 
     private[this] val ref3s: Array[Ref[String]] =
-      Array.fill(N) { Ref.unsafePadded("3", this.mcasImpl.currentContext().refIdGen) }
+      Array.fill(N) { Ref.unsafe("3", Ref.AllocationStrategy.Padded, this.mcasImpl.currentContext().refIdGen) }
 
     private[this] val ref4s: Array[Ref[String]] =
-      Array.fill(N) { Ref.unsafePadded("4", this.mcasImpl.currentContext().refIdGen) }
+      Array.fill(N) { Ref.unsafe("4", Ref.AllocationStrategy.Padded, this.mcasImpl.currentContext().refIdGen) }
 
     private[this] val ref5s: Array[Ref[String]] =
-      Array.fill(N) { Ref.unsafePadded("5", this.mcasImpl.currentContext().refIdGen) }
+      Array.fill(N) { Ref.unsafe("5", Ref.AllocationStrategy.Padded, this.mcasImpl.currentContext().refIdGen) }
 
     private[this] val ref6s: Array[Ref[String]] =
-      Array.fill(N) { Ref.unsafePadded("6", this.mcasImpl.currentContext().refIdGen) }
+      Array.fill(N) { Ref.unsafe("6", Ref.AllocationStrategy.Padded, this.mcasImpl.currentContext().refIdGen) }
 
     private[this] val ref7s: Array[Ref[String]] =
-      Array.fill(N) { Ref.unsafePadded("7", this.mcasImpl.currentContext().refIdGen) }
+      Array.fill(N) { Ref.unsafe("7", Ref.AllocationStrategy.Padded, this.mcasImpl.currentContext().refIdGen) }
 
     private[this] val ref8s: Array[Ref[String]] =
-      Array.fill(N) { Ref.unsafePadded("8", this.mcasImpl.currentContext().refIdGen) }
+      Array.fill(N) { Ref.unsafe("8", Ref.AllocationStrategy.Padded, this.mcasImpl.currentContext().refIdGen) }
 
     private[this] val cnt: Ref[Long] =
-      Ref.unsafePadded(0L, this.mcasImpl.currentContext().refIdGen)
+      Ref.unsafe(0L, Ref.AllocationStrategy.Padded, this.mcasImpl.currentContext().refIdGen)
 
     private[InterpreterBench] val rxn: Rxn[String] = {
       val rxn1 = (0 until N).map { idx =>

@@ -63,8 +63,9 @@ object FlatMapBench {
       Rxn.unsafe.delay { () }
 
     private[this] val refs = List.fill(size) {
-      Ref.unsafePadded[String](
+      Ref.unsafe[String](
         ThreadLocalRandom.current().nextInt().toString,
+        Ref.AllocationStrategy.Padded,
         this.mcasImpl.currentContext().refIdGen,
       )
     }

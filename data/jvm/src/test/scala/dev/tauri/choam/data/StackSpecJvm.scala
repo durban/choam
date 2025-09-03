@@ -62,7 +62,7 @@ trait StackSpecElimination12Jvm[F[_]]
       F.sleep(x.millis)
     }
     val once = for {
-      ref <- Ref.unpadded(0).run[F]
+      ref <- Ref(0).run[F]
       stack <- this.newStack[String]()
       rxn1 = ref.update(_ + 1) *> stack.push("a")
       rxn2 = ref.update(_ + 2) *> stack.tryPop
@@ -116,8 +116,8 @@ trait StackSpecJvm[F[_]] { this: StackSpec[F] & McasImplSpec =>
     // - with one of the `assertEqualsF`s below failing
     //   (see below for an explanation).
     val once = for {
-      ref <- Ref.unpadded(0).run[F]
-      ref2 <- Ref.unpadded(0).run[F] // invariant: always twice the value of `ref`
+      ref <- Ref(0).run[F]
+      ref2 <- Ref(0).run[F] // invariant: always twice the value of `ref`
       stack <- this.newStack[String]()
       rxn1 = ref.getAndSet(42).flatMap { ov =>
         stack.push("a") *> ref2.getAndSet(84).map { ov2 => (ov, ov2) }

@@ -78,7 +78,7 @@ object VirtualThreadsBench {
       cats.effect.unsafe.IORuntime.global
 
     private val refs = Array.fill(K) {
-      Ref.unsafePadded(ThreadLocalRandom.current().nextInt().toString, reactive.mcasImpl.currentContext().refIdGen)
+      Ref.unsafe(ThreadLocalRandom.current().nextInt().toString, Ref.AllocationStrategy.Padded, reactive.mcasImpl.currentContext().refIdGen)
     }
 
     def selectRndRef: Rxn[Ref[String]] = {

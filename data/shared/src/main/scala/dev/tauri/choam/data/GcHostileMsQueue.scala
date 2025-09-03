@@ -37,11 +37,11 @@ import GcHostileMsQueue._
 private final class GcHostileMsQueue[A] private[this] (sentinel: Node[A], initRig: RefIdGen)
   extends Queue.UnsealedQueue[A] {
 
-  private[this] val head: Ref[Node[A]] = Ref.unsafePadded(sentinel, initRig)
-  private[this] val tail: Ref[Node[A]] = Ref.unsafePadded(sentinel, initRig)
+  private[this] val head: Ref[Node[A]] = Ref.unsafe(sentinel, Ref.AllocationStrategy.Padded, initRig)
+  private[this] val tail: Ref[Node[A]] = Ref.unsafe(sentinel, Ref.AllocationStrategy.Padded, initRig)
 
   private def this(initRig: RefIdGen) =
-    this(Node(nullOf[A], Ref.unsafePadded(End[A](), initRig)), initRig)
+    this(Node(nullOf[A], Ref.unsafe(End[A](), Ref.AllocationStrategy.Padded, initRig)), initRig)
 
   final override val poll: Rxn[Option[A]] = {
     head.get.flatMap { node =>

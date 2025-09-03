@@ -88,7 +88,7 @@ private sealed trait ExchangerImplJvm[A, B]
         }
         val self = new ExchangerNode[C](
           msg,
-          Ref.unsafeUnpaddedWithId[NodeResult[C]](null, holeId),
+          Ref.unsafeUnpaddedWithIdForTesting[NodeResult[C]](null, holeId),
         )
         if (incoming.compareAndSet(idx, null, self)) {
           debugLog(s"posted offer (contT: ${java.util.Arrays.toString(msg.contT)}) - thread#${Thread.currentThread().getId()}")

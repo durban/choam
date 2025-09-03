@@ -34,7 +34,7 @@ import core.{ Rxn, Ref }
 class MultipleWriteInRxn extends StressTestBase {
 
   private[this] val ref: Ref[String] =
-    Ref.unsafePadded("a", this.rig)
+    Ref.unsafe("a", Ref.AllocationStrategy.Padded, this.rig)
 
   private[this] val write: Rxn[String] =
     ref.update(_ => "b") *> ref.modify(b => ("c", b))

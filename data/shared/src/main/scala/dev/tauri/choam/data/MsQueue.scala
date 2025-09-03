@@ -34,15 +34,15 @@ import MsQueue._
  */
 private final class MsQueue[A] private[this] (
   sentinel: Node[A],
-  padded: Boolean,
+  str: Ref.AllocationStrategy,
   initRig: RefIdGen,
 ) extends Queue.UnsealedQueue[A] {
 
-  private[this] val head: Ref[Node[A]] = Ref.unsafePadded(sentinel, initRig)
-  private[this] val tail: Ref[Node[A]] = Ref.unsafePadded(sentinel, initRig)
+  private[this] val head: Ref[Node[A]] = Ref.unsafe(sentinel, str.withPadded(true), initRig)
+  private[this] val tail: Ref[Node[A]] = Ref.unsafe(sentinel, str.withPadded(true), initRig)
 
-  private def this(padded: Boolean, initRig: RefIdGen) =
-    this(Node(nullOf[A], if (padded) Ref.unsafePadded(End[A](), initRig) else Ref.unsafeUnpadded(End[A](), initRig)), padded = padded, initRig = initRig)
+  private def this(str: Ref.AllocationStrategy, initRig: RefIdGen) =
+    this(Node(nullOf[A], Ref.unsafe(End[A](), str, initRig)), str = str, initRig = initRig)
 
   final override val poll: Rxn[Option[A]] = {
     head.get.flatMap { node =>
@@ -80,11 +80,7 @@ private final class MsQueue[A] private[this] (
     this.add(a).as(true)
 
   private[this] def newNode(a: A, ctx: Mcas.ThreadContext): Node[A] = {
-    val newRef: Ref[Elem[A]] = if (this.padded) {
-      Ref.unsafePadded(End[A](), ctx.refIdGen)
-    } else {
-      Ref.unsafeUnpadded(End[A](), ctx.refIdGen)
-    }
+    val newRef: Ref[Elem[A]] = Ref.unsafe(End[A](), this.str, ctx.refIdGen)
     Node(a, newRef)
   }
 
@@ -134,7 +130,7 @@ private object MsQueue {
     apply[A](Ref.AllocationStrategy.Default)
 
   final def apply[A](str: Ref.AllocationStrategy): Rxn[MsQueue[A]] = {
-    applyInternal(padded = str.padded)
+    Rxn.unsafe.delayContext { ctx => new MsQueue(str = str, initRig = ctx.refIdGen) }
   }
 
   final def withSize[A]: Rxn[Queue.WithSize[A]] = {
@@ -143,7 +139,7 @@ private object MsQueue {
         new Queue.UnsealedQueueWithSize[A] {
 
           private[this] val s =
-            Ref.unsafePadded[Int](0, ctx.refIdGen)
+            Ref.unsafe[Int](0, Ref.AllocationStrategy.Default.withPadded(true), ctx.refIdGen)
 
           final override def poll: Rxn[Option[A]] = {
             q.poll.flatMap {
@@ -164,9 +160,6 @@ private object MsQueue {
       }
     }
   }
-
-  private[this] def applyInternal[A](padded: Boolean): Rxn[MsQueue[A]] =
-    Rxn.unsafe.delayContext { ctx => new MsQueue(padded = padded, initRig = ctx.refIdGen) }
 
   private[data] def fromList[F[_], A](as: List[A])(implicit F: Reactive[F]): F[MsQueue[A]] = {
     Queue.fromList[F, MsQueue, A](this.apply[A])(as)

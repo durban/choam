@@ -93,7 +93,7 @@ object RefSetBench {
   class St extends McasImplStateBase {
 
     val refs: Array[Ref[String]] = Array.fill(size) {
-      Ref.unsafePadded[String](ThreadLocalRandom.current().nextInt().toString, this.mcasImpl.currentContext().refIdGen)
+      Ref.unsafe[String](ThreadLocalRandom.current().nextInt().toString, Ref.AllocationStrategy.Padded, this.mcasImpl.currentContext().refIdGen)
     }
 
     val getAndSetVoid: Array[String => Rxn[Unit]] = refs.map { ref => { s => ref.getAndSet(s).void } }

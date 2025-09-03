@@ -31,16 +31,19 @@ import RemoveQueue.{ Elem, Node, End, dequeued, isDequeued, isRemoved }
  *
  * TODO: also unlink removed nodes (instead of just tombing them).
  */
-private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], initRig: RefIdGen)
-  extends Queue.UnsealedQueue[A] {
+private[choam] final class RemoveQueue[A] private[this] (
+  sentinel: Node[A],
+  str: Ref.AllocationStrategy,
+  initRig: RefIdGen,
+) extends Queue.UnsealedQueue[A] {
 
   // TODO: do the optimization with ticketRead (like in `MsQueue`)
 
-  private[this] val head: Ref[Node[A]] = Ref.unsafePadded(sentinel, initRig)
-  private[this] val tail: Ref[Node[A]] = Ref.unsafePadded(sentinel, initRig)
+  private[this] val head: Ref[Node[A]] = Ref.unsafe(sentinel, str.withPadded(true), initRig)
+  private[this] val tail: Ref[Node[A]] = Ref.unsafe(sentinel, str.withPadded(true), initRig)
 
-  def this(initRig: RefIdGen) =
-    this(Node(nullOf[Ref[A]], Ref.unsafeUnpadded(End[A](), initRig)), initRig = initRig)
+  def this(str: Ref.AllocationStrategy, initRig: RefIdGen) =
+    this(Node(nullOf[Ref[A]], Ref.unsafe[Elem[A]](End[A](), str, initRig)), str, initRig = initRig)
 
   final override val poll: Rxn[Option[A]] = {
     head.get.flatMap { node =>
@@ -121,16 +124,16 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
     this.add(a).as(true)
 
   final override def add(a: A): Rxn[Unit] = {
-    Ref.unpadded[Elem[A]](End[A]()).flatMap { nextRef =>
-      Ref.unpadded(a).flatMap { dataRef =>
+    Ref[Elem[A]](End[A](), str).flatMap { nextRef =>
+      Ref(a, str).flatMap { dataRef =>
         findAndEnqueue(Node(dataRef, nextRef))
       }
     }
   }
 
   final def enqueueWithRemover(a: A): Rxn[Rxn[Boolean]] = {
-    Ref.unpadded[Elem[A]](End[A]()).flatMap { nextRef =>
-      Ref.unpadded(a).flatMap { dataRef =>
+    Ref[Elem[A]](End[A](), str).flatMap { nextRef =>
+      Ref(a, str).flatMap { dataRef =>
         val newNode = Node(dataRef, nextRef)
         findAndEnqueue(newNode).as(newNode.remover)
       }
@@ -156,7 +159,10 @@ private[choam] final class RemoveQueue[A] private[this] (sentinel: Node[A], init
 private[choam] object RemoveQueue {
 
   def apply[A]: Rxn[RemoveQueue[A]] =
-    Rxn.unsafe.delayContext { ctx => new RemoveQueue(ctx.refIdGen) }
+    apply(Ref.AllocationStrategy.Default)
+
+  def apply[A](str: Ref.AllocationStrategy): Rxn[RemoveQueue[A]] =
+    Rxn.unsafe.delayContext { ctx => new RemoveQueue(str, ctx.refIdGen) }
 
   private sealed trait Elem[A]
 

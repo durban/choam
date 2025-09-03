@@ -67,6 +67,18 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
     }
   }
 
+  test("Ref/TRef creation") {
+    val str = Ref.AllocationStrategy.Default.withStm(true)
+    for {
+      r <- this.newRef("foo")
+      _ <- assertF(!r.isInstanceOf[stm.TRef[_]])
+      tr <- Ref("foo", str).run
+      _ <- assertF(tr.isInstanceOf[stm.TRef[_]])
+      tr2 <- F.delay(Ref.unsafe("foo", str, this.mcasImpl.currentContext().refIdGen))
+      _ <- assertF(tr2.isInstanceOf[stm.TRef[_]])
+    } yield ()
+  }
+
   test("Simple CAS should work as expected") {
     for {
       ref <- newRef("ert")

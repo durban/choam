@@ -38,10 +38,10 @@ class MsQueueComposedTest3 extends MsQueueStressTestBase {
     this.newQueue[String]()
 
   private[this] val latch =
-    Ref.unsafePadded[Boolean](false, this.rig)
+    Ref.unsafe[Boolean](false, Ref.AllocationStrategy.Padded, this.rig)
 
   private[this] val dummy =
-    Ref.unsafePadded[Int](0, this.rig)
+    Ref.unsafe[Int](0, Ref.AllocationStrategy.Padded, this.rig)
 
   private[this] val deq =
     queue.poll * (dummy.update { _ + 1 }.flatMap { _ => latch.getAndUpdate(_ => true) })

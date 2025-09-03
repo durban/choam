@@ -43,10 +43,14 @@ private final class DroppingQueue[A](
 
 private object DroppingQueue {
 
-  final def apply[A](capacity: Int): Rxn[Queue.WithSize[A]] = {
+  final def apply[A](capacity: Int): Rxn[Queue.WithSize[A]] =
+    apply(capacity, Ref.AllocationStrategy.Default)
+
+  final def apply[A](capacity: Int, str: Ref.AllocationStrategy): Rxn[Queue.WithSize[A]] = {
     require(capacity > 0)
     Ref.array[A](size = capacity, initial = empty[A]).flatMap { arr =>
-      (Ref.padded(0) * Ref.padded(0)).map {
+      val pStr = str.withPadded(true)
+      (Ref(0, pStr) * Ref(0, pStr)).map {
         case (h, t) =>
           new DroppingQueue[A](capacity, arr, h, t)
       }

@@ -54,6 +54,8 @@ object Ref extends RefInstances0 {
     def padded: Boolean
     def withPadded(padded: Boolean): Ref.AllocationStrategy
     def toArrayAllocationStrategy: Array.AllocationStrategy
+    private[choam] def stm: Boolean
+    private[choam] def withStm(stm: Boolean): Ref.AllocationStrategy
   }
 
   final object AllocationStrategy {
@@ -62,21 +64,33 @@ object Ref extends RefInstances0 {
       AllocationStrategy(padded = false)
 
     final def apply(padded: Boolean): Ref.AllocationStrategy =
-      new AllocationStrategyImpl(padded = padded)
+      new AllocationStrategyImpl(padded = padded, stm = false)
 
     private[choam] final val Padded: Ref.AllocationStrategy =
       Ref.AllocationStrategy(padded = true)
 
     private[choam] final val Unpadded: Ref.AllocationStrategy =
       Ref.AllocationStrategy(padded = false)
+
+    private[choam] final val Stm: Ref.AllocationStrategy =
+      new AllocationStrategyImpl(padded = false, stm = true)
   }
 
-  private[this] final class AllocationStrategyImpl(final override val padded: Boolean)
-    extends AllocationStrategy {
+  private[this] final class AllocationStrategyImpl(
+    final override val padded: Boolean,
+    private[choam] final override val stm: Boolean,
+  ) extends AllocationStrategy {
+
+    _assert((!stm) || (!padded))
 
     final override def withPadded(padded: Boolean): AllocationStrategy = {
       if (this.padded == padded) this
-      else new AllocationStrategyImpl(padded)
+      else new AllocationStrategyImpl(padded = padded, stm = this.stm)
+    }
+
+    private[choam] final override def withStm(stm: Boolean): Ref.AllocationStrategy = {
+      if (this.stm == stm) this
+      else new AllocationStrategyImpl(padded = this.padded, stm = stm)
     }
 
     final override def toArrayAllocationStrategy: Array.AllocationStrategy =
@@ -136,16 +150,18 @@ object Ref extends RefInstances0 {
         2
 
       final def apply(sparse: Boolean, flat: Boolean, padded: Boolean): Array.AllocationStrategy =
-        new AllocationStrategyImpl(sparse = sparse, flat = flat, padded = padded)
+        new AllocationStrategyImpl(sparse = sparse, flat = flat, padded = padded, stm = false)
     }
 
     private[this] final class AllocationStrategyImpl (
       final override val sparse: Boolean,
       final override val flat: Boolean,
       final override val padded: Boolean,
+      final override val stm: Boolean,
     ) extends AllocationStrategy {
 
       require(!(padded && flat), "padding is currently not supported for flat = true")
+      require(!stm, "STM is currently not supported for Ref.Array.AllocationStrategy")
 
       final override def withSparse(sparse: Boolean): AllocationStrategy =
         this.copy(sparse = sparse)
@@ -156,13 +172,25 @@ object Ref extends RefInstances0 {
       final override def withPadded(padded: Boolean): AllocationStrategy =
         this.copy(padded = padded)
 
+      private[choam] final override def withStm(stm: Boolean): AllocationStrategy =
+        this.copy(stm = stm)
+
       private[this] final def copy(
         sparse: Boolean = this.sparse,
         flat: Boolean = this.flat,
         padded: Boolean = this.padded,
+        stm: Boolean = this.stm,
       ): AllocationStrategyImpl = {
-        if ((sparse == this.sparse) && (flat == this.flat) && (padded == this.padded)) this
-        else new AllocationStrategyImpl(sparse = sparse, flat = flat, padded = padded)
+        if (
+          (sparse == this.sparse) &&
+          (flat == this.flat) &&
+          (padded == this.padded) &&
+          (stm == this.stm)
+        ) {
+          this
+        } else {
+          new AllocationStrategyImpl(sparse = sparse, flat = flat, padded = padded, stm = stm)
+        }
       }
     }
   }
@@ -197,8 +225,9 @@ object Ref extends RefInstances0 {
   }
 
   final def apply[A](initial: A, str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Rxn[Ref[A]] = {
-    if (str.padded) padded(initial)
-    else unpadded(initial)
+    Rxn.unsafe.delayContext { ctx =>
+      Ref.unsafe(initial, str, ctx.refIdGen)
+    }
   }
 
   // TODO: How to avoid allocating RefArrayRef objects?
@@ -213,29 +242,21 @@ object Ref extends RefInstances0 {
     initial: A,
     strategy: Ref.Array.AllocationStrategy = Ref.Array.AllocationStrategy.Default,
   ): Rxn[Ref.Array[A]] = {
-    safeArray(size = size, initial = initial, strategy = strategy.toInt)
-  }
-
-  private[choam] final def unsafeArray[A](
-    size: Int,
-    initial: A,
-    strategy: Ref.Array.AllocationStrategy,
-    rig: RefIdGen,
-  ): Ref.Array[A] = {
-    unsafeArray(size, initial, strategy.toInt, rig)
+    safeArray(size = size, initial = initial, str = strategy)
   }
 
   // the duplicated logic with unsafeArray is to avoid
   // having the `if` and `match` inside the `Rxn`:
-  private[this] final def safeArray[A](size: Int, initial: A, strategy: Int): Rxn[Ref.Array[A]] = {
+  private[this] final def safeArray[A](size: Int, initial: A, str: Ref.Array.AllocationStrategy): Rxn[Ref.Array[A]] = {
     if (size > 0) {
+      val strategy = str.toInt
       (strategy : @switch) match {
-        case 0 => Rxn.unsafe.delayContext(ctx => new StrictArrayOfRefs(size, initial, padded = false, rig = ctx.refIdGen))
-        case 1 => Rxn.unsafe.delayContext(ctx => new StrictArrayOfRefs(size, initial, padded = true, rig = ctx.refIdGen))
+        case 0 => Rxn.unsafe.delayContext(ctx => new StrictArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
+        case 1 => Rxn.unsafe.delayContext(ctx => new StrictArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
         case 2 => Rxn.unsafe.delayContext(ctx => unsafeStrictArray(size, initial, ctx.refIdGen))
         case 3 => throw new IllegalArgumentException("flat && padded not implemented yet")
-        case 4 => Rxn.unsafe.delayContext(ctx => new LazyArrayOfRefs(size, initial, padded = false, rig = ctx.refIdGen))
-        case 5 => Rxn.unsafe.delayContext(ctx => new LazyArrayOfRefs(size, initial, padded = true, rig = ctx.refIdGen))
+        case 4 => Rxn.unsafe.delayContext(ctx => new LazyArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
+        case 5 => Rxn.unsafe.delayContext(ctx => new LazyArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
         case 6 => Rxn.unsafe.delayContext(ctx => unsafeLazyArray(size, initial, ctx.refIdGen))
         case 7 => throw new IllegalArgumentException("flat && padded not implemented yet")
         case _ => throw new IllegalArgumentException(s"invalid strategy: ${strategy}")
@@ -247,15 +268,16 @@ object Ref extends RefInstances0 {
     }
   }
 
-  private[this] final def unsafeArray[A](size: Int, initial: A, strategy: Int, rig: RefIdGen): Ref.Array[A] = {
+  private[choam] final def unsafeArray[A](size: Int, initial: A, str: Ref.Array.AllocationStrategy, rig: RefIdGen): Ref.Array[A] = {
     if (size > 0) {
+      val strategy = str.toInt
       (strategy : @switch) match {
-        case 0 => new StrictArrayOfRefs(size, initial, padded = false, rig = rig)
-        case 1 => new StrictArrayOfRefs(size, initial, padded = true, rig = rig)
+        case 0 => new StrictArrayOfRefs(size, initial, str, rig = rig)
+        case 1 => new StrictArrayOfRefs(size, initial, str, rig = rig)
         case 2 => unsafeStrictArray(size, initial, rig)
         case 3 => throw new IllegalArgumentException("flat && padded not implemented yet")
-        case 4 => new LazyArrayOfRefs(size, initial, padded = false, rig = rig)
-        case 5 => new LazyArrayOfRefs(size, initial, padded = true, rig = rig)
+        case 4 => new LazyArrayOfRefs(size, initial, str, rig = rig)
+        case 5 => new LazyArrayOfRefs(size, initial, str, rig = rig)
         case 6 => unsafeLazyArray(size, initial, rig)
         case 7 => throw new IllegalArgumentException("flat && padded not implemented yet")
         case _ => throw new IllegalArgumentException(s"invalid strategy: ${strategy}")
@@ -270,7 +292,7 @@ object Ref extends RefInstances0 {
   private[choam] final class StrictArrayOfRefs[A](
     final override val size: Int,
     initial: A,
-    padded: Boolean,
+    str: Ref.AllocationStrategy,
     rig: RefIdGen,
   ) extends Ref.Array[A] {
 
@@ -280,11 +302,7 @@ object Ref extends RefInstances0 {
       val a = new scala.Array[Ref[A]](size)
       var idx = 0
       while (idx < size) {
-        a(idx) = if (padded) {
-          Ref.unsafePadded(initial, rig)
-        } else {
-          Ref.unsafeUnpadded(initial, rig)
-        }
+        a(idx) = Ref.unsafe(initial, str, rig)
         idx += 1
       }
       a
@@ -307,7 +325,7 @@ object Ref extends RefInstances0 {
   private[choam] final class LazyArrayOfRefs[A](
     final override val size: Int,
     initial: A,
-    padded: Boolean,
+    str: AllocationStrategy,
     rig: RefIdGen,
   ) extends Ref.Array[A] {
 
@@ -323,11 +341,7 @@ object Ref extends RefInstances0 {
       val arr = this.arr
       arr.getOpaque(idx) match { // FIXME: reading a `Ref` with a race!
         case null =>
-          val nv = if (padded) {
-            unsafePaddedWithId(initial, RefIdGen.compute(this.idBase, idx))
-          } else {
-            unsafeUnpaddedWithId(initial, RefIdGen.compute(this.idBase, idx))
-          }
+          val nv = unsafeWithId(initial, str, RefIdGen.compute(this.idBase, idx))
           val wit = arr.compareAndExchange(idx, null, nv)
           if (wit eq null) {
             nv // we're the first
@@ -368,30 +382,21 @@ object Ref extends RefInstances0 {
     internal.refs.unsafeNewSparseRefArray[A](size = size, initial = initial)(rig.nextArrayIdBase(size))
   }
 
-  private[choam] final def padded[A](initial: A): Rxn[Ref[A]] =
-    Rxn.unsafe.delayContext[Ref[A]](ctx => Ref.unsafePadded(initial, ctx.refIdGen))
-
-  private[choam] final def unpadded[A](initial: A): Rxn[Ref[A]] =
-    Rxn.unsafe.delayContext[Ref[A]](ctx => Ref.unsafeUnpadded(initial, ctx.refIdGen))
-
   private[choam] final def unsafe[A](initial: A, str: AllocationStrategy, rig: RefIdGen): Ref[A] = {
-    if (str.padded) unsafePadded(initial, rig)
-    else unsafeUnpadded(initial, rig)
+    unsafeWithId(initial, str, rig.nextId())
   }
 
-  private[choam] final def unsafePadded[A](initial: A, rig: RefIdGen): Ref[A] = {
-    unsafePaddedWithId(initial, rig.nextId())
+  private[this] final def unsafeWithId[A](initial: A, str: AllocationStrategy, id: Long): Ref[A] = {
+    if (str.stm) {
+      stm.TRef.unsafeRefWithId(initial, id)
+    } else if (str.padded) {
+      internal.refs.unsafeNewRefP1(initial)(id)
+    } else {
+      internal.refs.unsafeNewRefU1(initial)(id)
+    }
   }
 
-  private[this] final def unsafePaddedWithId[A](initial: A, id: Long): Ref[A] = {
-    internal.refs.unsafeNewRefP1(initial)(id)
-  }
-
-  private[choam] final def unsafeUnpadded[A](initial: A, rig: RefIdGen): Ref[A] = {
-    unsafeUnpaddedWithId(initial, rig.nextId())
-  }
-
-  private[choam] final def unsafeUnpaddedWithId[A](initial: A, id: Long): Ref[A] = {
+  private[choam] final def unsafeUnpaddedWithIdForTesting[A](initial: A, id: Long): Ref[A] = {
     internal.refs.unsafeNewRefU1(initial)(id)
   }
 

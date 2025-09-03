@@ -95,6 +95,15 @@ trait TRefSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("Internal: TRef.unsafeRefWithId") {
+    val rr: core.Ref[String] = TRef.unsafeRefWithId("foo", this.mcasImpl.currentContext().refIdGen.nextId())
+    val tr: TRef[String] = rr.asInstanceOf[TRef[String]]
+    for {
+      _ <- assertResultF(tr.updateAndGet(_ + "bar").commit, "foobar")
+      _ <- assertResultF(rr.get.run, "foobar")
+    } yield ()
+  }
+
   test("Internal: TRef should have .withListeners") {
     def incr(ref: TRef[Int]): F[Unit] =
       ref.get.flatMap { ov => ref.set(ov + 1) }.commit

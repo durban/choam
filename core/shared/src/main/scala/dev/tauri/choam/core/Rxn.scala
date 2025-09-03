@@ -2742,7 +2742,7 @@ private sealed abstract class RxnInstances11 extends RxnSyntax0 { self: Rxn.type
 
   private[this] val _catsRefMakeInstance: CatsRef.Make[Rxn] = new CatsRef.Make[Rxn] {
     final override def refOf[A](a: A): Rxn[CatsRef[Rxn, A]] = {
-      Ref.unpadded(initial = a).map { underlying =>
+      Ref(initial = a, str = Ref.AllocationStrategy.Unpadded).map { underlying =>
         new CatsRef[Rxn, A] {
           final override def get: Rxn[A] =
             underlying.get

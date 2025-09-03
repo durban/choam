@@ -95,13 +95,13 @@ object FalseSharing {
 
   @State(Scope.Benchmark)
   class Unpadded extends Base {
-    final override val rr: MemoryLocation[Int] = Ref.unsafeUnpadded(42, this.mcasImpl.currentContext().refIdGen).loc
-    final override val rw: MemoryLocation[Int] = Ref.unsafeUnpadded(21, this.mcasImpl.currentContext().refIdGen).loc
+    final override val rr: MemoryLocation[Int] = Ref.unsafe(42, Ref.AllocationStrategy.Unpadded, this.mcasImpl.currentContext().refIdGen).loc
+    final override val rw: MemoryLocation[Int] = Ref.unsafe(21, Ref.AllocationStrategy.Unpadded, this.mcasImpl.currentContext().refIdGen).loc
   }
 
   @State(Scope.Benchmark)
   class Padded extends Base {
-    final override val rr: MemoryLocation[Int] = Ref.unsafePadded(42, this.mcasImpl.currentContext().refIdGen).loc
-    final override val rw: MemoryLocation[Int] = Ref.unsafePadded(21, this.mcasImpl.currentContext().refIdGen).loc
+    final override val rr: MemoryLocation[Int] = Ref.unsafe(42, Ref.AllocationStrategy.Padded, this.mcasImpl.currentContext().refIdGen).loc
+    final override val rw: MemoryLocation[Int] = Ref.unsafe(21, Ref.AllocationStrategy.Padded, this.mcasImpl.currentContext().refIdGen).loc
   }
 }
