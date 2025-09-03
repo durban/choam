@@ -90,4 +90,33 @@ trait TQueueSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =
     } yield ()
     t.replicateA_(if (isJs()) 10 else 100)
   }
+
+  test("TQueue ordered wakeup(?)") {
+    for {
+      q1 <- TQueue.unbounded[Int].commit
+      q2 <- TQueue.unbounded[Int].commit
+      take1 <- (q1.take orElse q2.take).commit.start
+      _ <- this.tickAll
+      take2 <- (q2.take orElse q1.take).commit.start
+      _ <- this.tickAll
+      // if suspended transactions are ordered, now
+      // `take1` is first at both `q1` and `q2` (and
+      // `take2` is second at both)
+      _ <- F.both(q2.put(1).commit, q1.put(2).commit)
+      // if wakeup works like "notifyOne", then now,
+      // after these 2 `put` transactions commit,
+      // they will both concurrently try to wake up
+      // `take1` (as that's first); so we should make
+      // sure that (1) the loser (who couldn't woke
+      // up `take1`) must try to wake up another (in
+      // this case `take2`), and (2) if the woken up
+      // transaction suspends OR (completes without
+      // writing into the Ref which woken it up), it
+      // must wake up another (doesn't happen in this
+      // case)
+      v1 <- take1.joinWithNever
+      v2 <- take2.joinWithNever
+      _ <- assertEqualsF(Set(v1, v2), Set(1, 2))
+    } yield ()
+  }
 }
