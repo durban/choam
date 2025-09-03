@@ -63,7 +63,7 @@ private object RingBuffer {
   def apply[A](capacity: Int): Rxn[RingBuffer[A]] = {
     require(capacity > 0)
     Ref.array[A](size = capacity, initial = empty[A]).flatMap { arr =>
-      makeRingBuffer(capacity, arr, Ref.AllocationStrategy.Default)
+      makeRingBuffer(capacity, arr, Ref.Array.AllocationStrategy.Default)
     }
   }
 
@@ -80,10 +80,12 @@ private object RingBuffer {
     }
   }
 
-  private[this] def makeRingBuffer[A](capacity: Int, underlying: Ref.Array[A], str: Ref.AllocationStrategy): Rxn[RingBuffer[A]] = {
+  private[this] def makeRingBuffer[A](capacity: Int, underlying: Ref.Array[A], str: Ref.Array.AllocationStrategy): Rxn[RingBuffer[A]] = {
     require(capacity > 0)
     require(underlying.size === capacity)
-    val pStr = str.withPadded(true)
+    val pStr = str
+      .withFlat(false) // TODO: this is a workaround because flat can't do padded
+      .withPadded(true)
     (Ref(0, pStr) * Ref(0, pStr)).map {
       case (h, t) =>
         new RingBuffer[A](
