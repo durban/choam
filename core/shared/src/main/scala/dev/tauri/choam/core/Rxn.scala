@@ -122,6 +122,8 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
   final def postCommit(pc: Rxn[Unit]): Rxn[B] =
     this.postCommit { _ => pc }
 
+  private[choam] def impl: RxnImpl[B]
+
   /**
    * Execute the [[Rxn]].
    *
@@ -350,7 +352,7 @@ private[choam] sealed abstract class RxnImpl[+B]
   }
 
   private[choam] final override def impl: RxnImpl[B] =
-    this.asInstanceOf[RxnImpl[B]] // Note: this is unsafe in general, we must take care to only use it on Txns
+    this // Note: this is unsafe in general, we must take care to only use it on Txns
 
   // /STM
 }

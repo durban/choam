@@ -81,8 +81,6 @@ object Ref extends RefInstances0 {
     private[choam] final override val stm: Boolean,
   ) extends AllocationStrategy {
 
-    _assert((!stm) || (!padded))
-
     final override def withPadded(padded: Boolean): AllocationStrategy = {
       if (this.padded == padded) this
       else new AllocationStrategyImpl(padded = padded, stm = this.stm)
@@ -388,6 +386,7 @@ object Ref extends RefInstances0 {
 
   private[this] final def unsafeWithId[A](initial: A, str: AllocationStrategy, id: Long): Ref[A] = {
     if (str.stm) {
+      // TODO: padded TRef
       stm.TRef.unsafeRefWithId(initial, id)
     } else if (str.padded) {
       internal.refs.unsafeNewRefP1(initial)(id)
