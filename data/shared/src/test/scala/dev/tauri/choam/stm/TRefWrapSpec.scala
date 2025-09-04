@@ -84,13 +84,13 @@ object TRefWrapSpec {
   final object WQueue {
 
     final def unbounded[A]: Txn[WQueue[A]] = {
-      Queue.unbounded(Ref.AllocationStrategy.Default.withStm(true)).impl.map { q =>
+      Queue.unbounded[A](Ref.AllocationStrategy.Default.withStm(true)).impl.map { q =>
         new WQueue[A](q)
       }
     }
 
     final def bounded[A](bound: Int): Txn[WQueue[A]] = {
-      Queue.bounded(bound, Ref.AllocationStrategy.Default.withStm(true)).impl.map { q =>
+      Queue.bounded[A](bound, Ref.AllocationStrategy.Default.withStm(true)).impl.map { q =>
         new WQueue[A](q)
       }
     }
