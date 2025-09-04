@@ -75,17 +75,22 @@ object Queue {
     unbounded(Ref.AllocationStrategy.Default)
 
   final def bounded[A](bound: Int): Rxn[Queue.SourceSink[A]] =
-    dropping(bound)
+    bounded(bound, Ref.AllocationStrategy.Default)
+
+  final def bounded[A](bound: Int, str: Ref.AllocationStrategy): Rxn[Queue.SourceSink[A]] =
+    dropping(bound, str)
 
   final def dropping[A](capacity: Int): Rxn[Queue.WithSize[A]] =
-    DroppingQueue.apply[A](capacity)
+    dropping(capacity, Ref.AllocationStrategy.Default)
+
+  final def dropping[A](capacity: Int, str: Ref.AllocationStrategy): Rxn[Queue.WithSize[A]] =
+    DroppingQueue.apply[A](capacity, str)
 
   final def ringBuffer[A](capacity: Int): Rxn[Queue.WithSize[A]] =
     RingBuffer.apply[A](capacity)
 
-  final def unboundedWithSize[A]: Rxn[Queue.WithSize[A]] = {
+  final def unboundedWithSize[A]: Rxn[Queue.WithSize[A]] =
     MsQueue.withSize[A]
-  }
 
   // TODO: boundedWithSize : Queue.SourceSinkWithSize (?)
 

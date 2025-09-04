@@ -50,6 +50,33 @@ trait TRefWrapSpec[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
     } yield ()
     t.replicateA_(if (isJs()) 10 else 100)
   }
+
+  test("Wrapping a Queue.bounded with AllocationStrategy.withStm(true)") {
+    val t = for {
+      q <- WQueue.bounded[Int](4).commit
+      _ <- q.put(1).commit
+      _ <- assertResultF(q.take.commit, 1)
+      fib <- q.take.commit.start
+      _ <- this.tickAll
+      _ <- q.put(2).commit
+      _ <- assertResultF(fib.joinWithNever, 2)
+      fib1 <- q.take.commit.start
+      fib2 <- q.take.commit.start
+      _ <- (q.put(3) *> q.put(4)).commit
+      v1 <- fib1.joinWithNever
+      v2 <- fib2.joinWithNever
+      _ <- assertEqualsF(Set(v1, v2), Set(3, 4))
+      _ <- (q.put(5) *> q.put(6)).commit
+      _ <- (q.put(7) *> q.put(8)).commit
+      putFib1 <- q.put(9).commit.start
+      putFib2 <- q.put(10).commit.start
+      _ <- assertResultF(q.take.commit, 5)
+      _ <- assertResultF(q.take.commit, 6)
+      _ <- putFib1.joinWithNever
+      _ <- putFib2.joinWithNever
+    } yield ()
+    t.replicateA_(if (isJs()) 10 else 100)
+  }
 }
 
 object TRefWrapSpec {
@@ -61,9 +88,15 @@ object TRefWrapSpec {
         new WQueue[A](q)
       }
     }
+
+    final def bounded[A](bound: Int): Txn[WQueue[A]] = {
+      Queue.bounded(bound, Ref.AllocationStrategy.Default.withStm(true)).impl.map { q =>
+        new WQueue[A](q)
+      }
+    }
   }
 
-  final class WQueue[A](underlying: Queue[A]) {
+  final class WQueue[A](underlying: Queue.SourceSink[A]) {
 
     final def put(a: A): Txn[Unit] = {
       underlying.offer(a).impl.flatMap {

@@ -92,7 +92,7 @@ object Ref extends RefInstances0 {
     }
 
     final override def toArrayAllocationStrategy: Array.AllocationStrategy =
-      Array.AllocationStrategy.Default.withPadded(padded = this.padded)
+      Array.AllocationStrategy.Default.withPadded(this.padded).withStm(this.stm)
   }
 
   sealed trait Array[A] {
@@ -117,6 +117,7 @@ object Ref extends RefInstances0 {
       def withFlat(flat: Boolean): Array.AllocationStrategy
 
       override def withPadded(padded: Boolean): Array.AllocationStrategy
+      private[choam] override def withStm(stm: Boolean): Array.AllocationStrategy
 
       final override def toArrayAllocationStrategy: Array.AllocationStrategy =
         this
@@ -159,7 +160,6 @@ object Ref extends RefInstances0 {
     ) extends AllocationStrategy {
 
       require(!(padded && flat), "padding is currently not supported for flat = true")
-      require(!stm, "STM is currently not supported for Ref.Array.AllocationStrategy")
 
       final override def withSparse(sparse: Boolean): AllocationStrategy =
         this.copy(sparse = sparse)
@@ -247,17 +247,19 @@ object Ref extends RefInstances0 {
   // having the `if` and `match` inside the `Rxn`:
   private[this] final def safeArray[A](size: Int, initial: A, str: Ref.Array.AllocationStrategy): Rxn[Ref.Array[A]] = {
     if (size > 0) {
-      val strategy = str.toInt
-      (strategy : @switch) match {
-        case 0 => Rxn.unsafe.delayContext(ctx => new StrictArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
-        case 1 => Rxn.unsafe.delayContext(ctx => new StrictArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
-        case 2 => Rxn.unsafe.delayContext(ctx => unsafeStrictArray(size, initial, ctx.refIdGen))
-        case 3 => throw new IllegalArgumentException("flat && padded not implemented yet")
-        case 4 => Rxn.unsafe.delayContext(ctx => new LazyArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
-        case 5 => Rxn.unsafe.delayContext(ctx => new LazyArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
-        case 6 => Rxn.unsafe.delayContext(ctx => unsafeLazyArray(size, initial, ctx.refIdGen))
-        case 7 => throw new IllegalArgumentException("flat && padded not implemented yet")
-        case _ => throw new IllegalArgumentException(s"invalid strategy: ${strategy}")
+      if (str.stm) {
+        // TODO: flat arrays of TRefs are not implemented yet
+        if (str.sparse) Rxn.unsafe.delayContext(ctx => new LazyArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
+        else Rxn.unsafe.delayContext(ctx => new StrictArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
+      } else {
+        if (str.flat) {
+          require(!str.padded, "flat && padded not implemented yet")
+          if (str.sparse) Rxn.unsafe.delayContext(ctx => unsafeLazyArray(size, initial, ctx.refIdGen))
+          else Rxn.unsafe.delayContext(ctx => unsafeStrictArray(size, initial, ctx.refIdGen))
+        } else {
+          if (str.sparse) Rxn.unsafe.delayContext(ctx => new LazyArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
+          else Rxn.unsafe.delayContext(ctx => new StrictArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
+        }
       }
     } else if (size == 0) {
       Rxn.unsafe.delay(new EmptyRefArray[A])
@@ -268,17 +270,19 @@ object Ref extends RefInstances0 {
 
   private[choam] final def unsafeArray[A](size: Int, initial: A, str: Ref.Array.AllocationStrategy, rig: RefIdGen): Ref.Array[A] = {
     if (size > 0) {
-      val strategy = str.toInt
-      (strategy : @switch) match {
-        case 0 => new StrictArrayOfRefs(size, initial, str, rig = rig)
-        case 1 => new StrictArrayOfRefs(size, initial, str, rig = rig)
-        case 2 => unsafeStrictArray(size, initial, rig)
-        case 3 => throw new IllegalArgumentException("flat && padded not implemented yet")
-        case 4 => new LazyArrayOfRefs(size, initial, str, rig = rig)
-        case 5 => new LazyArrayOfRefs(size, initial, str, rig = rig)
-        case 6 => unsafeLazyArray(size, initial, rig)
-        case 7 => throw new IllegalArgumentException("flat && padded not implemented yet")
-        case _ => throw new IllegalArgumentException(s"invalid strategy: ${strategy}")
+      if (str.stm) {
+        // TODO: flat arrays of TRefs are not implemented yet
+        if (str.sparse) new LazyArrayOfRefs(size, initial, str, rig)
+        else new StrictArrayOfRefs(size, initial, str, rig)
+      } else {
+        if (str.flat) {
+          require(!str.padded, "flat && padded not implemented yet")
+          if (str.sparse) unsafeLazyArray(size, initial, rig)
+          else unsafeStrictArray(size, initial, rig)
+        } else {
+          if (str.sparse) new LazyArrayOfRefs(size, initial, str, rig)
+          else new StrictArrayOfRefs(size, initial, str, rig)
+        }
       }
     } else if (size == 0) {
       new EmptyRefArray[A]
