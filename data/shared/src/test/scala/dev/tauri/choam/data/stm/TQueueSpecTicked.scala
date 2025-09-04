@@ -16,22 +16,45 @@
  */
 
 package dev.tauri.choam
-package stm
 package data
+package stm
+
+import scala.collection.immutable.Set
 
 import cats.effect.IO
 import cats.effect.kernel.Outcome
 
-final class TQueueSpecTicked_DefaultMcas_IO
+import dev.tauri.choam.stm.TxnBaseSpecTicked
+
+final class TQueueSpecTicked_Direct_DefaultMcas_IO
   extends BaseSpecTickedIO
   with SpecDefaultMcas
-  with TQueueSpecTicked[IO]
+  with TQueueSpecTicked_Direct[IO]
+
+final class TQueueSpecTicked_Wrapped_DefaultMcas_IO
+  extends BaseSpecTickedIO
+  with SpecDefaultMcas
+  with TQueueSpecTicked_Wrapped[IO]
+
+trait TQueueSpecTicked_Direct[F[_]] extends TQueueSpecTicked[F] { this: McasImplSpec =>
+
+  protected final override def newUnbounded[A]: F[TQueue[A]] =
+    TQueue.unboundedDirect[A].commit
+}
+
+trait TQueueSpecTicked_Wrapped[F[_]] extends TQueueSpecTicked[F] { this: McasImplSpec =>
+
+  protected final override def newUnbounded[A]: F[TQueue[A]] =
+    TQueue.unboundedWrapped[A].commit
+}
 
 trait TQueueSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
 
+  protected def newUnbounded[A]: F[TQueue[A]]
+
   test("TQueue") {
     val t = for {
-      q <- TQueue.unbounded[Int].commit
+      q <- newUnbounded[Int]
       take1 <- q.take.commit.start
       take2 <- q.take.commit.start
       _ <- q.put(1).commit
@@ -48,7 +71,7 @@ trait TQueueSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =
 
   test("TQueue cancel take") {
     val t = for {
-      q <- TQueue.unbounded[Int].commit
+      q <- newUnbounded[Int]
       take1 <- q.take.commit.start
       take2 <- q.take.commit.start
       _ <- this.tickAll
@@ -69,7 +92,7 @@ trait TQueueSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =
 
   test("TQueue cancel take + put race") {
     val t = for {
-      q <- TQueue.unbounded[Int].commit
+      q <- newUnbounded[Int]
       take1 <- q.take.commit.start
       take2 <- q.take.commit.start
       _ <- this.tickAll
@@ -93,8 +116,8 @@ trait TQueueSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =
 
   test("TQueue ordered wakeup(?)") {
     for {
-      q1 <- TQueue.unbounded[Int].commit
-      q2 <- TQueue.unbounded[Int].commit
+      q1 <- newUnbounded[Int]
+      q2 <- newUnbounded[Int]
       take1 <- (q1.take orElse q2.take).commit.start
       _ <- this.tickAll
       take2 <- (q2.take orElse q1.take).commit.start

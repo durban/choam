@@ -16,14 +16,16 @@
  */
 
 package dev.tauri.choam
+package data
 package stm
+
+import scala.collection.immutable.Set
 
 import cats.effect.IO
 
-import core.Ref
-import dev.tauri.choam.data.Queue
+import dev.tauri.choam.stm.TxnBaseSpecTicked
 
-import TRefWrapSpec.WQueue
+import TQueue.WQueue
 
 final class TRefWrapSpec_DefaultMcas_IO
   extends BaseSpecTickedIO
@@ -81,35 +83,5 @@ trait TRefWrapSpec[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
 
 object TRefWrapSpec {
 
-  final object WQueue {
 
-    final def unbounded[A]: Txn[WQueue[A]] = {
-      Queue.unbounded[A](Ref.AllocationStrategy.Default.withStm(true)).impl.map { q =>
-        new WQueue[A](q)
-      }
-    }
-
-    final def bounded[A](bound: Int): Txn[WQueue[A]] = {
-      Queue.bounded[A](bound, Ref.AllocationStrategy.Default.withStm(true)).impl.map { q =>
-        new WQueue[A](q)
-      }
-    }
-  }
-
-  final class WQueue[A](underlying: Queue.SourceSink[A]) {
-
-    final def put(a: A): Txn[Unit] = {
-      underlying.offer(a).impl.flatMap {
-        case true => Txn.unit
-        case false => Txn.retry
-      }
-    }
-
-    final def take: Txn[A] = {
-      underlying.poll.impl.flatMap {
-        case Some(a) => Txn.pure(a)
-        case None => Txn.retry
-      }
-    }
-  }
 }

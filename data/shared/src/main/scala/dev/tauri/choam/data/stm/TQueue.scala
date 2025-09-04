@@ -16,8 +16,11 @@
  */
 
 package dev.tauri.choam
-package stm
 package data
+package stm
+
+import core.Ref
+import dev.tauri.choam.stm.{ Txn, TRef }
 
 sealed abstract class TQueue[A] { // TODO: move it to -data(?)
   def take: Txn[A]
@@ -26,7 +29,11 @@ sealed abstract class TQueue[A] { // TODO: move it to -data(?)
 
 object TQueue {
 
-  final def unbounded[A]: Txn[TQueue[A]] = { // TODO: a MS-queue might be more efficient
+  final def unboundedWrapped[A]: Txn[TQueue[A]] = {
+    WQueue.unbounded[A]
+  }
+
+  final def unboundedDirect[A]: Txn[TQueue[A]] = { // TODO: a MS-queue might be more efficient
     TRef(List.empty[A]).flatMap { reads =>
       TRef(List.empty[A]).map { writes =>
         new TQueue[A] {
@@ -53,6 +60,38 @@ object TQueue {
             }
           } yield a
         }
+      }
+    }
+  }
+
+  final object WQueue {
+
+    final def unbounded[A]: Txn[WQueue[A]] = {
+      Queue.unbounded[A](Ref.AllocationStrategy.Default.withStm(true)).impl.map { q =>
+        new WQueue[A](q)
+      }
+    }
+
+    final def bounded[A](bound: Int): Txn[WQueue[A]] = {
+      Queue.bounded[A](bound, Ref.AllocationStrategy.Default.withStm(true)).impl.map { q =>
+        new WQueue[A](q)
+      }
+    }
+  }
+
+  final class WQueue[A](underlying: Queue.SourceSink[A]) extends TQueue[A] {
+
+    final override def put(a: A): Txn[Unit] = {
+      underlying.offer(a).impl.flatMap {
+        case true => Txn.unit
+        case false => Txn.retry
+      }
+    }
+
+    final override def take: Txn[A] = {
+      underlying.poll.impl.flatMap {
+        case Some(a) => Txn.pure(a)
+        case None => Txn.retry
       }
     }
   }
