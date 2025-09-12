@@ -80,8 +80,3 @@ trait TRefWrapSpec[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
     t.replicateA_(if (isJs()) 10 else 100)
   }
 }
-
-object TRefWrapSpec {
-
-
-}
