@@ -1003,7 +1003,7 @@ lazy val dependencies = new {
   val catsVersion = "2.13.0" // https://github.com/typelevel/cats
   val catsEffectVersion = "3.7.0-RC1" // https://github.com/typelevel/cats-effect // TODO:0.5: don't use RC
   val catsCollectionsVersion = "0.9.10" // https://github.com/typelevel/cats-collections
-  val fs2Version = "3.13.0-M6" // https://github.com/typelevel/fs2 // TODO:0.5: don't use RC/M
+  val fs2Version = "3.13.0-M7" // https://github.com/typelevel/fs2 // TODO:0.5: don't use RC/M
   val scalacheckEffectVersion = "2.1.0-RC1" // https://github.com/typelevel/scalacheck-effect
   val jcstressVersion = "0.16" // https://github.com/openjdk/jcstress
   val jmhVersion = "1.37" // https://github.com/openjdk/jmh
@@ -1063,7 +1063,7 @@ lazy val dependencies = new {
       catsLaws.value,
       "org.typelevel" %%% "cats-effect-kernel-testkit" % catsEffectVersion,
       "org.typelevel" %%% "cats-effect-testkit" % catsEffectVersion,
-      "org.scalameta" %%% "munit" % "1.1.1", // https://github.com/scalameta/munit
+      "org.scalameta" %%% "munit" % "1.2.0", // https://github.com/scalameta/munit
       "org.typelevel" %%% "munit-cats-effect" % "2.2.0-RC1", // https://github.com/typelevel/munit-cats-effect
       "org.typelevel" %%% "scalacheck-effect" % scalacheckEffectVersion,
       "org.typelevel" %%% "scalacheck-effect-munit" % scalacheckEffectVersion,
