@@ -122,6 +122,8 @@ sealed trait Txn[+A] {
    * Thus, `a orElse b` is a `Txn` which: if
    * `a` succeeds, succeeds with the result of
    * `a`; otherwise, it performs `b`.
+   *
+   * @see [[Txn.retry]]
    */
   def orElse[X >: A](that: Txn[X]): Txn[X]
 

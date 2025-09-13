@@ -91,7 +91,7 @@ As noted [below](#related-work), `Rxn` is not a full-featured STM implementation
 it lacks Haskell-style "modular blocking"). However, the `dev.tauri.choam.stm`
 package contains a full-blown STM, built on top of `Rxn`. For now, this package is
 experimental (i.e., no backwards compatibility), and also lacks some basic features, but it
-_does_ have modular blocking (`Txn.retry`).
+_does_ have modular blocking (`Txn.retry` and `Txn#orElse`).
 
 ## Modules
 
@@ -290,7 +290,16 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
 - No "infinite loops" are created (e.g., by infinitely recursive `flatMap`s)
 - No `unsafe` operations are used (e.g., `Rxn.unsafe.retry` is obviously not lock-free)
 - We assume instances of `FunctionN` to be pure and total
-- We assume that certain JVM operations are lock-free:
+- We assume that no dynamic type tests are performed on objects provided by CHOAM
+  - i.e., the dynamic type of these objects is not part of their public API
+  - e.g., don't do this:
+    ```scala
+    def foo(ref: Ref[String]) = ref match { // DON'T do this
+      case ar: java.util.concurrent.atomic.AtomicReference[_] =>
+        ... // use `ar`
+    }
+    ```
+- We assume that certain JVM operations are lock-free; some examples are:
   - `VarHandle` operations (e.g., `compareAndSet`)
     - in practice, this is true on 64-bit platforms
     - on 32-bit platforms some of these *might* use a lock
@@ -301,7 +310,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
 - Certain `Rxn` operations require extra assumptions:
   - `Rxn.slowRandom` and `UUIDGen` use the OS RNG, which might block
     (although we *really* try to use the non-blocking ones)
-  - in `choam-async` we assume that calling a CE `Async` callback is lock-free
+  - in `AsyncReactive` we assume that calling a Cats Effect `Async` callback is lock-free
     (in `cats.effect.IO`, as of version 3.6.3, this is not technically true)
 - Executing a `Rxn` with a `Rxn.Strategy` other than `Rxn.Strategy.Spin`
   is not necessarily lock-free
