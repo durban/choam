@@ -238,6 +238,44 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
     t.replicateA_(if (isJs()) 10 else 100)
   }
 
+  test("TMVar") {
+    val t = for {
+      mv <- TMVar[Int].commit
+      _ <- assertResultF(mv.tryTake.commit, None)
+      _ <- assertResultF(mv.tryPut(42).commit, true)
+      _ <- assertResultF(mv.tryPut(99).commit, false)
+      _ <- assertResultF(mv.tryTake.commit, Some(42))
+      _ <- assertResultF(mv.tryTake.commit, None)
+      _ <- assertResultF(mv.tryPut(99).commit, true)
+      _ <- assertResultF(mv.tryPut(100).commit, false)
+      _ <- assertResultF(mv.take.commit, 99)
+      fib1 <- mv.take.commit.start
+      fib2 <- mv.take.commit.start
+      _ <- this.tickAll
+      _ <- mv.put(1).commit *> mv.put(2).commit
+      v1 <- fib1.joinWithNever
+      v2 <- fib2.joinWithNever
+      _ <- assertEqualsF(Set(v1, v2), Set(1, 2))
+      fib1 <- mv.put(3).commit.start
+      fib2 <- mv.put(4).commit.start
+      _ <- this.tickAll
+      v1 <- mv.take.commit
+      v2 <- mv.take.commit
+      _ <- fib1.joinWithNever
+      _ <- fib2.joinWithNever
+      _ <- assertEqualsF(Set(v1, v2), Set(3, 4))
+      _ <- assertResultF(mv.tryTake.commit, None)
+      mv2 <- TMVar[Int].commit
+      fib <- (mv.take orElse mv2.take).commit.start
+      _ <- this.tickAll
+      _ <- assertResultF(mv2.tryPut(42).commit, true)
+      _ <- assertResultF(fib.joinWithNever, 42)
+      _ <- assertResultF(mv.tryTake.commit, None)
+      _ <- assertResultF(mv2.tryTake.commit, None)
+    } yield ()
+    t.replicateA_(if (isJs()) 10 else 100)
+  }
+
   test("Run with Stepper") {
     def checkPositive(ref: TRef[Int], ctr: AtomicInteger): Txn[Unit] =
       Txn.unsafe.delay { ctr.incrementAndGet() } *> ref.get.flatMap { v => Txn.check(v > 0) }

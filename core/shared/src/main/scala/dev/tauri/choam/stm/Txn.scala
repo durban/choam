@@ -150,6 +150,15 @@ object Txn extends TxnInstances0 {
   final def unit: Txn[Unit] =
     Rxn.unitImpl
 
+  private[choam] final def _true: Txn[Boolean] =
+    Rxn.trueImpl
+
+  private[choam] final def _false: Txn[Boolean] =
+    Rxn.falseImpl
+
+  private[choam] final def none[A]: Txn[Option[A]] =
+    Rxn.noneImpl
+
   /**
    * Retries the current `Txn`.
    *

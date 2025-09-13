@@ -419,8 +419,8 @@ object Rxn extends RxnInstances0 {
   private[this] val _unit: RxnImpl[Unit] =
     pureImpl(())
 
-  private[this] val _none: Rxn[Option[Nothing]] =
-    pure(None)
+  private[this] val _none: RxnImpl[Option[Nothing]] =
+    pureImpl(None)
 
   private[this] val _nullOf: Rxn[Null] =
     pure(null)
@@ -444,13 +444,22 @@ object Rxn extends RxnInstances0 {
   private[choam] final def none[A]: Rxn[Option[A]] =
     _none
 
+  private[choam] final def noneImpl[A]: RxnImpl[Option[A]] =
+    _none
+
   private[choam] final def nullOf[A]: Rxn[A] =
     _nullOf.asInstanceOf[Rxn[A]]
 
   private[choam] final def true_[A]: Rxn[Boolean] =
     _true
 
+  private[choam] final def trueImpl[A]: RxnImpl[Boolean] =
+    _true
+
   private[choam] final def false_[A]: Rxn[Boolean] =
+    _false
+
+  private[choam] final def falseImpl[A]: RxnImpl[Boolean] =
     _false
 
   private[choam] final def rightUnit: Rxn[Right[Nothing, Unit]] =

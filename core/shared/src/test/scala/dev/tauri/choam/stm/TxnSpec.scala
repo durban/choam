@@ -191,6 +191,14 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("Txn._true, ._false, and .none") {
+    for {
+      _ <- assertResultF(Txn._true.commit, true)
+      _ <- assertResultF(Txn._false.commit, false)
+      _ <- assertResultF(Txn.none[Int].commit, None)
+    } yield ()
+  }
+
   test("Txn.unsafe.delayContext") {
     Txn.unsafe.delayContext { ctx =>
       ctx eq this.mcasImpl.currentContext()
