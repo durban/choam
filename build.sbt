@@ -1023,6 +1023,7 @@ lazy val dependencies = new {
   val catsEffectTestkit = Def.setting("org.typelevel" %%% "cats-effect-testkit" % catsEffectVersion)
   val catsCollections = Def.setting("org.typelevel" %%% "cats-collections-core" % catsCollectionsVersion)
   val fs2 = Def.setting("co.fs2" %%% "fs2-core" % fs2Version)
+  val fs2Io = Def.setting("co.fs2" %%% "fs2-io" % fs2Version)
   val decline = Def.setting("com.monovore" %%% "decline" % "2.5.0") // https://github.com/bkirwi/decline
 
   // JVM:
@@ -1044,9 +1045,18 @@ lazy val dependencies = new {
   val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.1.0.5")
   val zioStm = Def.setting("dev.zio" %%% "zio" % zioVersion)
   val zioEverything = Def.setting[Seq[ModuleID]](Seq(
-    zioCats.value,
-    zioStm.value,
-  ))
+    Seq(
+      zioCats.value,
+      zioStm.value,
+    ),
+    if (ScalaArtifacts.isScala3(scalaVersion.value)) {
+      // on dotty, zio-interop-cats depends on a vulnerable
+      // version of fs2-io, so we pull in a fixed version:
+      Seq(fs2Io.value)
+    } else {
+      Nil
+    },
+  ).flatten)
 
   val macros = Def.setting[Seq[ModuleID]] {
     if (ScalaArtifacts.isScala3(scalaVersion.value)) {
