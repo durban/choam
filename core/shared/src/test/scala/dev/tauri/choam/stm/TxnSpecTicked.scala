@@ -276,6 +276,40 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
     t.replicateA_(if (isJs()) 10 else 100)
   }
 
+  test("TMChan") {
+    val t = for {
+      ch <- TMChan[Int].commit
+      p1 <- ch.newPort.commit
+      _ <- ch.write(1).commit
+      _ <- (ch.write(2) *> ch.write(3)).commit
+      _ <- assertResultF(p1.read.commit, 1)
+      p2 <- ch.newPort.commit
+      _ <- assertResultF(p1.read.commit, 2)
+      _ <- ch.write(4).commit
+      _ <- assertResultF(p1.read.commit, 3)
+      _ <- assertResultF((p1.read, p2.read).tupled.commit, (4, 4))
+      fib1a <- p1.read.commit.start
+      _ <- this.tickAll
+      fib1b <- p1.read.commit.start
+      _ <- this.tickAll
+      fib2 <- p2.read.commit.start
+      _ <- ch.write(5).commit
+      _ <- ch.write(6).commit
+      _ <- assertResultF(fib2.joinWithNever, 5)
+      va <- fib1a.joinWithNever
+      vb <- fib1b.joinWithNever
+      _ <- assertEqualsF(Set(va, vb), Set(5, 6))
+      _ <- assertResultF(p2.read.commit, 6)
+      ch2 <- TMChan[Int].commit
+      p3 <- ch2.newPort.commit
+      fib <- (p1.read orElse p2.read orElse p3.read).commit.start
+      _ <- this.tickAll
+      _ <- ch2.write(42).commit
+      _ <- assertResultF(fib.joinWithNever, 42)
+    } yield ()
+    t.replicateA_(if (isJs()) 10 else 100)
+  }
+
   test("Run with Stepper") {
     def checkPositive(ref: TRef[Int], ctr: AtomicInteger): Txn[Unit] =
       Txn.unsafe.delay { ctr.incrementAndGet() } *> ref.get.flatMap { v => Txn.check(v > 0) }
