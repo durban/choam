@@ -310,6 +310,23 @@ trait TxnSpecTicked[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
     t.replicateA_(if (isJs()) 10 else 100)
   }
 
+  test("TMVar + TMChan") {
+    val t = for {
+      mv <- TMVar[Int].commit
+      ch <- TMChan[Int].commit
+      p <- ch.newPort.commit
+      fib1 <- (mv.take orElse p.read).commit.start
+      _ <- this.tickAll
+      _ <- ch.write(42).commit
+      _ <- assertResultF(fib1.joinWithNever, 42)
+      fib2 <- (mv.take orElse p.read).commit.start
+      _ <- this.tickAll
+      _ <- mv.put(99).commit
+      _ <- assertResultF(fib2.joinWithNever, 99)
+    } yield ()
+    t.replicateA_(if (isJs()) 10 else 100)
+  }
+
   test("Run with Stepper") {
     def checkPositive(ref: TRef[Int], ctr: AtomicInteger): Txn[Unit] =
       Txn.unsafe.delay { ctr.incrementAndGet() } *> ref.get.flatMap { v => Txn.check(v > 0) }
