@@ -19,7 +19,6 @@ package dev.tauri.choam
 package core
 
 import cats.effect.IO
-import cats.effect.instances.all._
 
 final class MemoSpec_DefaultMcas_IO
   extends BaseSpecIO

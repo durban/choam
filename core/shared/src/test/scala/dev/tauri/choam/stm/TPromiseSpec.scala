@@ -24,7 +24,6 @@ import scala.concurrent.duration._
 
 import cats.syntax.all._
 import cats.effect.IO
-import cats.effect.instances.spawn._
 import cats.effect.kernel.Outcome
 
 final class TPromiseSpec_DefaultMcas_IO

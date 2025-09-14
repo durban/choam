@@ -22,7 +22,6 @@ import scala.concurrent.duration._
 
 import cats.effect.kernel.{ Ref, Deferred }
 import cats.effect.IO
-import cats.effect.instances.spawn._
 
 import munit.TestOptions
 

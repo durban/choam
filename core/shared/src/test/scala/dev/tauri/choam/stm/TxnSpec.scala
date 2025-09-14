@@ -21,6 +21,8 @@ package stm
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 
+import scala.concurrent.duration._
+
 import cats.kernel.Monoid
 import cats.{ ~>, Defer, Monad, StackSafeMonad, Applicative }
 import cats.effect.kernel.Unique
@@ -28,6 +30,7 @@ import cats.effect.std.UUIDGen
 import cats.effect.IO
 
 import core.RetryStrategy
+import java.util.concurrent.ThreadLocalRandom
 
 final class TxnSpec_DefaultMcas_IO
   extends BaseSpecIO
@@ -155,6 +158,31 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("Txn.merge") {
+    val N = 1000
+    val K = 10
+    val t = for {
+      refs <- TRef(0).commit.replicateA(N)
+      txns = refs.map { ref =>
+        ref.get.flatMap { i =>
+          if (i > 0) ref.set(i - 1).as(i)
+          else Txn.retry
+        }
+      }
+      merged = Txn.merge(txns)
+      fib <- merged.commit.start
+      _ <- F.sleep(10.millis)
+      idxs <- F.delay(ThreadLocalRandom.current().nextInt(N)).replicateA(K)
+      _ <- idxs.parTraverse { idx =>
+        val v = idx + 1 // so that it's > 0
+        refs(idx).set(v).commit
+      }
+      r <- fib.joinWithNever
+      _ <- assertF(idxs.contains(r - 1))
+    } yield ()
+    t.replicateA_(if (isJs()) 5 else 50)
+  }
+
   test("Txn.unsafe.panic") {
     val exc = new MyException
     for {
@@ -215,7 +243,7 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     for {
       ref <- TRef[Int](0).commit
       txn1 = Txn.unsafe.withLocal(42, new Txn.unsafe.WithLocal[Int, String] {
-        final override def apply[G[_]](local: TxnLocal[G, Int], lift: Txn ~> G, inst: TxnLocal.Instances[G]) = {
+        final override def apply[G[_]](local: TxnLocal[G, Int], lift: Txn ~> G, inst: TxnLocal.Instances[G]): G[String] = {
           import inst._
           local.get.flatMap { ov =>
             lift(ref.set(ov)) *> local.set(99).as("foo")
@@ -231,7 +259,7 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     val txn: Txn[(String, Int)] = for {
       ref <- TRef[Int](0)
       s <- Txn.unsafe.withLocal(42, new Txn.unsafe.WithLocal[Int, String] {
-        final override def apply[G[_]](scratch: TxnLocal[G, Int], lift: Txn ~> G, inst: TxnLocal.Instances[G]) = {
+        final override def apply[G[_]](scratch: TxnLocal[G, Int], lift: Txn ~> G, inst: TxnLocal.Instances[G]): G[String] = {
           import inst.monadInstance
           for {
             i <- lift(ref.get)
@@ -255,7 +283,7 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
           local: TxnLocal[G, Int],
           lift: Txn ~> G,
           inst: TxnLocal.Instances[G],
-        ) = {
+        ): G[Int] = {
           import inst.monadInstance
           lift(Txn.unsafe.plus(Txn.pure(0), Txn.pure(1))).flatMap { leftOrRight =>
             lift(ref.update(_ + 1)) *> local.getAndUpdate(_ + 1).flatMap { ov =>

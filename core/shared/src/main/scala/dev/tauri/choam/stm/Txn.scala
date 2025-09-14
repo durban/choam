@@ -199,6 +199,9 @@ object Txn extends TxnInstances0 {
   final def defer[A](fa: => Txn[A]): Txn[A] =
     Rxn.unsafe.suspendImpl { fa.impl }
 
+  private[choam] final def merge[A](txns: List[Txn[A]]): Txn[A] = // TODO: should this be public?
+    txns.reduceLeftOption(_ orElse _).getOrElse(throw new IllegalArgumentException)
+
   /** Generates a unique token */
   final def unique: Txn[Unique.Token] =
     Rxn.uniqueImpl

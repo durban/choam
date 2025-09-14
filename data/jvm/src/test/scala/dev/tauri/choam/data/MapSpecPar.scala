@@ -22,7 +22,6 @@ import scala.collection.immutable.{ Set => ScalaSet }
 
 import cats.kernel.{ Hash, Order }
 import cats.effect.IO
-import cats.effect.instances.all._
 
 import org.scalacheck.effect.PropF
 import munit.ScalaCheckEffectSuite

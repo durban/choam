@@ -38,6 +38,7 @@ trait BaseSpecF[F[_]]
   with MUnitUtils
   with cats.syntax.AllSyntax
   with cats.effect.syntax.AllSyntax
+  with cats.effect.instances.AllInstances
   with BaseSpecFPlatform { this: McasImplSpec =>
 
   implicit def rF: Reactive[F]

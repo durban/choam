@@ -22,7 +22,6 @@ import scala.concurrent.duration._
 
 import cats.syntax.all._
 import cats.effect.IO
-import cats.effect.instances.spawn.parallelForGenSpawn
 
 import core.{ Rxn, Ref, Eliminator }
 
