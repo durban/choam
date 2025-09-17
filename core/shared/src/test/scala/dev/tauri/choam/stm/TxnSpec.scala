@@ -346,7 +346,8 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
 
   test("Unique[Txn] instance") {
     def generic[G[_]](implicit G: Unique[G]): G[(Unique.Token, Unique.Token)] = {
-      G.applicative.map2(G.unique, G.unique)(Tuple2.apply)
+      val u = G.unique
+      G.applicative.map2(u, u)(Tuple2.apply)
     }
     for {
       t12 <- generic[Txn].commit
@@ -357,7 +358,8 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
 
   test("UUIDGen[Txn] instance") {
     def generic[G[_]](implicit G: Applicative[G], gen: UUIDGen[G]): G[(UUID, UUID)] = {
-      G.map2(gen.randomUUID, gen.randomUUID)(Tuple2.apply)
+      val ru = gen.randomUUID
+      G.map2(ru, ru)(Tuple2.apply)
     }
     for {
       t12 <- generic[Txn].commit
