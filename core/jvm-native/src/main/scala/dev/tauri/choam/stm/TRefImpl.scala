@@ -129,7 +129,7 @@ private final class TRefImpl[A](
       // it is the responsibility of the caller to check
       // the return value of this method, and ignore calls
       // to the callback if we return `InvalidListenerId`)
-      unsafeCancelListener(lid)
+      unsafeCancelListener(lid) // TODO: is this really necessary? (i.e., can we leak without it?)
       Consts.InvalidListenerId
     } else {
       lid
