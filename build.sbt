@@ -74,7 +74,7 @@ val linux86 = "ubuntu-24.04" // x86_64
 val windows = "windows-2025" // x86_64
 val windowsArm = "windows-11-arm" // ARM64
 val macos = "macos-15" // ARM64
-val macosIntel = "macos-13" // x86_64
+val macosIntel = "macos-15-intel" // x86_64
 
 val TestInternal = "test-internal"
 
