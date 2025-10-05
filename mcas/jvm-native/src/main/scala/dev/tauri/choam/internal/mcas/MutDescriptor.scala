@@ -162,9 +162,6 @@ final class MutDescriptor private (
 
 object MutDescriptor {
 
-  private final val DefaultVersionIncr =
-    Version.Incr
-
   private[mcas] final def newEmptyFromVer(currentTs: Long): MutDescriptor = {
     new MutDescriptor(
       LogMapMut.newEmpty(),

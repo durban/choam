@@ -31,7 +31,7 @@ import sbt.ProjectReference
 import sbtcrossproject.CrossProject
 
 // Scala versions:
-val scala2 = "2.13.16"
+val scala2 = "2.13.17"
 val scala3 = "3.3.6"
 
 // The goals with the CI matrix are to:
@@ -156,6 +156,7 @@ ThisBuild / scalaVersion := crossScalaVersions.value.head
 ThisBuild / scalaOrganization := "org.scala-lang"
 ThisBuild / evictionErrorLevel := Level.Warn
 ThisBuild / semanticdbEnabled := true
+ThisBuild / semanticdbVersion := "4.13.10"
 
 val assertionsEnabled = settingKey[Boolean]("Whether to compile `_assert` calls")
 ThisBuild / assertionsEnabled := !java.lang.Boolean.getBoolean("dev.tauri.choam.build.disableAssertions")
@@ -855,6 +856,7 @@ lazy val commonSettings = Seq[Setting[_]](
         "-Xsource:3-cross",
         "-Wnonunit-statement",
         "-Wvalue-discard",
+        "-Xlint:_,-infer-any", // TODO: workaround to avoid https://github.com/scala/bug/issues/13128
       ) ++ (if (assertionsEnabled.value) Nil else List("-Xelide-below", "1501"))
     } else {
       // 3.x:
