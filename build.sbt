@@ -32,7 +32,7 @@ import sbtcrossproject.CrossProject
 
 // Scala versions:
 val scala2 = "2.13.17"
-val scala3 = "3.3.6"
+val scala3 = "3.3.7"
 
 // The goals with the CI matrix are to:
 // - have ≦19 jobs (so that all of them can run in parallel; the +1 is sbt-dependency-submission)
