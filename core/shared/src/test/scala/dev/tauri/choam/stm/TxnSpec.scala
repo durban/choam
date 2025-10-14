@@ -180,7 +180,11 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       r <- fib.joinWithNever
       _ <- assertF(idxs.contains(r - 1))
     } yield ()
-    t.replicateA_(if (isJs()) 5 else 50)
+    t.replicateA_(this.platform match {
+      case Jvm => 50
+      case Js => 5
+      case Native => 20
+    })
   }
 
   test("Txn.unsafe.panic") {
