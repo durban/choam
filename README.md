@@ -41,7 +41,7 @@ is an effect type with result type `A`. Thus, it is similar to, e.g., `IO[A]`, b
 ## Getting started
 
 ```scala
-libraryDependencies += "dev.tauri" %%% "choam-core" % choamVersion // see above for latest version
+libraryDependencies += "dev.tauri" %%% "choam-core" % "0.5.0-RC4"
 ```
 
 The `choam-core` module contains the fundamental types for working with `Rxn`s.
@@ -175,8 +175,8 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
 [^3]: Guerraoui, Rachid, Alex Kogan, Virendra J. Marathe, and Igor Zablotchi. "Efficient Multi-Word Compare and Swap." In 34th International Symposium on Distributed Computing. 2020.
 
 - Software transactional memory (STM)
-  - A `Rxn` is somewhat similar to a memory transaction, but there are
-    important differences:
+  - A `Rxn` is somewhat similar to a memory transaction, but it has
+    some differences to typical STMs:
     - A `Rxn` is lock-free by construction (but see [below](#lock-freedom)); STM transactions are not (necessarily)
       lock-free (see, e.g., the "retry" STM operation, called ["modular blocking" in Haskell][4][^4]).
     - As a consequence of the previous point, `Rxn` cannot be used to implement
