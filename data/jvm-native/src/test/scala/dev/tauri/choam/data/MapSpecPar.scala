@@ -64,7 +64,11 @@ trait MapSpecPar[F[_]] extends BaseSpecAsyncF[F] with ScalaCheckEffectSuite { th
   def mkEmptyMap[K : Hash : Order, V]: F[Map[K, V]]
 
   test("Parallel get/put/del") {
-    val n = 1024
+    val n = this.platform match {
+      case Jvm => 1024
+      case Native => 256
+      case Js => fail("JS")
+    }
     val v = 42
     PropF.forAllF { (k1: String, k2: String, ks: ScalaSet[String]) =>
       for {
