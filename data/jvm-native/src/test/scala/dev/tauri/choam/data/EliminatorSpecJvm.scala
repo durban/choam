@@ -87,9 +87,9 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
       _ <- concurrentPushPopTest(s.tryPop, s.push)
     } yield ()
     t.replicateA_(this.platform match {
-      case MUnitUtils.Jvm => 50000
-      case MUnitUtils.Js => 50
-      case MUnitUtils.Native => 5000
+      case Jvm => 50000
+      case Js => 50
+      case Native => 5000
     })
   }
 
@@ -132,12 +132,18 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
     t.replicateA_(20000)
   }
 
+  private val taggedRepeat = this.platform match {
+    case Jvm => 50000
+    case Js => 50
+    case Native => 5000
+  }
+
   test("EliminationStack.tagged") {
-    testTaggedEliminationStack(EliminationStack.tagged[Int], 50000)
+    testTaggedEliminationStack(EliminationStack.tagged[Int], taggedRepeat)
   }
 
   test("EliminationStack.taggedFlaky") {
-    testTaggedEliminationStack(EliminationStack.taggedFlaky[Int], 25000)
+    testTaggedEliminationStack(EliminationStack.taggedFlaky[Int], taggedRepeat >>> 1)
   }
 
   private def testTaggedEliminationStack(
