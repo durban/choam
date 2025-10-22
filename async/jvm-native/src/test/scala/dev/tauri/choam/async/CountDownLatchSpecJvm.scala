@@ -30,16 +30,6 @@ final class CountDownLatchSpec_SpinLockMcas_IO_Ticked
   with SpecSpinLockMcas
   with CountDownLatchSpecTicked[IO]
 
-final class CountDownLatchSpec_SpinLockMcas_ZIO_Real
-  extends BaseSpecZIO
-  with SpecSpinLockMcas
-  with CountDownLatchSpec[zio.Task]
-
-final class CountDownLatchSpec_SpinLockMcas_ZIO_Ticked
-  extends BaseSpecTickedZIO
-  with SpecSpinLockMcas
-  with CountDownLatchSpecTicked[zio.Task]
-
 final class CountDownLatchSpec_Emcas_IO_Real
   extends BaseSpecIO
   with SpecEmcas
@@ -49,13 +39,3 @@ final class CountDownLatchSpec_Emcas_IO_Ticked
   extends BaseSpecTickedIO
   with SpecEmcas
   with CountDownLatchSpecTicked[IO]
-
-final class CountDownLatchSpec_Emcas_ZIO_Real
-  extends BaseSpecZIO
-  with SpecEmcas
-  with CountDownLatchSpec[zio.Task]
-
-final class CountDownLatchSpec_Emcas_ZIO_Ticked
-  extends BaseSpecTickedZIO
-  with SpecEmcas
-  with CountDownLatchSpecTicked[zio.Task]

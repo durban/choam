@@ -25,17 +25,7 @@ final class WaitListSpec_SpinLockMcas_IO
   with SpecSpinLockMcas
   with WaitListSpec[IO]
 
-final class WaitListSpec_SpinLockMcas_ZIO
-  extends BaseSpecTickedZIO
-  with SpecSpinLockMcas
-  with WaitListSpec[zio.Task]
-
 final class WaitListSpec_Emcas_IO
   extends BaseSpecTickedIO
   with SpecEmcas
   with WaitListSpec[IO]
-
-final class WaitListSpec_Emcas_ZIO
-  extends BaseSpecTickedZIO
-  with SpecEmcas
-  with WaitListSpec[zio.Task]

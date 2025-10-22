@@ -480,7 +480,7 @@ lazy val data = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     ),
   )
 
-lazy val async = crossProject(JVMPlatform, JSPlatform)
+lazy val async = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .withoutSuffixFor(JVMPlatform)
   .crossType(CrossType.Full)
   .in(file("async"))
@@ -489,6 +489,7 @@ lazy val async = crossProject(JVMPlatform, JSPlatform)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
+  .nativeSettings(commonSettingsNative)
   .dependsOn(data % "compile->compile;test->test")
 
 lazy val stream = crossProject(JVMPlatform, JSPlatform)

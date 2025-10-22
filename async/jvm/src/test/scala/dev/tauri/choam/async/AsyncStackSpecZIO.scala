@@ -18,43 +18,20 @@
 package dev.tauri.choam
 package async
 
-import cats.effect.IO
-
-final class AsyncStackSpec_Treiber_Emcas_IO
-  extends BaseSpecTickedIO
-  with SpecEmcas
-  with AsyncStackSpec_Treiber[IO]
-
 final class AsyncStackSpec_Treiber_Emcas_ZIO
   extends BaseSpecTickedZIO
   with SpecEmcas
   with AsyncStackSpec_Treiber[zio.Task]
-
-final class AsyncStackSpec_Treiber_SpinLockMcas_IO
-  extends BaseSpecTickedIO
-  with SpecSpinLockMcas
-  with AsyncStackSpec_Treiber[IO]
 
 final class AsyncStackSpec_Treiber_SpinLockMcas_ZIO
   extends BaseSpecTickedZIO
   with SpecSpinLockMcas
   with AsyncStackSpec_Treiber[zio.Task]
 
-
-final class AsyncStackSpec_Elimination_Emcas_IO
-  extends BaseSpecTickedIO
-  with SpecEmcas
-  with AsyncStackSpec_Elimination[IO]
-
 final class AsyncStackSpec_Elimination_Emcas_ZIO
   extends BaseSpecTickedZIO
   with SpecEmcas
   with AsyncStackSpec_Elimination[zio.Task]
-
-final class AsyncStackSpec_Elimination_SpinLockMcas_IO
-  extends BaseSpecTickedIO
-  with SpecSpinLockMcas
-  with AsyncStackSpec_Elimination[IO]
 
 final class AsyncStackSpec_Elimination_SpinLockMcas_ZIO
   extends BaseSpecTickedZIO

@@ -32,6 +32,7 @@ final class WaitListSpecPar_DefaultMcas_IO
 
 // Note: these tests can fail unexpectedly with ZIO
 // due to https://github.com/zio/zio/issues/9974.
+// TODO: It should be fixed now, let's try them again.
 //
 // final class WaitListSpecPar_DefaultMcas_ZIO
 //   extends BaseSpecZIO

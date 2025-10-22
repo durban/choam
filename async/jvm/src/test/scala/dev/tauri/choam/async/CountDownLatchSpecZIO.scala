@@ -18,24 +18,22 @@
 package dev.tauri.choam
 package async
 
-import cats.effect.IO
+final class CountDownLatchSpec_SpinLockMcas_ZIO_Real
+  extends BaseSpecZIO
+  with SpecSpinLockMcas
+  with CountDownLatchSpec[zio.Task]
 
-final class OverflowQueueSpec_Strict_EMCAS_IO
-  extends BaseSpecTickedIO
+final class CountDownLatchSpec_SpinLockMcas_ZIO_Ticked
+  extends BaseSpecTickedZIO
+  with SpecSpinLockMcas
+  with CountDownLatchSpecTicked[zio.Task]
+
+final class CountDownLatchSpec_Emcas_ZIO_Real
+  extends BaseSpecZIO
   with SpecEmcas
-  with StrictOverflowQueueSpec[IO]
+  with CountDownLatchSpec[zio.Task]
 
-final class OverflowQueueSpec_Strict_EMCAS_ZIO
+final class CountDownLatchSpec_Emcas_ZIO_Ticked
   extends BaseSpecTickedZIO
   with SpecEmcas
-  with StrictOverflowQueueSpec[zio.Task]
-
-final class OverflowQueueSpec_Lazy_EMCAS_IO
-  extends BaseSpecTickedIO
-  with SpecEmcas
-  with LazyOverflowQueueSpec[IO]
-
-final class OverflowQueueSpec_Lazy_EMCAS_ZIO
-  extends BaseSpecTickedZIO
-  with SpecEmcas
-  with LazyOverflowQueueSpec[zio.Task]
+  with CountDownLatchSpecTicked[zio.Task]

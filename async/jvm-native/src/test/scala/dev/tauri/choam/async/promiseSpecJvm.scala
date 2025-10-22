@@ -34,16 +34,6 @@ final class PromiseSpec_SpinLockMcas_IO_Ticked
   with SpecSpinLockMcas
   with PromiseSpecTicked[IO]
 
-final class PromiseSpecJvm_SpinLockMcas_ZIO_Real
-  extends BaseSpecZIO
-  with SpecSpinLockMcas
-  with PromiseSpecJvm[zio.Task]
-
-final class PromiseSpec_SpinLockMcas_ZIO_Ticked
-  extends BaseSpecTickedZIO
-  with SpecSpinLockMcas
-  with PromiseSpecTicked[zio.Task]
-
 final class PromiseSpecJvm_Emcas_IO_Real
   extends BaseSpecIO
   with SpecEmcas
@@ -53,16 +43,6 @@ final class PromiseSpec_Emcas_IO_Ticked
   extends BaseSpecTickedIO
   with SpecEmcas
   with PromiseSpecTicked[IO]
-
-final class PromiseSpecJvm_Emcas_ZIO_Real
-  extends BaseSpecZIO
-  with SpecEmcas
-  with PromiseSpecJvm[zio.Task]
-
-final class PromiseSpec_Emcas_ZIO_Ticked
-  extends BaseSpecTickedZIO
-  with SpecEmcas
-  with PromiseSpecTicked[zio.Task]
 
 trait PromiseSpecJvm[F[_]] extends PromiseSpec[F] { this: McasImplSpec =>
 

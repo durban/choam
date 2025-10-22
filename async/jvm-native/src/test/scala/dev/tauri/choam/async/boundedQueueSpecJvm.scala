@@ -28,23 +28,11 @@ final class BoundedQueueSpecLinked_EMCAS_IO
   with BoundedQueueSpecLinked[IO]
   with BoundedQueueSpecJvm[IO]
 
-final class BoundedQueueSpecLinked_EMCAS_ZIO
-  extends BaseSpecTickedZIO
-  with SpecEmcas
-  with BoundedQueueSpecLinked[zio.Task]
-  with BoundedQueueSpecJvm[zio.Task]
-
 final class BoundedQueueSpecArray_EMCAS_IO
   extends BaseSpecTickedIO
   with SpecEmcas
   with BoundedQueueSpecArray[IO]
   with BoundedQueueSpecJvm[IO]
-
-final class BoundedQueueSpecArray_EMCAS_ZIO
-  extends BaseSpecTickedZIO
-  with SpecEmcas
-  with BoundedQueueSpecArray[zio.Task]
-  with BoundedQueueSpecJvm[zio.Task]
 
 trait BoundedQueueSpecJvm[F[_]] { this: BoundedQueueSpec[F] & McasImplSpec & TestContextSpec[F] =>
 
