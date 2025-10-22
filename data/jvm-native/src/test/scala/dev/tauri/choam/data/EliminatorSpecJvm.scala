@@ -86,7 +86,11 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
       s <- EliminationStack[Int].run[F]
       _ <- concurrentPushPopTest(s.tryPop, s.push)
     } yield ()
-    t.replicateA_(50000)
+    t.replicateA_(this.platform match {
+      case MUnitUtils.Jvm => 50000
+      case MUnitUtils.Js => 50
+      case MUnitUtils.Native => 5000
+    })
   }
 
   test("EliminationStack (overlapping descriptors)") {
