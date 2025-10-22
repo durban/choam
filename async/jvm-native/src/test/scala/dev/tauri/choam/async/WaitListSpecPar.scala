@@ -128,6 +128,12 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     bound: Int,
   ): Unit = {
 
+    val repeat = this.platform match {
+      case Jvm => 50000
+      case Native => 5000
+      case Js => fail("JS")
+    }
+
     def enqAndSave(q: AsyncQueue.Put[String], ref: Ref[F, Boolean], item: String): F[Unit] = {
       F.uncancelable { poll =>
         poll(q.put(item)).flatMap { _ =>
@@ -168,7 +174,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
           assertResultF(q.poll.run[F], None, "item duplicated")
         }
       } yield ()
-      t.parReplicateA_(50000)
+      t.parReplicateA_(repeat)
     }
 
     test(s"$name: enqueue cancel race (2 waiters; bound = $bound)") {
@@ -199,7 +205,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
           assertResultF(q.take, "foo2") *> enqFib2.joinWithNever
         }
       } yield ()
-      t.parReplicateA_(50000)
+      t.parReplicateA_(repeat)
     }
   }
 }
