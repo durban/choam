@@ -35,6 +35,12 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
   final override def munitTimeout: Duration =
     super.munitTimeout * 2
 
+  private val repeat = this.platform match {
+    case Jvm => 50000
+    case Js => 50
+    case Native => 5000
+  }
+
   private def concurrentPushPopTest(
     tryPopRxn: Rxn[Option[Int]],
     pushRxn: Int => Rxn[Unit],
@@ -63,7 +69,7 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
       s <- EliminationStackForTesting[Int].run[F]
       _ <- concurrentPushPopTest(s.tryPop, s.push)
     } yield ()
-    t.replicateA_(50000)
+    t.replicateA_(repeat)
   }
 
   test("EliminationStackForTesting (overlapping descriptors)") {
@@ -86,11 +92,7 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
       s <- EliminationStack[Int].run[F]
       _ <- concurrentPushPopTest(s.tryPop, s.push)
     } yield ()
-    t.replicateA_(this.platform match {
-      case Jvm => 50000
-      case Js => 50
-      case Native => 5000
-    })
+    t.replicateA_(repeat)
   }
 
   test("EliminationStack (overlapping descriptors)") {
@@ -129,21 +131,15 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
           assertEqualsF(eliminationLeftResult, 99) *> assertEqualsF(rightRes, Right("42"))
       }).guarantee(bgFiber1.cancel)
     } yield ()
-    t.replicateA_(20000)
-  }
-
-  private val taggedRepeat = this.platform match {
-    case Jvm => 50000
-    case Js => 50
-    case Native => 5000
+    t.replicateA_(repeat >> 1)
   }
 
   test("EliminationStack.tagged") {
-    testTaggedEliminationStack(EliminationStack.tagged[Int], taggedRepeat)
+    testTaggedEliminationStack(EliminationStack.tagged[Int], repeat)
   }
 
   test("EliminationStack.taggedFlaky") {
-    testTaggedEliminationStack(EliminationStack.taggedFlaky[Int], taggedRepeat >>> 1)
+    testTaggedEliminationStack(EliminationStack.taggedFlaky[Int], repeat >> 1)
   }
 
   private def testTaggedEliminationStack(
