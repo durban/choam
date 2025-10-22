@@ -27,24 +27,10 @@ import cats.effect.{ IO, Outcome }
 
 import core.{ Rxn, Ref, RetryStrategy }
 
-final class ExchangerSpecCommon_Emcas_ZIO
-  extends BaseSpecZIO
-  with SpecEmcas
-  with core.ExchangerSpecCommon[zio.Task]
-
 final class ExchangerSpecCommon_Emcas_IO
   extends BaseSpecIO
   with SpecEmcas
   with core.ExchangerSpecCommon[IO]
-
-final class ExchangerSpecJvm_Emcas_ZIO
-  extends BaseSpecZIO
-  with SpecEmcas
-  with ExchangerSpecJvm[zio.Task] {
-
-  final override def zioUnhandledErrorLogLevel =
-    zio.LogLevel.Info
-}
 
 final class ExchangerSpecJvm_Emcas_IO
   extends BaseSpecIO

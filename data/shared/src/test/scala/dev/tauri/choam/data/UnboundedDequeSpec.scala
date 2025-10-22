@@ -25,11 +25,6 @@ final class UnboundedDequeSpec_DefaultMcas_IO
   with SpecDefaultMcas
   with UnboundedDequeSpec[IO]
 
-final class UnboundedDequeSpec_DefaultMcas_ZIO
-  extends BaseSpecZIO
-  with SpecDefaultMcas
-  with UnboundedDequeSpec[zio.Task]
-
 trait UnboundedDequeSpec[F[_]] extends BaseSpecF[F] { this: McasImplSpec =>
 
   test("Basics") {

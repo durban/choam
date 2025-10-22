@@ -28,11 +28,6 @@ import cats.effect.IO
 
 import internal.mcas.Mcas
 
-final class ExchangerStatsSpecJvm_Emcas_ZIO
-  extends BaseSpecZIO
-  with SpecEmcas
-  with ExchangerStatsSpecJvm[zio.Task]
-
 final class ExchangerStatsSpecJvm_Emcas_IO
   extends BaseSpecIO
   with SpecEmcas
@@ -168,8 +163,9 @@ trait ExchangerStatsSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec
   }
 
   test("A StatMap must not prevent an Exchanger from being garbage collected") {
-    // NB: ZIO seems to hold a strong ref to the exchanger
-    val tsk0 = this.assumeNotZio *> (for {
+    // TODO: ZIO seems to hold a strong ref to the exchanger
+    // TODO: test hangs on SN
+    val tsk0 = this.assumeNotZio *> assumeF(!this.isNative()) *> (for {
       ex <- Rxn.unsafe.exchanger[String, Int].run[F]
       f1 <- startExchange(ex, "foo")
       f2 <- ex.dual.exchange(42).run[F].start

@@ -25,11 +25,6 @@ import cats.effect.IO
 
 import core.{ Rxn, Ref, Eliminator }
 
-final class EliminatorSpecJvm_Emcas_ZIO
-  extends BaseSpecZIO
-  with SpecEmcas
-  with EliminatorSpecJvm[zio.Task]
-
 final class EliminatorSpecJvm_Emcas_IO
   extends BaseSpecIO
   with SpecEmcas

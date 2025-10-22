@@ -463,7 +463,7 @@ lazy val internal = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     Test / javaOptions += "-Ddev.tauri.choam.testProperty=true",
   )
 
-lazy val data = crossProject(JVMPlatform, JSPlatform)
+lazy val data = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .withoutSuffixFor(JVMPlatform)
   .crossType(CrossType.Full)
   .in(file("data"))
@@ -472,6 +472,7 @@ lazy val data = crossProject(JVMPlatform, JSPlatform)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
+  .nativeSettings(commonSettingsNative)
   .dependsOn(core % "compile->compile;test->test")
   .settings(
     libraryDependencies += dependencies.catsCollections.value,

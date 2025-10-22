@@ -18,51 +18,14 @@
 package dev.tauri.choam
 package data
 
-import cats.effect.IO
-
-final class CounterSpecSimple_Emcas_IO
-  extends BaseSpecIO
-  with SpecEmcas
-  with CounterSpecSimple[IO]
-  with CounterSpecJvm[IO]
-
 final class CounterSpecSimple_Emcas_ZIO
   extends BaseSpecZIO
   with SpecEmcas
   with CounterSpecSimple[zio.Task]
   with CounterSpecJvm[zio.Task]
 
-final class CounterSpecStriped_Emcas_IO
-  extends BaseSpecIO
-  with SpecEmcas
-  with CounterSpecStriped[IO]
-  with CounterSpecJvm[IO]
-
 final class CounterSpecStriped_Emcas_ZIO
   extends BaseSpecZIO
   with SpecEmcas
   with CounterSpecStriped[zio.Task]
   with CounterSpecJvm[zio.Task]
-
-trait CounterSpecJvm[F[_]] { this: CounterSpec[F] & McasImplSpec =>
-
-  test("Parallel access") {
-    val numCpu = java.lang.Runtime.getRuntime().availableProcessors()
-    val parLimit = 2 * numCpu
-    val replicas = 512
-    val repeat1 = 2
-    val repeat2 = 8
-    val expResult = replicas.toLong * repeat1 * repeat2
-    val t = for {
-      ctr <- this.mkCounter(0L)
-      r <- F.both(
-        F.parReplicateAN(parLimit)(replicas = replicas, ma = (ctr.incr.replicateA_(repeat1)).run[F].replicateA_(repeat2)),
-        F.cede *> ctr.count.run[F],
-      )
-      (_, c) = r
-      _ <- assertF((c >= 0L) && (c <= expResult))
-      _ <- assertResultF(ctr.count.run[F], expResult)
-    } yield ()
-    t.replicateA_(64)
-  }
-}
