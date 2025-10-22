@@ -61,7 +61,11 @@ trait RingBufferSpec[F[_]]
       }
     }
     PropF.forAllF { (cap: Int, ints: List[Int]) =>
-      val c = min(max(cap.abs, 1), 0x7fff)
+      val maxCap = this.platform match {
+        case Jvm | Js => 0x7fff
+        case Native => 0x1fff
+      }
+      val c = min(max(cap.abs, 1), maxCap)
       for {
         q <- newRingBuffer[Int](c)
         s <- CatsQueue.circularBuffer[F, Int](capacity = c)
