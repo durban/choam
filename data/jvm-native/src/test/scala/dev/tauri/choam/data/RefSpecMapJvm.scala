@@ -90,10 +90,20 @@ trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>
 
   private[data] final override type MapType[K, V] = Ttrie[K, V]
 
+  private val S = this.platform match {
+    case Jvm => 4096
+    case Native => 1024
+    case Js => fail("JS")
+  }
+
+  private val N = this.platform match {
+    case Jvm => 8
+    case Native => 4
+    case Js => fail("JS")
+  }
+
   test("Ttrie insert/remove should not leak memory") {
     val constValue = "foo"
-    val S = 4096
-    val N = 8
     def task(m: MapType[String, String], size: Int): F[Unit] = {
       randomStrings(size).flatMap { (keys: Vector[String]) =>
         keys.parTraverseN(NCPU) { key =>
@@ -112,8 +122,6 @@ trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>
   }
 
   test("Ttrie failed lookups should not leak memory") {
-    val S = 4096
-    val N = 8
     def task(m: MapType[String, String], size: Int): F[Unit] = {
       randomStrings(size).flatMap { (keys: Vector[String]) =>
         keys.parTraverseN(NCPU) { key =>
@@ -128,8 +136,6 @@ trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>
   }
 
   test("Ttrie removing not included keys should not leak memory") {
-    val S = 4096
-    val N = 8
     def task(m: MapType[String, String], size: Int): F[Unit] = {
       randomStrings(size).flatMap { (keys: Vector[String]) =>
         keys.parTraverseN(NCPU) { key =>
