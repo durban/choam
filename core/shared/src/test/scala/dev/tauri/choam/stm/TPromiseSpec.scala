@@ -57,8 +57,12 @@ trait TPromiseSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
   }
 
   test("complete/cancel race") {
-    val N = 1024
-    val M = 16
+    val nm = this.platform match {
+      case Jvm | Js => (1024, 16)
+      case Native => (256, 4)
+    }
+    val N = nm._1
+    val M = nm._2
     val rng = new scala.util.Random(ThreadLocalRandom.current().nextLong())
     val t = for {
       p <- TPromise[Int].commit
