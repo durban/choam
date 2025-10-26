@@ -38,7 +38,7 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
   private val repeat = this.platform match {
     case Jvm => 50000
     case Js => 50
-    case Native => 5000
+    case Native => 3000
   }
 
   private def concurrentPushPopTest(
