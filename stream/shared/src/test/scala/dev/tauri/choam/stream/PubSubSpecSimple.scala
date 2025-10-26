@@ -25,11 +25,6 @@ final class PubSubSpecSimple_DefaultMcas_IO
   with SpecDefaultMcas
   with PubSubSpecSimple[IO]
 
-final class PubSubSpecSimple_DefaultMcas_ZIO
-  extends BaseSpecZIO
-  with SpecDefaultMcas
-  with PubSubSpecSimple[zio.Task]
-
 trait PubSubSpecSimple[F[_]] extends PubSubSpec[F] { this: McasImplSpec =>
 
   protected[this] final override type H[A] = PubSub.Simple[A]

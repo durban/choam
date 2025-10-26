@@ -492,7 +492,7 @@ lazy val async = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .nativeSettings(commonSettingsNative)
   .dependsOn(data % "compile->compile;test->test")
 
-lazy val stream = crossProject(JVMPlatform, JSPlatform)
+lazy val stream = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .withoutSuffixFor(JVMPlatform)
   .crossType(CrossType.Full)
   .in(file("stream"))
@@ -501,6 +501,7 @@ lazy val stream = crossProject(JVMPlatform, JSPlatform)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
+  .nativeSettings(commonSettingsNative)
   .dependsOn(async % "compile->compile;test->test")
   .settings(libraryDependencies ++= Seq(
     dependencies.catsEffectAll.value,

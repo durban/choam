@@ -425,12 +425,16 @@ trait PubSubSpecTicked[F[_]]
   private def noBackpressureTests(name: String, str: PubSub.OverflowStrategy): Unit = {
 
     test(s"$name - should never backpressure") {
+      val N = this.platform match {
+        case Jvm | Js => 1024 * 256
+        case Native => 1024 * 64
+      }
       for {
         hub <- newHub[Int](str)
         fib <- hub.subscribe.evalMap(_ => F.never[Int]).compile.toVector.start // infinitely slow subscriber
         _ <- this.tickAll // wait for subscription to happen
         pub = (hub.emit : (Int => Rxn[PubSub.Result]))
-        _ <- (1 to (1024 * 256)).toList.traverse(i => assertResultF(pub(i).run[F], PubSub.Success))
+        _ <- (1 to N).toList.traverse(i => assertResultF(pub(i).run[F], PubSub.Success))
         _ <- assertResultF(hub.close.run[F], PubSub.Backpressured)
         _ <- fib.cancel
         _ <- assertResultF(fib.join, Outcome.canceled[F, Throwable, Vector[Int]])

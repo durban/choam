@@ -18,17 +18,7 @@
 package dev.tauri.choam
 package stream
 
-import cats.effect.IO
-
-final class PubSubSpecAsync_DefaultMcas_IO
-  extends BaseSpecIO
+final class PubSubSpecAsync_DefaultMcas_ZIO
+  extends BaseSpecZIO
   with SpecDefaultMcas
-  with PubSubSpecAsync[IO]
-
-trait PubSubSpecAsync[F[_]] extends PubSubSpec[F] { this: McasImplSpec =>
-
-  protected[this] final override type H[A] = PubSub[A]
-
-  protected[this] final override def newHub[A](str: PubSub.OverflowStrategy): F[PubSub[A]] =
-    PubSub.async[A](str).run[F]
-}
+  with PubSubSpecAsync[zio.Task]

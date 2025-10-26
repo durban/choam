@@ -84,7 +84,12 @@ trait PubSubSpec[F[_]]
         _ <- assertEqualsF(v1.toSet, expSet)
         _ <- checkOrder(v1, str)
       } yield ()
-      t.replicateA_(if (isJs()) 1 else 50)
+      val repeat = this.platform match {
+        case Jvm => 50
+        case Js => 1
+        case Native => 25
+      }
+      t.replicateA_(repeat)
     }
 
     test(s"$name - racing publishers (bufferSize = 1)") {
@@ -118,7 +123,12 @@ trait PubSubSpec[F[_]]
         _ <- checkOrder(v1, str2) // we may lose items, but the order must be correct
         _ <- checkOrder(v2, str2) // we may lose items, but the order must be correct
       } yield ()
-      t.replicateA_(if (isJs()) 1 else 50)
+      val repeat = this.platform match {
+        case Jvm => 50
+        case Js => 1
+        case Native => 25
+      }
+      t.replicateA_(repeat)
     }
 
     test(s"$name - subscribe/close race") {
