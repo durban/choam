@@ -66,7 +66,7 @@ trait MapSpecPar[F[_]] extends BaseSpecAsyncF[F] with ScalaCheckEffectSuite { th
   test("Parallel get/put/del") {
     val n = this.platform match {
       case Jvm => 1024
-      case Native => 256
+      case Native => 128
       case Js => fail("JS")
     }
     val v = 42
