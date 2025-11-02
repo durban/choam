@@ -34,29 +34,6 @@ import sbtcrossproject.CrossProject
 val scala2 = "2.13.17"
 val scala3 = "3.3.7"
 
-// The goals with the CI matrix are to:
-// - have ≦19 jobs (so that all of them can run in parallel; the +1 is sbt-dependency-submission)
-// - have a good coverage of OSes, JVMs, and architectures
-// The strategy to achieve this is:
-// - Linux ARM64 is the "primary" platform:
-//   - ARM64, because it has a weaker memory model (thus, a higher chance of finding bugs)
-//   - Linux, because it seems to have multiple stable JVM implementations (OpenJDK, OpenJ9, Graal)
-//   - so we have the following jobs here (9):
-//     - temurin11 2.13/3
-//     - temurin21 2.13
-//     - temurin24 3
-//     - graal21 2.13
-//     - graal24 2.13/3
-//     - semeru23 2.13/3
-// - Additional platforms only have 2 jobs each (scala 2.13 and 3):
-//   - all of these use some variant of temurin (either the latest, or the latest LTS if needed)
-//   - so we have the following jobs here (10):
-//     - Linux x86
-//     - macOS ARM64
-//     - macOS Intel
-//     - Win x86
-//     - Win ARM64 (this needs temurin21, as 24 is not available yet)
-
 // CI JVM versions:
 val jvmOldest = JavaSpec.temurin("11")
 val jvmLts = JavaSpec.temurin("21")
