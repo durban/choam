@@ -92,7 +92,7 @@ trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>
 
   private val S = this.platform match {
     case Jvm => 4096
-    case Native => 1024
+    case Native => 512
     case Js => fail("JS")
   }
 
