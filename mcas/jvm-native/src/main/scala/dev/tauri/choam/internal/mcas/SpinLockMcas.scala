@@ -33,13 +33,21 @@ import java.util.concurrent.atomic.AtomicLong
  *
  * Implemented as a baseline for benchmarking and correctness tests.
  */
-private final class SpinLockMcas(
+private final class SpinLockMcas private (
   private[choam] final override val osRng: OsRng,
   private[choam] final override val stripes: Int,
+  startCommitTs: Long,
+  startRig: Long,
 ) extends Mcas.UnsealedMcas { self =>
 
-  private[this] val rig: RefIdGen =
-    RefIdGen.newGlobal()
+  def this(_osRng: OsRng, _stripes: Int) =
+    this(_osRng, _stripes, startCommitTs = Version.Start, startRig = RefIdGen.startRig)
+
+  private[choam] final override def makeCopy(osRng: OsRng): Mcas =
+    new SpinLockMcas(osRng, stripes = this.stripes, startCommitTs = this.commitTs.get(), startRig = this.rig.getState())
+
+  private[this] val rig: GlobalRefIdGen =
+    RefIdGen.newGlobal(startRig)
 
   final override def currentContext(): Mcas.ThreadContext =
     dummyContext
@@ -51,7 +59,7 @@ private final class SpinLockMcas(
     true
 
   private[this] val commitTs: AtomicLong =
-    new AtomicLong(Version.Start)
+    new AtomicLong(startCommitTs)
 
   private[this] val dummyContext = new Mcas.UnsealedThreadContext {
 

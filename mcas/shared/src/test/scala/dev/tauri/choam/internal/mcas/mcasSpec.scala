@@ -34,12 +34,14 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
 
   import McasSpec._
 
-  private[this] final def unsafe[A](a: A): MemoryLocation[A] = {
-    MemoryLocation.unsafeUnpadded(a, this.rigInstance)
+  private[this] final def unsafe[A](a: A, rig: RefIdGen = this.rigInstance): MemoryLocation[A] = {
+    MemoryLocation.unsafeUnpadded(a, rig)
   }
 
-  private final def tryPerformBatch(ops: List[CASD[?]]): Boolean = {
-    val ctx = mcasImpl.currentContext()
+  private final def tryPerformBatch(
+    ops: List[CASD[?]],
+    ctx: Mcas.ThreadContext = this.mcasImpl.currentContext(),
+  ): Boolean = {
     val builder = ops.foldLeft(ctx.builder()) { (b, op) =>
       op match {
         case op: CASD[_] =>
@@ -633,5 +635,47 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
     val ctx0 = this.mcasImpl.currentContext()
     val buff = ctx0.buffer16B
     assertEquals(buff.length, 16)
+  }
+
+  test("makeCopy") {
+    val rng0 = OsRng.mkNew()
+    val impl0 = this.mcasImpl.makeCopy(rng0)
+    impl0.close()
+    rng0.close()
+    assert(rng0.isClosed().getOrElse(true))
+    val rng1 = OsRng.mkNew()
+    val impl1 = impl0.makeCopy(rng1)
+    assert(impl1 ne impl0)
+    val ctx0 = impl0.currentContext() // this is cheating (impl0 is closed)
+    val v0 = ctx0.start().validTs // this is cheating (impl0 is closed)
+    val ctx1 = impl1.currentContext()
+    assert(ctx1 ne ctx0)
+    val v1 = ctx1.start().validTs
+    assertEquals(v1, v0)
+    val r0 = unsafe("a", ctx0.refIdGen) // this is cheating (impl0 is closed)
+    val r1 = unsafe("a", ctx1.refIdGen)
+    assertEquals(r1.id, r0.id) // this must never happen (but we cheated)
+    assert(tryPerformBatch(List(CASD(r1, "a", "b")), ctx1))
+    impl1.close()
+    rng1.close()
+    assert(rng1.isClosed().getOrElse(true))
+    val rng2 = OsRng.mkNew()
+    assert(!rng2.isClosed().getOrElse(false))
+    val impl2 = impl1.makeCopy(rng2)
+    assert(impl2 ne impl1)
+    val ctx2 = impl2.currentContext()
+    val v2 = ctx2.start().validTs
+    val hwd = ctx2.readIntoHwd(r1)
+    assertEquals(v2, hwd.oldVersion)
+    val rng2b = OsRng.mkNew()
+    val impl2b = impl1.makeCopy(rng2b)
+    val ctx2b = impl2b.currentContext()
+    val r2 = unsafe("a", ctx2.refIdGen)
+    val r2b = unsafe("a", ctx2b.refIdGen)
+    assertEquals(r2.id, r2b.id) // this must never happen (but we cheated)
+    impl2.close()
+    rng2.close()
+    impl2b.close()
+    rng2b.close()
   }
 }

@@ -103,6 +103,10 @@ private final class UnixRng extends OsRng {
     stream.close()
   }
 
+  final override def isClosed(): Option[Boolean] = {
+    Some(!stream.getChannel().isOpen())
+  }
+
   final override def nextBytes(dest: Array[Byte]): Unit = {
     readFrom(stream, dest)
   }

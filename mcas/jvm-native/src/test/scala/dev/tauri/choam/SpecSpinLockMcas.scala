@@ -17,15 +17,21 @@
 
 package dev.tauri.choam
 
+import internal.mcas.OsRng
+
 import munit.Suite
 
 trait SpecSpinLockMcas extends Suite with McasImplSpec {
 
+  private[this] val _osRng: OsRng =
+    OsRng.mkNew()
+
   final override val mcasImpl: internal.mcas.Mcas =
-    internal.mcas.Mcas.newSpinLockMcas(BaseSpec.osRngForTesting, java.lang.Runtime.getRuntime().availableProcessors())
+    internal.mcas.Mcas.newSpinLockMcas(_osRng, java.lang.Runtime.getRuntime().availableProcessors())
 
   override def afterAll(): Unit = {
     this.mcasImpl.close()
+    this._osRng.close()
     super.afterAll()
   }
 }

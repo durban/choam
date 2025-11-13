@@ -26,12 +26,20 @@ import java.lang.ref.WeakReference
  * Efficient Multi-word Compare and Swap (EMCAS):
  * https://arxiv.org/pdf/2008.02527.pdf
  */
-private[mcas] final class Emcas(
+private[mcas] final class Emcas private (
   private[choam] final override val osRng: OsRng,
   private[choam] final override val stripes: Int,
-) extends GlobalContext { global =>
+  startCommitTs: Long,
+  startRig: Long,
+) extends GlobalContext(startCommitTs = startCommitTs, startRig = startRig) { global =>
 
   require(osRng ne null)
+
+  def this(_osRng: OsRng, _stripes: Int) =
+    this(_osRng, _stripes, startCommitTs = Version.Start, startRig = RefIdGen.startRig)
+
+  private[choam] final override def makeCopy(osRng: OsRng): Mcas =
+    new Emcas(osRng, stripes = this.stripes, startCommitTs = this.getCommitTs(), startRig = this.globalRig.getState())
 
   /*
    * This implementation has a few important

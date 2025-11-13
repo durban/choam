@@ -84,6 +84,10 @@ private final class NativeOsRng extends OsRng {
   final override def close(): Unit = {
     ()
   }
+
+  final override def isClosed(): Option[Boolean] = {
+    None
+  }
 }
 
 @extern

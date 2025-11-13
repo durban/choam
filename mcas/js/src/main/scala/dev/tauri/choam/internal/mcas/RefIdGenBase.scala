@@ -21,13 +21,17 @@ package mcas
 
 import java.util.concurrent.atomic.AtomicLong
 
-abstract class RefIdGenBase {
+abstract class RefIdGenBase(startCtr: Long) {
 
   private[this] val ctr =
-    new AtomicLong(Long.MinValue) // TODO: start from something more "random"
+    new AtomicLong(startCtr)
 
   protected final def getAndAddCtrO(x: Long): Long = {
     this.ctr.getAndAdd(x)
+  }
+
+  protected[this] final def getCtrV(): Long = {
+    this.ctr.get()
   }
 }
 

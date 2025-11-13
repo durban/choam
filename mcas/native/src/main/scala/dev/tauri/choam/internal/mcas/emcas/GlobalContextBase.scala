@@ -22,11 +22,11 @@ package emcas
 
 import scala.scalanative.annotation.alwaysinline
 
-private[emcas] abstract class GlobalContextBase { // TODO: padding!
+private[emcas] abstract class GlobalContextBase(startCommitTs: Long) { // TODO: padding!
 
   @volatile
   @nowarn("cat=unused-privates")
-  private[this] var commitTs: Long = Version.Start
+  private[this] var commitTs: Long = startCommitTs
   // TODO: add padding between commitTs and threadCtxCount
   @volatile
   @nowarn("cat=unused-privates")

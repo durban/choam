@@ -24,16 +24,19 @@ import java.util.concurrent.ThreadLocalRandom
 
 import scala.collection.concurrent.TrieMap
 
-final class FlakyEMCAS extends Mcas.UnsealedMcas { self =>
+final class FlakyEMCAS private (
+  private[choam] final override val osRng: OsRng,
+  emcasInst: Emcas,
+) extends Mcas.UnsealedMcas { self =>
 
-  private[this] val emcasInst: Emcas =
-    new Emcas(BaseSpec.osRngForTesting, java.lang.Runtime.getRuntime().availableProcessors())
+  def this(osRng: OsRng) =
+    this(osRng, new Emcas(osRng, java.lang.Runtime.getRuntime().availableProcessors()))
+
+  private[choam] final override def makeCopy(osRng: OsRng): Mcas =
+    new FlakyEMCAS(osRng, this.emcasInst.makeCopy(osRng).asInstanceOf[Emcas])
 
   private[this] val seen =
     new TrieMap[Int, Unit]
-
-  private[choam] final override val osRng: OsRng =
-    OsRng.mkNew()
 
   private[choam] final override def stripes: Int =
     emcasInst.stripes

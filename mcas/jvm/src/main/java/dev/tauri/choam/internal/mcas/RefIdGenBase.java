@@ -47,12 +47,19 @@ public abstract class RefIdGenBase extends PaddedMemoryLocationPadding {
     }
   }
 
-  private volatile long ctr =
-    Long.MIN_VALUE; // TODO: start from something more "random"
+  private volatile long ctr;
+
+  protected RefIdGenBase(long startCtr) {
+    this.ctr = startCtr;
+  }
 
   final long getAndAddCtrO(long x) {
     // VarHandle doesn't have opaque FAA,
     // so we just approximate it with this:
     return (long) CTR.getAndAddAcquire(this, x);
+  }
+
+  protected final long getCtrV() {
+    return this.ctr;
   }
 }

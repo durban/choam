@@ -28,17 +28,21 @@ trait BaseSpec
   extends FunSuite
   with MUnitUtils {
 
+  private[this] val _osRngInstance: OsRng =
+    OsRng.mkNew()
+
   private[this] val _defaultMcasInstance: Mcas =
-    Mcas.newDefaultMcas(this.osRngInstance, java.lang.Runtime.getRuntime().availableProcessors())
+    Mcas.newDefaultMcas(this._osRngInstance, java.lang.Runtime.getRuntime().availableProcessors())
 
   protected final def osRngInstance: OsRng =
-    BaseSpec.osRngForTesting
+    _osRngInstance
 
   protected final def defaultMcasInstance: Mcas =
     _defaultMcasInstance
 
   override def afterAll(): Unit = {
     _defaultMcasInstance.close()
+    _osRngInstance.close()
     super.afterAll()
   }
 
@@ -48,14 +52,10 @@ trait BaseSpec
 
 object BaseSpec {
 
-  final val osRngForTesting: OsRng =
-    OsRng.mkNew()
-
-  final def newDefaultMcasForTesting(): Mcas =
-    Mcas.newDefaultMcas(osRngForTesting, java.lang.Runtime.getRuntime().availableProcessors())
-
-  final def closeMcas(mcasImpl: Mcas): Unit = {
-    mcasImpl.close()
+  final def newDefaultMcasForTesting(): (Mcas, () => Unit) = {
+    val osRng = OsRng.mkNew()
+    val impl = Mcas.newDefaultMcas(osRng, java.lang.Runtime.getRuntime().availableProcessors())
+    (impl, () => { impl.close(); osRng.close() })
   }
 }
 

@@ -71,13 +71,16 @@ private[choam] sealed trait RefIdGen {
 
 private[choam] object RefIdGen {
 
-  private[mcas] final def newGlobal(): GlobalRefIdGen = {
-    new GlobalRefIdGen
+  private[choam] final val startRig = // TODO: start from something more "random"
+    java.lang.Long.MIN_VALUE
+
+  private[mcas] final def newGlobal(startCtr: Long): GlobalRefIdGen = {
+    new GlobalRefIdGen(startCtr)
   }
 
   /** Only for testing! */
   private[choam] final def newGlobal_public(): GlobalRefIdGen = {
-    newGlobal()
+    newGlobal(startRig)
   }
 
   /** The computed ID must've been already allocated in a block! */
@@ -86,7 +89,9 @@ private[choam] object RefIdGen {
   }
 }
 
-private[choam] final class GlobalRefIdGen private[mcas] () extends RefIdGenBase with RefIdGen {
+private[choam] final class GlobalRefIdGen private[mcas] (
+  _startCtr: Long,
+) extends RefIdGenBase(_startCtr) with RefIdGen {
 
   private[this] final def initialBlockSize(isVirtualThread: Boolean) =
     if (isVirtualThread) 2 else 64
@@ -130,6 +135,10 @@ private[choam] final class GlobalRefIdGen private[mcas] () extends RefIdGenBase 
   /** Returns idBase for RefArrays */ // TODO: is ID overflow plausible with big arrays?
   final def nextArrayIdBaseGlobal(size: Int): Long = {
     this.allocateThreadLocalBlock(size)
+  }
+
+  final def getState(): Long = {
+    this.getCtrV()
   }
 }
 

@@ -17,17 +17,21 @@
 
 package dev.tauri.choam
 
-import internal.mcas.Mcas
+import internal.mcas.{ Mcas, OsRng }
 
 import munit.Suite
 
 trait SpecEmcas extends Suite with McasImplSpec {
 
+  private[this] val _osRng: OsRng =
+    OsRng.mkNew()
+
   private[this] val _mcasImpl: Mcas =
-    Mcas.newEmcas(BaseSpec.osRngForTesting, java.lang.Runtime.getRuntime().availableProcessors())
+    Mcas.newEmcas(_osRng, java.lang.Runtime.getRuntime().availableProcessors())
 
   override def afterAll(): Unit = {
     this._mcasImpl.close()
+    this._osRng.close()
     super.afterAll()
   }
 
@@ -40,14 +44,18 @@ trait SpecEmcas extends Suite with McasImplSpec {
 
 trait SpecFlakyEMCAS extends Suite with McasImplSpec {
 
+  private[this] val _osRng: OsRng =
+    OsRng.mkNew()
+
   final override val mcasImpl: Mcas =
-    new internal.mcas.emcas.FlakyEMCAS
+    new internal.mcas.emcas.FlakyEMCAS(_osRng)
 
   final override def isEmcas: Boolean =
     true
 
   override def afterAll(): Unit = {
     this.mcasImpl.close()
+    this._osRng.close()
     super.afterAll()
   }
 }

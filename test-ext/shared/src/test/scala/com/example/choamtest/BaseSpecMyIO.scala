@@ -52,13 +52,16 @@ abstract class BaseSpecMyIO
     })
   }
 
-  override protected val mcasImpl: Mcas =
+  private[this] val _mcasImplAndClose =
     BaseSpec.newDefaultMcasForTesting()
+
+  override protected val mcasImpl: Mcas =
+    _mcasImplAndClose._1
 
   override def afterAll(): Unit = {
     arAndClose._2.unsafeRunSync()
     rtAndClose._2.unsafeRunSync()
-    BaseSpec.closeMcas(this.mcasImpl)
+    _mcasImplAndClose._2()
     super.afterAll()
   }
 

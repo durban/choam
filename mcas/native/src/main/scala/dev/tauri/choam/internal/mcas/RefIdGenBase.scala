@@ -21,11 +21,11 @@ package mcas
 
 import scala.scalanative.annotation.alwaysinline
 
-private[mcas] abstract class RefIdGenBase extends PaddedMemoryLocationPadding {
+private[mcas] abstract class RefIdGenBase(startCtr: Long) extends PaddedMemoryLocationPadding {
 
   @nowarn("cat=unused-privates")
   private[this] var ctr: Long =
-    Long.MinValue // TODO: start from something more "random"
+    startCtr
 
   protected[this] final def yesWeNeedTheseFieldsEvenOnDotty(): Unit = {
     this.ctr : Unit
@@ -38,6 +38,10 @@ private[mcas] abstract class RefIdGenBase extends PaddedMemoryLocationPadding {
 
   private[mcas] final def getAndAddCtrO(x: Long): Long = {
     atomicCtr.getAndAddOpaque(x)
+  }
+
+  protected[this] final def getCtrV(): Long = {
+    atomicCtr.getVolatile
   }
 }
 

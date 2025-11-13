@@ -47,6 +47,9 @@ sealed trait Mcas {
 
   private[choam] def stripes: Int
 
+  /** Mustn't be called on an `Mcas` which is still in use! */
+  private[choam] def makeCopy(osRng: OsRng): Mcas
+
   /** Only for testing/benchmarking */
   private[choam] def getRetryStats(): Mcas.RetryStats = {
     // implementations should override if

@@ -60,16 +60,15 @@ trait ResourceSpec[F[_]] extends BaseSpec {
     }.guarantee(close.to[F])
   }
 
-  test("Working on a TRef with 2 different MCAS impls") {
-    // this should never happen!
+  test("Working on a TRef with 2 different MCAS impls (existing at the same time)") {
     Transactive.from[F](crt).use { transactive1 =>
       Transactive.from[F](crt2).use { transactive2 =>
         for {
           ref <- transactive1.commit(TRef(42))
           v <- transactive1.commit(ref.updateAndGet(_ + 1))
           _ <- F.delay(assertEquals(v, 43))
-          r <- transactive2.commit(ref.updateAndGet(_ + 1)).attempt
-          _ <- F.delay(assert(r.isLeft)) // IllegalArgumentException from MutDescriptor
+          v2 <- transactive2.commit(ref.updateAndGet(_ + 1))
+          _ <- F.delay(assertEquals(v2, 44))
         } yield ()
       }
     }

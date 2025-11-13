@@ -29,6 +29,9 @@ private[choam] abstract class OsRng {
 
   def close(): Unit
 
+  /** For testing; `None` means "not applicable" */
+  private[choam] def isClosed(): Option[Boolean]
+
   final def nextBytes(n: Int): Array[Byte] = {
     require(n >= 0)
     val dest = new Array[Byte](n)
@@ -48,5 +51,9 @@ private abstract class AdaptedOsRng(underlying: JSecureRandom) extends OsRng {
   }
 
   final override def close(): Unit = {
+  }
+
+  final override def isClosed(): Option[Boolean] = {
+    None
   }
 }

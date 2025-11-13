@@ -22,9 +22,17 @@ package mcas
 import java.util.concurrent.ThreadLocalRandom
 import java.util.concurrent.atomic.AtomicLong
 
-private final class ThreadConfinedMcas(
+private final class ThreadConfinedMcas private (
   private[choam] final override val osRng: OsRng,
+  startCommitTs: Long,
+  startRig: Long,
 ) extends ThreadConfinedMcasPlatform { self =>
+
+  def this(_osRng: OsRng) =
+    this(_osRng, startCommitTs = Version.Start, startRig = RefIdGen.startRig)
+
+  private[choam] final override def makeCopy(osRng: OsRng): Mcas =
+    new ThreadConfinedMcas(osRng, startCommitTs = this._commitTs.get(), startRig = this.globalRig.getState())
 
   final override def currentContext(): Mcas.ThreadContext =
     _ctx
@@ -34,6 +42,9 @@ private final class ThreadConfinedMcas(
 
   private[choam] final override def stripes: Int =
     1
+
+  private[this] val globalRig: GlobalRefIdGen =
+    RefIdGen.newGlobal(startRig)
 
   private[this] val _ctx = new Mcas.UnsealedThreadContext {
 
@@ -121,9 +132,9 @@ private final class ThreadConfinedMcas(
       new Array[Byte](16)
 
     final override val refIdGen =
-      RefIdGen.newGlobal().newThreadLocal(isVirtualThread = false)
+      globalRig.newThreadLocal(isVirtualThread = false)
   }
 
   private[this] val _commitTs: AtomicLong =
-    new AtomicLong(Version.Start)
+    new AtomicLong(startCommitTs)
 }

@@ -26,12 +26,12 @@ import cats.kernel.Order
 
 import skiplist.SkipListMap
 
-private[mcas] abstract class GlobalContext
-  extends GlobalContextBase
+private[mcas] abstract class GlobalContext(startCommitTs: Long, startRig: Long)
+  extends GlobalContextBase(startCommitTs)
   with Mcas.UnsealedMcas { this: Emcas =>
 
-  private[this] val globalRig: GlobalRefIdGen =
-    RefIdGen.newGlobal()
+  protected[this] val globalRig: GlobalRefIdGen =
+    RefIdGen.newGlobal(startRig)
 
   /**
    * `ThreadContext`s of all the (active) threads
@@ -45,6 +45,12 @@ private[mcas] abstract class GlobalContext
    * Removing a dead thread's context will not
    * affect safety, because a dead thread will never
    * continue its current op (if any).
+   *
+   * TODO: If an `Emcas` is closed, its `ThreadContext`s
+   * TODO: remain in the threadlocals. Repeatedly
+   * TODO: closing and creating new `Emcas`es would
+   * TODO: be weird. But still, this is a memory
+   * TODO: leak.
    */
   private[this] val _threadContexts = if (Consts.statsEnabled) {
     new SkipListMap[GlobalContext.TCtxWeakRef, Unit]

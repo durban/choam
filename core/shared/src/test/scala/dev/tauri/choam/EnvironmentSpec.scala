@@ -36,6 +36,8 @@ final class EnvironmentSpec extends EnvironmentSpecPlatform {
     val or = OsRng.mkNew()
     println(s"OsRng class: ${or.getClass().getName()}")
     or.nextBytes(256)
+    or.close()
+    assert(or.isClosed().getOrElse(true))
   }
 
   test("Check autodetection") {

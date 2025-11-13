@@ -75,18 +75,15 @@ trait ResourceSpec[F[_]] extends BaseSpec {
     }.guarantee(close.to[F])
   }
 
-  test("Working on a Ref with 2 different MCAS impls") {
-    // This should never happen in normal code!
-    // This test is testing that if it happens,
-    // there is (likely) at least an exception.
+  test("Working on a Ref with 2 different MCAS impls (existing at the same time)") {
     Reactive.from[F](crt).use { reactive1 =>
       Reactive.from[F](crt2).use { reactive2 =>
         for {
           ref <- reactive1.run(Ref(42))
           v <- reactive1.run(ref.updateAndGet(_ + 1))
           _ <- F.delay(assertEquals(v, 43))
-          r <- reactive2.run(ref.updateAndGet(_ + 1)).attempt
-          _ <- F.delay(assert(r.isLeft)) // IllegalArgumentException from MutDescriptor
+          v2 <- reactive2.run(ref.updateAndGet(_ + 1))
+          _ <- F.delay(assertEquals(v2, 44))
         } yield ()
       }
     }

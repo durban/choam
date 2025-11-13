@@ -17,7 +17,7 @@
 
 package dev.tauri.choam
 
-import internal.mcas.{ Mcas, RefIdGen }
+import internal.mcas.{ Mcas, RefIdGen, OsRng }
 
 trait McasImplSpec {
 
@@ -32,11 +32,15 @@ trait McasImplSpec {
 
 trait SpecDefaultMcas extends munit.Suite with SpecDefaultMcasPlatform {
 
+  private[this] val _osRng: OsRng =
+    OsRng.mkNew()
+
   private[this] val _mcasImpl: Mcas =
-    Mcas.newDefaultMcas(BaseSpec.osRngForTesting, java.lang.Runtime.getRuntime().availableProcessors())
+    Mcas.newDefaultMcas(_osRng, java.lang.Runtime.getRuntime().availableProcessors())
 
   override def afterAll(): Unit = {
     this._mcasImpl.close()
+    this._osRng.close()
     super.afterAll()
   }
 
@@ -46,11 +50,15 @@ trait SpecDefaultMcas extends munit.Suite with SpecDefaultMcasPlatform {
 
 trait SpecThreadConfinedMcas extends munit.Suite with McasImplSpec {
 
+  private[this] val _osRng: OsRng =
+    OsRng.mkNew()
+
   private[this] val _mcasImpl: Mcas =
-    Mcas.newThreadConfinedMcas(BaseSpec.osRngForTesting)
+    Mcas.newThreadConfinedMcas(_osRng)
 
   override def afterAll(): Unit = {
     this._mcasImpl.close()
+    this._osRng.close()
     super.afterAll()
   }
 

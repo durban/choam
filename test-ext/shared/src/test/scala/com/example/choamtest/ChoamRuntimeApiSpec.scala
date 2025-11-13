@@ -25,7 +25,7 @@ import dev.tauri.choam.core.{ Reactive, Ref, AsyncReactive }
 import dev.tauri.choam.ChoamRuntime
 import dev.tauri.choam.stm.{ Transactive, TRef }
 
-final class ChoamRuntimeSpec extends munit.CatsEffectSuite {
+final class ChoamRuntimeApiSpec extends munit.CatsEffectSuite {
 
   private def checkReactive[F[_]](implicit r: Reactive[F], F: Sync[F]): F[Ref[Int]] = {
     for {
@@ -45,17 +45,11 @@ final class ChoamRuntimeSpec extends munit.CatsEffectSuite {
     } yield tref
   }
 
-  private def checkSameRt[A, B](r1: Ref[A], r2: Ref[B]): IO[Unit] = {
-    // if they have different runtimes,
-    // their hashCode would very likely
-    // be the same:
+  private def checkDifferentId[A, B](r1: Ref[A], r2: Ref[B]): IO[Unit] = {
     IO(assertNotEquals(r1.##, r2.##))
   }
 
-  private def checkSameRt[F[_], A, B](r1: Ref[A], r2: TRef[B]): IO[Unit] = {
-    // if they have different runtimes,
-    // their hashCode would very likely
-    // be the same:
+  private def checkDifferentId[F[_], A, B](r1: Ref[A], r2: TRef[B]): IO[Unit] = {
     IO(assertNotEquals(r1.##, r2.##))
   }
 
@@ -71,7 +65,7 @@ final class ChoamRuntimeSpec extends munit.CatsEffectSuite {
     }
     res.use { rt =>
       (checkReactive(using rt._1, IO.asyncForIO), checkTransactive(using rt._2, IO.asyncForIO)).flatMapN { (r1, r2) =>
-        checkSameRt(r1, r2)
+        checkDifferentId(r1, r2)
       }
     }
   }
@@ -88,7 +82,7 @@ final class ChoamRuntimeSpec extends munit.CatsEffectSuite {
     }
     res.use { rt =>
       (checkReactive(using rt._1, IO.asyncForIO), checkTransactive(using rt._2, IO.asyncForIO)).flatMapN { (r1, r2) =>
-        checkSameRt(r1, r2)
+        checkDifferentId(r1, r2)
       }
     }
   }
@@ -107,7 +101,7 @@ final class ChoamRuntimeSpec extends munit.CatsEffectSuite {
       for {
         r1 <- checkReactive[IO](using rr._1, IO.asyncForIO)
         r2 <- checkReactive[SyncIO](using rr._2, SyncIO.syncForSyncIO).to[IO]
-        _ <- checkSameRt(r1, r2)
+        _ <- checkDifferentId(r1, r2)
       } yield ()
     }
   }

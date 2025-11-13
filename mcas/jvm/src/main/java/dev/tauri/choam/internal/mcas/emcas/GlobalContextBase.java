@@ -62,9 +62,13 @@ abstract class GlobalContextBase extends PaddedMemoryLocationPadding {
     }
   }
 
-  private volatile long commitTs = VersionJ.Start;
+  private volatile long commitTs;
   // TODO: add padding between commitTs and threadCtxCount
   private volatile long threadCtxCount;
+
+  protected GlobalContextBase(long startCommitTs) {
+    this.commitTs = startCommitTs;
+  }
 
   final long getCommitTs() {
     return this.commitTs; // volatile
@@ -87,6 +91,7 @@ abstract class GlobalContextBase extends PaddedMemoryLocationPadding {
   }
 
   protected final static String registerEmcasJmxStats(Emcas emcas) throws javax.management.JMException {
+    // TODO: use a Long counter instead of identityHashCode
     String objNameStr = String.format("%s-%08x", emcasJmxStatsNamePrefix, System.identityHashCode(emcas));
     var objName = new javax.management.ObjectName(objNameStr);
     var ejs = new EmcasJmxStats(emcas);
