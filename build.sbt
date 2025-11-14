@@ -819,7 +819,10 @@ lazy val commonSettingsNative = Seq[Setting[_]](
         "-DGC_ASSERTIONS",
         "-DDEBUG_PRINT",
       ))
-  }
+  },
+  envVars ++= Map(
+    "GC_MAXIMUM_HEAP_SIZE" -> "5G",
+  ),
 )
 
 lazy val commonSettings = Seq[Setting[_]](
