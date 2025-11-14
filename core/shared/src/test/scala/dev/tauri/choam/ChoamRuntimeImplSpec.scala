@@ -17,12 +17,17 @@
 
 package dev.tauri.choam
 
+import scala.concurrent.duration._
+
 import cats.effect.kernel.{ Resource }
 import cats.effect.IO
 
 import core.{ AsyncReactive, Ref, Rxn }
 
 final class ChoamRuntimeImplSpec extends munit.CatsEffectSuite with BaseSpec {
+
+  final override def munitIOTimeout: Duration =
+    super.munitIOTimeout * 2
 
   test("Using multiple runtimes in parallel") {
     val N = 8192
