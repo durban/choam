@@ -22,6 +22,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.Reference;
+import java.util.concurrent.atomic.AtomicLong;
 
 import dev.tauri.choam.internal.VarHandleHelper;
 import dev.tauri.choam.internal.mcas.VersionJ;
@@ -32,6 +33,9 @@ abstract class GlobalContextBase extends PaddedMemoryLocationPadding {
   private static final VarHandle COMMIT_TS;
   private static final VarHandle THREAD_CTX_COUNT;
   private static final MethodHandle IS_VIRTUAL;
+
+  private static final AtomicLong emcasJmxStatsCounter =
+    new AtomicLong(0L);
 
   static final String emcasJmxStatsNamePrefix =
     "dev.tauri.choam.stats:type=EmcasJmxStats";
@@ -91,8 +95,8 @@ abstract class GlobalContextBase extends PaddedMemoryLocationPadding {
   }
 
   protected final static String registerEmcasJmxStats(Emcas emcas) throws javax.management.JMException {
-    // TODO: use a Long counter instead of identityHashCode
-    String objNameStr = String.format("%s-%08x", emcasJmxStatsNamePrefix, System.identityHashCode(emcas));
+    long id = emcasJmxStatsCounter.getAndIncrement();
+    String objNameStr = emcasJmxStatsNamePrefix + "-" + Long.toString(id);
     var objName = new javax.management.ObjectName(objNameStr);
     var ejs = new EmcasJmxStats(emcas);
     java.lang.management.ManagementFactory.getPlatformMBeanServer().registerMBean(ejs, objName);
