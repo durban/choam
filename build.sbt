@@ -187,7 +187,7 @@ ThisBuild / githubWorkflowBuild := List(
   ),
 } ++ List(
   WorkflowStep.Use(
-    GhActions.uploadArtifactV4,
+    GhActions.uploadArtifactRef,
     name = Some("Upload JCStress results"),
     cond = {
       val commitMsgCond = s"(${stressTestNames.map(commitContains).mkString("", " || ", "")})"
@@ -205,7 +205,7 @@ ThisBuild / githubWorkflowBuild := List(
     cond = Some(s"(success() || failure()) && (matrix.os == '${linux}') && (matrix.java == '${jvmGraalLatest.render}')"),
   ),
   WorkflowStep.Use(
-    GhActions.uploadArtifactV4,
+    GhActions.uploadArtifactRef,
     name = Some("Upload Graal dumps"),
     cond = {
       val jvmCond = "matrix.ci == 'ciJVM'"

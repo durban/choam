@@ -19,21 +19,19 @@ import org.typelevel.sbt.gha.UseRef
 
 object GhActions {
 
-  // TODO: setup-sbt depends on actions/cache@v4,
-  // TODO: so we need to allow that mutable tag.
-
-  val uploadArtifactV4: UseRef.Public =
-    UseRef.Public("actions", "upload-artifact", "ea165f8d65b6e75b540449e92b4886f43607fa02")
+  val uploadArtifactRef: UseRef.Public =
+    UseRef.Public("actions", "upload-artifact", "330a01c490aca151604b8cf639adc76d48f6c5d4") // 5.0.0
 
   val additionalParams: Map[(String, String), Map[String, String]] = Map(
     ("actions", "checkout") -> Map("persist-credentials" -> "false"),
   )
 
   val refVersionMapping: Map[(String, String), String] = Map(
-    ("actions", "checkout") -> "11bd71901bbe5b1630ceea73d27597364c9af683", // 4.2.2
-    ("actions", "setup-java") -> "c5195efecf7bdfc987ee8bae7a71cb8b11521c00", // 4.7.1
-    (uploadArtifactV4.owner, uploadArtifactV4.repo) -> uploadArtifactV4.ref, // 4.6.2
-    ("scalacenter", "sbt-dependency-submission") -> "f3c0455a87097de07b66c3dc1b8619b5976c1c89", // 2.3.1
-    ("sbt", "setup-sbt") -> "f20dc1bc1f8be605c44ffbcec6f17f708a4af9d1", // 1.1.12
+    ("actions", "cache") -> "0057852bfaa89a56745cba8c7296529d2fc39830", // 4.3.0; sbt/setup-sbt is pinned to this
+    ("actions", "checkout") -> "08c6903cd8c0fde910a37f88322edcfb5dd907a8", // 5.0.0
+    ("actions", "setup-java") -> "dded0888837ed1f317902acf8a20df0ad188d165", // 5.0.0
+    (uploadArtifactRef.owner, uploadArtifactRef.repo) -> uploadArtifactRef.ref,
+    ("sbt", "setup-sbt") -> "3e125ece5c3e5248e18da9ed8d2cce3d335ec8dd", // 1.1.14
+    ("scalacenter", "sbt-dependency-submission") -> "64084844d2b0a9b6c3765f33acde2fbe3f5ae7d3", // 3.1.0
   )
 }
