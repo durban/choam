@@ -194,21 +194,25 @@ abstract class BaseSpecTickedIO extends BaseSpecIO with TestContextSpec[IO] { th
     new ValueTransform(
       "Ticked IO",
       { case task: IO[a] =>
-        @volatile
-        var res: Outcome[cats.Id, Throwable, a] = null
-        task
-          .flatMap(IO.pure)
-          .handleErrorWith(IO.raiseError)
-          .unsafeRunAsyncOutcome({ (outcome) => res = outcome })(using this.tickedMunitIoRuntime)
-        testContext.tickAll()
-        if (res eq null) {
-          Future.failed(new FailException("ticked IO didn't complete", Location.empty))
+        if (this.platform == Native) {
+          Future.failed(new org.junit.AssumptionViolatedException("TestContextSpec is disabled on SN"))
         } else {
-          res.fold(
-            canceled = Future.failed(new FailException("ticked IO was cancelled", Location.empty)),
-            errored = Future.failed(_),
-            completed = Future.successful(_),
-          )
+          @volatile
+          var res: Outcome[cats.Id, Throwable, a] = null
+          task
+            .flatMap(IO.pure)
+            .handleErrorWith(IO.raiseError)
+            .unsafeRunAsyncOutcome({ (outcome) => res = outcome })(using this.tickedMunitIoRuntime)
+          testContext.tickAll()
+          if (res eq null) {
+            Future.failed(new FailException("ticked IO didn't complete", Location.empty))
+          } else {
+            res.fold(
+              canceled = Future.failed(new FailException("ticked IO was cancelled", Location.empty)),
+              errored = Future.failed(_),
+              completed = Future.successful(_),
+            )
+          }
         }
       }
     ) +: super.munitValueTransforms
