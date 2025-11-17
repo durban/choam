@@ -187,32 +187,34 @@ abstract class BaseSpecIO
 
 abstract class BaseSpecTickedIO extends BaseSpecIO with TestContextSpec[IO] { this: McasImplSpec =>
 
-  protected override lazy val testContext: TestContext =
-    TestContext()
+  protected[this] override def testContext: TestContext = {
+    Predef.assert(Thread.currentThread() eq _testContextAndThread._2)
+    _testContextAndThread._1
+  }
+
+  private[this] lazy val _testContextAndThread: (TestContext, Thread) = {
+    (TestContext(), Thread.currentThread())
+  }
 
   override def munitValueTransforms: List[ValueTransform] = {
     new ValueTransform(
       "Ticked IO",
       { case task: IO[a] =>
-        if (this.platform == Native) {
-          Future.failed(new org.junit.AssumptionViolatedException("TestContextSpec is disabled on SN"))
+        @volatile
+        var res: Outcome[cats.Id, Throwable, a] = null
+        task
+          .flatMap(IO.pure)
+          .handleErrorWith(IO.raiseError)
+          .unsafeRunAsyncOutcome({ (outcome) => res = outcome })(using this.tickedMunitIoRuntime)
+        testContext.tickAll()
+        if (res eq null) {
+          Future.failed(new FailException("ticked IO didn't complete", Location.empty))
         } else {
-          @volatile
-          var res: Outcome[cats.Id, Throwable, a] = null
-          task
-            .flatMap(IO.pure)
-            .handleErrorWith(IO.raiseError)
-            .unsafeRunAsyncOutcome({ (outcome) => res = outcome })(using this.tickedMunitIoRuntime)
-          testContext.tickAll()
-          if (res eq null) {
-            Future.failed(new FailException("ticked IO didn't complete", Location.empty))
-          } else {
-            res.fold(
-              canceled = Future.failed(new FailException("ticked IO was cancelled", Location.empty)),
-              errored = Future.failed(_),
-              completed = Future.successful(_),
-            )
-          }
+          res.fold(
+            canceled = Future.failed(new FailException("ticked IO was cancelled", Location.empty)),
+            errored = Future.failed(_),
+            completed = Future.successful(_),
+          )
         }
       }
     ) +: super.munitValueTransforms
@@ -231,8 +233,18 @@ abstract class BaseSpecTickedIO extends BaseSpecIO with TestContextSpec[IO] { th
 
   private[this] lazy val tickedMunitIoRuntime = {
     IORuntime(
-      compute = testContext,
-      blocking = testContext.deriveBlocking(),
+      compute = new ExecutionContext {
+        override def execute(runnable: Runnable): Unit =
+          testContext.execute(runnable)
+        override def reportFailure(cause: Throwable): Unit =
+          testContext.reportFailure(cause)
+      },
+      blocking = new ExecutionContext {
+        override def execute(runnable: Runnable): Unit =
+          testContext.deriveBlocking().execute(runnable)
+        override def reportFailure(cause: Throwable): Unit =
+          testContext.deriveBlocking().reportFailure(cause)
+      },
       scheduler = new Scheduler {
         override def sleep(delay: FiniteDuration, task: Runnable): Runnable = {
           val cancel = testContext.schedule(delay, task)
