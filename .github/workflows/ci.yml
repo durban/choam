@@ -63,10 +63,6 @@ jobs:
             java: temurin@25
             scala: 2.13
             ci: ciJVM
-          - os: windows-2025
-            java: temurin@25
-            scala: 2.13
-            ci: ciNative
           - os: macos-15
             java: temurin@25
             scala: 2.13
@@ -75,10 +71,6 @@ jobs:
             java: temurin@25
             scala: 2.13
             ci: ciJVM
-          - os: windows-11-arm
-            java: temurin@21
-            scala: 2.13
-            ci: ciNative
           - os: macos-15-intel
             java: temurin@25
             scala: 2.13
@@ -111,20 +103,12 @@ jobs:
             java: temurin@25
             scala: 3
             ci: ciJVM
-          - os: windows-2025
-            java: temurin@25
-            scala: 3
-            ci: ciNative
           - os: macos-15
             java: temurin@25
             scala: 3
             ci: ciJS
           - os: macos-15
             java: temurin@25
-            scala: 3
-            ci: ciNative
-          - os: windows-11-arm
-            java: temurin@21
             scala: 3
             ci: ciNative
           - os: ubuntu-24.04

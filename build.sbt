@@ -243,15 +243,17 @@ ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
 ThisBuild / githubWorkflowBuildMatrixInclusions ++= crossScalaVersions.value.flatMap { scalaVer =>
   _quickCiAliases.keys.flatMap { plat =>
     val binVer = CrossVersion.binaryScalaVersion(scalaVer)
-    Seq(
-      MatrixInclude(matching = Map("os" -> macos, "java" -> jvmLatest.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty),
-      MatrixInclude(matching = Map("os" -> windows, "java" -> jvmLatest.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty),
+    Seq(MatrixInclude(matching = Map("os" -> macos, "java" -> jvmLatest.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty)) ++ (
+      if (plat != "ciNative") Seq(MatrixInclude(matching = Map("os" -> windows, "java" -> jvmLatest.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty))
+      else Nil
     ) ++ {
       if (plat != "ciJS") {
         Seq(
           MatrixInclude(matching = Map("os" -> linux86, "java" -> jvmLatest.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty),
           MatrixInclude(matching = Map("os" -> macosIntel, "java" -> jvmLatest.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty),
-          MatrixInclude(matching = Map("os" -> windowsArm, "java" -> jvmLts.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty),
+        ) ++ (
+          if (plat != "ciNative") Seq(MatrixInclude(matching = Map("os" -> windowsArm, "java" -> jvmLts.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty))
+          else Nil
         )
       } else {
         Seq.empty
