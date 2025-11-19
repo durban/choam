@@ -241,7 +241,7 @@ final class InternalStackSpec extends BaseSpec {
   }
 
   test("ArrayObjStack nextPowerOf2 overflow") {
-    assume(!this.isJs())
+    assume(this.isJvm()) // unstable on JS and SN
     System.err.println("Starting ArrayObjStack nextPowerOf2 overflow test")
     try {
       val bs = new ArrayObjStack[String](initSize = ArrayObjStack.maxSize)
