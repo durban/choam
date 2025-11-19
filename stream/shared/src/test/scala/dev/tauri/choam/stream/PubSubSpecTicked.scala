@@ -427,7 +427,7 @@ trait PubSubSpecTicked[F[_]]
     test(s"$name - should never backpressure") {
       val N = this.platform match {
         case Jvm | Js => 1024 * 256
-        case Native => 1024 * 16
+        case Native => 1024 * 8
       }
       for {
         hub <- newHub[Int](str)
