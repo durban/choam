@@ -188,6 +188,9 @@ abstract class BaseSpecIO
 abstract class BaseSpecTickedIO extends BaseSpecIO with TestContextSpec[IO] { this: McasImplSpec =>
 
   protected[this] override def testContext: TestContext = {
+    // TODO: This is an experiment, to detect if we ever use
+    // TODO: `TestContext` in a multithreaded way (3b4700f30);
+    // TODO: we should remove it after a while.
     Predef.assert(Thread.currentThread() eq _testContextAndThread._2)
     _testContextAndThread._1
   }

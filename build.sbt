@@ -243,6 +243,7 @@ ThisBuild / githubWorkflowBuildMatrixExclusions ++= Seq(
 ThisBuild / githubWorkflowBuildMatrixInclusions ++= crossScalaVersions.value.flatMap { scalaVer =>
   _quickCiAliases.keys.flatMap { plat =>
     val binVer = CrossVersion.binaryScalaVersion(scalaVer)
+    // TODO: SN jobs on win are disabled (f0ae0e424); we should try them again after a while
     Seq(MatrixInclude(matching = Map("os" -> macos, "java" -> jvmLatest.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty)) ++ (
       if (plat != "ciNative") Seq(MatrixInclude(matching = Map("os" -> windows, "java" -> jvmLatest.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty))
       else Nil
