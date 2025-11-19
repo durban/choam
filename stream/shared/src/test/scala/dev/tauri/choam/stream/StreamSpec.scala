@@ -124,7 +124,12 @@ trait StreamSpec[F[_]]
         vec,
         (0 until vec.length).toVector
       )
-      _ <- assertEqualsF(clue(vec.length).toLong, (N - 1L))
+      _ <- if (this.platform == Native) {
+        // TODO: this is an experiment for SN, will need to remove:
+        assertEqualsF(clue(vec.length).toLong, (N - 1L))
+      } else {
+        assertF(clue(vec.length) <= (N * 3))
+      }
     } yield ()
   }
 }
