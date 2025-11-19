@@ -124,7 +124,7 @@ trait StreamSpec[F[_]]
         vec,
         (0 until vec.length).toVector
       )
-      _ <- assertF(clue(vec.length) <= (N * 3))
+      _ <- assertEqualsF(clue(vec.length).toLong, (N - 1L))
     } yield ()
   }
 }
