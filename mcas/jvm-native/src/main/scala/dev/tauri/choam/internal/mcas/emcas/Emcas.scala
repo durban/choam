@@ -1167,5 +1167,6 @@ private[mcas] final class Emcas private (
     if (Consts.statsEnabled) {
       GlobalContextBase.unregisterEmcasJmxStats(this.registeredObjectName)
     }
+    super.close()
   }
 }

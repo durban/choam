@@ -56,15 +56,30 @@ private[mcas] abstract class GlobalContext(startCommitTs: Long, startRig: Long)
    * it starts to run out of space in the
    * ThreadLocalMap. So we should be fine.
    */
-  private[this] val _threadContexts = if (Consts.statsEnabled) {
+  private[this] var _threadContexts = if (Consts.statsEnabled) {
     new SkipListMap[GlobalContext.TCtxWeakRef, Unit]
   } else {
     null
   }
 
   /** Holds the context for each (active) thread */
-  private[this] val threadContextKey =
+  private[this] var threadContextKey =
     new ThreadLocal[EmcasThreadContext]()
+
+  private[choam] override def close(): Unit = {
+    // Deleting the reference to the `ThreadLocal`
+    // instance is necessary, so that the stale
+    // entries can be cleared from the ThreadLocalMap
+    // as described above:
+    this.threadContextKey = null
+    // Deleting the reference to the skiplist
+    // (if any) is just to "help" the GC, as
+    // the skiplist only stores weakrefs anyway
+    // (it's also useful not to retain it as
+    // the whole `ChoamRuntime` will be retained for
+    // future reinitialization):
+    this._threadContexts = null
+  }
 
   private[this] final def newThreadContext(): EmcasThreadContext = {
     new EmcasThreadContext(this, this.globalRig.newThreadLocal(

@@ -17,6 +17,7 @@
 
 package dev.tauri.choam
 
+import java.lang.ref.WeakReference
 import java.util.concurrent.{ Executors, TimeUnit, TimeoutException }
 
 import scala.concurrent.ExecutionContext
@@ -28,16 +29,17 @@ import internal.mcas.Mcas
 
 abstract class ChoamRuntimeImplSpecPlatform extends munit.CatsEffectSuite with BaseSpec {
 
-  test("Thread-local ThreadContexts") {
-    val ecRes = Resource.make(IO(Executors.newSingleThreadExecutor())) { ex =>
-      IO.blocking {
-        ex.shutdown()
-        if (!ex.awaitTermination(1L, TimeUnit.SECONDS)) {
-          throw new TimeoutException
-        }
+  val singleThreadEc: Resource[IO, ExecutionContext] = Resource.make(IO(Executors.newSingleThreadExecutor())) { ex =>
+    IO.blocking {
+      ex.shutdown()
+      if (!ex.awaitTermination(1L, TimeUnit.SECONDS)) {
+        throw new TimeoutException
       }
-    }.map(ExecutionContext.fromExecutorService)
-    ecRes.use { ec =>
+    }
+  }.map(ExecutionContext.fromExecutorService)
+
+  test("Thread-local ThreadContexts") {
+    singleThreadEc.use { ec =>
       def once(rt: ChoamRuntime): IO[(Mcas.ThreadContext, Mcas.ThreadContext)] = {
         IO(rt.mcasImpl.currentContext()).flatMap { ctx1a =>
           val t = for {
@@ -59,6 +61,34 @@ abstract class ChoamRuntimeImplSpecPlatform extends munit.CatsEffectSuite with B
         _ <- assertIOBoolean(IO(ctx1b ne ctx2a))
         _ <- assertIOBoolean(IO(ctx1b ne ctx2b))
         _ <- assertIOBoolean(IO(ctx2a ne ctx2b))
+      } yield ()
+    }
+  }
+
+  test("ThreadContexts should be GC'd") {
+    singleThreadEc.use { ec =>
+      for {
+        threadContextWeakRef <- ChoamRuntime.make[IO].use { rt =>
+          IO(rt.mcasImpl.currentContext()).evalOn(ec).map(new WeakReference(_))
+        }
+        // as we've shut down the runtime, the ThreadLocal
+        // itself now should be eligible for garbage
+        // collection; by creating a lot of new ThreadContexts
+        // for the same thread, we'll eventually force
+        // ThreadLocal to clean the first one, so the
+        // first ThreadContext instance should also be cleared:
+        createNewThreadCtx = ChoamRuntime.make[IO].use { rt =>
+          IO(rt.mcasImpl.currentContext()).evalOn(ec)
+        }
+        _ <- IO.asyncForIO.fix[Unit] { retry =>
+          IO(threadContextWeakRef.get() eq null).flatMap { cleared =>
+            if (cleared) {
+              IO.unit
+            } else {
+              createNewThreadCtx *> IO(System.gc()) *> retry
+            }
+          }
+        }
       } yield ()
     }
   }
