@@ -23,7 +23,7 @@ import cats.syntax.all._
 import cats.effect.kernel.Resource
 import cats.effect.IO
 
-import core.{ AsyncReactive, Ref, Rxn }
+import core.{ AsyncReactive, Ref, Rxn, Reactive }
 
 final class ChoamRuntimeImplSpec extends ChoamRuntimeImplSpecPlatform {
 
@@ -139,22 +139,32 @@ final class ChoamRuntimeImplSpec extends ChoamRuntimeImplSpecPlatform {
       ChoamRuntime.make[IO].allocated.flatMap { case (rt1, close1) =>
         val close1Idempotent = closed1.getAndSet(true).ifM(IO.unit, close1)
         val inner = assertIO(IO(ChoamRuntime.getRefCntForTesting(rt1)), Right(1L)).flatMap { _ =>
-          IO.both(
-            close1Idempotent,
-            ChoamRuntime.make[IO].allocated
-          ).flatMap { case ((), (rt2, close2)) =>
-            val close2Idempotent = closed2.getAndSet(true).ifM(IO.unit, close2)
-            val inner2 = assertIO(IO(ChoamRuntime.getRefCntForTesting(rt2)), Right(1L)).flatMap { _ =>
-              IO(ChoamRuntime.getRefCntForTesting(rt1)).flatMap {
-                case Right(1L) =>
-                  assertIOBoolean(IO(rt1 eq rt2))
-                case Left(1L) =>
-                  assertIOBoolean(IO(rt1 ne rt2))
-                case x =>
-                  IO(fail(s"unexpected result: ${x}"))
-              } *> assertIO(IO(ChoamRuntime.getRefCntForTesting(rt2)), Right(1L))
+          Reactive.from[IO](rt1).use { implicit rea => Ref("a").run }.flatMap { ref1 =>
+            IO.both(
+              close1Idempotent,
+              ChoamRuntime.make[IO].allocated
+            ).flatMap { case ((), (rt2, close2)) =>
+              val close2Idempotent = closed2.getAndSet(true).ifM(IO.unit, close2)
+              val inner2 = assertIO(IO(ChoamRuntime.getRefCntForTesting(rt2)), Right(1L)).flatMap { _ =>
+                IO(ChoamRuntime.getRefCntForTesting(rt1)).flatMap {
+                  case Right(1L) =>
+                    assertIOBoolean(IO(rt1 eq rt2))
+                  case Left(1L) =>
+                    assertIOBoolean(IO(rt1 ne rt2))
+                  case x =>
+                    IO(fail(s"unexpected result: ${x}"))
+                } *> assertIO(IO(ChoamRuntime.getRefCntForTesting(rt2)), Right(1L)).flatMap { _ =>
+                  Reactive.from[IO](rt2).use { implicit rea =>
+                    Ref("b").run[IO].flatMap { ref2 =>
+                      assertIOBoolean(IO(ref1.loc.id != ref2.loc.id)).flatMap { _ =>
+                        Ref.swap(ref1, ref2).run[IO] *> assertIO(ref1.get.run, "b") *> assertIO(ref2.get.run, "a")
+                      }
+                    }
+                  }
+                }
+              }
+              inner2.guarantee(close2Idempotent)
             }
-            inner2.guarantee(close2Idempotent)
           }
         }
         inner.guarantee(close1Idempotent)
