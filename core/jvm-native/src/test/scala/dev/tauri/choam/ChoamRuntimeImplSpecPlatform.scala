@@ -26,6 +26,7 @@ import cats.effect.kernel.Resource
 import cats.effect.IO
 
 import internal.mcas.Mcas
+import core.{ Ref, Reactive }
 
 abstract class ChoamRuntimeImplSpecPlatform extends munit.CatsEffectSuite with BaseSpec {
 
@@ -39,21 +40,29 @@ abstract class ChoamRuntimeImplSpecPlatform extends munit.CatsEffectSuite with B
   }.map(ExecutionContext.fromExecutorService)
 
   test("Thread-local ThreadContexts") {
-    singleThreadEc.use { ec =>
-      def once(rt: ChoamRuntime): IO[(Mcas.ThreadContext, Mcas.ThreadContext)] = {
-        IO(rt.mcasImpl.currentContext()).flatMap { ctx1a =>
-          val t = for {
-            _ <- assertIOBoolean(IO(!rt.mcasImpl.isCurrentContext(ctx1a)))
-            ctx1b <- IO(rt.mcasImpl.currentContext())
-            _ <- assertIOBoolean(IO(rt.mcasImpl.isCurrentContext(ctx1b)))
-          } yield ctx1b
-          t.evalOn(ec).map { ctx1b => (ctx1a, ctx1b) }
+    val t = singleThreadEc.use { ec =>
+      def once(rt: ChoamRuntime, ref: Ref[String], s: String): IO[(Mcas.ThreadContext, Mcas.ThreadContext)] = {
+        Reactive.from[IO](rt).use { implicit rea =>
+          IO(rt.mcasImpl.currentContext()).flatMap { ctx1a =>
+            val t = for {
+              _ <- assertIOBoolean(IO(!rt.mcasImpl.isCurrentContext(ctx1a)))
+              ctx1b <- IO(rt.mcasImpl.currentContext())
+              _ <- assertIOBoolean(IO(rt.mcasImpl.isCurrentContext(ctx1b)))
+              _ <- ref.update(_ + s).run[IO].replicateA_(3)
+            } yield ctx1b
+            t.evalOn(ec).map { ctx1b => (ctx1a, ctx1b) }
+          }
         }
       }
       for {
-        ctx1ab <- ChoamRuntime.make[IO].use(once)
+        ref <- ChoamRuntime.make[IO].use { rt =>
+          Reactive.from[IO](rt).use { implicit rea =>
+            Ref("a").run
+          }
+        }
+        ctx1ab <- ChoamRuntime.make[IO].use(once(_, ref, "1"))
         (ctx1a, ctx1b) = ctx1ab
-        ctx2ab <- ChoamRuntime.make[IO].use(once)
+        ctx2ab <- ChoamRuntime.make[IO].use(once(_, ref, "2"))
         (ctx2a, ctx2b) = ctx2ab
         _ <- assertIOBoolean(IO(ctx1a ne ctx1b))
         _ <- assertIOBoolean(IO(ctx1a ne ctx2a))
@@ -61,8 +70,14 @@ abstract class ChoamRuntimeImplSpecPlatform extends munit.CatsEffectSuite with B
         _ <- assertIOBoolean(IO(ctx1b ne ctx2a))
         _ <- assertIOBoolean(IO(ctx1b ne ctx2b))
         _ <- assertIOBoolean(IO(ctx2a ne ctx2b))
+        _ <- ChoamRuntime.make[IO].use { rt =>
+          Reactive.from[IO](rt).use { implicit rea =>
+            assertIO(ref.get.run[IO], "a111222")
+          }
+        }
       } yield ()
     }
+    t.replicateA_(200)
   }
 
   test("ThreadContexts should be GC'd") {
