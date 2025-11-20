@@ -78,7 +78,9 @@ private[mcas] abstract class GlobalContext(startCommitTs: Long, startRig: Long)
     // (it's also useful not to retain it as
     // the whole `ChoamRuntime` will be retained for
     // future reinitialization):
-    this._threadContexts = null
+    if (Consts.statsEnabled) {
+      this._threadContexts = null
+    }
   }
 
   private[this] final def newThreadContext(): EmcasThreadContext = {
