@@ -20,7 +20,7 @@ package dev.tauri.choam
 import scala.concurrent.duration._
 
 import cats.syntax.all._
-import cats.effect.kernel.{ Resource }
+import cats.effect.kernel.Resource
 import cats.effect.IO
 
 import core.{ AsyncReactive, Ref, Rxn }

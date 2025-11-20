@@ -237,6 +237,25 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
 
 ## Compatibility and assumptions
 
+### General assumptions
+
+Throughout the library, we're assuming the following:
+
+- Instances of the `scala.FunctionN` traits passed to the library are pure and total
+- Cats Effect type classes and data types are used as intended
+  - e.g., no `cats.effect.kernel.Resource`s are leaked
+- No dynamic type tests are performed by user code on objects provided by the library
+  - i.e., the dynamic type of these objects is not part of their public API
+  - e.g., don't do this:
+    ```scala
+    def foo(ref: dev.tauri.choam.core.Ref[String]) = ref match { // DON'T do this
+      case ar: java.util.concurrent.atomic.AtomicReference[_] =>
+        ... // use `ar`
+    }
+    ```
+
+### Backwards compatibility
+
 ["Early" SemVer 2.0.0](https://www.scala-lang.org/blog/2021/02/16/preventing-version-conflicts-with-versionscheme.html#early-semver-and-sbt-version-policy) _binary_ backwards compatibility, with the following exceptions:
 
 - The versions of `choam-` modules must match *exactly* (e.g., *don't* use `"choam-data" % "0.4.1"`
@@ -268,7 +287,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
 
 - Platforms:
   - JVM:
-    - versions ⩾ 11
+    - versions ⩾ 17
     - tested on OpenJDK, Graal, and OpenJ9 (but should work on others)
     - for secure random number generation, either the `Windows-PRNG`
       or (`/dev/random` and `/dev/urandom`) need to be available
@@ -279,7 +298,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
       implementation needs to be available (see [here](https://github.com/scala-js/scala-js-java-securerandom))
   - Scala Native:
     - support is completely experimental
-    - support on Windows is even more experimental
+    - no support on Windows
     - no backwards compatibility
 - Scala versions: cross-compiled for 2.13 and 3.3
 
@@ -289,16 +308,6 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
 
 - No "infinite loops" are created (e.g., by infinitely recursive `flatMap`s)
 - No `unsafe` operations are used (e.g., `Rxn.unsafe.retry` is obviously not lock-free)
-- We assume instances of `FunctionN` to be pure and total
-- We assume that no dynamic type tests are performed on objects provided by CHOAM
-  - i.e., the dynamic type of these objects is not part of their public API
-  - e.g., don't do this:
-    ```scala
-    def foo(ref: Ref[String]) = ref match { // DON'T do this
-      case ar: java.util.concurrent.atomic.AtomicReference[_] =>
-        ... // use `ar`
-    }
-    ```
 - We assume that certain JVM operations are lock-free; some examples are:
   - `VarHandle` operations (e.g., `compareAndSet`)
     - in practice, this is true on 64-bit platforms
@@ -308,7 +317,7 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
     - and classloaders sometimes also might use locks
   - `ThreadLocalRandom`, `ThreadLocal`
 - Certain `Rxn` operations require extra assumptions:
-  - `Rxn.slowRandom` and `UUIDGen` use the OS RNG, which might block
+  - `Rxn.slowRandom` and `UUIDGen` use the OS RNG; in practice this might block
     (although we *really* try to use the non-blocking ones)
   - in `AsyncReactive` we assume that calling a Cats Effect `Async` callback is lock-free
     (in `cats.effect.IO`, as of version 3.6.3, this is not technically true)
