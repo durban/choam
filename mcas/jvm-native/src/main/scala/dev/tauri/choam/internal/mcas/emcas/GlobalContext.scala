@@ -46,11 +46,15 @@ private[mcas] abstract class GlobalContext(startCommitTs: Long, startRig: Long)
    * affect safety, because a dead thread will never
    * continue its current op (if any).
    *
-   * TODO: If an `Emcas` is closed, its `ThreadContext`s
-   * TODO: remain in the threadlocals. Repeatedly
-   * TODO: closing and creating new `Emcas`es would
-   * TODO: be weird. But still, this is a memory
-   * TODO: leak.
+   * If an `Emcas` is closed, its `ThreadContext`s
+   * remain in the ThreadLocals of the threads
+   * which previously used it. Repeatedly closing and
+   * creating new `Emcas`es would be weird, but still,
+   * this could be a memory leak. However, in
+   * practice, OpenJDK only holds weakrefs to the
+   * ThreadLocals of a thread, and cleans them if
+   * it starts to run out of space in the
+   * ThreadLocalMap. So we should be fine.
    */
   private[this] val _threadContexts = if (Consts.statsEnabled) {
     new SkipListMap[GlobalContext.TCtxWeakRef, Unit]

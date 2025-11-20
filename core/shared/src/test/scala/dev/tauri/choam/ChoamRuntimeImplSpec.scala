@@ -24,7 +24,7 @@ import cats.effect.IO
 
 import core.{ AsyncReactive, Ref, Rxn }
 
-final class ChoamRuntimeImplSpec extends munit.CatsEffectSuite with BaseSpec {
+final class ChoamRuntimeImplSpec extends ChoamRuntimeImplSpecPlatform {
 
   final override def munitIOTimeout: Duration =
     super.munitIOTimeout * 2
