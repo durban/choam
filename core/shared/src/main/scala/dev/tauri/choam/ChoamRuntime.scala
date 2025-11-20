@@ -75,6 +75,24 @@ object ChoamRuntime {
     new ChoamRuntimeImpl(mcasImpl, mcasImpl.osRng)
   }
 
+  /**
+   * Right(n) - `rt` is the current runtime, and has a refcount of `n > 0`
+   * Left(n) - `rt` is NOT the current runtime; the current runtime has a
+   *   refcount of `n >= 0` (there is no runtime iff `n == 0`)
+   */
+  private[choam] final def getRefCntForTesting(rt: ChoamRuntime): Either[Long, Long] = {
+    holder.get() match {
+      case _: UninitOrClosed =>
+        Left(0L)
+      case u: InUse =>
+        if (u.rt eq rt) {
+          Right(u.refCnt)
+        } else {
+          Left(u.refCnt)
+        }
+    }
+  }
+
   private[this] sealed abstract class State
 
   private[this] final class UninitOrClosed(val ov: Option[ChoamRuntimeImpl]) extends State {

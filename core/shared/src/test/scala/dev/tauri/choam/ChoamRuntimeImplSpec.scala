@@ -19,6 +19,7 @@ package dev.tauri.choam
 
 import scala.concurrent.duration._
 
+import cats.syntax.all._
 import cats.effect.kernel.{ Resource }
 import cats.effect.IO
 
@@ -106,5 +107,59 @@ final class ChoamRuntimeImplSpec extends ChoamRuntimeImplSpecPlatform {
         }
       }
     } yield ()
+  }
+
+  test("Refcounts") {
+    ChoamRuntime.make[IO].use { rt1 =>
+      assertIO(IO(ChoamRuntime.getRefCntForTesting(rt1)), Right(1L)) *> ChoamRuntime.make[IO].use { rt2 =>
+        for {
+          _ <- assertIO(IO(ChoamRuntime.getRefCntForTesting(rt1)), Right(2L))
+          _ <- assertIO(IO(ChoamRuntime.getRefCntForTesting(rt2)), Right(2L))
+        } yield rt2
+      }.flatMap { rt2 =>
+        for {
+          _ <- assertIO(IO(ChoamRuntime.getRefCntForTesting(rt1)), Right(1L))
+          _ <- assertIO(IO(ChoamRuntime.getRefCntForTesting(rt2)), Right(1L))
+        } yield rt1
+      }
+    }.flatMap { rt1 =>
+      assertIO(IO(ChoamRuntime.getRefCntForTesting(rt1)), Left(0L)).flatMap { _ =>
+        ChoamRuntime.make[IO].use { rt3 =>
+          for {
+            _ <- assertIO(IO(ChoamRuntime.getRefCntForTesting(rt1)), Left(1L))
+            _ <- assertIO(IO(ChoamRuntime.getRefCntForTesting(rt3)), Right(1L))
+          } yield ()
+        }
+      }
+    }
+  }
+
+  test("Close last / create new race") {
+    val t = (IO.ref(false), IO.ref(false)).flatMapN { case (closed1, closed2) =>
+      ChoamRuntime.make[IO].allocated.flatMap { case (rt1, close1) =>
+        val close1Idempotent = closed1.getAndSet(true).ifM(IO.unit, close1)
+        val inner = assertIO(IO(ChoamRuntime.getRefCntForTesting(rt1)), Right(1L)).flatMap { _ =>
+          IO.both(
+            close1Idempotent,
+            ChoamRuntime.make[IO].allocated
+          ).flatMap { case ((), (rt2, close2)) =>
+            val close2Idempotent = closed2.getAndSet(true).ifM(IO.unit, close2)
+            val inner2 = assertIO(IO(ChoamRuntime.getRefCntForTesting(rt2)), Right(1L)).flatMap { _ =>
+              IO(ChoamRuntime.getRefCntForTesting(rt1)).flatMap {
+                case Right(1L) =>
+                  assertIOBoolean(IO(rt1 eq rt2))
+                case Left(1L) =>
+                  assertIOBoolean(IO(rt1 ne rt2))
+                case x =>
+                  IO(fail(s"unexpected result: ${x}"))
+              } *> assertIO(IO(ChoamRuntime.getRefCntForTesting(rt2)), Right(1L))
+            }
+            inner2.guarantee(close2Idempotent)
+          }
+        }
+        inner.guarantee(close1Idempotent)
+      }
+    }
+    t.replicateA_(1000)
   }
 }
