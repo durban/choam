@@ -88,10 +88,10 @@ object MyMain extends IOApp.Simple with RxnAppMixin {
 ## Software Transactional Memory (STM) [_work in progress_]
 
 As noted [below](#related-work), `Rxn` is not a full-featured STM implementation (notably,
-it lacks Haskell-style "modular blocking"). However, the `dev.tauri.choam.stm`
-package contains a full-blown STM, built on top of `Rxn`. For now, this package is
-experimental (i.e., no backwards compatibility), and also lacks some basic features, but it
-_does_ have modular blocking (`Txn.retry` and `Txn#orElse`).
+it lacks condition synchronization). However, the `dev.tauri.choam.stm` package contains a
+full-blown STM, built on top of `Rxn`. For now, this package is experimental (i.e., no
+backwards compatibility), and also lacks some basic features, but it _does_ have condition
+synhronization (see `Txn.retry` and `Txn#orElse`).
 
 ## Modules
 
@@ -181,8 +181,8 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
       lock-free (see, e.g., the "retry" STM operation, called ["modular blocking" in Haskell][4][^4]).
     - As a consequence of the previous point, `Rxn` cannot be used to implement
       "inherently non-lock-free" logic (e.g., asynchronously waiting on a
-      condition set by another thread/fiber/similar). However, `Rxn` is
-      interoperable with async data types which implement
+      condition set by another thread/fiber/similar, i.e., condition synchronization).
+      However, `Rxn` is interoperable with async data types which implement
       [Cats Effect](https://github.com/typelevel/cats-effect) typeclasses
       (see the `choam-async` module). This feature can be used to provide such
       "waiting" functionality (e.g., with the `dev.tauri.choam.async.Promise` type,
