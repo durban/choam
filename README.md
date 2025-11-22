@@ -140,7 +140,7 @@ synchronization (see `Txn.retry` and `Txn#orElse`).
     properties fulfilled by the various `Rxn` combinators
 
 JARs are on Maven Central. Browsable Scaladoc is available [here](
-https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/latest/index.html).
+https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/0.5.0-RC5/index.html).
 
 ## Related work
 
