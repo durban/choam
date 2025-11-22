@@ -91,7 +91,7 @@ As noted [below](#related-work), `Rxn` is not a full-featured STM implementation
 it lacks condition synchronization). However, the `dev.tauri.choam.stm` package contains a
 full-blown STM, built on top of `Rxn`. For now, this package is experimental (i.e., no
 backwards compatibility), and also lacks some basic features, but it _does_ have condition
-synhronization (see `Txn.retry` and `Txn#orElse`).
+synchronization (see `Txn.retry` and `Txn#orElse`).
 
 ## Modules
 
