@@ -152,10 +152,10 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/0.5.0-RC5/index.html).
   - `Rxn` has a referentially transparent ("purely functional" / "programs as values") monadic API.
     (A limited imperative API is also available in the `dev.tauri.choam.unsafe` package.)
   - The interpreter (that executes `Rxn`s) is stack-safe.
-  - We also support composing `Rxn`s which modify the same `Ref`
+  - Composing `Rxn`s which modify the same `Ref` also works fine
     (thus, an `Rxn` is closer to an STM transaction than a *reagent*;
     see below).
-  - Reads are _always_ guaranteed to be consistent (this is called *opacity*, see below).
+  - Reads are _always_ guaranteed to be consistent (this is usually called *opacity*, see below).
 
 [1]: https://www.ccs.neu.edu/home/turon/reagents.pdf
 [^1]: Turon, Aaron. "Reagents: expressing and composing fine-grained concurrency." In Proceedings of the 33rd ACM SIGPLAN Conference on Programming Language Design and Implementation, pp. 157-168. 2012.
@@ -203,6 +203,8 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/0.5.0-RC5/index.html).
       but not all of them. Opacity basically guarantees that all observed values
       are consistent with each other, even in running `Rxn`s (some STM systems only
       guarantee such consistency for transactions which actually commit).
+    - (We might technically weaken the *opacity* property in the future to TMS1[^9];
+      this should be unobservable to code not using `unsafe` APIs.)
   - Some STM implementations:
     - Haskell: [`Control.Concurrent.STM`](https://hackage.haskell.org/package/stm).
     - Scala:
@@ -234,6 +236,8 @@ https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/0.5.0-RC5/index.html).
 
 [8]: https://repository.rice.edu/server/api/core/bitstreams/ec929767-5e4b-4c8e-9704-c649bf6328c9/content
 [^8]: Zhang, Rui, Zoran Budimlic, and William N. Scherer III. Commit phase variations in timestamp-based software transactional memory. Technical Report TR08-03, Rice University, 2008.
+
+[^9]: Doherty, S., Groves, L., Luchangco, V. et al. Towards formally specifying and verifying transactional memory. Form Asp Comp 25, 769–799 (2013). https://doi.org/10.1007/s00165-012-0225-8
 
 ## Compatibility and assumptions
 
@@ -283,9 +287,9 @@ Throughout the library, we're assuming the following:
 - There is no backwards compatibility for "hash" versions (e.g., `0.4-39d987a` or `0.4.3-2-39d987a`).
 - See also the next section (platforms).
 
-### Supported platforms:
+### Platforms:
 
-- Platforms:
+- Scala platforms:
   - JVM:
     - versions ⩾ 17
     - tested on OpenJDK, Graal, and OpenJ9 (but should work on others)
@@ -297,10 +301,12 @@ Throughout the library, we're assuming the following:
     - for secure random number generation, a `java.security.SecureRandom`
       implementation needs to be available (see [here](https://github.com/scala-js/scala-js-java-securerandom))
   - Scala Native:
-    - support is completely experimental
-    - no support on Windows
+    - completely experimental
+    - completely untested on Windows
     - no backwards compatibility
-- Scala versions: cross-compiled for 2.13 and 3.3
+- Scala versions:
+  - 2.13
+  - 3 LTS
 
 ### Lock-freedom
 
