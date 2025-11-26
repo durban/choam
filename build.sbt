@@ -505,7 +505,7 @@ lazy val profiler = project.in(file("profiler"))
     ),
   )
 
-lazy val ce = crossProject(JVMPlatform, JSPlatform)
+lazy val ce = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .withoutSuffixFor(JVMPlatform)
   .crossType(CrossType.Full)
   .in(file("ce"))
@@ -514,13 +514,13 @@ lazy val ce = crossProject(JVMPlatform, JSPlatform)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
+  .nativeSettings(commonSettingsNative)
   .dependsOn(async % "compile->compile;test->test")
   .settings(
     libraryDependencies += dependencies.catsEffectAll.value,
-    tlVersionIntroduced := Map("2.13" -> "0.4.11", "3" -> "0.4.11"),
   )
 
-lazy val zi = crossProject(JVMPlatform, JSPlatform)
+lazy val zi = crossProject(JVMPlatform, JSPlatform) // TODO: this won't work on SN
   .withoutSuffixFor(JVMPlatform)
   .crossType(CrossType.Full)
   .in(file("zi"))
@@ -532,7 +532,6 @@ lazy val zi = crossProject(JVMPlatform, JSPlatform)
   .dependsOn(async % "compile->compile;test->test")
   .settings(
     libraryDependencies ++= dependencies.zioEverything.value,
-    tlVersionIntroduced := Map("2.13" -> "0.4.11", "3" -> "0.4.11"),
     Test / scalacOptions -= "-Xcheck-macros", // some zio macro somewhere generates invalid code
   )
 
