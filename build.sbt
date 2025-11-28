@@ -599,7 +599,7 @@ lazy val unidocs = project
     bspEnabled := false,
   )
 
-lazy val testExt = crossProject(JVMPlatform, JSPlatform)
+lazy val testExt = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .withoutSuffixFor(JVMPlatform)
   .crossType(CrossType.Full)
   .in(file("test-ext"))
@@ -609,14 +609,26 @@ lazy val testExt = crossProject(JVMPlatform, JSPlatform)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
+  .nativeSettings(commonSettingsNative)
   .dependsOn(stream % "compile->compile;test->test")
   .dependsOn(ce % "compile->compile;test->test")
+  .settings(
+    Test / test := Def.sequential(
+      Test / test,
+      (Compile / run).toTask(""), // this runs CeAppMixinTest
+    ).value,
+  )
   .jvmSettings(
+    run / fork := true,
     Test / fork := true,
     Test / javaOptions ++= List(
       "-Ddev.tauri.choam.stats=true",
       "-Ddev.tauri.choam.testProperty=true",
     ),
+  )
+  .jsSettings(
+    scalaJSUseMainModuleInitializer := true,
+    libraryDependencies += dependencies.scalaJsSecRnd.value,
   )
 
 // Note: run `show graalNiExample/GraalVMNativeImage/packageBin` in sbt

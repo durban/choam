@@ -26,7 +26,11 @@ import cats.effect.{ IO, IOApp }
 import dev.tauri.choam.core.{ Rxn, Ref }
 import dev.tauri.choam.ce.RxnAppMixin
 
-/** Simple program to interactively try the JMX MBean (with visualvm, or jconsole, or similar) */
+/**
+ * Simple program to interactively try the JMX MBean
+ * (with visualvm, or jconsole, or similar); start it
+ * with `testExt/Test/run`.
+ */
 object JmxDemo extends IOApp.Simple with RxnAppMixin {
 
   private final val N = 1024

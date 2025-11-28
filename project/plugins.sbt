@@ -37,7 +37,7 @@ addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.14.3") // https://github.com/
 addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "1.3.2") // https://github.com/portable-scala/sbt-crossproject
 addSbtPlugin("org.portable-scala" % "sbt-scala-native-crossproject" % "1.3.2") // -"-
 addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.20.1") // https://www.scala-js.org/
-addSbtPlugin("org.scala-native" % "sbt-scala-native" % "0.5.9") // https://github.com/scala-native/scala-native
+addSbtPlugin("org.scala-native" % "sbt-scala-native" % "0.5.8") // https://github.com/scala-native/scala-native
 addSbtPlugin("net.bzzt" % "sbt-strict-scala-versions" % "0.0.1") // https://github.com/raboof/sbt-strict-scala-versions
 addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.11.4") // https://github.com/sbt/sbt-native-packager
 addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.13.1") // https://github.com/sbt/sbt-buildinfo
