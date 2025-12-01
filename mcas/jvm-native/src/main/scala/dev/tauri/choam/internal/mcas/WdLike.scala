@@ -19,6 +19,8 @@ package dev.tauri.choam
 package internal
 package mcas
 
+import java.util.concurrent.atomic.AtomicReference
+
 import scala.util.hashing.MurmurHash3
 
 sealed trait WdLike[A] extends Hamt.HasKey[MemoryLocation[A]] {
@@ -120,6 +122,43 @@ private object LogEntry {
     version: Long,
   ): LogEntry[A] = {
     new LogEntry[A](address = address, ov = ov, nv = nv, oldVersion = version)
+  }
+}
+
+package hmcas {
+
+  // Ideally this should be in the `hmcas` folder; it's here, so that `WdLike` can be `sealed`.
+
+  private[mcas] final class CasRow[A] private (
+    final override val address: MemoryLocation[A],
+    final override val ov: A,
+    final override val nv: A,
+    final override val oldVersion: Long,
+  ) extends WdLike[A] {
+
+    val mch: AtomicReference[McasHelper[A]] = // TODO: use VarHandle
+      new AtomicReference
+
+    final def tryAssoc(mch: McasHelper[A]): McasHelper[A] = {
+      _assert(mch ne null)
+      this.mch.compareAndExchange(null, mch)
+    }
+
+    final override def wasFinalized(wasSuccessful: Boolean, sentinel: A): Unit = {
+      sys.error("TODO")
+    }
+  }
+
+  private[mcas] final object CasRow {
+
+    final def apply[A](
+      address: MemoryLocation[A],
+      ov: A,
+      nv: A,
+      version: Long,
+    ): CasRow[A] = {
+      new CasRow[A](address, ov = ov, nv = nv, oldVersion = version)
+    }
   }
 }
 
