@@ -730,8 +730,6 @@ private[mcas] final class Emcas private (
               // we'll need to revalidate later:
               _assert(wd.readOnly)
               go(words, next = next + 1, len = len, needsValidation = true)
-            case _: hmcas.CasRow[_] => // TODO: avoid this case
-              impossible("HMCAS in EMCAS")
           }
         } else {
           if (needsValidation) {
@@ -775,8 +773,6 @@ private[mcas] final class Emcas private (
                 // validation failed:
                 McasStatus.FailedVal
               }
-            case _: hmcas.CasRow[_] => // TODO: avoid this case
-              impossible("HMCAS in EMCAS")
           }
         } else {
           McasStatus.Successful

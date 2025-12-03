@@ -83,8 +83,6 @@ private[mcas] final class EmcasDescriptor private[this] (
           case hwd: LogEntry[_] =>
             arr(idx) = new EmcasWordDesc(hwd, parent = this)
             idx += 1
-          case _: hmcas.CasRow[_] => // TODO: avoid this case
-            impossible("HMCAS in EMCAS")
         }
       }
       arr

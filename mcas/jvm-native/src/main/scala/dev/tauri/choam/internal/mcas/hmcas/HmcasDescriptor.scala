@@ -20,10 +20,23 @@ package internal
 package mcas
 package hmcas
 
-import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.{ AtomicLong, AtomicReferenceArray }
 
 private[hmcas] final class HmcasDescriptor(
   val state: AtomicLong,
-  val rows: Array[CasRow[_]],
+  val addresses: Array[MemoryLocation[_]],
+  val ovs: Array[AnyRef],
+  val nvs: Array[AnyRef],
+  val oldVersions: Array[Long],
+  val mchs: AtomicReferenceArray[McasHelper],
 ) {
+
+  _assert({
+    val len = addresses.length
+    (ovs.length == len) && (nvs.length == len) && (oldVersions.length == len) && (mchs.length() == len)
+  })
+
+  final def length: Int = {
+    addresses.length
+  }
 }
