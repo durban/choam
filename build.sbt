@@ -836,6 +836,7 @@ lazy val commonSettingsNative = Seq[Setting[_]](
   },
   envVars ++= Map(
     "GC_MAXIMUM_HEAP_SIZE" -> "5G",
+    "SCALANATIVE_TEST_DEBUG_SIGNALS" -> "1",
   ),
 )
 
