@@ -66,7 +66,7 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     val r5: Rxn[Int] = nest(N, _ + _)
     val r7: Rxn[Int] = Monad[Rxn].tailRecM(N) { n =>
       if (n > 0) Rxn.unit.map(_ => Left(n - 1))
-      else Rxn.ret(Right(99))
+      else Rxn.pure(Right(99))
     }
     assertEquals(r1.unsafePerform(this.mcasImpl), 43)
     assertEquals(r2.unsafePerform(this.mcasImpl), 42 + N)

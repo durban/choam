@@ -1365,17 +1365,17 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     def foo[G[_] : Applicative](ga: G[Int], gb: G[Int]): G[Int] =
       ga.map2(gb)(_ + _)
 
-    assertResultF(foo(Rxn.ret(21), Rxn.ret(21)).run[F], 42)
+    assertResultF(foo(Rxn.pure(21), Rxn.pure(21)).run[F], 42)
   }
 
   test("Align instance") {
     val inst = Align[Rxn]
     for {
-      res1 <- inst.align(Rxn.unsafe.retry[Int], Rxn.ret[Long](42L)).run[F]
+      res1 <- inst.align(Rxn.unsafe.retry[Int], Rxn.pure[Long](42L)).run[F]
       _ <- assertEqualsF(res1, Ior.right(42L))
-      res2 <- inst.align(Rxn.ret[Int](42), Rxn.unsafe.retry[Long]).run[F]
+      res2 <- inst.align(Rxn.pure[Int](42), Rxn.unsafe.retry[Long]).run[F]
       _ <- assertEqualsF(res2, Ior.left(42))
-      res3 <- inst.align(Rxn.ret[Int](42), Rxn.ret[Long](23L)).run[F]
+      res3 <- inst.align(Rxn.pure[Int](42), Rxn.pure[Long](23L)).run[F]
       _ <- assertEqualsF(res3, Ior.both(42, 23L))
     } yield ()
   }
