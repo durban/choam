@@ -32,4 +32,10 @@ trait AtomicallySpec[F[_]] extends UnsafeApiSpecBase[F] { this: McasImplSpec =>
       api.atomically(block)
     }
   }
+
+  final override def runRoBlock[A](block: InRoRxn => A): F[A] = {
+    F.delay {
+      api.atomicallyReadOnly(block)
+    }
+  }
 }

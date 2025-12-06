@@ -36,6 +36,10 @@ trait AtomicallyInAsyncSpec[F[_]] extends UnsafeApiSpecBase[F] { this: McasImplS
     api.atomicallyInAsync(str)(block)
   }
 
+  final override def runRoBlock[A](block: InRoRxn => A): F[A] = {
+    api.atomicallyReadOnlyInAsync(str)(block)
+  }
+
   test("atomicallyInAsync with different strategies") {
     for {
       ref <- Ref(0).run[F]

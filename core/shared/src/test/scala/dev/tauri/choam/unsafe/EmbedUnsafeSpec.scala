@@ -37,6 +37,11 @@ trait EmbedUnsafeSpec[F[_]]
     Rxn.unsafe.embedUnsafe(block).run[F]
   }
 
+  final override def runRoBlock[A](block: InRoRxn => A): F[A] = {
+    // for now, we don't have "enbedUnsafeReadOnly":
+    Rxn.unsafe.embedUnsafe(block).run[F]
+  }
+
   test("embedUnsafe basics") {
     for {
       ref1 <- Ref(0).run[F]

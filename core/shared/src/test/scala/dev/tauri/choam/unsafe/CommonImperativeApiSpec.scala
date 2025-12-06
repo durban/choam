@@ -35,6 +35,8 @@ trait CommonImperativeApiSpec[F[_]]
 
   def runBlock[A](block: InRxn => A): F[A]
 
+  def runRoBlock[A](block: InRoRxn => A): F[A]
+
   test("Hello, World!") {
 
     def write(ref: Ref[Int])(implicit txn: InRxn): Unit = {
@@ -265,5 +267,28 @@ trait CommonImperativeApiSpec[F[_]]
       _ <- assertResultF(ref.get.run[F], 43)
       _ <- assertResultF(runBlock(readRef(ref)(using _)), 43)
     } yield ()
+  }
+
+  test("Read-only") {
+    for {
+      ref <- runBlock(newRef(1)(using _))
+      _ <- runBlock(writeRef(ref, 42)(using _))
+      _ <- assertResultF(runRoBlock { implicit ir =>
+        ref.value
+      }, 42)
+      _ <- assertResultF(runRoBlock(readRef(ref)(using _)), 42)
+      _ <- assertResultF(runRoBlock(tentativeRead(ref)(using _)), 42)
+      v1 <- runRoBlock { implicit ir =>
+        val t = ticketRead(ref)
+        t.value
+      }
+      _ <- assertEqualsF(v1, 42)
+      v2 <- runRoBlock { implicit ir =>
+        val t = ticketRead(ref)
+        t.validate()
+        t.value
+      }
+      _ <- assertEqualsF(v2, 42)
+    } yield  ()
   }
 }

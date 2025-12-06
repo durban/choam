@@ -65,6 +65,11 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
     a
   }
 
+  /** Like `atomically`, but only read-only operations are allowed */
+  final def atomicallyReadOnly[A](block: InRoRxn => A): A = {
+    this.atomically(block) // TODO: optimize for read-only execution
+  }
+
   private[this] final def runBlock[A](state: InRxn, block: InRxn => A): A = {
     var done = false
     var result: A = nullOf[A]
@@ -106,6 +111,11 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
         this.runAsync[F, A](state, block, str, poll)
       }
     }
+  }
+
+  /** Like `atomicallyInAsync`, but only read-only operations are allowed */
+  final def atomicallyReadOnlyInAsync[F[_], A](str: RetryStrategy)(block: InRoRxn => A)(implicit F: Async[F]): F[A] = {
+    this.atomicallyInAsync(str)(block)(using F) // TODO: optimize for read-only execution
   }
 
   private[this] final def runAsync[F[_], A](

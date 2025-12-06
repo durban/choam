@@ -21,9 +21,9 @@ package unsafe
 import internal.mcas.LogEntry
 
 sealed abstract class Ticket[A] {
-  def value(implicit ir: InRxn): A
+  def value(implicit ir: InRoRxn): A
   def value_=(nv: A)(implicit ir: InRxn): Unit
-  def validate()(implicit ir: InRxn): Unit
+  def validate()(implicit ir: InRoRxn): Unit
 }
 
 private[choam] object Ticket {
@@ -33,15 +33,15 @@ private[choam] object Ticket {
 
   private[this] final class Impl[A](hwd: LogEntry[A]) extends Ticket[A] {
 
-    final override def value(implicit ir: InRxn): A =
+    final override def value(implicit ir: InRoRxn): A =
       hwd.nv
 
     final override def value_=(nv: A)(implicit ir: InRxn): Unit = {
       ir.imperativeTicketWrite(hwd, nv)
     }
 
-    final override def validate()(implicit ir: InRxn): Unit = {
-      ir.imperativeTicketWrite(hwd, hwd.nv)
+    final override def validate()(implicit ir: InRoRxn): Unit = {
+      ir.imperativeTicketValidate(hwd)
     }
   }
 }

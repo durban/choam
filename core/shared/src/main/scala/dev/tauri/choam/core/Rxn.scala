@@ -694,6 +694,8 @@ object Rxn extends RxnInstances0 {
 
     // Unsafe/imperative API:
 
+    // TODO: a read-only version of `embedUnsafe`
+
     /** Embeds a block of code, which uses the unsafe/imperative API, into a `Rxn`. */
     final def embedUnsafe[A](unsafeBlock: dev.tauri.choam.unsafe.InRxn2 => A): Rxn[A] = {
       new Rxn.Ctx3[Rxn[A]]({ (state: unsafe2.InRxn2) =>
@@ -2504,6 +2506,11 @@ object Rxn extends RxnInstances0 {
       } else {
         unsafe2.Ticket[A](hwd)
       }
+    }
+
+    private[choam] final override def imperativeTicketValidate[A](hwd: LogEntry[A]): Unit = {
+      _assert(hwd.readOnly)
+      this.imperativeTicketWrite(hwd, hwd.nv)
     }
 
     final override def imperativeTicketWrite[A](hwd: LogEntry[A], newest: A): Unit = {

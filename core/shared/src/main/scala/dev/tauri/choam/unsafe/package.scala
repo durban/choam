@@ -29,7 +29,7 @@ package object unsafe {
   implicit final class RefSyntax[A](private val self: Ref[A]) extends AnyVal {
 
     /** @see [[dev.tauri.choam.core.Ref.get]] */
-    final def value(implicit ir: InRxn): A =
+    final def value(implicit ir: InRoRxn): A =
       ir.readRef(self.loc)
 
     /** @see [[dev.tauri.choam.core.Ref.set]] */
@@ -58,7 +58,7 @@ package object unsafe {
    * @see [[dev.tauri.choam.core.Ref.get]]
    * @see [[dev.tauri.choam.unsafe.RefSyntax.value]]
    */
-  final def readRef[A](ref: Ref[A])(implicit ir: InRxn): A = {
+  final def readRef[A](ref: Ref[A])(implicit ir: InRoRxn): A = {
     ir.readRef(ref.loc)
   }
 
@@ -85,12 +85,12 @@ package object unsafe {
   }
 
   /** @see [[dev.tauri.choam.core.Rxn.unsafe.tentativeRead]] */
-  final def tentativeRead[A](ref: Ref[A])(implicit ir: InRxn): A = {
+  final def tentativeRead[A](ref: Ref[A])(implicit ir: InRoRxn): A = {
     ir.imperativeTentativeRead(ref.loc)
   }
 
   /** @see [[dev.tauri.choam.core.Rxn.unsafe.ticketRead]] */
-  final def ticketRead[A](ref: Ref[A])(implicit ir: InRxn): Ticket[A] = {
+  final def ticketRead[A](ref: Ref[A])(implicit ir: InRoRxn): Ticket[A] = {
     ir.imperativeTicketRead(ref.loc)
   }
 
