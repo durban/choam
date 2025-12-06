@@ -359,11 +359,11 @@ lazy val _crossProjects: Seq[CrossProject] = Seq(
   zi,
   laws,
   testExt,
+  testAssert,
 )
 
 lazy val _jvmOnlyProjects: Seq[ProjectReference] = Seq(
   profiler,
-  testAssert,
   unidocs,
   graalNiExample,
   bench,
@@ -535,19 +535,24 @@ lazy val zi = crossProject(JVMPlatform, JSPlatform) // TODO: this won't work on 
     Test / scalacOptions -= "-Xcheck-macros", // some zio macro somewhere generates invalid code
   )
 
-lazy val testAssert = project.in(file("test-assert"))
+lazy val testAssert = crossProject(JVMPlatform, JSPlatform, NativePlatform)
+  .withoutSuffixFor(JVMPlatform)
+  .crossType(CrossType.Full)
+  .in(file("test-assert"))
   .settings(name := "choam-test-assert")
   .enablePlugins(NoPublishPlugin, BuildInfoPlugin)
   .disablePlugins(disabledPlugins: _*)
   .settings(commonSettings)
-  .settings(commonSettingsJvm)
+  .jvmSettings(commonSettingsJvm)
+  .jsSettings(commonSettingsJs)
+  .nativeSettings(commonSettingsNative)
   .settings(buildInfoSettings(pkg = "dev.tauri.choam.helpers"))
-  .dependsOn(ce.jvm % "compile->compile;test->test")
+  .dependsOn(ce % "compile->compile;test->test")
   .settings(
     assertionsEnabled := false, // so that we can test that they're disabled
   )
 
-lazy val laws = crossProject(JVMPlatform, JSPlatform)
+lazy val laws = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .withoutSuffixFor(JVMPlatform)
   .crossType(CrossType.Full)
   .in(file("laws"))
@@ -557,6 +562,7 @@ lazy val laws = crossProject(JVMPlatform, JSPlatform)
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
+  .nativeSettings(commonSettingsNative)
   .dependsOn(async % "compile->compile;test->test")
   .settings(
     libraryDependencies ++= Seq(
