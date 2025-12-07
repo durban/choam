@@ -19,7 +19,6 @@ package dev.tauri.choam
 package data
 
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.ThreadLocalRandom
 
 import scala.concurrent.duration._
 
@@ -123,10 +122,9 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   test("Exchange with postCommits on both sides") {
     val  N = 10
-    def tsk(idx: Int) = for {
+    val tsk = for {
       _ <- F.unit
-      debugId = if (idx == N) Some(0xdf9cfdda895f145eL) else Some(ThreadLocalRandom.current().nextLong())
-      ex <- F.delay(core.Exchanger.unsafe[String, Int](debugId))
+      ex <- F.delay(core.Exchanger.unsafe[String, Int])
       r1a <- F.delay(Ref.unsafeUnpaddedWithIdForTesting(0, 0x01685a09d41f7b4bL)) // 0 -> 1
       r1b <- F.delay(Ref.unsafeUnpaddedWithIdForTesting(0, 0x0L)) // PC
       r1c <- F.delay(Ref.unsafeUnpaddedWithIdForTesting(0, 0x0L)) // PC
@@ -162,9 +160,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(r2d.get.run[F], 3) // "str".length
       _ <- assertResultF(r2e.get.run[F], 1) // exactly once
     } yield ()
-    (1 to N).toList.traverse_ { idx =>
-      tsk(idx)
-    }
+    tsk.replicateA_(N)
   }
 
   test("2 Exchangers in 1 Rxn (second never succeeds)") {

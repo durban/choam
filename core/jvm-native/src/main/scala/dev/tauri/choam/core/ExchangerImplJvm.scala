@@ -30,8 +30,6 @@ private sealed trait ExchangerImplJvm[A, B]
 
   import ExchangerImplJvm.{ size => _, _ }
 
-  protected def debugId: Option[Long] // TODO:0.5: remove this
-
   // TODO: could we use a single elimination array?
   protected def incoming: AtomicReferenceArray[ExchangerNode[?]]
 
@@ -82,10 +80,7 @@ private sealed trait ExchangerImplJvm[A, B]
     incoming.get(idx) match {
       case null =>
         // empty slot, insert ourselves:
-        val holeId = debugId match {
-          case None => ctx.refIdGen.nextId()
-          case Some(id) => id
-        }
+        val holeId = ctx.refIdGen.nextId()
         val self = new ExchangerNode[C](
           msg,
           Ref.unsafeUnpaddedWithIdForTesting[NodeResult[C]](null, holeId),
@@ -356,7 +351,6 @@ private sealed trait ExchangerImplJvm[A, B]
 
 private final class DualExchangerImplJvm[A, B](
   final override val dual: PrimaryExchangerImplJvm[B, A],
-  final override val debugId: Option[Long],
 ) extends ExchangerImplJvm[A, B] {
 
   protected final override def incoming =
@@ -372,13 +366,12 @@ private final class DualExchangerImplJvm[A, B](
     dual.initializeIfNeeded(!retInc)
 }
 
-private final class PrimaryExchangerImplJvm[A, B] private[core] (
-  final override val debugId: Option[Long]
-) extends PrimaryExchangerImplJvmBase
+private final class PrimaryExchangerImplJvm[A, B] private[core] ()
+  extends PrimaryExchangerImplJvmBase
   with ExchangerImplJvm[A, B] {
 
   final override val dual: Exchanger[B, A] =
-    new DualExchangerImplJvm[B, A](this, debugId)
+    new DualExchangerImplJvm[B, A](this)
 
   protected[core] final override val key =
     new Exchanger.Key
@@ -417,11 +410,7 @@ private final class PrimaryExchangerImplJvm[A, B] private[core] (
 private object ExchangerImplJvm {
 
   private[core] def unsafe[A, B]: Exchanger[A, B] =
-    unsafe[A, B](None)
-
-  private[core] def unsafe[A, B](debugId: Option[Long]): Exchanger[A, B] = {
-    new PrimaryExchangerImplJvm[A, B](debugId)
-  }
+    new PrimaryExchangerImplJvm[A, B]
 
   private[core] type StatMap =
     Map[Exchanger.Key, Any]

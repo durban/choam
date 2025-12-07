@@ -20,9 +20,6 @@ package core
 
 private[choam] abstract class ExchangerCompanionPlatform { // TODO: should be private[core]
 
-  private[choam] def unsafe[A, B](debugId: Option[Long]): Exchanger[A, B] =
-    ExchangerImplJvm.unsafe[A, B](debugId)
-
   private[choam] def unsafe[A, B]: Exchanger[A, B] =
     ExchangerImplJvm.unsafe[A, B]
 }
