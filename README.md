@@ -19,7 +19,9 @@
 
 # CHOAM
 
+<!-- TODO:0.5:
 [![choam-core version](https://index.scala-lang.org/durban/choam/choam-core/latest.svg)](https://index.scala-lang.org/durban/choam/choam-core)
+-->
 
 *Experiments with composable lock-free concurrency*
 
@@ -139,8 +141,7 @@ synchronization (see `Txn.retry` and `Txn#orElse`).
   - [`choam-laws`](laws/shared/src/main/scala/dev/tauri/choam/laws/):
     properties fulfilled by the various `Rxn` combinators
 
-JARs are on Maven Central. Browsable Scaladoc is available [here](
-https://www.javadoc.io/doc/dev.tauri/choam-docs_2.13/0.5.0-RC5/index.html).
+JARs are on Maven Central. Browsable Scaladoc is available [here](https://tauri.dev/choam/api).
 
 ## Related work
 
