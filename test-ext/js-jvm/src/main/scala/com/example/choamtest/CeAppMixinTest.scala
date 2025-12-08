@@ -24,6 +24,7 @@ import dev.tauri.choam.core.Ref
 import dev.tauri.choam.stm.TRef
 import dev.tauri.choam.ce.{ RxnAppMixin, TxnAppMixin }
 
+// TODO: move this to `shared` when https://github.com/typelevel/cats-effect/issues/4509 is fixed
 object CeAppMixinTest extends IOApp with RxnAppMixin with TxnAppMixin {
 
   final override def run(args: List[String]): IO[ExitCode] = for {

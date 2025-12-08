@@ -31,7 +31,7 @@ import sbt.ProjectReference
 import sbtcrossproject.CrossProject
 
 // Scala versions:
-val scala2 = "2.13.17"
+val scala2 = "2.13.18"
 val scala3 = "3.3.7"
 
 // CI JVM versions:
@@ -618,12 +618,6 @@ lazy val testExt = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .nativeSettings(commonSettingsNative)
   .dependsOn(stream % "compile->compile;test->test")
   .dependsOn(ce % "compile->compile;test->test")
-  .settings(
-    Test / test := Def.sequential(
-      Test / test,
-      (Compile / run).toTask(""), // this runs CeAppMixinTest
-    ).value,
-  )
   .jvmSettings(
     run / fork := true,
     Test / fork := true,
@@ -631,10 +625,18 @@ lazy val testExt = crossProject(JVMPlatform, JSPlatform, NativePlatform)
       "-Ddev.tauri.choam.stats=true",
       "-Ddev.tauri.choam.testProperty=true",
     ),
+    Test / test := Def.sequential(
+      Test / test,
+      (Compile / run).toTask(""), // this runs CeAppMixinTest
+    ).value,
   )
   .jsSettings(
     scalaJSUseMainModuleInitializer := true,
     libraryDependencies += dependencies.scalaJsSecRnd.value,
+    Test / test := Def.sequential(
+      Test / test,
+      (Compile / run).toTask(""), // this runs CeAppMixinTest
+    ).value,
   )
 
 // Note: run `show graalNiExample/GraalVMNativeImage/packageBin` in sbt
@@ -1019,7 +1021,7 @@ lazy val dependencies = new {
   val jolVersion = "0.17" // https://github.com/openjdk/jol
   val scalaJsLocaleVersion = "1.5.4" // https://github.com/cquiroz/scala-java-locales
   val scalaJsTimeVersion = "2.6.0" // https://github.com/cquiroz/scala-java-time
-  val zioVersion = "2.1.22" // https://github.com/zio/zio
+  val zioVersion = "2.1.23" // https://github.com/zio/zio
 
   val catsKernel = Def.setting("org.typelevel" %%% "cats-kernel" % catsVersion)
   val catsCore = Def.setting("org.typelevel" %%% "cats-core" % catsVersion)
@@ -1051,7 +1053,7 @@ lazy val dependencies = new {
 
   val scalaStm = Def.setting("org.scala-stm" %%% "scala-stm" % "0.11.1") // https://github.com/scala-stm/scala-stm
   val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.13.4") // https://github.com/TimWSpence/cats-stm
-  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.1.0.5")
+  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.1.0.11")
   val zioStm = Def.setting("dev.zio" %%% "zio" % zioVersion)
   val zioEverything = Def.setting[Seq[ModuleID]](Seq(
     Seq(
