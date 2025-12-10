@@ -47,4 +47,13 @@ abstract class EnvironmentSpecPlatform extends BaseSpec {
       pr.getProperty("SecureRandom." + sr.getAlgorithm() + " ThreadSafe", "false")
     )
   }
+
+  test("Check default MCAS (JVM)") {
+    val (rt, close) = ChoamRuntime.make[cats.effect.SyncIO].allocated.unsafeRunSync()
+    try {
+      assertEquals(clue(rt.mcasImpl.getClass().getName()), "dev.tauri.choam.internal.mcas.emcas.Emcas")
+    } finally {
+      close.unsafeRunSync()
+    }
+  }
 }

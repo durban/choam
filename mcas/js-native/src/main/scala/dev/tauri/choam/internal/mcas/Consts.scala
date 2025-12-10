@@ -42,6 +42,14 @@ object Consts {
   final val statsEnabled =
     CompileTimeSystemProperty.getBoolean(statsEnabledProp)
 
+  @inline
+  final val mcasImplProp =
+    "dev.tauri.choam.internal.mcas.impl"
+
+  @inline
+  final val mcasImpl =
+    CompileTimeSystemProperty.getString(mcasImplProp)
+
   /**
    * Next power of 2 which is `>= x`.
    *

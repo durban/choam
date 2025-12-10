@@ -19,15 +19,21 @@ package dev.tauri.choam
 package internal
 package mcas
 
-private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanionPlatform {
+private[mcas] abstract class McasCompanionMultithreaded extends AbstractMcasCompanionPlatform {
 
-  private[choam] final override def newDefaultMcas(osRng: OsRng, numCpu: Int): Mcas = {
-    this.newMcasFromSystemProperty(Consts.mcasImpl, osRng, numCpu)
-  }
+  private[choam] final def newEmcas(osRng: OsRng, numCpu: Int): Mcas =
+    new emcas.Emcas(osRng, numCpu)
+
+  private[choam] final def newSpinLockMcas(osRng: OsRng, numCpu: Int): Mcas =
+    new SpinLockMcas(osRng, numCpu)
 
   protected[this] final override def newMcasFromSystemProperty(sysProp: String, osRng: OsRng, numCpu: Int): Mcas = {
     sysProp match {
-      case null | "" | "ThreadConfinedMcas" =>
+      case null | "" | "Emcas" =>
+        this.newEmcas(osRng, numCpu)
+      case "SpinLockMcas" =>
+        this.newSpinLockMcas(osRng, numCpu)
+      case "ThreadConfinedMcas" =>
         _assert(numCpu == 1)
         this.newThreadConfinedMcas(osRng)
       case x =>

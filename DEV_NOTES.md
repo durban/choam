@@ -112,3 +112,12 @@ Some of the decisions to change them are documented here.
   out of fear of collisions (which would be catastrophic). Now they are generated
   deterministically (but pseudorandomly), so 64 bits (a `long`) should be
   enough (see `ṘefIdGen`).
+
+## System properties
+
+- `dev.tauri.choam.stats`
+  - enable/disable performance stats collection (available through JMX)
+  - specify a `Boolean` (default: `false`)
+- `dev.tauri.choam.internal.mcas.impl`
+  - override the MCAS impl
+  - specify the name of an `Mcas` class, e.g., `"Emcas"` (default: `""`)

@@ -22,17 +22,27 @@ import scala.reflect.macros.whitebox.Context
 
 private[choam] object CompileTimeSystemPropertyMacros {
 
-  final def impl(c: Context)(name: c.Expr[String]): c.Expr[Boolean] = {
-
+  final def implBoolean(c: Context)(name: c.Expr[String]): c.Expr[Boolean] = {
     import c.universe._
+    val propName = this.getPropName(c)(name)
+    val result = java.lang.Boolean.getBoolean(propName)
+    c.Expr(Literal(Constant(result)))
+  }
 
-    val macroPos = c.macroApplication.pos
+  final def implString(c: Context)(name: c.Expr[String]): c.Expr[String] = {
+    import c.universe._
+    val propName = this.getPropName(c)(name)
+    val result = System.getProperty(propName)
+    c.Expr(Literal(Constant(result)))
+  }
+
+  private[this] final def getPropName(c: Context)(name: c.Expr[String]): String = {
+    import c.universe._
     name match {
       case Expr(Literal(Constant(propName: String))) =>
-        val result = java.lang.Boolean.getBoolean(propName)
-        c.Expr(Literal(Constant(result)))
+        propName
       case x =>
-        c.abort(macroPos, s"name has to be a literal String, got: ${showRaw(x)}")
+        c.abort(c.macroApplication.pos, s"name has to be a literal String, got: ${showRaw(x)}")
     }
   }
 }

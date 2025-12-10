@@ -23,5 +23,8 @@ import scala.language.experimental.macros
 private[choam] object CompileTimeSystemProperty {
 
   final def getBoolean(name: String): Boolean =
-    macro CompileTimeSystemPropertyMacros.impl
+    macro CompileTimeSystemPropertyMacros.implBoolean
+
+  final def getString(name: String): String =
+    macro CompileTimeSystemPropertyMacros.implString
 }

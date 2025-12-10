@@ -37,6 +37,14 @@ public final class Consts {
   public static final boolean statsEnabled =
     Boolean.getBoolean(statsEnabledProp);
 
+  public static final String mcasImplProp =
+    "dev.tauri.choam.internal.mcas.impl";
+
+  // Note: this is configured to be ""
+  // unconditionally in native-image.properties
+  public static final String mcasImpl =
+    System.getProperty(mcasImplProp);
+
   /**
    * Next power of 2 which is `>= x`.
    *

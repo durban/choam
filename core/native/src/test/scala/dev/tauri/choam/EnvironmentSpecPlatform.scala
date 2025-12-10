@@ -17,4 +17,14 @@
 
 package dev.tauri.choam
 
-abstract class EnvironmentSpecPlatform extends BaseSpec
+abstract class EnvironmentSpecPlatform extends BaseSpec {
+
+  test("Check default MCAS (SN)") {
+    val (rt, close) = ChoamRuntime.make[cats.effect.SyncIO].allocated.unsafeRunSync()
+    try {
+      assertEquals(clue(rt.mcasImpl.getClass().getName()), "dev.tauri.choam.internal.mcas.emcas.Emcas")
+    } finally {
+      close.unsafeRunSync()
+    }
+  }
+}

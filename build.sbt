@@ -623,6 +623,7 @@ lazy val testExt = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     Test / fork := true,
     Test / javaOptions ++= List(
       "-Ddev.tauri.choam.stats=true",
+      "-Ddev.tauri.choam.internal.mcas.impl=SpinLockMcas",
       "-Ddev.tauri.choam.testProperty=true",
     ),
     Test / test := Def.sequential(

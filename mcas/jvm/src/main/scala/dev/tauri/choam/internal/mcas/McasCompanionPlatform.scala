@@ -16,22 +16,12 @@
  */
 
 package dev.tauri.choam
+package internal
+package mcas
 
-import java.security.{ SecureRandom => JSecureRandom }
+private[mcas] abstract class McasCompanionPlatform extends McasCompanionMultithreaded {
 
-abstract class EnvironmentSpecPlatform extends BaseSpec {
-
-  test("Check SecureRandom") {
-    val sr = new JSecureRandom
-    println(s"SecureRandom class: ${sr.getClass().getName()}")
-  }
-
-  test("Check default MCAS (JS)") {
-    val (rt, close) = ChoamRuntime.make[cats.effect.SyncIO].allocated.unsafeRunSync()
-    try {
-      assertEquals(clue(rt.mcasImpl.getClass().getName()), "dev.tauri.choam.internal.mcas.ThreadConfinedMcas")
-    } finally {
-      close.unsafeRunSync()
-    }
+  private[choam] final override def newDefaultMcas(osRng: OsRng, numCpu: Int): Mcas = {
+    this.newMcasFromSystemProperty(Consts.mcasImpl, osRng, numCpu)
   }
 }

@@ -18,14 +18,23 @@
 package dev.tauri.choam
 package internal
 
-import scala.compiletime.constValue
 import scala.quoted.{ Quotes, Expr }
 
 private[choam] object CompileTimeSystemPropertyMacros {
 
-  final def impl(name: Expr[String])(using Quotes): Expr[Boolean] = {
+  final def implBoolean(name: Expr[String])(using Quotes): Expr[Boolean] = {
     val propName: String = name.valueOrAbort
     val result = java.lang.Boolean.getBoolean(propName)
-    Expr(result)
+    Expr[Boolean](result)
+  }
+
+  final def implString(name: Expr[String])(using Quotes): Expr[String] = {
+    val propName: String = name.valueOrAbort
+    val result = System.getProperty(propName)
+    if (result ne null) {
+      Expr[String](result)
+    } else {
+      '{null}
+    }
   }
 }

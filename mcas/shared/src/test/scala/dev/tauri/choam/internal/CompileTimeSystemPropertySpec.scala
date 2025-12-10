@@ -20,12 +20,16 @@ package internal
 
 final class CompileTimeSystemPropertySpec extends BaseSpec {
 
-  test("getBoolean") {
+  test("getBoolean, getString") {
     assert(CompileTimeSystemPropertySpec.shouldBeTrue : true)
     assert(!(CompileTimeSystemPropertySpec.shouldBeFalse : false))
     assert(!(CompileTimeSystemPropertySpec.shouldBeFalseButTrueRuntime : false))
+    assertEquals(CompileTimeSystemPropertySpec.shouldBeTrueString : "true", "true")
+    assertEquals(CompileTimeSystemPropertySpec.shouldBeNull : Null, null)
+    assertEquals(CompileTimeSystemPropertySpec.shouldBeNullButTrueRuntimeString : Null, null)
     if (isJvm()) {
       assert(getBoolean(CompileTimeSystemPropertySpec.testPropertyName))
+      assertEquals(System.getProperty(CompileTimeSystemPropertySpec.testPropertyName), "true")
     }
   }
 
@@ -47,4 +51,13 @@ object CompileTimeSystemPropertySpec {
 
   final val shouldBeFalseButTrueRuntime =
     CompileTimeSystemProperty.getBoolean(testPropertyName)
+
+  final val shouldBeTrueString =
+    CompileTimeSystemProperty.getString("dev.tauri.choam.stats")
+
+  final val shouldBeNull =
+    CompileTimeSystemProperty.getString("dev.tauri.choam.noSuchProperty")
+
+  final val shouldBeNullButTrueRuntimeString =
+    CompileTimeSystemProperty.getString(testPropertyName)
 }
