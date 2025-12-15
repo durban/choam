@@ -95,7 +95,7 @@ object Ref extends RefInstances0 {
       Array.AllocationStrategy.Default.withPadded(this.padded).withStm(this.stm)
   }
 
-  sealed trait Array[A] {
+  sealed trait Array[A] { // TODO:0.5: revise `Array` API (future-proofing in case we'll have OffsetMemoryLocation)
 
     def size: Int
 
@@ -243,26 +243,34 @@ object Ref extends RefInstances0 {
     safeArray(size = size, initial = initial, str = strategy)
   }
 
+  private[choam] final def arrayImpl[A](size: Int, initial: A, strategy: Ref.Array.AllocationStrategy): RxnImpl[Ref.Array[A]] = {
+    safeArrayImpl(size, initial, strategy)
+  }
+
+  private[this] final def safeArray[A](size: Int, initial: A, str: Ref.Array.AllocationStrategy): Rxn[Ref.Array[A]] = {
+    safeArrayImpl(size, initial, str)
+  }
+
   // the duplicated logic with unsafeArray is to avoid
   // having the `if` and `match` inside the `Rxn`:
-  private[this] final def safeArray[A](size: Int, initial: A, str: Ref.Array.AllocationStrategy): Rxn[Ref.Array[A]] = {
+  private[this] final def safeArrayImpl[A](size: Int, initial: A, str: Ref.Array.AllocationStrategy): RxnImpl[Ref.Array[A]] = {
     if (size > 0) {
       if (str.stm) {
         // TODO: flat arrays of TRefs are not implemented yet
-        if (str.sparse) Rxn.unsafe.delayContext(ctx => new LazyArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
-        else Rxn.unsafe.delayContext(ctx => new StrictArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
+        if (str.sparse) Rxn.unsafe.delayContextImpl(ctx => new LazyArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
+        else Rxn.unsafe.delayContextImpl(ctx => new StrictArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
       } else {
         if (str.flat) {
           require(!str.padded, "flat && padded not implemented yet")
-          if (str.sparse) Rxn.unsafe.delayContext(ctx => unsafeLazyArray(size, initial, ctx.refIdGen))
-          else Rxn.unsafe.delayContext(ctx => unsafeStrictArray(size, initial, ctx.refIdGen))
+          if (str.sparse) Rxn.unsafe.delayContextImpl(ctx => unsafeLazyArray(size, initial, ctx.refIdGen))
+          else Rxn.unsafe.delayContextImpl(ctx => unsafeStrictArray(size, initial, ctx.refIdGen))
         } else {
-          if (str.sparse) Rxn.unsafe.delayContext(ctx => new LazyArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
-          else Rxn.unsafe.delayContext(ctx => new StrictArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
+          if (str.sparse) Rxn.unsafe.delayContextImpl(ctx => new LazyArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
+          else Rxn.unsafe.delayContextImpl(ctx => new StrictArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
         }
       }
     } else if (size == 0) {
-      Rxn.unsafe.delay(new EmptyRefArray[A])
+      Rxn.unsafe.delayImpl(new EmptyRefArray[A])
     } else {
       throw new IllegalArgumentException(s"size = ${size}")
     }
