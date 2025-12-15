@@ -320,7 +320,7 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
                 }
               } else {
                 if (op == OP_INSERT) {
-                  throwIllegalInsert(newValue = value, oldValue = ovv)
+                  throwIllegalInsert(value)
                 }
               }
               // ok, checked for errors, now do the thing:
@@ -375,8 +375,8 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
     }
   }
 
-  private[this] final def throwIllegalInsert(oldValue: V, newValue: V): Nothing = {
-    throw new Hamt.IllegalInsertException(newValue.key, oldValue = oldValue, newValue = newValue)
+  private[this] final def throwIllegalInsert(value: V): Nothing = {
+    throw new Hamt.IllegalInsertException(value.key)
   }
 
   private[this] final def throwIllegalUpdate(value: V): Nothing = {
@@ -476,8 +476,8 @@ private[choam] object Hamt {
       throw new IllegalStateException
   }
 
-  final class IllegalInsertException[K <: HasHash, V <: HasKey[K]] private[mcas] (key: K, oldValue: V, newValue: V)
-    extends IllegalOperationException(s"illegal INSERT operation for key: ${key} (oldValue: ${oldValue}; newValue: ${newValue})")
+  final class IllegalInsertException private[mcas] (key: HasHash)
+    extends IllegalOperationException(s"illegal INSERT operation for key: ${key}")
 
   final class IllegalUpdateException private[mcas] (key: HasHash)
     extends IllegalOperationException(s"illegal UPDATE operation for key: ${key}")

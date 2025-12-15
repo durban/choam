@@ -2268,7 +2268,7 @@ object Rxn extends RxnInstances0 {
                 next()
             }
           } catch {
-            case _: IllegalInsertException[_, _] =>
+            case _: IllegalInsertException =>
               //println("can't merge overlapping descriptors")
               clearDesc()
               retry()

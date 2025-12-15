@@ -443,7 +443,7 @@ abstract class McasSpec extends BaseSpec { this: McasImplSpec =>
       ctx.addAll(d2a.toImmutable, d2b.toImmutable, canExtend = true)
       fail("expected exception thrown")
     } catch {
-      case _: Hamt.IllegalInsertException[_, _] => // OK
+      case _: Hamt.IllegalInsertException => // OK
     }
   }
 

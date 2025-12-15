@@ -371,7 +371,7 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
             }
           } else {
             if (op == OP_INSERT) {
-              throwIllegalInsert(newValue = value, oldValue = ovv)
+              throwIllegalInsert(value)
             }
           }
           // ok, checked for errors, now do the thing:
@@ -420,8 +420,8 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
     }
   }
 
-  private[this] final def throwIllegalInsert(oldValue: V, newValue: V): Nothing = {
-    throw new Hamt.IllegalInsertException(key = newValue.key, oldValue = oldValue, newValue = newValue)
+  private[this] final def throwIllegalInsert(value: V): Nothing = {
+    throw new Hamt.IllegalInsertException(value.key)
   }
 
   private[this] final def throwIllegalUpdate(value: V): Nothing = {
