@@ -80,10 +80,9 @@ private sealed trait ExchangerImplJvm[A, B]
     incoming.get(idx) match {
       case null =>
         // empty slot, insert ourselves:
-        val holeId = ctx.refIdGen.nextId()
         val self = new ExchangerNode[C](
           msg,
-          Ref.unsafeUnpaddedWithIdForTesting[NodeResult[C]](null, holeId),
+          Ref.unsafe[NodeResult[C]](null, Ref.AllocationStrategy.Padded, ctx.refIdGen), // TODO: Padded?
         )
         if (incoming.compareAndSet(idx, null, self)) {
           debugLog(s"posted offer (contT: ${java.util.Arrays.toString(msg.contT)}) - thread#${Thread.currentThread().getId()}")

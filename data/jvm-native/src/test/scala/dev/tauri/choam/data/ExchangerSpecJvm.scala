@@ -125,16 +125,16 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     val tsk = for {
       _ <- F.unit
       ex <- F.delay(core.Exchanger.unsafe[String, Int])
-      r1a <- F.delay(Ref.unsafeUnpaddedWithIdForTesting(0, 0x01685a09d41f7b4bL)) // 0 -> 1
-      r1b <- F.delay(Ref.unsafeUnpaddedWithIdForTesting(0, 0x0L)) // PC
-      r1c <- F.delay(Ref.unsafeUnpaddedWithIdForTesting(0, 0x0L)) // PC
-      r1d <- F.delay(Ref.unsafeUnpaddedWithIdForTesting(0, 0xc4f96696d58a8321L)) // 0 -> 9
-      r1e <- F.delay(Ref.unsafeUnpaddedWithIdForTesting(0, 0x0L)) // PC
-      r2a <- F.delay(Ref.unsafeUnpaddedWithIdForTesting(0, 0xea52f96a57ab0ee2L)) // 0 -> 1
-      r2b <- F.delay(Ref.unsafeUnpaddedWithIdForTesting(0, 0x0L)) // PC
-      r2c <- F.delay(Ref.unsafeUnpaddedWithIdForTesting(0, 0x0L)) // PC
-      r2d <- F.delay(Ref.unsafeUnpaddedWithIdForTesting(0, 0xdc0ec73651feef8aL)) // 0 -> 3
-      r2e <- F.delay(Ref.unsafeUnpaddedWithIdForTesting(0, 0x0L)) // PC
+      r1a <- Ref(0).run // 0 -> 1
+      r1b <- Ref(0).run // PC
+      r1c <- Ref(0).run // PC
+      r1d <- Ref(0).run // 0 -> 9
+      r1e <- Ref(0).run // PC
+      r2a <- Ref(0).run // 0 -> 1
+      r2b <- Ref(0).run // PC
+      r2c <- Ref(0).run // PC
+      r2d <- Ref(0).run // 0 -> 3
+      r2e <- Ref(0).run // PC
       rxn1 = r1a.update(_ + 1).postCommit(r1b.update(_ + 1)) *> (
         ex.exchange("str").postCommit(x => r1c.getAndSet(x).void).flatMap { (i: Int) =>
           r1d.update(_ + i).postCommit(r1e.update(_ + 1))
