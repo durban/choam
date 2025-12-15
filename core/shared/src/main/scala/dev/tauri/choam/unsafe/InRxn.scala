@@ -18,7 +18,8 @@
 package dev.tauri.choam
 package unsafe
 
-import core.Rxn
+import core.{ Rxn, InternalLocal, InternalLocalArray }
+import core.unsafe.RxnLocal
 import internal.mcas.{ Mcas, MemoryLocation, LogEntry }
 
 sealed trait InRoRxn {
@@ -47,5 +48,17 @@ sealed trait InRxn2 extends InRxn { // TODO: this only exists because only embed
 }
 
 object InRxn {
-  private[choam] trait UnsealedInRxn extends InRxn2
+  private[choam] trait InterpState extends InRxn2 { // TODO: this is not really related to the imperative API
+    private[choam] def localOrigin: RxnLocal.Origin
+    private[choam] def registerLocal(local: InternalLocal): Unit
+    private[choam] def removeLocal(local: InternalLocal): Unit
+    private[choam] def localGetSlowPath(local: InternalLocal): AnyRef
+    private[choam] def localSetSlowPath(local: InternalLocal, nv: AnyRef): Unit
+    private[choam] def localGetArrSlowPath(local: InternalLocalArray, idx: Int): AnyRef
+    private[choam] def localSetArrSlowPath(local: InternalLocalArray, idx: Int, nv: AnyRef): Unit
+    private[choam] def localTakeSnapshotSlowPath(local: InternalLocal): AnyRef
+    private[choam] def localTakeSnapshotArrSlowPath(local: InternalLocalArray): AnyRef
+    private[choam] def localLoadSnapshotSlowPath(local: InternalLocal, snap: AnyRef): Unit
+    private[choam] def localLoadSnapshotArrSlowPath(local: InternalLocalArray, snap: AnyRef): Unit
+  }
 }

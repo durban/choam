@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package core
 
-import java.util.{ UUID, IdentityHashMap }
+import java.util.{ UUID, IdentityHashMap, Arrays }
 
 import scala.util.control.NonFatal
 
@@ -32,6 +32,7 @@ import stm.Txn
 import internal.mcas.{ MemoryLocation, Mcas, LogEntry, McasStatus, Descriptor, AbstractDescriptor, Consts, Hamt, Version }
 import internal.mcas.Hamt.IllegalInsertException
 import internal.random
+import internal.refs.CompatPlatform
 
 /**
  * A effect with result type `B`; when executed, it
@@ -531,29 +532,13 @@ object Rxn extends RxnInstances0 {
 
     import core.unsafe.RxnLocal
 
-    trait WithLocal[A, I, R] {
-      def apply[G[_]](
-        local: RxnLocal[G, A],
-        lift: Rxn ~> G,
-        instances: RxnLocal.Instances[G],
-      ): G[R]
-    }
-
-    trait WithLocalArray[A, I, R] {
-      def apply[G[_]](
-        arr: RxnLocal.Array[G, A],
-        lift: Rxn ~> G,
-        instances: RxnLocal.Instances[G],
-      ): G[R]
-    }
+    @inline
+    final def newLocal[A](initial: A): Rxn[RxnLocal[A]] =
+      RxnLocal.newLocal(initial)
 
     @inline
-    final def withLocal[A, I, R](initial: A, body: WithLocal[A, I, R]): Rxn[R] =
-      RxnLocal.withLocal(initial, body)
-
-    @inline
-    final def withLocalArray[A, I, R](size: Int, initial: A, body: WithLocalArray[A, I, R]): Rxn[R] =
-      RxnLocal.withLocalArray(size, initial, body)
+    final def newLocalArray[A](size: Int, initial: A): Rxn[RxnLocal.Array[A]] =
+      RxnLocal.newLocalArray(size, initial)
 
     sealed abstract class Ticket[A] {
       def unsafePeek: A
@@ -663,6 +648,13 @@ object Rxn extends RxnInstances0 {
       new Rxn.Ctx1[A](uf)
 
     @inline
+    private[choam] final def delayContext2[A](uf2: (Mcas.ThreadContext, unsafe2.InRxn.InterpState) => A): Rxn[A] =
+      delayContext2Impl(uf2)
+
+    private[choam] final def delayContext2Impl[A](uf2: (Mcas.ThreadContext, unsafe2.InRxn.InterpState) => A): RxnImpl[A] =
+      new Rxn.Ctx2[A](uf2)
+
+    @inline
     final def panic[A](ex: Throwable): Rxn[A] =
       panicImpl(ex)
 
@@ -736,12 +728,6 @@ object Rxn extends RxnInstances0 {
 
     final def mergeDescs(): Rxn[Any] =
       new Rxn.MergeDescs
-
-    final def newLocal(local: InternalLocal): RxnImpl[Unit] =
-      new Rxn.LocalNewEnd(local, isEnd = false)
-
-    final def endLocal(local: InternalLocal): RxnImpl[Unit] =
-      new Rxn.LocalNewEnd(local, isEnd = true)
   }
 
   private[choam] final object StmImpl {
@@ -841,15 +827,19 @@ object Rxn extends RxnInstances0 {
 
   private sealed abstract class Ctx[B] extends RxnImpl[B] {
     final override def toString: String = s"Ctx(<block>)"
-    def uf(ctx: Mcas.ThreadContext, ir: unsafe2.InRxn2): B
+    def uf(ctx: Mcas.ThreadContext, ir: unsafe2.InRxn.InterpState): B
   }
 
   private final class Ctx1[B](_uf: Mcas.ThreadContext => B) extends Ctx[B] {
-    final override def uf(ctx: Mcas.ThreadContext, ir: unsafe2.InRxn2): B = _uf(ctx)
+    final override def uf(ctx: Mcas.ThreadContext, ir: unsafe2.InRxn.InterpState): B = _uf(ctx)
   }
 
-  private final class Ctx3[B](_uf: unsafe2.InRxn2 => B) extends Ctx[B] {
-    final override def uf(ctx: Mcas.ThreadContext, ir: unsafe2.InRxn2): B = _uf(ir)
+  private final class Ctx2[B](_uf: (Mcas.ThreadContext, unsafe2.InRxn.InterpState) => B) extends Ctx[B] {
+    final override def uf(ctx: Mcas.ThreadContext, ir: unsafe2.InRxn.InterpState): B = _uf(ctx, ir)
+  }
+
+  private final class Ctx3[B](_uf: unsafe2.InRxn.InterpState => B) extends Ctx[B] {
+    final override def uf(ctx: Mcas.ThreadContext, ir: unsafe2.InRxn.InterpState): B = _uf(ir)
   }
 
   private[core] final class As[A, B, C](val rxn: Rxn[B], val c: C) extends RxnImpl[C] {
@@ -1095,10 +1085,6 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"Unread(${ref})"
   }
 
-  private final class LocalNewEnd(val local: InternalLocal, val isEnd: Boolean) extends RxnImpl[Unit] {
-    final override def toString: String = s"LocalNewEnd(${local}, ${isEnd})"
-  }
-
   private final class TentativeRead[A](val loc: MemoryLocation[A]) extends RxnImpl[A] {
     final override def toString: String = s"TentativeRead(${loc})"
   }
@@ -1167,7 +1153,7 @@ object Rxn extends RxnInstances0 {
     strategy: RetryStrategy,
     isStm: Boolean,
   ) extends Hamt.EntryVisitor[MemoryLocation[Any], LogEntry[Any], Rxn[Any]]
-    with unsafe2.InRxn.UnsealedInRxn {
+    with unsafe2.InRxn.InterpState { self =>
 
     private[this] val maxRetries: Int =
       strategy.maxRetriesInt
@@ -1243,6 +1229,21 @@ object Rxn extends RxnInstances0 {
 
     private[this] var locals: IdentityHashMap[InternalLocal, AnyRef] =
       null
+
+    // TODO: don't always call this (there are code paths where `locals` is certainly already initialized)
+    private[this] final def getOrInitLocals(): IdentityHashMap[InternalLocal, AnyRef] = {
+      this.locals match {
+        case null =>
+          val locals = new IdentityHashMap[InternalLocal, AnyRef]
+          this.locals = locals
+          locals
+        case locals =>
+          locals
+      }
+    }
+
+    private[choam] final override val localOrigin: core.unsafe.RxnLocal.Origin =
+      new core.unsafe.RxnLocal.Origin
 
     private[this] val contT: ByteStack = new ByteStack(initSize = 8)
     private[this] var contK: ObjStack[Any] = mkInitialContK()
@@ -1463,8 +1464,8 @@ object Rxn extends RxnInstances0 {
         val snapshot = new IdentityHashMap[InternalLocal, AnyRef](locals.size())
         locals.forEach(new java.util.function.BiConsumer[InternalLocal, AnyRef] {
           final override def accept(k: InternalLocal, v: AnyRef): Unit = {
-            val ov = snapshot.put(k, k.takeSnapshot())
-            _assert(ov eq null)
+            val ov = snapshot.put(k, k.takeSnapshot(self))
+            _assert(ov eq null) // TODO: this might not be true any more
           }
         })
         snapshot
@@ -1483,9 +1484,8 @@ object Rxn extends RxnInstances0 {
         locals.clear()
         snapshot.forEach(new java.util.function.BiConsumer[InternalLocal, AnyRef] {
           final override def accept(k: InternalLocal, v: AnyRef): Unit = {
-            k.loadSnapshot(v)
-            val ov = locals.put(k, null)
-            _assert(ov eq null)
+            locals.put(k, null) : Unit
+            k.loadSnapshot(v, self)
           }
         })
         this.locals = locals
@@ -2329,22 +2329,6 @@ object Rxn extends RxnInstances0 {
           } // else: empty log, nothing to do
           a = ()
           loop(next())
-        case c: LocalNewEnd => // LocalNewEnd
-          val locals = this.locals match {
-            case null =>
-              val nl = new IdentityHashMap[InternalLocal, AnyRef]
-              this.locals = nl
-              nl
-            case locals =>
-              locals
-          }
-          if (!c.isEnd) {
-            locals.put(c.local, null)
-          } else {
-            val ok = locals.remove(c.local, null)
-            _assert(ok)
-          }
-          loop(next())
         case c: TentativeRead[_] => // TentativeRead
           val hwd = tentativeRead(c.loc)
           val nxt = if (hwd eq null) {
@@ -2413,6 +2397,112 @@ object Rxn extends RxnInstances0 {
       } finally {
         this.saveStats()
         this.invalidateCtx()
+      }
+    }
+
+    private[choam] final override def registerLocal(local: InternalLocal): Unit = {
+      val ov = this.getOrInitLocals().put(local, null)
+      _assert(ov eq null)
+    }
+
+    private[choam] final override def removeLocal(local: InternalLocal): Unit = {
+      val ov = this.getOrInitLocals().remove(local)
+      _assert(ov eq null) // TODO: this might not be correct any more
+    }
+
+    private[choam] final override def localGetSlowPath(local: InternalLocal): AnyRef = {
+      val initial = local.initial
+      this.locals match {
+        case null => initial
+        case locals => locals.getOrDefault(local, initial)
+      }
+    }
+
+    private[choam] final override def localGetArrSlowPath(local: InternalLocalArray, idx: Int): AnyRef = {
+      val initial = local.initial
+      this.locals match {
+        case null =>
+          initial
+        case locals =>
+          locals.get(local) match {
+            case null =>
+              initial
+            case arr: Array[AnyRef] =>
+              _assert(arr.length == local.size)
+              CompatPlatform.checkArrayIndexIfScalaJs(idx, arr.length)
+              arr(idx)
+            case _ =>
+              impossible(s"unexpected value for ${local}")
+          }
+      }
+    }
+
+    private[choam] final override def localSetSlowPath(local: InternalLocal, nv: AnyRef): Unit = {
+      this.getOrInitLocals().put(local, nv) : Unit
+    }
+
+    private[choam] final override def localSetArrSlowPath(local: InternalLocalArray, idx: Int, nv: AnyRef): Unit = {
+      val locals = this.getOrInitLocals()
+      val arr = locals.get(local) match {
+        case null =>
+          val arr = new Array[AnyRef](local.size)
+          Arrays.fill(arr, local.initial)
+          locals.put(local, arr)
+          arr
+        case arr: Array[AnyRef] =>
+          _assert(arr.length == local.size)
+          arr
+        case _ =>
+          impossible(s"unexpected value for ${local}")
+      }
+      CompatPlatform.checkArrayIndexIfScalaJs(idx, arr.length)
+      arr(idx) = nv
+    }
+
+    private[choam] final override def localTakeSnapshotSlowPath(local: InternalLocal): AnyRef = {
+      this.localGetSlowPath(local)
+    }
+
+    private[choam] final override def localLoadSnapshotSlowPath(local: InternalLocal, snap: AnyRef): Unit = {
+      this.localSetSlowPath(local, snap)
+    }
+
+    private[choam] final override def localTakeSnapshotArrSlowPath(local: InternalLocalArray): AnyRef = {
+      // TODO: load/take snapshot does 2 lookups in `locals` (or rather, an iteration and a lookup)
+      // TODO: (although this is a slow-path, so who cares...)
+      this.getOrInitLocals().get(local) match {
+        case null =>
+          null
+        case arr: Array[AnyRef] =>
+          Arrays.copyOf(arr, arr.length)
+        case _ =>
+          impossible(s"unexpected value for ${local}")
+      }
+    }
+
+    private[choam] final override def localLoadSnapshotArrSlowPath(local: InternalLocalArray, snap: AnyRef): Unit = {
+      val locals = this.getOrInitLocals()
+      locals.get(local) match {
+        case null =>
+          snap match {
+            case null =>
+              () // we're done
+            case snapArr: Array[AnyRef] =>
+              val len = local.size
+              _assert(snapArr.length == len)
+              val arr = new Array[AnyRef](len)
+              System.arraycopy(snapArr, 0, arr, 0, len)
+              locals.put(local, arr) : Unit
+            case _ =>
+              impossible(s"unexpected snapshot for ${local}")
+          }
+        case arr: Array[AnyRef] =>
+          val snapArr = snap.asInstanceOf[Array[AnyRef]]
+          val len = arr.length
+          _assert(snapArr.length == len)
+          System.arraycopy(snapArr, 0, arr, 0, len)
+        case _ =>
+          impossible(s"unexpected value for ${local}")
       }
     }
 
@@ -2538,10 +2628,7 @@ object Rxn extends RxnInstances0 {
 
     @inline
     private[choam] final override def beforeResult(): Unit = {
-      _assert(
-        (this._entryHolder eq null) &&
-        ((this.locals eq null) || this.locals.isEmpty())
-      )
+      _assert(this._entryHolder eq null)
     }
   }
 }

@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
 
 import cats.kernel.Monoid
-import cats.{ ~>, Applicative, StackSafeMonad, Align, Defer }
+import cats.{ Applicative, StackSafeMonad, Align, Defer }
 import cats.data.Ior
 import cats.effect.IO
 import cats.effect.kernel.{ Ref => CatsRef }
@@ -838,15 +838,29 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("RxnLocal (simple)") {
     for {
       ref <- Ref[Int](0).run[F]
-      rxn1 = Rxn.unsafe.withLocal(42, new Rxn.unsafe.WithLocal[Int, Float, String] {
-        final override def apply[G[_]](local: RxnLocal[G, Int], lift: Rxn ~> G, inst: RxnLocal.Instances[G]) = {
-          import inst._
-          local.get.flatMap { ov =>
-            lift(ref.set(ov)) *> local.set(99).as("foo")
-          }
-        }
-      })
-      _ <- assertResultF(rxn1.map(_ + "bar").run, "foobar")
+      rxn = for {
+        local <- Rxn.unsafe.newLocal(42)
+        ov <- local.get
+        _ <- ref.set(ov)
+        _ <- local.set(99)
+        nv <- local.get
+      } yield ("foo", nv)
+      _ <- assertResultF(rxn.map(tup => (tup._1 + "bar", tup._2)).run, ("foobar", 99))
+      _ <- assertResultF(ref.get.run[F], 42)
+    } yield ()
+  }
+
+  test("RxnLocal (simple, leaked)") {
+    for {
+      ref <- Ref[Int](0).run[F]
+      local <- Rxn.unsafe.newLocal(42).run
+      rxn = for {
+        ov <- local.get
+        _ <- ref.set(ov)
+        _ <- local.set(99)
+        nv <- local.get
+      } yield ("foo", nv)
+      _ <- assertResultF(rxn.map(tup => (tup._1 + "bar", tup._2)).run, ("foobar", 99))
       _ <- assertResultF(ref.get.run[F], 42)
     } yield ()
   }
@@ -855,79 +869,121 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       ref <- Ref[(Int, Int, Int)]((0, 0, 0)).run[F]
       ref2 <- Ref[Int](0).run[F]
-      rxn1 = Rxn.unsafe.withLocalArray(size = 3, initial = 42, new Rxn.unsafe.WithLocalArray[Int, Float, String] {
-        final override def apply[G[_]](arr: RxnLocal.Array[G, Int], lift: Rxn ~> G, inst: RxnLocal.Instances[G]) = {
-          import inst._
-          arr.unsafeGet(0).flatMap { ov0 =>
-            arr.unsafeGet(1).flatMap { ov1 =>
-              arr.unsafeGet(2).flatMap { ov2 =>
-                lift(ref.set((ov0, ov1, ov2))) *> arr.unsafeSet(1, 99).as("foo")
-              }
-            } <* arr.unsafeGet(1).flatMap { nv =>
-              lift(ref2.set(nv))
-            }
-          }
-        }
-      })
-      _ <- assertResultF(rxn1.map(_ + "bar").run, "foobar")
+      rxn = for {
+        arr <- Rxn.unsafe.newLocalArray(size = 3, initial = 42)
+        ov0 <- arr.unsafeGet(0)
+        ov1 <- arr.unsafeGet(1)
+        ov2 <- arr.unsafeGet(2)
+        _ <- ref.set((ov0, ov1, ov2))
+        _ <- arr.unsafeSet(1, 99)
+        nv <- arr.unsafeGet(1)
+        _ <- ref2.set(nv)
+      } yield "foo"
+      _ <- assertResultF(rxn.map(_ + "bar").run, "foobar")
+      _ <- assertResultF(ref.get.run[F], (42, 42, 42))
+      _ <- assertResultF(ref2.get.run[F], 99)
+    } yield ()
+  }
+
+  test("RxnLocal.Array (simple, leaked)") {
+    for {
+      ref <- Ref[(Int, Int, Int)]((0, 0, 0)).run[F]
+      ref2 <- Ref[Int](0).run[F]
+      arr <- Rxn.unsafe.newLocalArray(size = 3, initial = 42).run
+      rxn = for {
+        ov0 <- arr.unsafeGet(0)
+        ov1 <- arr.unsafeGet(1)
+        ov2 <- arr.unsafeGet(2)
+        _ <- ref.set((ov0, ov1, ov2))
+        _ <- arr.unsafeSet(1, 99)
+        nv <- arr.unsafeGet(1)
+        _ <- ref2.set(nv)
+      } yield "foo"
+      _ <- assertResultF(rxn.map(_ + "bar").run, "foobar")
       _ <- assertResultF(ref.get.run[F], (42, 42, 42))
       _ <- assertResultF(ref2.get.run[F], 99)
     } yield ()
   }
 
   test("RxnLocal (compose with Rxn)") {
-    val rxn: Rxn[(String, Int)] = for {
+    val rxn: Rxn[Int] = for {
       ref <- Ref[Int](0)
-      s <- Rxn.unsafe.withLocal(42, new Rxn.unsafe.WithLocal[Int, Any, String] {
-        final override def apply[G[_]](
-          scratch: RxnLocal[G, Int],
-          lift: Rxn ~> G,
-          inst: RxnLocal.Instances[G],
-        ) = {
-          import inst._
-          for {
-            i <- lift(ref.get)
-            _ <- scratch.set(i)
-            _ <- scratch.update(_ + 1)
-            v <- scratch.get
-            _ <- lift(ref.set(v))
-          } yield ""
-        }
-      })
+      scratch <- Rxn.unsafe.newLocal(42)
+      i <- ref.get
+      _ <- scratch.set(i)
+      _ <- scratch.update(_ + 1)
+      v0 <- scratch.get
+      _ <- ref.set(v0)
       v <- ref.get
-    } yield (s, v)
-    assertResultF(rxn.run[F], ("", 1))
+    } yield v
+    assertResultF(rxn.run[F], 1)
+  }
+
+  test("RxnLocal (compose with Rxn, leaked)") {
+    def rxn(scratch: RxnLocal[Int]): Rxn[Int] = for {
+      ref <- Ref[Int](0)
+      i <- ref.get
+      _ <- scratch.set(i)
+      _ <- scratch.update(_ + 1)
+      v0 <- scratch.get
+      _ <- ref.set(v0)
+      v <- ref.get
+    } yield v
+    for {
+      scratch <- Rxn.unsafe.newLocal(42).run[F]
+      _ <- assertResultF(rxn(scratch).run[F], 1)
+    } yield ()
   }
 
   test("RxnLocal (rollback)") {
     for {
       ref <- Ref[Int](0).run[F]
-      v <- Rxn.unsafe.withLocal(0, new Rxn.unsafe.WithLocal[Int, Any, Int] {
-        final override def apply[G[_]](
-          local: RxnLocal[G, Int],
-          lift: Rxn ~> G,
-          inst: RxnLocal.Instances[G],
-        ) = {
-          import inst._
-          lift(Rxn.pure(0) + Rxn.pure(1)).flatMap { leftOrRight =>
-            lift(ref.update(_ + 1)) *> local.getAndUpdate(_ + 1).flatMap { ov =>
-              if (leftOrRight == 0) { // left
-                if (ov == 0) { // ok
-                  lift(Rxn.unsafe.retry) // go to right
-                } else {
-                  lift(Rxn.unsafe.panic(new AssertionError))
-                }
-              } else { // right
-                if (ov == 0) { // ok
-                  lift(ref.get)
-                } else {
-                  lift(Rxn.unsafe.panic(new AssertionError))
-                }
-              }
-            }
+      v <- (for {
+        local <- Rxn.unsafe.newLocal(0)
+        leftOrRight <- (Rxn.pure(0) + Rxn.pure(1))
+        _ <- ref.update(_ + 1)
+        ov <- local.getAndUpdate(_ + 1)
+        res <- if (leftOrRight == 0) { // left
+          if (ov == 0) { // ok
+            Rxn.unsafe.retry // go to right
+          } else {
+            Rxn.unsafe.panic(new AssertionError)
+          }
+        } else { // right
+          if (ov == 0) { // ok
+            ref.get
+          } else {
+            Rxn.unsafe.panic(new AssertionError)
           }
         }
-      }).run[F]
+      } yield res).run
+      _ <- assertEqualsF(v, 1)
+      _ <- assertResultF(ref.get.run[F], 1)
+    } yield ()
+  }
+
+  test("RxnLocal (rollback, leaked)") {
+    for {
+      ref <- Ref[Int](0).run[F]
+      local <- Rxn.unsafe.newLocal(0).run
+      v <- (for {
+        leftOrRight <- (Rxn.pure(0) + Rxn.pure(1))
+        _ <- ref.update(_ + 1)
+        ov <- local.getAndUpdate(_ + 1)
+        res <- if (leftOrRight == 0) { // left
+          if (ov == 0) { // ok
+            Rxn.unsafe.retry // go to right
+          } else {
+            Rxn.unsafe.panic(new AssertionError)
+          }
+        } else { // right
+          if (ov == 0) { // ok
+            ref.get
+          } else {
+            Rxn.unsafe.panic(new AssertionError)
+          }
+        }
+      } yield res).run
       _ <- assertEqualsF(v, 1)
       _ <- assertResultF(ref.get.run[F], 1)
     } yield ()
@@ -936,34 +992,58 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("RxnLocal.Array (rollback)") {
     for {
       ref <- Ref[Int](0).run[F]
-      v <- Rxn.unsafe.withLocalArray(size = 3, initial = 0, new Rxn.unsafe.WithLocalArray[Int, Any, Int] {
-        final override def apply[G[_]](
-          arr: RxnLocal.Array[G, Int],
-          lift: Rxn ~> G,
-          inst: RxnLocal.Instances[G],
-        ) = {
-          import inst._
-          lift(Rxn.pure(0) + Rxn.pure(1)).flatMap { leftOrRight =>
-            lift(ref.update(_ + 1)) *> arr.unsafeGet(1).flatMap { ov =>
-              arr.unsafeSet(1, ov + 1) *> {
-                if (leftOrRight == 0) { // left
-                  if (ov == 0) { // ok
-                    lift(Rxn.unsafe.retry) // go to right
-                  } else {
-                    lift(Rxn.unsafe.panic(new AssertionError))
-                  }
-                } else { // right
-                  if (ov == 0) { // ok
-                    lift(ref.get)
-                  } else {
-                    lift(Rxn.unsafe.panic(new AssertionError))
-                  }
-                }
-              }
-            }
+      v <- (for {
+        arr <- RxnLocal.newLocalArray(size = 3, initial = 0)
+        ov0 <- arr.unsafeGet(1)
+        _ <- arr.unsafeSet(1, ov0 + 1)
+        leftOrRight <- (Rxn.pure(0) + Rxn.pure(1))
+        _ <- ref.update(_ + 1)
+        ov <- arr.unsafeGet(1)
+        _ <- arr.unsafeSet(1, ov + 1)
+        v <- if (leftOrRight == 0) { // left
+          if (ov == 1) { // ok
+            Rxn.unsafe.retry // go to right
+          } else {
+            Rxn.unsafe.panic(new AssertionError)
+          }
+        } else { // right
+          if (ov == 1) { // ok
+            ref.get
+          } else {
+            Rxn.unsafe.panic(new AssertionError)
           }
         }
-      }).run[F]
+      } yield v).run
+      _ <- assertEqualsF(v, 1)
+      _ <- assertResultF(ref.get.run[F], 1)
+    } yield ()
+  }
+
+  test("RxnLocal.Array (rollback, leaked)") {
+    for {
+      ref <- Ref[Int](0).run[F]
+      arr <- RxnLocal.newLocalArray(size = 3, initial = 0).run
+      v <- (for {
+        ov0 <- arr.unsafeGet(1)
+        _ <- arr.unsafeSet(1, ov0 + 1)
+        leftOrRight <- (Rxn.pure(0) + Rxn.pure(1))
+        _ <- ref.update(_ + 1)
+        ov <- arr.unsafeGet(1)
+        _ <- arr.unsafeSet(1, ov + 1)
+        v <- if (leftOrRight == 0) { // left
+          if (ov == 1) { // ok
+            Rxn.unsafe.retry // go to right
+          } else {
+            Rxn.unsafe.panic(new AssertionError)
+          }
+        } else { // right
+          if (ov == 1) { // ok
+            ref.get
+          } else {
+            Rxn.unsafe.panic(new AssertionError)
+          }
+        }
+      } yield v).run
       _ <- assertEqualsF(v, 1)
       _ <- assertResultF(ref.get.run[F], 1)
     } yield ()
@@ -973,36 +1053,78 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       ref1 <- Ref[Int](0).run[F]
       ref2 <- Ref[Int](0).run[F]
-      rxn1 = Rxn.unsafe.withLocal(42, new Rxn.unsafe.WithLocal[Int, Float, String] {
-        final override def apply[G[_]](local1: RxnLocal[G, Int], lift1: Rxn ~> G, inst1: RxnLocal.Instances[G]) = {
-          import inst1._
-          local1.get.flatMap { ov1 =>
-            lift1(Rxn.unsafe.assert(ov1 == 42) *> Rxn.unsafe.withLocal(99, new Rxn.unsafe.WithLocal[Int, Any, Float] {
-              final override def apply[GG[_]](
-                local2: RxnLocal[GG, Int],
-                lift2: Rxn ~> GG,
-                inst2: RxnLocal.Instances[GG],
-              ) = {
-                import inst2._
-                local2.get.flatMap { ov2 =>
-                  lift2(Rxn.unsafe.assert(ov2 == 99)).as(45.0f) <* local2.set(42)
-                } <* {
-                  lift2(Rxn.fastRandom.nextBoolean.flatMap { retry =>
-                    if (retry) Rxn.unsafe.retry[Unit] else Rxn.unit
-                  }) *> local2.get.flatMap(v2 => lift2(ref2.set(v2)))
-                }
-              }
-            })).flatMap { r2 =>
-              lift1(Rxn.unsafe.assert(r2 == 45.0f) *> ref1.set(ov1)) *> local1.set(99).as("foo")
-            }.flatMap { _ =>
-              local1.get.map(_.toString)
-            }
-          }
+      rxn1 = for {
+        local1 <- Rxn.unsafe.newLocal(42)
+        ov1 <- local1.get
+        _ <- Rxn.unsafe.assert(ov1 == 42)
+        local2 <- Rxn.unsafe.newLocal(99)
+        ov2 <- local2.get
+        _ <- Rxn.unsafe.assert(ov2 == 99)
+        _ <- local2.set(42)
+        retry <- Rxn.fastRandom.nextBoolean
+        _ <- if (retry) {
+          Rxn.unsafe.retry[Unit]
+        } else {
+          Rxn.unit
         }
-      })
+        v2 <- local2.get
+        _ <- ref2.set(v2)
+        _ <- ref1.set(ov1)
+        _ <- local1.set(99)
+        x <- local1.get
+      } yield x.toString
       _ <- assertResultF(rxn1.run, "99")
       _ <- assertResultF(ref1.get.run[F], 42)
       _ <- assertResultF(ref2.get.run[F], 42)
+    } yield ()
+  }
+
+  test("RxnLocal (nested, leaked)") {
+    for {
+      ref1 <- Ref[Int](0).run[F]
+      ref2 <- Ref[Int](0).run[F]
+      local1 <- Rxn.unsafe.newLocal(42).run
+      local2 <- Rxn.unsafe.newLocal(99).run
+      rxn1 = for {
+        ov1 <- local1.get
+        _ <- Rxn.unsafe.assert(ov1 == 42)
+        ov2 <- local2.get
+        _ <- Rxn.unsafe.assert(ov2 == 99)
+        _ <- local2.set(42)
+        retry <- Rxn.fastRandom.nextBoolean
+        _ <- if (retry) {
+          Rxn.unsafe.retry[Unit]
+        } else {
+          Rxn.unit
+        }
+        v2 <- local2.get
+        _ <- ref2.set(v2)
+        _ <- ref1.set(ov1)
+        _ <- local1.set(99)
+        x <- local1.get
+      } yield x.toString
+      _ <- assertResultF(rxn1.run, "99")
+      _ <- assertResultF(ref1.get.run[F], 42)
+      _ <- assertResultF(ref2.get.run[F], 42)
+    } yield ()
+  }
+
+  test("RxnLocal (escaped local must be separate)") {
+    for {
+      la <- (for {
+        local <- Rxn.unsafe.newLocal(42)
+        arr <- Rxn.unsafe.newLocalArray(3, 42)
+        _ <- local.set(99)
+        _ <- arr.unsafeSet(1, 99)
+      } yield (local, arr)).run
+      (local, arr) = la
+      v1v2 <- (for {
+        v1 <- local.get
+        v2 <- arr.unsafeGet(1)
+      } yield (v1, v2)).run
+      (v1, v2) = v1v2
+      _ <- assertEqualsF(v1, 42)
+      _ <- assertEqualsF(v2, 42)
     } yield ()
   }
 

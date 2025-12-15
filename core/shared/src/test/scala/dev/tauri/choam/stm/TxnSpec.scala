@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import scala.concurrent.duration._
 
 import cats.kernel.Monoid
-import cats.{ ~>, Defer, Monad, StackSafeMonad, Applicative }
+import cats.{ Defer, Monad, StackSafeMonad, Applicative }
 import cats.effect.kernel.Unique
 import cats.effect.std.UUIDGen
 import cats.effect.IO
@@ -246,70 +246,129 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
   test("TxnLocal (simple)") {
     for {
       ref <- TRef[Int](0).commit
-      txn1 = Txn.unsafe.withLocal(42, new Txn.unsafe.WithLocal[Int, String] {
-        final override def apply[G[_]](local: TxnLocal[G, Int], lift: Txn ~> G, inst: TxnLocal.Instances[G]): G[String] = {
-          import inst._
-          local.get.flatMap { ov =>
-            lift(ref.set(ov)) *> local.set(99).as("foo")
-          }
-        }
-      })
-      _ <- assertResultF(txn1.map(_ + "bar").commit, "foobar")
+      txn1 = for {
+        local <- Txn.unsafe.newLocal(42)
+        ov <- local.get
+        _ <- ref.set(ov)
+        _ <- local.set(99)
+        nv <- local.get
+      } yield ("foo", nv)
+      _ <- assertResultF(txn1.map { tup => (tup._1 + "bar", tup._2) }.commit, ("foobar", 99))
+      _ <- assertResultF(ref.get.commit, 42)
+    } yield ()
+  }
+
+  test("TxnLocal (simple, leaked)") {
+    for {
+      ref <- TRef[Int](0).commit
+      local <- Txn.unsafe.newLocal(42).commit
+      txn1 = for {
+        ov <- local.get
+        _ <- ref.set(ov)
+        _ <- local.set(99)
+        nv <- local.get
+      } yield ("foo", nv)
+      _ <- assertResultF(txn1.map { tup => (tup._1 + "bar", tup._2) }.commit, ("foobar", 99))
       _ <- assertResultF(ref.get.commit, 42)
     } yield ()
   }
 
   test("TxnLocal (compose with Txn)") {
-    val txn: Txn[(String, Int)] = for {
+    val txn: Txn[Int] = for {
       ref <- TRef[Int](0)
-      s <- Txn.unsafe.withLocal(42, new Txn.unsafe.WithLocal[Int, String] {
-        final override def apply[G[_]](scratch: TxnLocal[G, Int], lift: Txn ~> G, inst: TxnLocal.Instances[G]): G[String] = {
-          import inst.monadInstance
-          for {
-            i <- lift(ref.get)
-            _ <- scratch.set(i)
-            _ <- scratch.update(_ + 1)
-            v <- scratch.get
-            _ <- lift(ref.set(v))
-          } yield ""
-        }
-      })
-      v <- ref.get
-    } yield (s, v)
-    assertResultF(txn.commit, ("", 1))
+      scratch <- Txn.unsafe.newLocal(42)
+      i <- ref.get
+      _ <- scratch.set(i)
+      _ <- scratch.update(_ + 1)
+      v <- scratch.get
+      _ <- ref.set(v)
+      v2 <- ref.get
+    } yield v2
+    assertResultF(txn.commit, 1)
+  }
+
+  test("TxnLocal (compose with Txn, leaked)") {
+    for {
+      scratch <- Txn.unsafe.newLocal(42).commit
+      txn = for {
+        ref <- TRef[Int](0)
+        i <- ref.get
+        _ <- scratch.set(i)
+        _ <- scratch.update(_ + 1)
+        v <- scratch.get
+        _ <- ref.set(v)
+        v2 <- ref.get
+      } yield v2
+      _ <- assertResultF(txn.commit, 1)
+    } yield ()
   }
 
   test("TxnLocal (rollback)") {
     for {
       ref <- TRef[Int](0).commit
-      v <- Txn.unsafe.withLocal(0, new Txn.unsafe.WithLocal[Int, Int] {
-        final override def apply[G[_]](
-          local: TxnLocal[G, Int],
-          lift: Txn ~> G,
-          inst: TxnLocal.Instances[G],
-        ): G[Int] = {
-          import inst.monadInstance
-          lift(Txn.unsafe.plus(Txn.pure(0), Txn.pure(1))).flatMap { leftOrRight =>
-            lift(ref.update(_ + 1)) *> local.getAndUpdate(_ + 1).flatMap { ov =>
-              if (leftOrRight == 0) { // left
-                if (ov == 0) { // ok
-                  lift(Txn.unsafe.retryUnconditionally) // go to right
-                } else {
-                  lift(Txn.unsafe.panic(new AssertionError))
-                }
-              } else { // right
-                if (ov == 0) { // ok
-                  lift(ref.get)
-                } else {
-                  lift(Txn.unsafe.panic(new AssertionError))
-                }
-              }
-            }
+      v <- (for {
+        local <- Txn.unsafe.newLocal(0)
+        _ <- local.getAndUpdate(_ + 1)
+        leftOrRight <- Txn.unsafe.plus(Txn.pure(0), Txn.pure(1))
+        _ <- ref.update(_ + 1)
+        ov <- local.getAndUpdate(_ + 1)
+        v <- if (leftOrRight == 0) { // left
+          if (ov == 1) { // ok
+            Txn.unsafe.retryUnconditionally // go to right
+          } else {
+            Txn.unsafe.panic(new AssertionError)
+          }
+        } else { // right
+          if (ov == 1) { // ok
+            ref.get
+          } else {
+            Txn.unsafe.panic(new AssertionError)
           }
         }
-      }).commit
+      } yield v).commit
       _ <- assertEqualsF(v, 1)
       _ <- assertResultF(ref.get.commit, 1)
+    } yield ()
+  }
+
+  test("TxnLocal (rollback, leaked)") {
+    for {
+      ref <- TRef[Int](0).commit
+      local <- Txn.unsafe.newLocal(0).commit
+      v <- (for {
+        _ <- local.getAndUpdate(_ + 1)
+        leftOrRight <- Txn.unsafe.plus(Txn.pure(0), Txn.pure(1))
+        _ <- ref.update(_ + 1)
+        ov <- local.getAndUpdate(_ + 1)
+        v <- if (leftOrRight == 0) { // left
+          if (ov == 1) { // ok
+            Txn.unsafe.retryUnconditionally // go to right
+          } else {
+            Txn.unsafe.panic(new AssertionError)
+          }
+        } else { // right
+          if (ov == 1) { // ok
+            ref.get
+          } else {
+            Txn.unsafe.panic(new AssertionError)
+          }
+        }
+      } yield v).commit
+      _ <- assertEqualsF(v, 1)
+      _ <- assertResultF(ref.get.commit, 1)
+    } yield ()
+  }
+
+  test("TxnLocal (escaped local must be separate)") {
+    for {
+      local <- (for {
+        local <- Txn.unsafe.newLocal(42)
+        // TODO: arr <- Txn.unsafe.newLocalArray(3, 42)
+        _ <- local.set(99)
+        // TODO: _ <- arr.unsafeSet(1, 99)
+      } yield local).commit
+      v1 <- local.get.commit
+      _ <- assertEqualsF(v1, 42)
     } yield ()
   }
 

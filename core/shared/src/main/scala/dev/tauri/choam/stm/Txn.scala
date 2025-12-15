@@ -21,11 +21,12 @@ package stm
 import java.util.UUID
 
 import cats.kernel.Monoid
-import cats.{ ~>, Applicative, Defer, StackSafeMonad }
+import cats.{ Applicative, Defer, StackSafeMonad }
 import cats.effect.kernel.Unique
 import cats.effect.std.UUIDGen
 
 import core.{ Rxn, RxnImpl }
+import dev.tauri.choam.{ unsafe => unsafe2 }
 import internal.mcas.Mcas
 
 sealed trait Txn[+A] {
@@ -210,14 +211,10 @@ object Txn extends TxnInstances0 {
   final def newUuid: Txn[UUID] =
     Rxn.newUuidImpl
 
-  private[choam] final object unsafe {
+  final object unsafe {
 
-    trait WithLocal[A, R] {
-      def apply[G[_]](local: TxnLocal[G, A], lift: Txn ~> G, inst: TxnLocal.Instances[G]): G[R]
-    }
-
-    final def withLocal[A, R](initial: A, body: WithLocal[A, R]): Txn[R] = {
-      TxnLocal.withLocal(initial, body)
+    final def newLocal[A](initial: A): Txn[TxnLocal[A]] = {
+      TxnLocal.newLocal(initial)
     }
 
     @inline
@@ -230,6 +227,10 @@ object Txn extends TxnInstances0 {
     @inline
     private[choam] final def delayContext[A](uf: Mcas.ThreadContext => A): Txn[A] =
       Rxn.unsafe.delayContextImpl(uf)
+
+    @inline
+    private[choam] final def delayContext2[A](uf2: (Mcas.ThreadContext, unsafe2.InRxn.InterpState) => A): Txn[A] =
+      Rxn.unsafe.delayContext2Impl(uf2)
 
     private[choam] final def suspendContext[A](uf: Mcas.ThreadContext => Txn[A]): Txn[A] =
       delayContext(uf).flatten

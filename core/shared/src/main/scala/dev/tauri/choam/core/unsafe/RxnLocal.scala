@@ -21,98 +21,181 @@ package unsafe
 
 import java.util.Arrays
 
-import cats.arrow.FunctionK
-import cats.Monad
+import dev.tauri.choam.unsafe.InRxn.InterpState
 
-sealed abstract class RxnLocal[G[_], A] private () {
-  def get: G[A]
-  def set(a: A): G[Unit]
-  def update(f: A => A): G[Unit]
-  def getAndUpdate(f: A => A): G[A]
+sealed abstract class RxnLocal[A] private () {
+  def get: Rxn[A]
+  def set(a: A): Rxn[Unit]
+  def update(f: A => A): Rxn[Unit]
+  def getAndUpdate(f: A => A): Rxn[A]
 }
 
 object RxnLocal {
 
-  sealed abstract class Array[G[_], A] {
+  private[choam] final class Origin
+
+  sealed abstract class Array[A] {
     def size: Int
     // TODO: def get(idx: Int): G[Any, Option[A]]
     // TODO: def set(idx: Int, nv: A): G[Any, Boolean]
-    def unsafeGet(idx: Int): G[A]
-    def unsafeSet(idx: Int, nv: A): G[Unit]
+    def unsafeGet(idx: Int): Rxn[A]
+    def unsafeSet(idx: Int, nv: A): Rxn[Unit]
   }
 
-  sealed trait Instances[G[_]] {
-    implicit def monadInstance[X]: Monad[G]
+  private[core] final def newLocal[A](initial: A): Rxn[RxnLocal[A]] = {
+    newLocalImpl(initial)
   }
 
-  private[this] val _inst: Instances[Rxn] = new Instances[Rxn] {
-    final override def monadInstance[X] =
-      Rxn.monadInstance
+  private[choam] final def newTxnLocal[A](initial: A): stm.Txn[stm.TxnLocal[A]] = {
+    newLocalImpl(initial)
   }
 
-  private[core] final def withLocal[A, I, R](initial: A, body: Rxn.unsafe.WithLocal[A, I, R]): Rxn[R] = {
-    Rxn.unsafe.suspend {
-      val local = new RxnLocalImpl[A](initial)
-      Rxn.internal.newLocal(local) *> body[Rxn](local, FunctionK.id, _inst) <* Rxn.internal.endLocal(local)
+  private[this] final def newLocalImpl[A](initial: A): RxnImpl[RxnLocalImpl[A]] = {
+    Rxn.unsafe.delayContext2Impl { (_, interpState) =>
+      val local = new RxnLocalImpl[A](initial, interpState.localOrigin)
+      interpState.registerLocal(local)
+      local
     }
   }
 
-  private[core] final def withLocalArray[A, I, R](size: Int, initial: A, body: Rxn.unsafe.WithLocalArray[A, I, R]): Rxn[R] = {
-    Rxn.unsafe.suspend {
+  private[core] final def newLocalArray[A](size: Int, initial: A): Rxn[RxnLocal.Array[A]] = {
+    Rxn.unsafe.delayContext2 { (_, interpState) =>
       val arr = new scala.Array[AnyRef](size)
       Arrays.fill(arr, box(initial))
-      val locArr = new RxnLocalArrayImpl[A](arr)
-      Rxn.internal.newLocal(locArr) *> body[Rxn](locArr, FunctionK.id, _inst) <* Rxn.internal.endLocal(locArr)
+      val locArr = new RxnLocalArrayImpl[A](arr, initial, interpState.localOrigin)
+      interpState.registerLocal(locArr)
+      locArr
     }
   }
 
-  private[this] final class RxnLocalImpl[A](private[this] var a: A)
-    extends RxnLocal[Rxn, A]
+  private[this] final class RxnLocalImpl[A](_initial: A, origin: RxnLocal.Origin)
+    extends RxnLocal[A]
+    with stm.TxnLocal.UnsealedTxnLocal[A]
     with InternalLocal {
-    final override def get: Rxn[A] = Rxn.unsafe.delay { this.a }
-    final override def set(a: A): Rxn[Unit] = Rxn.unsafe.delay { this.a = a }
-    final override def update(f: A => A): Rxn[Unit] = Rxn.unsafe.delay { this.a = f(this.a) }
-    final override def getAndUpdate(f: A => A): Rxn[A] = Rxn.unsafe.delay {
-      val ov = this.a
-      this.a = f(ov)
+
+    private[this] var value: A =
+      _initial
+
+    final override def initial: AnyRef =
+      box(_initial)
+
+    final override def get: RxnImpl[A] = Rxn.unsafe.delayContext2Impl { (_, interpState) =>
+      if (interpState.localOrigin eq origin) {
+        this.value
+      } else {
+        interpState.localGetSlowPath(this).asInstanceOf[A]
+      }
+    }
+
+    final override def set(a: A): RxnImpl[Unit] = Rxn.unsafe.delayContext2Impl { (_, interpState) =>
+      if (interpState.localOrigin eq origin) {
+        this.value = a
+      } else {
+        interpState.localSetSlowPath(this, box(a))
+      }
+    }
+
+    final override def update(f: A => A): RxnImpl[Unit] = Rxn.unsafe.delayContext2Impl { (_, interpState) =>
+      if (interpState.localOrigin eq origin) {
+        this.value = f(this.value)
+      } else {
+        this.updateSlowPath(f, interpState)
+      }
+    }
+
+    private[this] final def updateSlowPath(f: A => A, interpState: InterpState): Unit = {
+      this.getAndUpdateSlowPath(f, interpState) : Unit
+    }
+
+    final override def getAndUpdate(f: A => A): RxnImpl[A] = Rxn.unsafe.delayContext2Impl { (_, interpState) =>
+      if (interpState.localOrigin eq origin) {
+        val ov = this.value
+        this.value = f(ov)
+        ov
+      } else {
+        this.getAndUpdateSlowPath(f, interpState)
+      }
+    }
+
+    private[this] final def getAndUpdateSlowPath(f: A => A, interpState: InterpState): A = {
+      val ov: A = interpState.localGetSlowPath(this).asInstanceOf[A]
+      interpState.localSetSlowPath(this, box(f(ov)))
       ov
     }
-    final override def takeSnapshot(): AnyRef = box(this.a)
-    final override def loadSnapshot(snap: AnyRef): Unit = {
-      this.a = snap.asInstanceOf[A]
+
+    final override def takeSnapshot(interpState: InterpState): AnyRef = {
+      if (interpState.localOrigin eq origin) {
+        box(this.value)
+      } else {
+        interpState.localTakeSnapshotSlowPath(this)
+      }
+    }
+
+    final override def loadSnapshot(snap: AnyRef, interpState: InterpState): Unit = {
+      if (interpState.localOrigin eq origin) {
+        this.value = snap.asInstanceOf[A]
+      } else {
+        interpState.localLoadSnapshotSlowPath(this, snap)
+      }
     }
   }
 
-  private[this] final class RxnLocalArrayImpl[A](arr: scala.Array[AnyRef])
-    extends RxnLocal.Array[Rxn, A]
-    with InternalLocal {
+  private[this] final class RxnLocalArrayImpl[A](
+    arr: scala.Array[AnyRef],
+    _initial: A,
+    origin: RxnLocal.Origin,
+  ) extends RxnLocal.Array[A]
+    with InternalLocalArray {
+
+    final override def initial: AnyRef =
+      box(_initial)
 
     final override def size: Int =
       arr.length
 
     final override def unsafeGet(idx: Int): Rxn[A] = {
       val arr = this.arr
-      internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx = idx, length = arr.length)
-      Rxn.unsafe.delay { arr(idx).asInstanceOf[A] }
+      Rxn.unsafe.delayContext2 { (_, interpState) =>
+        if (interpState.localOrigin eq origin) {
+          internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx = idx, length = arr.length)
+          arr(idx).asInstanceOf[A]
+        } else {
+          interpState.localGetArrSlowPath(this, idx).asInstanceOf[A]
+        }
+      }
     }
 
     final override def unsafeSet(idx: Int, nv: A): Rxn[Unit] = {
       val arr = this.arr
-      internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx = idx, length = arr.length)
-      Rxn.unsafe.delay { arr(idx) = box(nv) }
+      Rxn.unsafe.delayContext2 { (_, interpState) =>
+        if (interpState.localOrigin eq origin) {
+          internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx = idx, length = arr.length)
+          arr(idx) = box(nv)
+        } else {
+          interpState.localSetArrSlowPath(this, idx, box(nv))
+        }
+      }
     }
 
-    final override def takeSnapshot(): AnyRef = {
-      val arr = this.arr
-      Arrays.copyOf(arr, arr.length)
+    final override def takeSnapshot(interpState: InterpState): AnyRef = {
+      if (interpState.localOrigin eq origin) {
+        val arr = this.arr
+        Arrays.copyOf(arr, arr.length)
+      } else {
+        interpState.localTakeSnapshotArrSlowPath(this)
+      }
     }
 
-    final override def loadSnapshot(snap: AnyRef): Unit = {
-      val snapArr = snap.asInstanceOf[scala.Array[AnyRef]]
-      val arr = this.arr
-      val len = arr.length
-      _assert(snapArr.length == len)
-      System.arraycopy(snapArr, 0, arr, 0, len)
+    final override def loadSnapshot(snap: AnyRef, interpState: InterpState): Unit = {
+      if (interpState.localOrigin eq origin) {
+        val snapArr = snap.asInstanceOf[scala.Array[AnyRef]]
+        val arr = this.arr
+        val len = arr.length
+        _assert(snapArr.length == len)
+        System.arraycopy(snapArr, 0, arr, 0, len)
+      } else {
+        interpState.localLoadSnapshotArrSlowPath(this, snap)
+      }
     }
   }
 }

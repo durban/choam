@@ -18,10 +18,6 @@
 package dev.tauri.choam
 package core
 
-import dev.tauri.choam.unsafe.InRxn.InterpState
-
-private[choam] trait InternalLocal {
-  def initial: AnyRef
-  def takeSnapshot(interpState: InterpState): AnyRef
-  def loadSnapshot(snap: AnyRef, interpState: InterpState): Unit
+private[choam] trait InternalLocalArray extends InternalLocal {
+  def size: Int
 }
