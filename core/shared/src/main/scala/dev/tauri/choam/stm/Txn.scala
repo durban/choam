@@ -217,6 +217,10 @@ object Txn extends TxnInstances0 {
       TxnLocal.newLocal(initial)
     }
 
+    final def newLocalArray[A](size: Int, initial: A): Txn[TxnLocal.Array[A]] = {
+      TxnLocal.newLocalArray(size, initial)
+    }
+
     @inline
     private[choam] final def delay[A](uf: => A): Txn[A] =
       Rxn.unsafe.delayImpl[A](uf)

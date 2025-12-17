@@ -20,6 +20,7 @@ package stm
 
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.ThreadLocalRandom
 
 import scala.concurrent.duration._
 
@@ -30,7 +31,6 @@ import cats.effect.std.UUIDGen
 import cats.effect.IO
 
 import core.RetryStrategy
-import java.util.concurrent.ThreadLocalRandom
 
 final class TxnSpec_DefaultMcas_IO
   extends BaseSpecIO
@@ -273,6 +273,46 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("TxnLocal.Array (simple)") {
+    for {
+      ref <- TRef[(Int, Int, Int)]((0, 0, 0)).commit[F]
+      ref2 <- TRef[Int](0).commit
+      txn = for {
+        arr <- Txn.unsafe.newLocalArray(size = 3, initial = 42)
+        ov0 <- arr.unsafeGet(0)
+        ov1 <- arr.unsafeGet(1)
+        ov2 <- arr.unsafeGet(2)
+        _ <- ref.set((ov0, ov1, ov2))
+        _ <- arr.unsafeSet(1, 99)
+        nv <- arr.unsafeGet(1)
+        _ <- ref2.set(nv)
+      } yield "foo"
+      _ <- assertResultF(txn.map(_ + "bar").commit, "foobar")
+      _ <- assertResultF(ref.get.commit, (42, 42, 42))
+      _ <- assertResultF(ref2.get.commit, 99)
+    } yield ()
+  }
+
+  test("TxnLocal.Array (simple, leaked)") {
+    for {
+      ref <- TRef[(Int, Int, Int)]((0, 0, 0)).commit
+      ref2 <- TRef[Int](0).commit
+      arr <- Txn.unsafe.newLocalArray(size = 3, initial = 42).commit
+      txn = for {
+        ov0 <- arr.unsafeGet(0)
+        ov1 <- arr.unsafeGet(1)
+        ov2 <- arr.unsafeGet(2)
+        _ <- ref.set((ov0, ov1, ov2))
+        _ <- arr.unsafeSet(1, 99)
+        nv <- arr.unsafeGet(1)
+        _ <- ref2.set(nv)
+      } yield "foo"
+      _ <- assertResultF(txn.map(_ + "bar").commit, "foobar")
+      _ <- assertResultF(ref.get.commit, (42, 42, 42))
+      _ <- assertResultF(ref2.get.commit, 99)
+    } yield ()
+  }
+
   test("TxnLocal (compose with Txn)") {
     val txn: Txn[Int] = for {
       ref <- TRef[Int](0)
@@ -356,6 +396,156 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       } yield v).commit
       _ <- assertEqualsF(v, 1)
       _ <- assertResultF(ref.get.commit, 1)
+    } yield ()
+  }
+
+  test("TxnLocal (STM rollback)") {
+    for {
+      ref1 <- TRef[Int](0).commit
+      ref2 <- TRef[Int](0).commit
+      v <- (for {
+        local <- Txn.unsafe.newLocal(0)
+        _ <- local.getAndUpdate(_ + 1)
+        txnLeft = local.getAndUpdate(_ + 1).flatMap { ovLeft =>
+          ref1.set(ovLeft)
+        } *> Txn.retry
+        txnRight = local.getAndUpdate(_ + 2).flatMap { ovRight =>
+          ref2.set(ovRight)
+        }
+        _ <- txnLeft orElse txnRight
+        v <- local.get
+      } yield v).commit
+      _ <- assertEqualsF(v, 3)
+      _ <- assertResultF(ref1.get.commit, 0)
+      _ <- assertResultF(ref2.get.commit, 1)
+    } yield ()
+  }
+
+  test("TxnLocal (STM rollback, leaked)") {
+    for {
+      ref1 <- TRef[Int](0).commit
+      ref2 <- TRef[Int](0).commit
+      local <- Txn.unsafe.newLocal(0).commit
+      v <- (for {
+        _ <- local.getAndUpdate(_ + 1)
+        txnLeft = local.getAndUpdate(_ + 1).flatMap { ovLeft =>
+          ref1.set(ovLeft)
+        } *> Txn.retry
+        txnRight = local.getAndUpdate(_ + 2).flatMap { ovRight =>
+          ref2.set(ovRight)
+        }
+        _ <- txnLeft orElse txnRight
+        v <- local.get
+      } yield v).commit
+      _ <- assertEqualsF(v, 3)
+      _ <- assertResultF(ref1.get.commit, 0)
+      _ <- assertResultF(ref2.get.commit, 1)
+    } yield ()
+  }
+
+  test("TxnLocal.Array (rollback)") {
+    for {
+      ref <- TRef[Int](0).commit
+      v <- (for {
+        arr <- Txn.unsafe.newLocalArray(size = 3, initial = 0)
+        ov0 <- arr.unsafeGet(1)
+        _ <- arr.unsafeSet(1, ov0 + 1)
+        leftOrRight <- Txn.unsafe.plus(Txn.pure(0), Txn.pure(1))
+        _ <- ref.update(_ + 1)
+        ov <- arr.unsafeGet(1)
+        _ <- arr.unsafeSet(1, ov + 1)
+        v <- if (leftOrRight == 0) { // left
+          if (ov == 1) { // ok
+            Txn.unsafe.retryUnconditionally // go to right
+          } else {
+            Txn.unsafe.panic(new AssertionError)
+          }
+        } else { // right
+          if (ov == 1) { // ok
+            ref.get
+          } else {
+            Txn.unsafe.panic(new AssertionError)
+          }
+        }
+      } yield v).commit
+      _ <- assertEqualsF(v, 1)
+      _ <- assertResultF(ref.get.commit, 1)
+    } yield ()
+  }
+
+  test("TxnLocal.Array (rollback, leaked)") {
+    for {
+      ref <- TRef[Int](0).commit
+      arr <- Txn.unsafe.newLocalArray(size = 3, initial = 0).commit
+      v <- (for {
+        ov0 <- arr.unsafeGet(1)
+        _ <- arr.unsafeSet(1, ov0 + 1)
+        leftOrRight <- Txn.unsafe.plus(Txn.pure(0), Txn.pure(1))
+        _ <- ref.update(_ + 1)
+        ov <- arr.unsafeGet(1)
+        _ <- arr.unsafeSet(1, ov + 1)
+        v <- if (leftOrRight == 0) { // left
+          if (ov == 1) { // ok
+            Txn.unsafe.retryUnconditionally // go to right
+          } else {
+            Txn.unsafe.panic(new AssertionError)
+          }
+        } else { // right
+          if (ov == 1) { // ok
+            ref.get
+          } else {
+            Txn.unsafe.panic(new AssertionError)
+          }
+        }
+      } yield v).commit
+      _ <- assertEqualsF(v, 1)
+      _ <- assertResultF(ref.get.commit, 1)
+    } yield ()
+  }
+
+  test("TxnLocal.Array (STM rollback)") {
+    for {
+      ref1 <- TRef[Int](0).commit
+      ref2 <- TRef[Int](0).commit
+      v <- (for {
+        arr <- Txn.unsafe.newLocalArray(size = 3, initial = 0)
+        ov0 <- arr.unsafeGet(1)
+        _ <- arr.unsafeSet(1, ov0 + 1)
+        leftTxn = arr.unsafeGet(1).flatMap { ovLeft =>
+          ref1.set(ovLeft) *> arr.unsafeSet(1, ovLeft + 1)
+        } *> Txn.retry
+        rightTxn = arr.unsafeGet(1).flatMap { ovRight =>
+          ref2.set(ovRight) *> arr.unsafeSet(1, ovRight + 2)
+        }
+        _ <- leftTxn orElse rightTxn
+        v <- arr.unsafeGet(1)
+      } yield v).commit
+      _ <- assertEqualsF(v, 3)
+      _ <- assertResultF(ref1.get.commit, 0)
+      _ <- assertResultF(ref2.get.commit, 1)
+    } yield ()
+  }
+
+  test("TxnLocal.Array (STM rollback, leaked)") {
+    for {
+      ref1 <- TRef[Int](0).commit
+      ref2 <- TRef[Int](0).commit
+      arr <- Txn.unsafe.newLocalArray(size = 3, initial = 0).commit
+      v <- (for {
+        ov0 <- arr.unsafeGet(1)
+        _ <- arr.unsafeSet(1, ov0 + 1)
+        leftTxn = arr.unsafeGet(1).flatMap { ovLeft =>
+          ref1.set(ovLeft) *> arr.unsafeSet(1, ovLeft + 1)
+        } *> Txn.retry
+        rightTxn = arr.unsafeGet(1).flatMap { ovRight =>
+          ref2.set(ovRight) *> arr.unsafeSet(1, ovRight + 2)
+        }
+        _ <- leftTxn orElse rightTxn
+        v <- arr.unsafeGet(1)
+      } yield v).commit
+      _ <- assertEqualsF(v, 3)
+      _ <- assertResultF(ref1.get.commit, 0)
+      _ <- assertResultF(ref2.get.commit, 1)
     } yield ()
   }
 

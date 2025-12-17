@@ -31,7 +31,21 @@ object TxnLocal {
 
   private[choam] trait UnsealedTxnLocal[A] extends TxnLocal[A]
 
+  private[choam] trait UnsealedTxnLocalArray[A] extends TxnLocal.Array[A]
+
+  sealed trait Array[A] {
+    def size: Int
+    // TODO: def get(idx: Int): G[Any, Option[A]]
+    // TODO: def set(idx: Int, nv: A): G[Any, Boolean]
+    def unsafeGet(idx: Int): Txn[A]
+    def unsafeSet(idx: Int, nv: A): Txn[Unit]
+  }
+
   private[stm] final def newLocal[A](initial: A): Txn[TxnLocal[A]] = {
     RxnLocal.newTxnLocal(initial)
+  }
+
+  private[stm] final def newLocalArray[A](size: Int, initial: A): Txn[TxnLocal.Array[A]] = {
+    RxnLocal.newTxnLocalArray(size, initial)
   }
 }

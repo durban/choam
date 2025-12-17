@@ -59,7 +59,15 @@ object RxnLocal {
   }
 
   private[core] final def newLocalArray[A](size: Int, initial: A): Rxn[RxnLocal.Array[A]] = {
-    Rxn.unsafe.delayContext2 { (_, interpState) =>
+    newLocalArrayImpl(size, initial)
+  }
+
+  private[choam] final def newTxnLocalArray[A](size: Int, initial: A): stm.Txn[stm.TxnLocal.Array[A]] = {
+    newLocalArrayImpl(size, initial)
+  }
+
+  private[this] final def newLocalArrayImpl[A](size: Int, initial: A): RxnImpl[RxnLocalArrayImpl[A]] = {
+    Rxn.unsafe.delayContext2Impl { (_, interpState) =>
       val arr = new scala.Array[AnyRef](size)
       Arrays.fill(arr, box(initial))
       val locArr = new RxnLocalArrayImpl[A](arr, initial, interpState.localOrigin)
@@ -145,6 +153,7 @@ object RxnLocal {
     _initial: A,
     origin: RxnLocal.Origin,
   ) extends RxnLocal.Array[A]
+    with stm.TxnLocal.UnsealedTxnLocalArray[A]
     with InternalLocalArray {
 
     final override def initial: AnyRef =
@@ -153,9 +162,9 @@ object RxnLocal {
     final override def size: Int =
       arr.length
 
-    final override def unsafeGet(idx: Int): Rxn[A] = {
+    final override def unsafeGet(idx: Int): RxnImpl[A] = {
       val arr = this.arr
-      Rxn.unsafe.delayContext2 { (_, interpState) =>
+      Rxn.unsafe.delayContext2Impl { (_, interpState) =>
         if (interpState.localOrigin eq origin) {
           internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx = idx, length = arr.length)
           arr(idx).asInstanceOf[A]
@@ -165,9 +174,9 @@ object RxnLocal {
       }
     }
 
-    final override def unsafeSet(idx: Int, nv: A): Rxn[Unit] = {
+    final override def unsafeSet(idx: Int, nv: A): RxnImpl[Unit] = {
       val arr = this.arr
-      Rxn.unsafe.delayContext2 { (_, interpState) =>
+      Rxn.unsafe.delayContext2Impl { (_, interpState) =>
         if (interpState.localOrigin eq origin) {
           internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx = idx, length = arr.length)
           arr(idx) = box(nv)
