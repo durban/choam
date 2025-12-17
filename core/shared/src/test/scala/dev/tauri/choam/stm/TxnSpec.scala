@@ -551,14 +551,15 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
 
   test("TxnLocal (escaped local must be separate)") {
     for {
-      local <- (for {
+      la <- (for {
         local <- Txn.unsafe.newLocal(42)
-        // TODO: arr <- Txn.unsafe.newLocalArray(3, 42)
+        arr <- Txn.unsafe.newLocalArray(3, 42)
         _ <- local.set(99)
-        // TODO: _ <- arr.unsafeSet(1, 99)
-      } yield local).commit
-      v1 <- local.get.commit
-      _ <- assertEqualsF(v1, 42)
+        _ <- arr.unsafeSet(1, 99)
+      } yield (local, arr)).commit
+      (local, arr) = la
+      _ <- assertResultF(local.get.commit, 42)
+      _ <- assertResultF(arr.unsafeGet(1).commit, 42)
     } yield ()
   }
 
