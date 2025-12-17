@@ -20,7 +20,7 @@ package stm
 
 import internal.mcas.MemoryLocation
 
-private trait TRefImplBase[A] extends MemoryLocation[A] with TRef.UnsealedTRef[A] {
+private[choam] trait TRefImplBase[A] extends MemoryLocation[A] with TRef.UnsealedTRef[A] {
 
   private[choam] final def dummy(v: Byte): Long =
     v.toLong

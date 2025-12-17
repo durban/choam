@@ -60,7 +60,7 @@ private[choam] object StripedRef {
         if (idx >= len) {
           acc
         } else {
-          val ref = stripes.unsafeGet(idx)
+          val ref = stripes.unsafeApply(idx)
           go(idx + 1, f(acc, ref))
         }
       }
@@ -69,22 +69,22 @@ private[choam] object StripedRef {
     }
 
     final override def get: Rxn[A] = Rxn.unsafe.suspendContext { ctx =>
-      val ref = stripes.unsafeGet(ctx.stripeId)
+      val ref = stripes.unsafeApply(ctx.stripeId)
       ref.get
     }
 
     final override def modify[B](f: A => (A, B)): Rxn[B] = Rxn.unsafe.suspendContext { ctx =>
-      val ref = stripes.unsafeGet(ctx.stripeId)
+      val ref = stripes.unsafeApply(ctx.stripeId)
       ref.modify(f)
     }
 
     final override def set(a: A): Rxn[Unit] = Rxn.unsafe.suspendContext { ctx =>
-      val ref = stripes.unsafeGet(ctx.stripeId)
+      val ref = stripes.unsafeApply(ctx.stripeId)
       ref.set(a)
     }
 
     final override def update(f: A => A): Rxn[Unit] = Rxn.unsafe.suspendContext { ctx =>
-      val ref = stripes.unsafeGet(ctx.stripeId)
+      val ref = stripes.unsafeApply(ctx.stripeId)
       ref.update(f)
     }
   }

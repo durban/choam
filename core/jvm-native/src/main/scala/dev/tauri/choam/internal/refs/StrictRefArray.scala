@@ -36,7 +36,7 @@ private final class StrictRefArray[A](
   final override def apply(idx: Int): Option[Ref[A]] =
     Option(this.getOrNull(idx))
 
-  final override def unsafeGet(idx: Int): Ref[A] = {
+  final override def unsafeApply(idx: Int): Ref[A] = {
     this.checkIndex(idx)
     this.getOrNull(idx)
   }

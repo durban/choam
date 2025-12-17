@@ -44,7 +44,7 @@ class RefArrayLazyRaceTest extends StressTestBase {
 
   @Actor
   def upd1(r: LLLLL_Result): Unit = {
-    val ref = this.arr.unsafeGet(2)
+    val ref = this.arr.unsafeApply(2)
     val value = ref.getAndUpdate(f1).unsafePerform(this.impl)
     r.r1 = ref
     r.r3 = value
@@ -52,7 +52,7 @@ class RefArrayLazyRaceTest extends StressTestBase {
 
   @Actor
   def upd2(r: LLLLL_Result): Unit = {
-    val ref = this.arr.unsafeGet(2)
+    val ref = this.arr.unsafeApply(2)
     val value = ref.getAndUpdate(f2).unsafePerform(this.impl)
     r.r2 = ref
     r.r4 = value
@@ -69,6 +69,6 @@ class RefArrayLazyRaceTest extends StressTestBase {
       r.r1 = r.r1.toString()
       r.r2 = r.r2.toString()
     }
-    r.r5 = this.arr.unsafeGet(2).get.unsafePerform(this.impl)
+    r.r5 = this.arr.unsafeApply(2).get.unsafePerform(this.impl)
   }
 }

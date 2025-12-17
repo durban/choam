@@ -36,6 +36,10 @@ package object refs extends RefsPackagePlatform {
     new SparseRefArray[A](__size = size, initial = initial, _idBase = idBase)
   }
 
+  private[choam] def unsafeNewSparseRefTArray[A](size: Int, initial: A)(idBase: Long): stm.TArray[A] with Ref.Array[A] = {
+    new SparseTRefArray[A](__size = size, initial = initial, _idBase = idBase)
+  }
+
   private[refs] def refStringFrom1(
     i0: Long,
   ): String = {
@@ -49,8 +53,8 @@ package object refs extends RefsPackagePlatform {
     "Ref2@" + internal.mcas.refIdHexString(i0 ^ i1)
   }
 
-  private[refs] def refArrayRefToString(idBase: Long, offset: Int): String = {
+  private[refs] def refArrayRefToString(prefix: String, idBase: Long, offset: Int): String = {
     val baseHash = internal.mcas.refHashArrayIdBase(idBase)
-    s"ARef@${baseHash}+${offset}"
+    s"${prefix}@${baseHash}+${offset}"
   }
 }

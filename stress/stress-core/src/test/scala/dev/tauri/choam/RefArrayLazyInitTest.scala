@@ -55,13 +55,13 @@ class RefArrayLazyInitTest extends StressTestBase {
       case a =>
         // we found something, so it
         // should work properly:
-        r.r2 = a.unsafeGet(2).getAndUpdate(f).unsafePerform(this.impl)
+        r.r2 = a.unsafeApply(2).getAndUpdate(f).unsafePerform(this.impl)
         r.r1 = "1"
     }
   }
 
   @Arbiter
   def arbiter(r: LLL_Result): Unit = {
-    r.r3 = this.arr.unsafeGet(2).get.unsafePerform(this.impl)
+    r.r3 = this.arr.unsafeApply(2).get.unsafePerform(this.impl)
   }
 }

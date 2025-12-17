@@ -36,7 +36,7 @@ sealed trait TRef[A] {
 
 object TRef {
 
-  private[stm] trait UnsealedTRef[A] extends TRef[A]
+  private[choam] trait UnsealedTRef[A] extends TRef[A]
 
   final def apply[A](a: A): Txn[TRef[A]] =
     Txn.unsafe.delayContext(unsafe[A](a))
@@ -45,7 +45,7 @@ object TRef {
     impl(a, ctx.refIdGen.nextId())
 
   /** Creates a `Ref` which is also a `TRef`; use with caution! */
-  private[choam] final def unsafeRefWithId[A](a: A, id: Long): core.Ref[A] =
+  private[choam] final def unsafeRefWithId[A](a: A, id: Long): core.Ref[A] with TRef[A] =
     impl(a, id)
 
   private[this] final def impl[A](a: A, id: Long): TRefImpl[A] = {

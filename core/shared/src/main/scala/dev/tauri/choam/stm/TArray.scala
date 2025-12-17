@@ -37,63 +37,17 @@ sealed trait TArray[A] {
 
 object TArray {
 
+  private[choam] trait UnsealedTArray[A] extends TArray[A]
+
+  final val DefaultAllocationStrategy: Ref.Array.AllocationStrategy =
+    Ref.Array.AllocationStrategy.SparseFlat.withStm(true)
+
   final def apply[A](
     length: Int,
     initial: A,
-    strategy: Ref.Array.AllocationStrategy = Ref.Array.AllocationStrategy.Default,
+    strategy: Ref.Array.AllocationStrategy = DefaultAllocationStrategy,
   ): Txn[TArray[A]] = {
-    // TODO: `flat` strategy is ignored (for now); implement it (because it probably needs less memory)
     val stmStr = strategy.withStm(true)
-    Ref.arrayImpl(size = length, initial = initial, strategy = stmStr).flatMap { rxnArr =>
-      Txn.unsafe.delay {
-        new TArray[A] {
-
-          def length: Int =
-            rxnArr.length
-
-          // TODO: avoid these casts:
-
-          private[this] final def unsafeGetTRef(idx: Int): TRef[A] = {
-            rxnArr.unsafeGet(idx) match {
-              case tref: TRef[_] => tref.asInstanceOf[TRef[A]]
-              case x => impossible(s"found ${x} instead of TRef")
-            }
-          }
-
-          def unsafeGet(idx: Int): Txn[A] =
-            unsafeGetTRef(idx).get
-
-          def unsafeSet(idx: Int, nv: A): Txn[Unit] =
-            unsafeGetTRef(idx).set(nv)
-
-          def unsafeUpdate(idx: Int, f: A => A): Txn[Unit] =
-            unsafeGetTRef(idx).update(f)
-
-          def get(idx: Int): Txn[Option[A]] = {
-            rxnArr(idx) match {
-              case Some(ref: TRef[_]) => ref.asInstanceOf[TRef[A]].get.map(Some(_))
-              case Some(x) => impossible(s"found ${x} instead of TRef")
-              case None => Txn.none[A]
-            }
-          }
-
-          def set(idx: Int, nv: A): Txn[Boolean] = {
-            rxnArr(idx) match {
-              case Some(ref: TRef[_]) => ref.asInstanceOf[TRef[A]].set(nv).as(true)
-              case Some(x) => impossible(s"found ${x} instead of TRef")
-              case None => Txn._false
-            }
-          }
-
-          def update(idx: Int, f: A => A): Txn[Boolean] = {
-            rxnArr(idx) match {
-              case Some(ref: TRef[_]) => ref.asInstanceOf[TRef[A]].update(f).as(true)
-              case Some(x) => impossible(s"found ${x} instead of TRef")
-              case None => Txn._false
-            }
-          }
-        }
-      }
-    }
+    Ref.safeTArrayImpl(size = length, initial = initial, str = stmStr)
   }
 }

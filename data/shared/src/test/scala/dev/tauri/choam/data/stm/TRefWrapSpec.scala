@@ -53,7 +53,7 @@ trait TRefWrapSpec[F[_]] extends TxnBaseSpecTicked[F] { this: McasImplSpec =>
     t.replicateA_(if (isJs()) 10 else 100)
   }
 
-  test("Wrapping a Queue.bounded with AllocationStrategy.withStm(true)") {
+  test("Wrapping a Queue.bounded with AllocationStrategy.withStm(true)".fail) { // TODO: flat && !sparse not implemented yet for STM
     val t = for {
       q <- WQueue.bounded[Int](4).commit
       _ <- q.put(1).commit

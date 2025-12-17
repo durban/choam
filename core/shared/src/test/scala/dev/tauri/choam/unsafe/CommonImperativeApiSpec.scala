@@ -141,22 +141,22 @@ trait CommonImperativeApiSpec[F[_]]
       arr1 <- runBlock(newRefArray[String](16, "")(using _))
       _ = (arr1: Ref.Array[String])
       r1 <- runBlock { implicit ir =>
-        arr1.unsafeGet(3).value = "foo"
-        arr1.unsafeGet(3).value
+        arr1.unsafeApply(3).value = "foo"
+        arr1.unsafeApply(3).value
       }
       _ <- assertEqualsF(r1, "foo")
       rr <-  runBlock { implicit ir =>
         val arr2 = newRefArray[String](16, "x")
-        assertEquals(arr2.unsafeGet(4).value, "x")
-        assertEquals(arr1.unsafeGet(4).value, "")
-        assertEquals(arr1.unsafeGet(3).value, "foo")
-        arr2.unsafeGet(5).value = "xyz"
-        (arr2.unsafeGet(5).value, arr2)
+        assertEquals(arr2.unsafeApply(4).value, "x")
+        assertEquals(arr1.unsafeApply(4).value, "")
+        assertEquals(arr1.unsafeApply(3).value, "foo")
+        arr2.unsafeApply(5).value = "xyz"
+        (arr2.unsafeApply(5).value, arr2)
       }
       (r2, arr2) = rr
       _ <- assertEqualsF(r2, "xyz")
       r3 <- runBlock { implicit ir =>
-        arr2.unsafeGet(5).value
+        arr2.unsafeApply(5).value
       }
       _ <- assertEqualsF(r3, "xyz")
     } yield ()

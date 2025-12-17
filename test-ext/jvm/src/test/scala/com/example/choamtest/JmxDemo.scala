@@ -42,14 +42,14 @@ object JmxDemo extends IOApp.Simple with RxnAppMixin {
       arr <- Ref.array(N, "x").run[IO]
       tsk = Ref.swap(r1, r2).run[IO].parReplicateA_(0xffff)
       arrTsk = (0 until N by 4).toVector.traverse_ { idx =>
-        arr.unsafeGet(idx).update(_ + "y")
+        arr.unsafeApply(idx).update(_ + "y")
       }.run[IO].parReplicateA_(0xfff)
       _ <- IO.both(IO.both(tsk, tsk), arrTsk)
       ta1 = trickyRxn(r1, r2)
       ta2 = trickyRxn(r2, r1)
       runTricky = IO.both(ta1.run[IO], ta2.run[IO])
       _ <- (runTricky *> IO.sleep(0.01.second)).foreverM.background.use { _ =>
-        (IO.sleep(1.second) *> Ref.swap(arr.unsafeGet(1), arr.unsafeGet(2)).run[IO]).replicateA_(120)
+        (IO.sleep(1.second) *> Ref.swap(arr.unsafeApply(1), arr.unsafeApply(2)).run[IO]).replicateA_(120)
       }
       _ <- IO { checkConsistency() }
     } yield ()

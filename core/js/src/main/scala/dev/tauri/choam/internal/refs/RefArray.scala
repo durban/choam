@@ -21,9 +21,15 @@ package refs
 
 import java.lang.ref.WeakReference
 
+import scala.collection.mutable.{ LongMap => MutLongMap }
+import scala.runtime.LongRef
+
 import core.{ Ref, UnsealedRef }
-import internal.mcas.{ MemoryLocation, Version, RefIdGen }
-import RefArray.RefArrayRef
+import internal.mcas.{ Mcas, MemoryLocation, Version, RefIdGen, Consts }
+import RefArray.{ RefArrayRef, RefArrayTRef }
+import stm.Txn
+
+// TODO: we shouldn't have to duplicate all these for JS(?)
 
 private abstract class RefArray[A](
   val size: Int,
@@ -62,7 +68,7 @@ private final class StrictRefArray[A](
   final override def apply(idx: Int): Option[Ref[A]] =
     Option(this.getOrNull(idx))
 
-  final override def unsafeGet(idx: Int): Ref[A] = {
+  final override def unsafeApply(idx: Int): Ref[A] = {
     this.checkIndex(idx)
     this.getOrNull(idx)
   }
@@ -78,14 +84,81 @@ private final class StrictRefArray[A](
   }
 }
 
+private final class SparseTRefArray[A](
+  __size: Int,
+  initial: A,
+  _idBase: Long,
+) extends SparseRefArrayImpl[A](__size, initial, _idBase)
+  with stm.TArray.UnsealedTArray[A] {
+
+  protected[this] final override type RefT[a] = RefArrayTRef[a]
+
+  protected[this] def createRef(i: Int): RefT[A] = {
+    new RefArrayTRef[A](this, i)
+  }
+
+  final override def unsafeGet(idx: Int): Txn[A] = {
+    this.checkIndex(idx)
+    this.getOrCreateRef(idx).get
+  }
+
+  final override def unsafeSet(idx: Int, nv: A): Txn[Unit] = {
+    this.checkIndex(idx)
+    this.getOrCreateRef(idx).set(nv)
+  }
+
+  final override def unsafeUpdate(idx: Int, f: A => A): Txn[Unit] = {
+    this.checkIndex(idx)
+    this.getOrCreateRef(idx).update(f)
+  }
+
+  final override def get(idx: Int): Txn[Option[A]] = {
+    this.getOrNull(idx) match {
+      case null => Txn.pure(None)
+      case tref => tref.get.map(Some(_))
+    }
+  }
+
+  final override def set(idx: Int, nv: A): Txn[Boolean] = {
+    this.getOrNull(idx) match {
+      case null => Txn._false
+      case tref => tref.set(nv).as(true)
+    }
+  }
+
+  final override def update(idx: Int, f: A => A): Txn[Boolean] = {
+    this.getOrNull(idx) match {
+      case null => Txn._false
+      case tref => tref.update(f).as(true)
+    }
+  }
+}
+
 private final class SparseRefArray[A](
+  __size: Int,
+  initial: A,
+  _idBase: Long,
+) extends SparseRefArrayImpl[A](__size, initial, _idBase) {
+
+  protected[this] final override type RefT[a] = RefArrayRef[a]
+
+  protected[this] def createRef(i: Int): RefT[A] = {
+    new RefArrayRef[A](this, i)
+  }
+}
+
+private sealed abstract class SparseRefArrayImpl[A](
   __size: Int,
   initial: A,
   _idBase: Long,
 ) extends RefArray[A](__size, _idBase) {
 
+  protected[this] type RefT[a] <: RefArrayRef[a]
+
+  protected[this] def createRef(i: Int): RefT[A]
+
   private[this] val initVal: AnyRef =
-    initial.asInstanceOf[AnyRef]
+    box(initial)
 
   final override val items: Array[AnyRef] = {
     val ara = new Array[AnyRef](3 * size)
@@ -103,29 +176,29 @@ private final class SparseRefArray[A](
   final override def apply(idx: Int): Option[Ref[A]] =
     Option(this.getOrNull(idx))
 
-  final override def unsafeGet(idx: Int): Ref[A] = {
+  final override def unsafeApply(idx: Int): Ref[A] = {
     this.checkIndex(idx)
     this.getOrCreateRef(idx)
   }
 
-  private[this] final def getOrNull(idx: Int): Ref[A] = {
+  protected[this] final def getOrNull(idx: Int): RefT[A] = {
     if ((idx >= 0) && (idx < size)) {
       this.getOrCreateRef(idx)
     } else {
-      null
+      null.asInstanceOf[RefT[A]]
     }
   }
 
-  private[this] final def getOrCreateRef(i: Int): Ref[A] = {
+  protected[this] final def getOrCreateRef(i: Int): RefT[A] = {
     val items = this.items
     val refIdx = 3 * i
     CompatPlatform.checkArrayIndexIfScalaJs(refIdx, items.length)
     val existing = items(refIdx)
     if (existing ne null) {
-      existing.asInstanceOf[Ref[A]]
+      existing.asInstanceOf[RefT[A]]
     } else {
       val itemIdx = refIdx + 1
-      val nv = new RefArrayRef[A](this, itemIdx)
+      val nv = createRef(itemIdx)
       items(refIdx) = nv
       nv
     }
@@ -134,7 +207,44 @@ private final class SparseRefArray[A](
 
 private object RefArray {
 
-  private[refs] final class RefArrayRef[A](
+  private[refs] final class RefArrayTRef[A](
+    array: RefArray[A],
+    physicalIdx: Int,
+  ) extends RefArrayRef[A](array, physicalIdx)
+    with stm.TRef.UnsealedTRef[A]
+    with stm.SinglethreadedTRefImpl[A] {
+
+    private[this] val listeners: MutLongMap[Null => Unit] =
+      MutLongMap.empty[Null => Unit]
+
+    private[this] val previousListenerId: LongRef =
+      LongRef.create(Consts.InvalidListenerId)
+
+    // Note that we must override these, as the defaults we inherit are incorrect for TRef:
+
+    private[choam] final override def withListeners: MemoryLocation.WithListeners =
+      this
+
+    private[choam] final override def unsafeNotifyListeners(): Unit =
+      this.unsafeNotifyListenersImpl(this.listeners)
+
+    private[choam] final override def unsafeRegisterListener(
+      ctx: Mcas.ThreadContext,
+      listener: Null => Unit,
+      lastSeenVersion: Long,
+    ): Long = this.unsafeRegisterListenerImpl(this.listeners, this.previousListenerId, ctx, listener, lastSeenVersion)
+
+    private[choam] final override def unsafeCancelListener(lid: Long): Unit =
+      this.unsafeCancelListenerImpl(this.listeners, lid)
+
+    private[choam] final override def unsafeNumberOfListeners(): Int =
+      this.unsafeNumberOfListenersImpl(this.listeners)
+
+    final override def toString: String =
+      refs.refArrayRefToString("ATRef", array.idBase, this.logicalIdx)
+  }
+
+  private[refs] sealed class RefArrayRef[A](
     array: RefArray[A],
     physicalIdx: Int,
   ) extends core.RefGetAxn[A] with UnsealedRef[A] with MemoryLocation[A] {
@@ -201,11 +311,11 @@ private object RefArray {
       RefIdGen.compute(array.idBase, this.logicalIdx)
     }
 
-    final override def toString: String = {
-      refs.refArrayRefToString(array.idBase, this.logicalIdx)
+    override def toString: String = {
+      refs.refArrayRefToString("ARef", array.idBase, this.logicalIdx)
     }
 
-    private[this] final def logicalIdx: Int =
+    protected[this] final def logicalIdx: Int =
       this.physicalIdx / 3 // truncated division is OK here
 
     private[choam] final override def dummy(v: Byte): Long =

@@ -47,7 +47,7 @@ final class RefSpec_Ref2_ThreadConfinedMcas_IO
 
 trait RefSpec_Arr[F[_]] extends RefSpec_Real[F] { this: McasImplSpec =>
   override def newRef[A](initial: A): F[RefType[A]] =
-    Ref.array(1, initial).run[F].map(_.unsafeGet(0))
+    Ref.array(1, initial).run[F].map(_.unsafeApply(0))
 }
 
 trait RefSpec_Ref2[F[_]] extends RefSpec_Real[F] { this: McasImplSpec =>
@@ -149,17 +149,17 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
   test("Ref.array") {
     for {
       a <- Ref.array[String](size = 4, initial = "x").run[F]
-      _ <- a.unsafeGet(0).getAndSet("a").run
-      _ <- a.unsafeGet(1).getAndSet("b").run
-      _ <- a.unsafeGet(2).getAndSet("c").run
-      _ <- a.unsafeGet(3).getAndSet("d").run
-      sw02 = Ref.swap(a.unsafeGet(0), a.unsafeGet(2))
-      sw13 = Ref.swap(a.unsafeGet(1), a.unsafeGet(3))
+      _ <- a.unsafeApply(0).getAndSet("a").run
+      _ <- a.unsafeApply(1).getAndSet("b").run
+      _ <- a.unsafeApply(2).getAndSet("c").run
+      _ <- a.unsafeApply(3).getAndSet("d").run
+      sw02 = Ref.swap(a.unsafeApply(0), a.unsafeApply(2))
+      sw13 = Ref.swap(a.unsafeApply(1), a.unsafeApply(3))
       _ <- (sw02 * sw13).run[F]
-      _ <- assertResultF(a.unsafeGet(0).get.run[F], "c")
-      _ <- assertResultF(a.unsafeGet(1).get.run[F], "d")
-      _ <- assertResultF(a.unsafeGet(2).get.run[F], "a")
-      _ <- assertResultF(a.unsafeGet(3).get.run[F], "b")
+      _ <- assertResultF(a.unsafeApply(0).get.run[F], "c")
+      _ <- assertResultF(a.unsafeApply(1).get.run[F], "d")
+      _ <- assertResultF(a.unsafeApply(2).get.run[F], "a")
+      _ <- assertResultF(a.unsafeApply(3).get.run[F], "b")
     } yield ()
   }
 
@@ -167,20 +167,20 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
     val N = 0xffff
     for {
       a <- Ref.array[String](size = N, initial = "x").run[F]
-      _ <- assertResultF(a.unsafeGet(0).get.run[F], "x")
-      _ <- assertResultF(a.unsafeGet(1).get.run[F], "x")
-      _ <- assertResultF(a.unsafeGet(2).get.run[F], "x")
-      _ <- assertResultF(a.unsafeGet(3).get.run[F], "x")
-      _ <- assertResultF(a.unsafeGet(N - 1).get.run[F], "x")
+      _ <- assertResultF(a.unsafeApply(0).get.run[F], "x")
+      _ <- assertResultF(a.unsafeApply(1).get.run[F], "x")
+      _ <- assertResultF(a.unsafeApply(2).get.run[F], "x")
+      _ <- assertResultF(a.unsafeApply(3).get.run[F], "x")
+      _ <- assertResultF(a.unsafeApply(N - 1).get.run[F], "x")
       idx <- F.delay {
         val tlr = java.util.concurrent.ThreadLocalRandom.current()
         (tlr.nextInt().abs % (N - 2)) + 1
       }
-      _ <- assertResultF(a.unsafeGet(idx).get.run[F], "x")
-      _ <- a.unsafeGet(idx).getAndSet("foo").run
-      _ <- assertResultF(a.unsafeGet(0).get.run[F], "x")
-      _ <- assertResultF(a.unsafeGet(idx).get.run[F], "foo")
-      _ <- assertResultF(a.unsafeGet(N - 1).get.run[F], "x")
+      _ <- assertResultF(a.unsafeApply(idx).get.run[F], "x")
+      _ <- a.unsafeApply(idx).getAndSet("foo").run
+      _ <- assertResultF(a.unsafeApply(0).get.run[F], "x")
+      _ <- assertResultF(a.unsafeApply(idx).get.run[F], "foo")
+      _ <- assertResultF(a.unsafeApply(N - 1).get.run[F], "x")
     } yield ()
   }
 

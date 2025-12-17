@@ -42,7 +42,7 @@ private abstract class ArrayQueue[A](
 
   final override def poll: Rxn[Option[A]] = {
     head.get.flatMap { idx =>
-      arr.unsafeGet(idx).flatModify { a =>
+      arr.unsafeApply(idx).flatModify { a =>
         if (isEmpty(a)) {
           // empty queue
           (a, Rxn.none)
@@ -57,7 +57,7 @@ private abstract class ArrayQueue[A](
   // Note: not final, because `RingBuffer` needs to override it
   override def offer(newVal: A): Rxn[Boolean] = {
     tail.get.flatMap { idx =>
-      val ref = arr.unsafeGet(idx)
+      val ref = arr.unsafeApply(idx)
       ref.get.flatMap { oldVal =>
         if (isEmpty(oldVal)) {
           // ok, we can enqueue:
@@ -78,7 +78,7 @@ private abstract class ArrayQueue[A](
         } else if (h > t) {
           Rxn.pure(t - h + capacity)
         } else { // h == t
-          arr.unsafeGet(t).get.map { a =>
+          arr.unsafeApply(t).get.map { a =>
             if (isEmpty(a)) 0 // empty
             else capacity // full
           }

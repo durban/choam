@@ -20,13 +20,81 @@ package internal
 package refs
 
 import core.Ref
+import stm.Txn
+
+private final class SparseTRefArray[A](
+  __size: Int,
+  initial: A,
+  _idBase: Long,
+) extends SparseRefArrayImpl[A](__size, initial, _idBase)
+  with stm.TArray.UnsealedTArray[A] {
+
+  protected[this] final override type RefT[a] = RefArrayTRef[a]
+
+  protected[this] final override def createRef(i: Int): RefArrayTRef[A] = {
+    new RefArrayTRef[A](this, i)
+  }
+
+  final override def unsafeGet(idx: Int): Txn[A] = {
+    this.checkIndex(idx)
+    this.getOrCreateRef(idx).get
+  }
+
+  final override def unsafeSet(idx: Int, nv: A): Txn[Unit] = {
+    this.checkIndex(idx)
+    this.getOrCreateRef(idx).set(nv)
+  }
+
+  final override def unsafeUpdate(idx: Int, f: A => A): Txn[Unit] = {
+    this.checkIndex(idx)
+    this.getOrCreateRef(idx).update(f)
+  }
+
+  final override def get(idx: Int): Txn[Option[A]] = {
+    this.getOrNull(idx) match {
+      case null => Txn.pure(None)
+      case tref => tref.get.map(Some(_))
+    }
+  }
+
+  final override def set(idx: Int, nv: A): Txn[Boolean] = {
+    this.getOrNull(idx) match {
+      case null => Txn._false
+      case tref => tref.set(nv).as(true)
+    }
+  }
+
+  final override def update(idx: Int, f: A => A): Txn[Boolean] = {
+    this.getOrNull(idx) match {
+      case null => Txn._false
+      case tref => tref.update(f).as(true)
+    }
+  }
+}
 
 private final class SparseRefArray[A](
   __size: Int,
   initial: A,
   _idBase: Long,
+) extends SparseRefArrayImpl[A](__size, initial, _idBase) {
+
+  protected[this] final override type RefT[a] = RefArrayRef[a]
+
+  protected[this] def createRef(i: Int): RefT[A] = {
+    new RefArrayRef[A](this, i)
+  }
+}
+
+private sealed abstract class SparseRefArrayImpl[A](
+  __size: Int,
+  initial: A,
+  _idBase: Long,
 ) extends SparseRefArrayBase[A](__size, box(initial), _idBase) // TODO: try to avoid `box`
   with Ref.UnsealedArray[A] {
+
+  protected[this] type RefT[a] <: RefArrayRef[a]
+
+  protected[this] def createRef(i: Int): RefT[A]
 
   require((__size > 0) && (((__size - 1) * 3 + 2) > (__size - 1))) // avoid overflow
 
@@ -36,20 +104,20 @@ private final class SparseRefArray[A](
   final override def apply(idx: Int): Option[Ref[A]] =
     Option(this.getOrNull(idx))
 
-  final override def unsafeGet(idx: Int): Ref[A] = {
+  final override def unsafeApply(idx: Int): Ref[A] = {
     this.checkIndex(idx)
     this.getOrCreateRef(idx)
   }
 
-  private[this] final def getOrNull(idx: Int): Ref[A] = {
+  protected[this] final def getOrNull(idx: Int): RefT[A] = {
     if ((idx >= 0) && (idx < size)) {
       this.getOrCreateRef(idx)
     } else {
-      null
+      nullOf[RefT[A]]
     }
   }
 
-  private[this] final def getOrCreateRef(i: Int): Ref[A] = {
+  protected[this] final def getOrCreateRef(i: Int): RefT[A] = {
     val refIdx = 3 * i
     val existing = this.getO(refIdx)
     if (existing ne null) {
@@ -57,13 +125,13 @@ private final class SparseRefArray[A](
       // so it's "safely initialized", so if
       // we've read something here with `getO`,
       // then we also can see its fields:
-      existing.asInstanceOf[Ref[A]]
+      existing.asInstanceOf[RefT[A]]
     } else {
-      val nv = new RefArrayRef[A](this, i)
+      val nv = this.createRef(i)
       // opaque is enough, see above:
       this.cmpxchgO(refIdx, null, nv) match {
         case null => nv // we're the first
-        case other => other.asInstanceOf[Ref[A]]
+        case other => other.asInstanceOf[RefT[A]]
       }
     }
   }

@@ -99,7 +99,7 @@ object Ref extends RefInstances0 {
 
     def size: Int
 
-    def unsafeGet(idx: Int): Ref[A]
+    def unsafeApply(idx: Int): Ref[A] // TODO:0.5: better name
 
     def apply(idx: Int): Option[Ref[A]]
 
@@ -215,7 +215,7 @@ object Ref extends RefInstances0 {
     final override def apply(idx: Int): Option[Ref[A]] =
       None
 
-    final override def unsafeGet(idx: Int): Ref[A] =
+    final override def unsafeApply(idx: Int): Ref[A] =
       throw new IndexOutOfBoundsException(s"Index ${idx} out of bounds for length 0")
 
     final override def toString: String =
@@ -251,14 +251,12 @@ object Ref extends RefInstances0 {
     safeArrayImpl(size, initial, str)
   }
 
-  // the duplicated logic with unsafeArray is to avoid
-  // having the `if` and `match` inside the `Rxn`:
+  // the duplicated logic with unsafeArray is
+  // to avoid having the `if`s inside the `Rxn`:
   private[this] final def safeArrayImpl[A](size: Int, initial: A, str: Ref.Array.AllocationStrategy): RxnImpl[Ref.Array[A]] = {
     if (size > 0) {
       if (str.stm) {
-        // TODO: flat arrays of TRefs are not implemented yet
-        if (str.sparse) Rxn.unsafe.delayContextImpl(ctx => new LazyArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
-        else Rxn.unsafe.delayContextImpl(ctx => new StrictArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
+        safeTArrayImpl(size, initial, str)
       } else {
         if (str.flat) {
           require(!str.padded, "flat && padded not implemented yet")
@@ -276,12 +274,22 @@ object Ref extends RefInstances0 {
     }
   }
 
+  private[choam] final def safeTArrayImpl[A](size: Int, initial: A, str: Ref.Array.AllocationStrategy): RxnImpl[Ref.Array[A] with stm.TArray[A]] = {
+    require(str.stm)
+    if (str.flat) {
+      require(!str.padded, "flat && padded not implemented yet")
+      if (str.sparse) Rxn.unsafe.delayContextImpl(ctx => unsafeLazyTArray(size, initial, ctx.refIdGen))
+      else throw new IllegalArgumentException("flat && !sparse not implemented yet for STM")
+    } else {
+      if (str.sparse) Rxn.unsafe.delayContextImpl(ctx => new LazyArrayOfTRefs(size, initial, str, rig = ctx.refIdGen))
+      else Rxn.unsafe.delayContextImpl(ctx => new StrictArrayOfTRefs(size, initial, str, rig = ctx.refIdGen))
+    }
+  }
+
   private[choam] final def unsafeArray[A](size: Int, initial: A, str: Ref.Array.AllocationStrategy, rig: RefIdGen): Ref.Array[A] = {
     if (size > 0) {
       if (str.stm) {
-        // TODO: flat arrays of TRefs are not implemented yet
-        if (str.sparse) new LazyArrayOfRefs(size, initial, str, rig)
-        else new StrictArrayOfRefs(size, initial, str, rig)
+        unsafeTArray(size, initial, str, rig)
       } else {
         if (str.flat) {
           require(!str.padded, "flat && padded not implemented yet")
@@ -299,60 +307,217 @@ object Ref extends RefInstances0 {
     }
   }
 
+  private[this] final def unsafeTArray[A](size: Int, initial: A, str: Ref.Array.AllocationStrategy, rig: RefIdGen): Ref.Array[A] with stm.TArray[A] = {
+    require(str.stm)
+    if (str.flat) {
+      require(!str.padded, "flat && padded not implemented yet")
+      if (str.sparse) unsafeLazyTArray(size, initial, rig)
+      else throw new IllegalArgumentException("flat && !sparse not implemented yet for STM")
+    } else {
+      if (str.sparse) new LazyArrayOfTRefs(size, initial, str, rig)
+      else new StrictArrayOfTRefs(size, initial, str, rig)
+    }
+  }
+
+  private[choam] final class StrictArrayOfTRefs[A](
+    size: Int,
+    initial: A,
+    str: Ref.AllocationStrategy,
+    rig: RefIdGen,
+  ) extends StrictArrayOfRefsImpl[A](size, initial, str, rig)
+    with stm.TArray.UnsealedTArray[A] {
+
+    protected[this] final override type RefT[a] = Ref[a] with stm.TRef[a]
+
+    protected[this] final override def createRef(initial: A, str: Ref.AllocationStrategy, rig: RefIdGen): RefT[A] =
+      unsafeTRef(initial, str, rig)
+
+    private[this] final def getOrNull(idx: Int): stm.TRef[A] = {
+      if ((idx >= 0) && (idx < size)) {
+        this.arr(idx)
+      } else {
+        null
+      }
+    }
+
+    final override def unsafeGet(idx: Int): stm.Txn[A] = {
+      internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, size)
+      this.arr(idx).get
+    }
+
+    final override def unsafeSet(idx: Int, nv: A): stm.Txn[Unit] = {
+      internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, size)
+      this.arr(idx).set(nv)
+    }
+
+    final override def unsafeUpdate(idx: Int, f: A => A): stm.Txn[Unit] = {
+      internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, size)
+      this.arr(idx).update(f)
+    }
+
+    final override def get(idx: Int): stm.Txn[Option[A]] = {
+      this.getOrNull(idx) match {
+        case null => stm.Txn.none[A]
+        case tref => tref.get.map(Some(_))
+      }
+    }
+
+    final override def set(idx: Int, nv: A): stm.Txn[Boolean] = {
+      this.getOrNull(idx) match {
+        case null => stm.Txn._false
+        case tref => tref.set(nv).as(true)
+      }
+    }
+
+    final override def update(idx: Int, f: A => A): stm.Txn[Boolean] = {
+      this.getOrNull(idx) match {
+        case null => stm.Txn._false
+        case tref => tref.update(f).as(true)
+      }
+    }
+  }
+
   private[choam] final class StrictArrayOfRefs[A](
+    size: Int,
+    initial: A,
+    str: Ref.AllocationStrategy,
+    rig: RefIdGen,
+  ) extends StrictArrayOfRefsImpl[A](size, initial, str, rig) {
+
+    protected[this] final override type RefT[a] = Ref[a]
+
+    protected[this] def createRef(initial: A, str: Ref.AllocationStrategy, rig: RefIdGen): RefT[A] =
+      Ref.unsafe(initial, str, rig)
+  }
+
+  private[choam] sealed abstract class StrictArrayOfRefsImpl[A](
     final override val size: Int,
     initial: A,
     str: Ref.AllocationStrategy,
     rig: RefIdGen,
   ) extends Ref.Array[A] {
 
+    protected[this] type RefT[a] <: Ref[a]
+
     require(size > 0)
 
-    private[this] val arr: scala.Array[Ref[A]] = {
+    protected[this] def createRef(initial: A, str: Ref.AllocationStrategy, rig: RefIdGen): RefT[A]
+
+    protected[this] val arr: scala.Array[RefT[A]] = {
       val a = new scala.Array[Ref[A]](size)
       var idx = 0
       while (idx < size) {
-        a(idx) = Ref.unsafe(initial, str, rig)
+        a(idx) = this.createRef(initial, str, rig)
         idx += 1
       }
-      a
+      a.asInstanceOf[scala.Array[RefT[A]]]
     }
 
-    final override def unsafeGet(idx: Int): Ref[A] = {
+    final override def unsafeApply(idx: Int): Ref[A] = {
       internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, size) // TODO: check other places where we might need this
       this.arr(idx)
     }
 
     final override def apply(idx: Int): Option[Ref[A]] = {
       if ((idx >= 0) && (idx < size)) {
-        Some(this.unsafeGet(idx))
+        Some(this.unsafeApply(idx))
       } else {
         None
       }
     }
   }
 
+  private[choam] final class LazyArrayOfTRefs[A](
+    size: Int,
+    initial: A,
+    str: AllocationStrategy,
+    rig: RefIdGen,
+  ) extends LazyArrayOfRefsImpl[A](size, initial, str, rig)
+    with stm.TArray.UnsealedTArray[A] {
+
+    protected[this] final override type RefT[a] = Ref[a] with stm.TRef[a]
+
+    protected[this] def createRef(initial: A, str: Ref.AllocationStrategy, id: Long): RefT[A] =
+      stm.TRef.unsafeRefWithId(initial, id) // TODO: padded
+
+    final override def unsafeGet(idx: Int): stm.Txn[A] = {
+      unsafeApplyInternal(idx).get
+    }
+
+    final override def unsafeSet(idx: Int, nv: A): stm.Txn[Unit] = {
+      unsafeApplyInternal(idx).set(nv)
+    }
+
+    final override def unsafeUpdate(idx: Int, f: A => A): stm.Txn[Unit] = {
+      unsafeApplyInternal(idx).update(f)
+    }
+
+    final override def get(idx: Int): stm.Txn[Option[A]] = {
+      if ((idx >= 0) && (idx < size)) {
+        unsafeGet(idx).map(Some(_))
+      } else {
+        stm.Txn.none
+      }
+    }
+
+    final override def set(idx: Int, nv: A): stm.Txn[Boolean] = {
+      if ((idx >= 0) && (idx < size)) {
+        unsafeSet(idx, nv).as(true)
+      } else {
+        stm.Txn._false
+      }
+    }
+
+    final override def update(idx: Int, f: A => A): stm.Txn[Boolean] = {
+      if ((idx >= 0) && (idx < size)) {
+        unsafeUpdate(idx, f).as(true)
+      } else {
+        stm.Txn._false
+      }
+    }
+  }
+
   private[choam] final class LazyArrayOfRefs[A](
+    size: Int,
+    initial: A,
+    str: AllocationStrategy,
+    rig: RefIdGen,
+  ) extends LazyArrayOfRefsImpl[A](size, initial, str, rig) {
+
+    protected[this] final override type RefT[a] = Ref[a]
+
+    protected[this] def createRef(initial: A, str: Ref.AllocationStrategy, id: Long): RefT[A] =
+      unsafeWithId(initial, str, id)
+  }
+
+  private[choam] sealed abstract class LazyArrayOfRefsImpl[A](
     final override val size: Int,
     initial: A,
     str: AllocationStrategy,
     rig: RefIdGen,
   ) extends Ref.Array[A] {
 
+    protected[this] type RefT[a] <: Ref[a]
+
     require(size > 0)
 
-    private[this] val arr: AtomicReferenceArray[Ref[A]] =
-      new AtomicReferenceArray[Ref[A]](size)
+    protected[this] def createRef(initial: A, str: Ref.AllocationStrategy, id: Long): RefT[A]
+
+    private[this] val arr: AtomicReferenceArray[RefT[A]] =
+      new AtomicReferenceArray[RefT[A]](size)
 
     private[this] val idBase: Long =
       rig.nextArrayIdBase(size = size)
 
-    final override def unsafeGet(idx: Int): Ref[A] = {
+    final override def unsafeApply(idx: Int): RefT[A] =
+      unsafeApplyInternal(idx)
+
+    protected[this] final def unsafeApplyInternal(idx: Int): RefT[A] = {
       val arr = this.arr
       arr.getOpaque(idx) match { // FIXME: reading a `Ref` with a race!
         case null =>
-          val nv = unsafeWithId(initial, str, RefIdGen.compute(this.idBase, idx))
-          val wit = arr.compareAndExchange(idx, null, nv)
+          val nv = this.createRef(initial, str, RefIdGen.compute(this.idBase, idx))
+          val wit = arr.compareAndExchange(idx, nullOf[RefT[A]], nv)
           if (wit eq null) {
             nv // we're the first
           } else {
@@ -365,7 +530,7 @@ object Ref extends RefInstances0 {
 
     final override def apply(idx: Int): Option[Ref[A]] = {
       if ((idx >= 0) && (idx < size)) {
-        Some(this.unsafeGet(idx))
+        Some(this.unsafeApply(idx))
       } else {
         None
       }
@@ -392,8 +557,18 @@ object Ref extends RefInstances0 {
     internal.refs.unsafeNewSparseRefArray[A](size = size, initial = initial)(rig.nextArrayIdBase(size))
   }
 
+  private[this] final def unsafeLazyTArray[A](size: Int, initial: A, rig: RefIdGen): Ref.Array[A] with stm.TArray[A] = {
+    require(size > 0)
+    internal.refs.unsafeNewSparseRefTArray[A](size = size, initial = initial)(rig.nextArrayIdBase(size))
+  }
+
   private[choam] final def unsafe[A](initial: A, str: AllocationStrategy, rig: RefIdGen): Ref[A] = {
     unsafeWithId(initial, str, rig.nextId())
+  }
+
+  private[this] final def unsafeTRef[A](initial: A, str: AllocationStrategy, rig: RefIdGen): Ref[A] with stm.TRef[A] = {
+    require(str.stm)
+    stm.TRef.unsafeRefWithId(initial, rig.nextId()) // TODO: padded TRef
   }
 
   private[this] final def unsafeWithId[A](initial: A, str: AllocationStrategy, id: Long): Ref[A] = {

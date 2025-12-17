@@ -20,6 +20,8 @@ package stm
 
 import cats.effect.IO
 
+import core.Ref
+
 final class TArraySpec_DefaultMcas_IO
   extends BaseSpecIO
   with SpecDefaultMcas
@@ -89,6 +91,22 @@ trait TArraySpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       _ <- assertResultF(arr.get(0).commit, Some("bc"))
       _ <- assertResultF(arr.get(1).commit, Some("a"))
       _ <- assertResultF(arr.get(2).commit, Some("a"))
+    } yield ()
+  }
+
+  test("Various allocation strategies") {
+    def checkArr(arr: TArray[Int]): F[Unit] = for {
+      _ <- arr.unsafeSet(0, 42).commit
+      _ <- assertResultF(arr.unsafeGet(0).commit, 42)
+    } yield ()
+    for {
+      arr1 <- TArray[Int](1, 0, TArray.DefaultAllocationStrategy).commit // NB: this is sparse && flat
+      _ <- checkArr(arr1)
+      // TODO: !sparse && flat is not implemented for now
+      arr2 <- TArray[Int](1, 0, Ref.Array.AllocationStrategy(sparse = true, flat = false, padded = false)).commit
+      _ <- checkArr(arr2)
+      arr2 <- TArray[Int](1, 0, Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = false)).commit
+      _ <- checkArr(arr2)
     } yield ()
   }
 }

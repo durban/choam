@@ -51,7 +51,7 @@ trait TestInstances { self =>
               val str = Ref.Array.AllocationStrategy(sparse = sparse, flat = flat, padded = false)
               Gen.delay { Ref.unsafeArray[A](size = s, initial = a, str = str, rig = this.rigInstance) }.flatMap { arr =>
                 Gen.oneOf(Gen.const(0), Gen.choose(0, s - 1)).flatMap { idx =>
-                  Gen.delay { arr.unsafeGet(idx) }
+                  Gen.delay { arr.unsafeApply(idx) }
                 }
               }
             }

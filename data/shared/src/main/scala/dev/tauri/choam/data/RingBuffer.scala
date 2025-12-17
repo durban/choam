@@ -45,7 +45,7 @@ private final class RingBuffer[A](
 
   final override def add(newVal: A): Rxn[Unit] = {
     tail.getAndUpdate(incrIdx).flatMap { idx =>
-      arr.unsafeGet(idx).modify { oldVal =>
+      arr.unsafeApply(idx).modify { oldVal =>
         if (isEmpty(oldVal)) {
           (newVal, Rxn.unit)
         } else {

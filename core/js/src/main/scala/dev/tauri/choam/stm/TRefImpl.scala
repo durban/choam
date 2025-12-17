@@ -21,6 +21,7 @@ package stm
 import java.lang.ref.WeakReference
 
 import scala.collection.mutable.{ LongMap => MutLongMap }
+import scala.runtime.LongRef
 
 import internal.mcas.{ Mcas, MemoryLocation, Consts }
 
@@ -29,7 +30,7 @@ private final class TRefImpl[A](
   final override val id: Long,
 ) extends core.RefGetAxn[A]
   with core.UnsealedRef[A]
-  with MemoryLocation.WithListeners
+  with SinglethreadedTRefImpl[A]
   with TRefImplBase[A] {
 
   private[this] var contents: A =
@@ -38,11 +39,11 @@ private final class TRefImpl[A](
   private[this] var version: Long =
     internal.mcas.Version.Start
 
-  private[this] val listeners =
+  private[this] val listeners: MutLongMap[Null => Unit] =
     MutLongMap.empty[Null => Unit]
 
-  private[this] var previousListenerId: Long =
-    Consts.InvalidListenerId
+  private[this] val previousListenerId: LongRef =
+    LongRef.create(Consts.InvalidListenerId)
 
   final override def unsafeGetV(): A =
     contents
@@ -113,13 +114,44 @@ private final class TRefImpl[A](
   private[choam] final override def withListeners: this.type =
     this
 
+  @inline
   private[choam] final override def unsafeRegisterListener(
     ctx: Mcas.ThreadContext,
     listener: Null => Unit,
     lastSeenVersion: Long,
   ): Long = {
-    val lid = previousListenerId + 1L
-    previousListenerId = lid
+    this.unsafeRegisterListenerImpl(this.listeners, this.previousListenerId, ctx, listener, lastSeenVersion)
+  }
+
+  @inline
+  private[choam] final override def unsafeCancelListener(lid: Long): Unit = {
+    this.unsafeCancelListenerImpl(this.listeners, lid)
+  }
+
+  @inline
+  private[choam] final override def unsafeNumberOfListeners(): Int = {
+    this.unsafeNumberOfListenersImpl(this.listeners)
+  }
+
+  @inline
+  private[choam] final override def unsafeNotifyListeners(): Unit = {
+    this.unsafeNotifyListenersImpl(this.listeners)
+  }
+}
+
+private[choam] trait SinglethreadedTRefImpl[A]
+  extends MemoryLocation[A]
+  with MemoryLocation.WithListeners {
+
+  private[choam] final def unsafeRegisterListenerImpl(
+    listeners: MutLongMap[Null => Unit],
+    previousListenerId: LongRef,
+    ctx: Mcas.ThreadContext,
+    listener: Null => Unit,
+    lastSeenVersion: Long,
+  ): Long = {
+    val lid = previousListenerId.elem + 1L
+    previousListenerId.elem = lid
     Predef.assert(lid != Consts.InvalidListenerId) // detect overflow
 
     val currVer = ctx.readVersion(this)
@@ -131,16 +163,16 @@ private final class TRefImpl[A](
     }
   }
 
-  private[choam] final override def unsafeCancelListener(lid: Long): Unit = {
-    assert(lid != Consts.InvalidListenerId)
+  private[choam] final def unsafeCancelListenerImpl(listeners: MutLongMap[Null => Unit], lid: Long): Unit = {
+    _assert(lid != Consts.InvalidListenerId)
     listeners.remove(lid) : Unit
   }
 
-  private[choam] final override def unsafeNumberOfListeners(): Int = {
+  private[choam] final def unsafeNumberOfListenersImpl(listeners: MutLongMap[Null => Unit]): Int = {
     listeners.size
   }
 
-  private[choam] final override def unsafeNotifyListeners(): Unit = {
+  private[choam] final def unsafeNotifyListenersImpl(listeners: MutLongMap[Null => Unit]): Unit = {
     val itr = listeners.valuesIterator
     while (itr.hasNext) {
       val cb = itr.next()

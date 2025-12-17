@@ -20,11 +20,52 @@ package internal
 package refs
 
 import java.lang.ref.WeakReference
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
+
+import scala.collection.immutable.LongMap
 
 import core.UnsealedRef
-import mcas.{ MemoryLocation, RefIdGen }
+import mcas.{ Mcas, MemoryLocation, RefIdGen, Consts }
 
-private final class RefArrayRef[A](
+private final class RefArrayTRef[A](
+  array: RefArrayBase[A],
+  logicalIdx: Int,
+) extends RefArrayRef[A](array, logicalIdx)
+  with stm.TRef.UnsealedTRef[A]
+  with stm.MultithreadedTRefImpl[A] {
+
+  private[this] val listeners = // TODO: store this in the array
+    new AtomicReference[LongMap[Null => Unit]](LongMap.empty)
+
+  private[this] val previousListenerId = // TODO: store this in the array(?)
+    new AtomicLong(Consts.InvalidListenerId)
+
+  // Note that we must override these, as the defaults we inherit are incorrect for TRef:
+
+  private[choam] final override def withListeners: MemoryLocation.WithListeners =
+    this
+
+  private[choam] final override def unsafeNotifyListeners(): Unit =
+    this.unsafeNotifyListenersImpl(this.listeners)
+
+  private[choam] final override def unsafeRegisterListener(
+    ctx: Mcas.ThreadContext,
+    listener: Null => Unit,
+    lastSeenVersion: Long,
+  ): Long = this.unsafeRegisterListenerImpl(this.listeners, this.previousListenerId, ctx, listener, lastSeenVersion)
+
+  private[choam] final override def unsafeCancelListener(lid: Long): Unit =
+    this.unsafeCancelListenerImpl(this.listeners, lid)
+
+  private[choam] final override def unsafeNumberOfListeners(): Int =
+    this.unsafeNumberOfListenersImpl(this.listeners)
+
+  final override def toString: String =
+    refs.refArrayRefToString("ATRef", array.idBase, this.logicalIdx)
+}
+
+private sealed class RefArrayRef[A](
   array: RefArrayBase[A],
   logicalIdx: Int,
 ) extends core.RefGetAxn[A] with UnsealedRef[A] with MemoryLocation[A] {
@@ -77,8 +118,8 @@ private final class RefArrayRef[A](
   final override def unsafeCmpxchgMarkerR(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef] =
     array.cmpxchgR(markerIdx, ov, nv).asInstanceOf[WeakReference[AnyRef]]
 
-  final override def toString: String =
-    refs.refArrayRefToString(array.idBase, this.logicalIdx)
+  override def toString: String =
+    refs.refArrayRefToString("ARef", array.idBase, this.logicalIdx)
 
   private[choam] final override def dummy(v: Byte): Long =
     v ^ id
