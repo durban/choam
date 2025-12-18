@@ -60,7 +60,7 @@ private abstract class RefArrayBase[A](
       while (i < size) {
         val refIdx = 3 * i
         val itemIdx = refIdx + 1
-        arr(refIdx) = new RefArrayRef[A](this, i)
+        arr(refIdx) = this.createRef(i)
         arr(itemIdx) = init
         // TODO: plain writes, final field
         i += 1
