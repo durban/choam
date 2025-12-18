@@ -103,20 +103,20 @@ trait RefArraySpec extends BaseSpec with SpecDefaultMcas {
 
   test("array creation") {
     val str0 = Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = false)
-    assert(Ref.array(N, "", str0).unsafePerform(this.defaultMcasInstance).isInstanceOf[Ref.StrictArrayOfRefs[?]])
+    assert(Ref.array(N, "", str0).unsafePerform(this.defaultMcasInstance).isInstanceOf[DenseArrayOfRefs[?]])
     val str2 = Ref.Array.AllocationStrategy(sparse = false, flat = true, padded = false)
     assert(Ref.array(N, "", str2).unsafePerform(this.defaultMcasInstance).isInstanceOf[StrictRefArray[?]])
     val str4 = Ref.Array.AllocationStrategy(sparse = true, flat = false, padded = false)
-    assert(Ref.array(N, "", str4).unsafePerform(this.defaultMcasInstance).isInstanceOf[Ref.LazyArrayOfRefs[?]])
+    assert(Ref.array(N, "", str4).unsafePerform(this.defaultMcasInstance).isInstanceOf[SparseArrayOfRefs[?]])
     val str6 = Ref.Array.AllocationStrategy(sparse = true, flat = true, padded = false)
     assert(Ref.array(N, "", str6).unsafePerform(this.defaultMcasInstance).isInstanceOf[SparseRefArray[?]])
     val str1 = Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = true)
-    assert(Ref.array(N, "", str1).unsafePerform(this.defaultMcasInstance).isInstanceOf[Ref.StrictArrayOfRefs[?]])
+    assert(Ref.array(N, "", str1).unsafePerform(this.defaultMcasInstance).isInstanceOf[DenseArrayOfRefs[?]])
     assert(Either.catchOnly[IllegalArgumentException] {
       Ref.Array.AllocationStrategy(sparse = false, flat = true, padded = true) // 3
     }.isLeft)
     val str5 = Ref.Array.AllocationStrategy(sparse = true, flat = false, padded = true)
-    assert(Ref.array(N, "", str5).unsafePerform(this.defaultMcasInstance).isInstanceOf[Ref.LazyArrayOfRefs[?]])
+    assert(Ref.array(N, "", str5).unsafePerform(this.defaultMcasInstance).isInstanceOf[SparseArrayOfRefs[?]])
     assert(Either.catchOnly[IllegalArgumentException] {
       Ref.Array.AllocationStrategy(sparse = true, flat = true, padded = true) // 7
     }.isLeft)
