@@ -60,7 +60,7 @@ private sealed class DenseRefArray[A](
       val refIdx = 3 * i
       val itemIdx = refIdx + 1
       val versionIdx = refIdx + 2
-      ara(refIdx) = new RefArrayRef[A](this, itemIdx)
+      ara(refIdx) = this.createRef(itemIdx)
       ara(itemIdx) = value
       ara(versionIdx) = Version.BoxedStart
       i += 1
