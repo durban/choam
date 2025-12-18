@@ -24,6 +24,7 @@ import cats.kernel.{ Hash, Order }
 import cats.effect.kernel.{ Ref => CatsRef }
 
 import internal.mcas.{ MemoryLocation, RefIdGen }
+import internal.refs.EmptyRefArray
 import internal.refs.CompatPlatform.AtomicReferenceArray
 
 /**
@@ -193,7 +194,9 @@ object Ref extends RefInstances0 {
     }
   }
 
-  private[choam] trait UnsealedArray[A] extends Array[A] { this: internal.refs.RefIdOnlyN =>
+  private[choam] trait UnsealedArray0[A] extends Array[A] // TODO: better name
+
+  private[choam] trait UnsealedArray[A] extends UnsealedArray0[A] { this: internal.refs.RefIdOnlyN =>
 
     protected[choam] final override def refToString(): String = {
       val idBase = this.id
@@ -205,42 +208,6 @@ object Ref extends RefInstances0 {
         throw new IndexOutOfBoundsException(s"Index ${idx} out of bounds for length ${size}")
       }
     }
-  }
-
-  private final class EmptyRefArray[A] extends Ref.Array[A] with stm.TArray.UnsealedTArray[A] {
-
-    final override val size: Int =
-      0
-
-    final override def toString: String =
-      s"Ref.Array[0]@${java.lang.Long.toHexString(0L)}" // TODO: this is incorrect for TArray
-
-    private[this] final def throwOob(idx: Int): Nothing =
-      throw new IndexOutOfBoundsException(s"Index ${idx} out of bounds for length 0")
-
-    final override def apply(idx: Int): Option[Ref[A]] =
-      None
-
-    final override def unsafeApply(idx: Int): Ref[A] =
-      throwOob(idx)
-
-    final override def unsafeGet(idx: Int): stm.Txn[A] =
-      throwOob(idx)
-
-    final override def unsafeSet(idx: Int, nv: A): stm.Txn[Unit] =
-      throwOob(idx)
-
-    final override def unsafeUpdate(idx: Int, f: A => A): stm.Txn[Unit] =
-      throwOob(idx)
-
-    final override def get(idx: Int): stm.Txn[Option[A]] =
-      stm.Txn.none
-
-    final override def set(idx: Int, nv: A): stm.Txn[Boolean] =
-      stm.Txn._false
-
-    final override def update(idx: Int, f: A => A): stm.Txn[Boolean] =
-      stm.Txn._false
   }
 
   final def apply[A](initial: A, str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Rxn[Ref[A]] = {
