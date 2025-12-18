@@ -53,6 +53,8 @@ abstract class RefArrayBase<A> extends RefIdOnlyN {
     return vers;
   }
 
+  protected abstract RefArrayRef<A> createRef(int i);
+
   protected RefArrayBase(int size, Object init, long idBase, boolean sparse) {
     super(idBase);
 
@@ -73,7 +75,7 @@ abstract class RefArrayBase<A> extends RefIdOnlyN {
       for (int i = 0; i < size; i++) {
         int refIdx = 3 * i;
         int itemIdx = refIdx + 1;
-        arr[refIdx] = new RefArrayRef<A>(this, i);
+        arr[refIdx] = this.createRef(i);
         arr[itemIdx] = init;
         // we'll store `arr` into a final field,
         // so plain stores are enough here, these

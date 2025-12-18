@@ -21,7 +21,7 @@ package refs
 
 import core.Ref
 
-private final class DenseRefArray[A](
+private sealed class DenseRefArray[A](
   __size: Int,
   initial: A,
   _idBase: Long,
@@ -41,6 +41,10 @@ private final class DenseRefArray[A](
     this.getOrNull(idx)
   }
 
+  override def createRef(i: Int): RefArrayRef[A] = {
+    new RefArrayRef[A](this, i)
+  }
+
   private[this] final def getOrNull(idx: Int): Ref[A] = {
     if ((idx >= 0) && (idx < size)) {
       val refIdx = 3 * idx
@@ -51,5 +55,64 @@ private final class DenseRefArray[A](
     } else {
       null
     }
+  }
+}
+
+private final class DenseTRefArray[A](
+  __size: Int,
+  initial: A,
+  _idBase: Long,
+) extends DenseRefArray[A](__size, initial, _idBase) with stm.TArray.UnsealedTArray[A] {
+
+  final override def createRef(i: Int): RefArrayTRef[A] = {
+    new RefArrayTRef[A](this, i)
+  }
+
+  private[this] final def getOrNull(idx: Int): stm.TRef[A] = {
+    if ((idx >= 0) && (idx < size)) {
+      val refIdx = 3 * idx
+      // `RefArrayTRef`s were initialized into
+      // a final field (`items`), and they
+      // never change, so we can read with plain:
+      this.getP(refIdx).asInstanceOf[stm.TRef[A]]
+    } else {
+      null
+    }
+  }
+
+  final override def get(idx: Int): stm.Txn[Option[A]] = {
+    this.getOrNull(idx) match {
+      case null => stm.Txn.none
+      case tref => tref.get.map(Some(_))
+    }
+  }
+
+  final override def set(idx: Int, nv: A): stm.Txn[Boolean] = {
+    this.getOrNull(idx) match {
+      case null => stm.Txn._false
+      case tref => tref.set(nv).as(true)
+    }
+  }
+
+  final override def update(idx: Int, f: A => A): stm.Txn[Boolean] = {
+    this.getOrNull(idx) match {
+      case null => stm.Txn._false
+      case tref => tref.update(f).as(true)
+    }
+  }
+
+  final override def unsafeGet(idx: Int): stm.Txn[A] = {
+    this.checkIndex(idx)
+    this.getOrNull(idx).get
+  }
+
+  final override def unsafeSet(idx: Int, nv: A): stm.Txn[Unit] = {
+    this.checkIndex(idx)
+    this.getOrNull(idx).set(nv)
+  }
+
+  final override def unsafeUpdate(idx: Int, f: A => A): stm.Txn[Unit] = {
+    this.checkIndex(idx)
+    this.getOrNull(idx).update(f)
   }
 }

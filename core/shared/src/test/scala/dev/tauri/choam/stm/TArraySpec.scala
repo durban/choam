@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package stm
 
+import scala.concurrent.duration._
+
 import cats.effect.IO
 
 import core.Ref
@@ -98,15 +100,22 @@ trait TArraySpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     def checkArr(arr: TArray[Int]): F[Unit] = for {
       _ <- arr.unsafeSet(0, 42).commit
       _ <- assertResultF(arr.unsafeGet(0).commit, 42)
+      fib <- arr.unsafeGet(0).flatMap { v =>
+        Txn.check(v < 0)
+      }.commit.start
+      _ <- F.sleep(0.1.seconds)
+      _ <- arr.unsafeSet(0, -1).commit
+      _ <- fib.joinWithNever
     } yield ()
     for {
       arr1 <- TArray[Int](1, 0, TArray.DefaultAllocationStrategy).commit // NB: this is sparse && flat
       _ <- checkArr(arr1)
-      // TODO: !sparse && flat is not implemented for now
       arr2 <- TArray[Int](1, 0, Ref.Array.AllocationStrategy(sparse = true, flat = false, padded = false)).commit
       _ <- checkArr(arr2)
-      arr2 <- TArray[Int](1, 0, Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = false)).commit
-      _ <- checkArr(arr2)
+      arr3 <- TArray[Int](1, 0, Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = false)).commit
+      _ <- checkArr(arr3)
+      arr4 <- TArray[Int](1, 0, Ref.Array.AllocationStrategy(sparse = false, flat = true, padded = false)).commit
+      _ <- checkArr(arr4)
     } yield ()
   }
 

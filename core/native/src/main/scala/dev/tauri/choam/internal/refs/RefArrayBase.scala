@@ -44,6 +44,8 @@ private abstract class RefArrayBase[A](
   protected[this] val _size: Int =
     size
 
+  protected[this] def createRef(i: Int): RefArrayRef[A]
+
   private[this] val array: Array[AnyRef] = {
     val arr = new Array[AnyRef](3 * _size);
     var i = 0
