@@ -207,19 +207,40 @@ object Ref extends RefInstances0 {
     }
   }
 
-  private final class EmptyRefArray[A] extends Ref.Array[A] {
+  private final class EmptyRefArray[A] extends Ref.Array[A] with stm.TArray.UnsealedTArray[A] {
 
     final override val size: Int =
       0
+
+    final override def toString: String =
+      s"Ref.Array[0]@${java.lang.Long.toHexString(0L)}" // TODO: this is incorrect for TArray
+
+    private[this] final def throwOob(idx: Int): Nothing =
+      throw new IndexOutOfBoundsException(s"Index ${idx} out of bounds for length 0")
 
     final override def apply(idx: Int): Option[Ref[A]] =
       None
 
     final override def unsafeApply(idx: Int): Ref[A] =
-      throw new IndexOutOfBoundsException(s"Index ${idx} out of bounds for length 0")
+      throwOob(idx)
 
-    final override def toString: String =
-      s"Ref.Array[0]@${java.lang.Long.toHexString(0L)}"
+    final override def unsafeGet(idx: Int): stm.Txn[A] =
+      throwOob(idx)
+
+    final override def unsafeSet(idx: Int, nv: A): stm.Txn[Unit] =
+      throwOob(idx)
+
+    final override def unsafeUpdate(idx: Int, f: A => A): stm.Txn[Unit] =
+      throwOob(idx)
+
+    final override def get(idx: Int): stm.Txn[Option[A]] =
+      stm.Txn.none
+
+    final override def set(idx: Int, nv: A): stm.Txn[Boolean] =
+      stm.Txn._false
+
+    final override def update(idx: Int, f: A => A): stm.Txn[Boolean] =
+      stm.Txn._false
   }
 
   final def apply[A](initial: A, str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Rxn[Ref[A]] = {
@@ -251,13 +272,13 @@ object Ref extends RefInstances0 {
     safeArrayImpl(size, initial, str)
   }
 
-  // the duplicated logic with unsafeArray is
+  // the duplicated logic with `unsafeArray` is
   // to avoid having the `if`s inside the `Rxn`:
   private[this] final def safeArrayImpl[A](size: Int, initial: A, str: Ref.Array.AllocationStrategy): RxnImpl[Ref.Array[A]] = {
-    if (size > 0) {
-      if (str.stm) {
-        safeTArrayImpl(size, initial, str)
-      } else {
+    if (str.stm) {
+      safeTArrayImpl(size, initial, str)
+    } else {
+      if (size > 0) {
         if (str.flat) {
           require(!str.padded, "flat && padded not implemented yet")
           if (str.sparse) Rxn.unsafe.delayContextImpl(ctx => unsafeLazyArray(size, initial, ctx.refIdGen))
@@ -266,6 +287,24 @@ object Ref extends RefInstances0 {
           if (str.sparse) Rxn.unsafe.delayContextImpl(ctx => new LazyArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
           else Rxn.unsafe.delayContextImpl(ctx => new StrictArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
         }
+      } else if (size == 0) {
+        Rxn.unsafe.delayImpl(new EmptyRefArray[A])
+      } else {
+        throw new IllegalArgumentException(s"size = ${size}")
+      }
+    }
+  }
+
+  private[choam] final def safeTArrayImpl[A](size: Int, initial: A, str: Ref.Array.AllocationStrategy): RxnImpl[Ref.Array[A] with stm.TArray[A]] = {
+    require(str.stm)
+    if (size > 0) {
+      if (str.flat) {
+        require(!str.padded, "flat && padded not implemented yet")
+        if (str.sparse) Rxn.unsafe.delayContextImpl(ctx => unsafeLazyTArray(size, initial, ctx.refIdGen))
+        else throw new IllegalArgumentException("flat && !sparse not implemented yet for STM")
+      } else {
+        if (str.sparse) Rxn.unsafe.delayContextImpl(ctx => new LazyArrayOfTRefs(size, initial, str, rig = ctx.refIdGen))
+        else Rxn.unsafe.delayContextImpl(ctx => new StrictArrayOfTRefs(size, initial, str, rig = ctx.refIdGen))
       }
     } else if (size == 0) {
       Rxn.unsafe.delayImpl(new EmptyRefArray[A])
@@ -274,23 +313,11 @@ object Ref extends RefInstances0 {
     }
   }
 
-  private[choam] final def safeTArrayImpl[A](size: Int, initial: A, str: Ref.Array.AllocationStrategy): RxnImpl[Ref.Array[A] with stm.TArray[A]] = {
-    require(str.stm)
-    if (str.flat) {
-      require(!str.padded, "flat && padded not implemented yet")
-      if (str.sparse) Rxn.unsafe.delayContextImpl(ctx => unsafeLazyTArray(size, initial, ctx.refIdGen))
-      else throw new IllegalArgumentException("flat && !sparse not implemented yet for STM")
-    } else {
-      if (str.sparse) Rxn.unsafe.delayContextImpl(ctx => new LazyArrayOfTRefs(size, initial, str, rig = ctx.refIdGen))
-      else Rxn.unsafe.delayContextImpl(ctx => new StrictArrayOfTRefs(size, initial, str, rig = ctx.refIdGen))
-    }
-  }
-
   private[choam] final def unsafeArray[A](size: Int, initial: A, str: Ref.Array.AllocationStrategy, rig: RefIdGen): Ref.Array[A] = {
-    if (size > 0) {
-      if (str.stm) {
-        unsafeTArray(size, initial, str, rig)
-      } else {
+    if (str.stm) {
+      unsafeTArray(size, initial, str, rig)
+    } else {
+      if (size > 0) {
         if (str.flat) {
           require(!str.padded, "flat && padded not implemented yet")
           if (str.sparse) unsafeLazyArray(size, initial, rig)
@@ -299,23 +326,29 @@ object Ref extends RefInstances0 {
           if (str.sparse) new LazyArrayOfRefs(size, initial, str, rig)
           else new StrictArrayOfRefs(size, initial, str, rig)
         }
+      } else if (size == 0) {
+        new EmptyRefArray[A]
+      } else {
+        throw new IllegalArgumentException(s"size = ${size}")
       }
-    } else if (size == 0) {
-      new EmptyRefArray[A]
-    } else {
-      throw new IllegalArgumentException(s"size = ${size}")
     }
   }
 
   private[this] final def unsafeTArray[A](size: Int, initial: A, str: Ref.Array.AllocationStrategy, rig: RefIdGen): Ref.Array[A] with stm.TArray[A] = {
     require(str.stm)
-    if (str.flat) {
-      require(!str.padded, "flat && padded not implemented yet")
-      if (str.sparse) unsafeLazyTArray(size, initial, rig)
-      else throw new IllegalArgumentException("flat && !sparse not implemented yet for STM")
+    if (size > 0) {
+      if (str.flat) {
+        require(!str.padded, "flat && padded not implemented yet")
+        if (str.sparse) unsafeLazyTArray(size, initial, rig)
+        else throw new IllegalArgumentException("flat && !sparse not implemented yet for STM")
+      } else {
+        if (str.sparse) new LazyArrayOfTRefs(size, initial, str, rig)
+        else new StrictArrayOfTRefs(size, initial, str, rig)
+      }
+    } else if (size == 0) {
+      new EmptyRefArray[A]
     } else {
-      if (str.sparse) new LazyArrayOfTRefs(size, initial, str, rig)
-      else new StrictArrayOfTRefs(size, initial, str, rig)
+      throw new IllegalArgumentException(s"size = ${size}")
     }
   }
 

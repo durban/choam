@@ -109,4 +109,11 @@ trait TArraySpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       _ <- checkArr(arr2)
     } yield ()
   }
+
+  test("TArray of size 0") {
+    for {
+      arr <- TArray[String](0, "foo").commit
+      _ <- assertResultF(arr.get(0).commit, None)
+    } yield ()
+  }
 }
