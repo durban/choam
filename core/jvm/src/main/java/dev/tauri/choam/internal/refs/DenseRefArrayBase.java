@@ -22,7 +22,7 @@ import java.lang.invoke.MethodHandles;
 
 import dev.tauri.choam.internal.VarHandleHelper;
 
-abstract class StrictRefArrayBase<A> extends RefArrayBase<A> {
+abstract class DenseRefArrayBase<A> extends RefArrayBase<A> {
 
   private static final VarHandle VERSIONS_ARR;
 
@@ -32,7 +32,7 @@ abstract class StrictRefArrayBase<A> extends RefArrayBase<A> {
 
   private final long[] versions;
 
-  protected StrictRefArrayBase(int size, Object init, long idBase) {
+  protected DenseRefArrayBase(int size, Object init, long idBase) {
     super(size, init, idBase, false);
     this.versions = RefArrayBase.initVersions(size);
   }

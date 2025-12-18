@@ -247,8 +247,8 @@ object Ref extends RefInstances0 {
       if (size > 0) {
         if (str.flat) {
           require(!str.padded, "flat && padded not implemented yet")
-          if (str.sparse) Rxn.unsafe.delayContextImpl(ctx => unsafeLazyArray(size, initial, ctx.refIdGen))
-          else Rxn.unsafe.delayContextImpl(ctx => unsafeStrictArray(size, initial, ctx.refIdGen))
+          if (str.sparse) Rxn.unsafe.delayContextImpl(ctx => unsafeSparseArray(size, initial, ctx.refIdGen))
+          else Rxn.unsafe.delayContextImpl(ctx => unsafeDenseArray(size, initial, ctx.refIdGen))
         } else {
           if (str.sparse) Rxn.unsafe.delayContextImpl(ctx => new SparseArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
           else Rxn.unsafe.delayContextImpl(ctx => new DenseArrayOfRefs(size, initial, str, rig = ctx.refIdGen))
@@ -266,7 +266,7 @@ object Ref extends RefInstances0 {
     if (size > 0) {
       if (str.flat) {
         require(!str.padded, "flat && padded not implemented yet")
-        if (str.sparse) Rxn.unsafe.delayContextImpl(ctx => unsafeLazyTArray(size, initial, ctx.refIdGen))
+        if (str.sparse) Rxn.unsafe.delayContextImpl(ctx => unsafeSparseTArray(size, initial, ctx.refIdGen))
         else throw new IllegalArgumentException("flat && !sparse not implemented yet for STM")
       } else {
         if (str.sparse) Rxn.unsafe.delayContextImpl(ctx => new SparseArrayOfTRefs(size, initial, str, rig = ctx.refIdGen))
@@ -286,8 +286,8 @@ object Ref extends RefInstances0 {
       if (size > 0) {
         if (str.flat) {
           require(!str.padded, "flat && padded not implemented yet")
-          if (str.sparse) unsafeLazyArray(size, initial, rig)
-          else unsafeStrictArray(size, initial, rig)
+          if (str.sparse) unsafeSparseArray(size, initial, rig)
+          else unsafeDenseArray(size, initial, rig)
         } else {
           if (str.sparse) new SparseArrayOfRefs(size, initial, str, rig)
           else new DenseArrayOfRefs(size, initial, str, rig)
@@ -305,7 +305,7 @@ object Ref extends RefInstances0 {
     if (size > 0) {
       if (str.flat) {
         require(!str.padded, "flat && padded not implemented yet")
-        if (str.sparse) unsafeLazyTArray(size, initial, rig)
+        if (str.sparse) unsafeSparseTArray(size, initial, rig)
         else throw new IllegalArgumentException("flat && !sparse not implemented yet for STM")
       } else {
         if (str.sparse) new SparseArrayOfTRefs(size, initial, str, rig)
@@ -328,17 +328,17 @@ object Ref extends RefInstances0 {
       Rxn.unsafe.directRead(self).run[F]
   }
 
-  private[this] final def unsafeStrictArray[A](size: Int, initial: A, rig: RefIdGen): Ref.Array[A] = {
+  private[this] final def unsafeDenseArray[A](size: Int, initial: A, rig: RefIdGen): Ref.Array[A] = {
     require(size > 0)
-    internal.refs.unsafeNewStrictRefArray[A](size = size, initial = initial)(rig.nextArrayIdBase(size))
+    internal.refs.unsafeNewDenseRefArray[A](size = size, initial = initial)(rig.nextArrayIdBase(size))
   }
 
-  private[this] final def unsafeLazyArray[A](size: Int, initial: A, rig: RefIdGen): Ref.Array[A] = {
+  private[this] final def unsafeSparseArray[A](size: Int, initial: A, rig: RefIdGen): Ref.Array[A] = {
     require(size > 0)
     internal.refs.unsafeNewSparseRefArray[A](size = size, initial = initial)(rig.nextArrayIdBase(size))
   }
 
-  private[this] final def unsafeLazyTArray[A](size: Int, initial: A, rig: RefIdGen): Ref.Array[A] with stm.TArray[A] = {
+  private[this] final def unsafeSparseTArray[A](size: Int, initial: A, rig: RefIdGen): Ref.Array[A] with stm.TArray[A] = {
     require(size > 0)
     internal.refs.unsafeNewSparseRefTArray[A](size = size, initial = initial)(rig.nextArrayIdBase(size))
   }

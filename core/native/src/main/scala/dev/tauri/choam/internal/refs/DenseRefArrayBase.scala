@@ -19,7 +19,7 @@ package dev.tauri.choam
 package internal
 package refs
 
-private abstract class StrictRefArrayBase[A](
+private abstract class DenseRefArrayBase[A](
   size: Int, init: AnyRef, idBase: Long
 ) extends RefArrayBase[A](size, init, idBase, sparse = false) {
 

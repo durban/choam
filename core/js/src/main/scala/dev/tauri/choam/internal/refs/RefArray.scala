@@ -43,7 +43,7 @@ private abstract class RefArray[A](
     this.id
 }
 
-private final class StrictRefArray[A](
+private final class DenseRefArray[A](
   __size: Int,
   initial: A,
   _idBase: Long,

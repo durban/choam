@@ -28,8 +28,8 @@ package object refs extends RefsPackagePlatform {
   private[choam] def unsafeNewRefP1[A](initial: A)(i: Long): Ref[A] =
     RefsPlatform.unsafeNewRefP1[A](initial, i)
 
-  private[choam] def unsafeNewStrictRefArray[A](size: Int, initial: A)(idBase: Long): Ref.Array[A] = {
-    new StrictRefArray[A](__size = size, initial = initial, _idBase = idBase)
+  private[choam] def unsafeNewDenseRefArray[A](size: Int, initial: A)(idBase: Long): Ref.Array[A] = {
+    new DenseRefArray[A](__size = size, initial = initial, _idBase = idBase)
   }
 
   private[choam] def unsafeNewSparseRefArray[A](size: Int, initial: A)(idBase: Long): Ref.Array[A] = {
