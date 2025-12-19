@@ -360,6 +360,7 @@ lazy val _crossProjects: Seq[CrossProject] = Seq(
   laws,
   testExt,
   testAssert,
+  stressRng,
 )
 
 lazy val _jvmOnlyProjects: Seq[ProjectReference] = Seq(
@@ -375,7 +376,6 @@ lazy val _jvmOnlyProjects: Seq[ProjectReference] = Seq(
   stressAsync,
   stressExperiments,
   stressLinchk,
-  stressRng,
   layout,
 )
 
@@ -779,17 +779,22 @@ lazy val stressLinchk = project.in(file("stress") / "stress-linchk")
     Test / fork := true, // otherwise the bytecode transformers won't work
   )
 
-lazy val stressRng = project.in(file("stress") / "stress-rng")
+lazy val stressRng = crossProject(JVMPlatform, JSPlatform, NativePlatform)
+  .withoutSuffixFor(JVMPlatform)
+  .crossType(CrossType.Full)
+  .in(file("stress") / "stress-rng")
   .settings(name := "choam-stress-rng")
   .settings(commonSettings)
-  .settings(commonSettingsJvm)
+  .jvmSettings(commonSettingsJvm)
+  .nativeSettings(commonSettingsNative)
+  .jsSettings(commonSettingsJs)
   .disablePlugins(disabledPlugins: _*)
   .enablePlugins(NoPublishPlugin)
-  .enablePlugins(JavaAppPackaging)
-  .dependsOn(core.jvm)
-  .settings(
-    // we have testing code in `main`:
-    libraryDependencies ++= dependencies.test.value
+  .jvmEnablePlugins(JavaAppPackaging)
+  .dependsOn(mcas)
+  .jsSettings(
+    scalaJSUseMainModuleInitializer := true,
+    libraryDependencies += dependencies.scalaJsSecRnd.value,
   )
 
 lazy val layout = project.in(file("layout"))
