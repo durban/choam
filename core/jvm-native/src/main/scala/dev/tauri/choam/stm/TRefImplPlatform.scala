@@ -104,4 +104,19 @@ private[choam] trait TRefImplPlatform[A]
       cb(null)
     }
   }
+
+  @inline
+  protected[this] final def getPlainAr[X](ar: AtomicReference[X]): X = {
+    ar.getPlain()
+  }
+
+  @inline
+  protected[this] final def setPlainAr[X](ar: AtomicReference[X], nv: X): Unit = {
+    ar.setPlain(nv)
+  }
+
+  @inline
+  protected[this] final def cmpxchgAl(al: AtomicLong, ov: Long, nv: Long): Long = {
+    al.compareAndExchange(ov, nv)
+  }
 }

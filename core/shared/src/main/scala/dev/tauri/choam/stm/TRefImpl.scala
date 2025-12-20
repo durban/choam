@@ -55,13 +55,13 @@ private final class TRefImpl[A](
     contents.get()
 
   final override def unsafeGetP(): A =
-    contents.getPlain()
+    this.getPlainAr(contents)
 
   final override def unsafeSetV(nv: A): Unit =
     contents.set(nv)
 
   final override def unsafeSetP(nv: A): Unit =
-    contents.setPlain(nv)
+    this.setPlainAr(contents, nv)
 
   final override def unsafeCasV(ov: A, nv: A): Boolean =
     contents.compareAndSet(ov, nv)
@@ -76,7 +76,7 @@ private final class TRefImpl[A](
     version.get()
 
   final override def unsafeCmpxchgVersionV(ov: Long, nv: Long): Long =
-    version.compareAndExchange(ov, nv)
+    this.cmpxchgAl(version, ov, nv)
 
   final override def unsafeGetMarkerV(): WeakReference[AnyRef] =
     marker.get()
