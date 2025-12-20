@@ -33,7 +33,7 @@ private final class RefArrayTRef[A](
   logicalIdx: Int,
 ) extends RefArrayRef[A](array, logicalIdx)
   with stm.TRef.UnsealedTRef[A]
-  with stm.MultithreadedTRefImpl[A] {
+  with stm.TRefImplPlatform[A] {
 
   private[this] val listeners = // TODO: store this in the array
     new AtomicReference[LongMap[Null => Unit]](LongMap.empty)

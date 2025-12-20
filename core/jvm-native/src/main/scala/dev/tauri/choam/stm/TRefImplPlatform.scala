@@ -18,14 +18,13 @@
 package dev.tauri.choam
 package stm
 
-import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.{ AtomicReference, AtomicLong }
 
 import scala.collection.immutable.LongMap
 
 import internal.mcas.{ Mcas, MemoryLocation, Consts }
 
-private[choam] trait MultithreadedTRefImpl[A]
+private[choam] trait TRefImplPlatform[A]
   extends MemoryLocation[A]
   with MemoryLocation.WithListeners {
 
@@ -104,104 +103,5 @@ private[choam] trait MultithreadedTRefImpl[A]
       val cb = itr.next()
       cb(null)
     }
-  }
-}
-
-private final class TRefImpl[A](
-  initial: A,
-  final override val id: Long,
-) extends core.RefGetAxn[A]
-  with core.UnsealedRef[A]
-  with MemoryLocation.WithListeners
-  with TRefImplBase[A]
-  with MultithreadedTRefImpl[A] {
-
-  // TODO: use VarHandles
-
-  private[this] val contents =
-    new AtomicReference[A](initial)
-
-  private[this] val version =
-    new AtomicLong(internal.mcas.Version.Start)
-
-  private[this] val marker =
-    new AtomicReference[WeakReference[AnyRef]]
-
-  private[this] val listeners =
-    new AtomicReference[LongMap[Null => Unit]](LongMap.empty)
-
-  private[this] val previousListenerId =
-    new AtomicLong(Consts.InvalidListenerId)
-
-  final override def unsafeGetV(): A =
-    contents.get()
-
-  final override def unsafeGetP(): A =
-    contents.getPlain()
-
-  final override def unsafeSetV(nv: A): Unit =
-    contents.set(nv)
-
-  final override def unsafeSetP(nv: A): Unit =
-    contents.setPlain(nv)
-
-  final override def unsafeCasV(ov: A, nv: A): Boolean =
-    contents.compareAndSet(ov, nv)
-
-  final override def unsafeCmpxchgV(ov: A, nv: A): A =
-    contents.compareAndExchange(ov, nv)
-
-  final override def unsafeCmpxchgR(ov: A, nv: A): A =
-    contents.compareAndExchangeRelease(ov, nv)
-
-  final override def unsafeGetVersionV(): Long =
-    version.get()
-
-  final override def unsafeCmpxchgVersionV(ov: Long, nv: Long): Long =
-    version.compareAndExchange(ov, nv)
-
-  final override def unsafeGetMarkerV(): WeakReference[AnyRef] =
-    marker.get()
-
-  final override def unsafeCasMarkerV(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
-    marker.compareAndSet(ov, nv)
-
-  final override def unsafeCmpxchgMarkerR(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef] =
-    marker.compareAndExchangeRelease(ov, nv)
-
-  final override def hashCode: Int = {
-    // `RefIdGen` generates IDs with
-    // Fibonacci hashing, so no need
-    // to hash them here even further.
-    // IDs are globally unique, so the
-    // default `equals` (based on object
-    // identity) is fine for us.
-    this.id.toInt
-  }
-
-  final override def toString: String =
-    "TRef@" + internal.mcas.refIdHexString(this.id)
-
-  private[choam] final override def withListeners: this.type =
-    this
-
-  private[choam] final override def unsafeRegisterListener(
-    ctx: Mcas.ThreadContext,
-    listener: Null => Unit,
-    lastSeenVersion: Long,
-  ): Long = {
-    this.unsafeRegisterListenerImpl(this.listeners, this.previousListenerId, ctx, listener, lastSeenVersion)
-  }
-
-  private[choam] final override def unsafeCancelListener(lid: Long): Unit = {
-    this.unsafeCancelListenerImpl(this.listeners, lid)
-  }
-
-  private[choam] final override def unsafeNumberOfListeners(): Int = {
-    this.unsafeNumberOfListenersImpl(this.listeners)
-  }
-
-  private[choam] final override def unsafeNotifyListeners(): Unit = {
-    this.unsafeNotifyListenersImpl(this.listeners)
   }
 }
