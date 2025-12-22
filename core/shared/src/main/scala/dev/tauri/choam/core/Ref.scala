@@ -102,14 +102,11 @@ object Ref extends RefInstances0 {
 
   sealed trait Array[A] { // TODO:0.5: revise `Array` API (future-proofing in case we'll have OffsetMemoryLocation)
 
-    def size: Int
+    def length: Int
 
     def unsafeApply(idx: Int): Ref[A] // TODO:0.5: better name
 
     def apply(idx: Int): Option[Ref[A]]
-
-    final def length: Int =
-      this.size
   }
 
   final object Array {
@@ -204,12 +201,12 @@ object Ref extends RefInstances0 {
 
     protected[choam] final override def refToString(): String = {
       val idBase = this.id
-      s"Ref.Array[${size}]@${internal.mcas.refHashArrayIdBase(idBase)}"
+      s"Ref.Array[${length}]@${internal.mcas.refHashArrayIdBase(idBase)}"
     }
 
     protected final def checkIndex(idx: Int): Unit = {
-      if ((idx < 0) || (idx >= size)) {
-        throw new IndexOutOfBoundsException(s"Index ${idx} out of bounds for length ${size}")
+      if ((idx < 0) || (idx >= length)) {
+        throw new IndexOutOfBoundsException(s"Index ${idx} out of bounds for length ${length}")
       }
     }
   }

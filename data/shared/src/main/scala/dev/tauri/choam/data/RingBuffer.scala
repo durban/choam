@@ -38,7 +38,7 @@ private final class RingBuffer[A](
 ) extends ArrayQueue[A](capacity, arr, head, tail)
   with Queue.UnsealedQueueWithSize[A] {
 
-  require(capacity === arr.size)
+  require(capacity === arr.length)
 
   final override def offer(a: A): Rxn[Boolean] =
     this.add(a).as(true)
@@ -82,7 +82,7 @@ private object RingBuffer {
 
   private[this] def makeRingBuffer[A](capacity: Int, underlying: Ref.Array[A], str: Ref.Array.AllocationStrategy): Rxn[RingBuffer[A]] = {
     require(capacity > 0)
-    require(underlying.size === capacity)
+    require(underlying.length === capacity)
     val pStr = str
       .withFlat(false) // TODO: this is a workaround because flat can't do padded
       .withPadded(true)

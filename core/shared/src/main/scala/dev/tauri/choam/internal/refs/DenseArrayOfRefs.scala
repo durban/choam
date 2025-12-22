@@ -23,7 +23,7 @@ import core.Ref
 import mcas.RefIdGen
 
 sealed abstract class DenseArrayOfXRefs[A](
-  final override val size: Int,
+  final override val length: Int,
   initial: A,
   str: Ref.AllocationStrategy,
   rig: RefIdGen,
@@ -31,14 +31,14 @@ sealed abstract class DenseArrayOfXRefs[A](
 
   protected[this] type RefT[a] <: Ref[a]
 
-  require(size > 0)
+  require(length > 0)
 
   protected[this] def createRef(initial: A, str: Ref.AllocationStrategy, rig: RefIdGen): RefT[A]
 
   protected[this] val arr: scala.Array[RefT[A]] = {
-    val a = new scala.Array[Ref[A]](size)
+    val a = new scala.Array[Ref[A]](length)
     var idx = 0
-    while (idx < size) {
+    while (idx < length) {
       a(idx) = this.createRef(initial, str, rig)
       idx += 1
     }
@@ -46,12 +46,12 @@ sealed abstract class DenseArrayOfXRefs[A](
   }
 
   final override def unsafeApply(idx: Int): Ref[A] = {
-    internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, size) // TODO: check other places where we might need this
+    internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, length) // TODO: check other places where we might need this
     this.arr(idx)
   }
 
   final override def apply(idx: Int): Option[Ref[A]] = {
-    if ((idx >= 0) && (idx < size)) {
+    if ((idx >= 0) && (idx < length)) {
       Some(this.unsafeApply(idx))
     } else {
       None

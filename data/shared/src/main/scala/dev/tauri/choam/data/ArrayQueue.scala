@@ -34,7 +34,7 @@ private abstract class ArrayQueue[A](
 ) extends Queue.UnsealedQueuePoll[A]
   with Queue.UnsealedQueueOffer[A] {
 
-  require(capacity === arr.size)
+  require(capacity === arr.length)
 
   protected[this] final def incrIdx(idx: Int): Int = {
     remainderUnsigned(idx + 1, capacity)

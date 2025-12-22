@@ -30,7 +30,7 @@ private sealed class DenseRefArray[A](
 
   require((__size > 0) && (((__size - 1) * 3 + 2) > (__size - 1))) // avoid overflow
 
-  final override def size: Int =
+  final override def length: Int =
     this._size
 
   final override def apply(idx: Int): Option[Ref[A]] =
@@ -46,7 +46,7 @@ private sealed class DenseRefArray[A](
   }
 
   private[this] final def getOrNull(idx: Int): Ref[A] = {
-    if ((idx >= 0) && (idx < size)) {
+    if ((idx >= 0) && (idx < length)) {
       val refIdx = 3 * idx
       // `RefArrayRef`s were initialized into
       // a final field (`items`), and they
@@ -69,7 +69,7 @@ private final class DenseTRefArray[A](
   }
 
   private[this] final def getOrNull(idx: Int): stm.TRef[A] = {
-    if ((idx >= 0) && (idx < size)) {
+    if ((idx >= 0) && (idx < length)) {
       val refIdx = 3 * idx
       // `RefArrayTRef`s were initialized into
       // a final field (`items`), and they

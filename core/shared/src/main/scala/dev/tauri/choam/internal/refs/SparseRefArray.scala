@@ -35,7 +35,7 @@ private sealed abstract class SparseXRefArray[A](
 
   require((__size > 0) && (((__size - 1) * 3 + 2) > (__size - 1))) // avoid overflow
 
-  final override def size: Int =
+  final override def length: Int =
     this._size
 
   final override def apply(idx: Int): Option[Ref[A]] =
@@ -47,7 +47,7 @@ private sealed abstract class SparseXRefArray[A](
   }
 
   protected[this] final def getOrNull(idx: Int): RefT[A] = {
-    if ((idx >= 0) && (idx < size)) {
+    if ((idx >= 0) && (idx < length)) {
       this.getOrCreateRef(idx)
     } else {
       nullOf[RefT[A]]

@@ -23,7 +23,7 @@ import core.Ref
 
 private[choam] final class EmptyRefArray[A] extends Ref.UnsealedArray0[A] with stm.TArray.UnsealedTArray[A] {
 
-  final override val size: Int =
+  final override def length: Int =
     0
 
   final override def toString: String =

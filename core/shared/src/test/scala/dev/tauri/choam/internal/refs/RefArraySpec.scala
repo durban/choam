@@ -62,7 +62,7 @@ trait RefArraySpecIds extends RefArraySpec {
     val arrPat = "Ref\\.Array\\[(\\d+)\\]\\@([\\da-f]+)".r
     val baseHash = arr.toString match {
       case arrPat(size, baseHash) =>
-        assertEquals(size, arr.size.toString)
+        assertEquals(size, arr.length.toString)
         baseHash
       case other =>
         fail(s"didn't match: '${other}'")

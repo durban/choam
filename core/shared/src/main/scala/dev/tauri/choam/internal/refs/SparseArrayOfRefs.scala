@@ -25,7 +25,7 @@ import mcas.RefIdGen
 import CompatPlatform.AtomicReferenceArray
 
 sealed abstract class SparseArrayOfXRefs[A](
-  final override val size: Int,
+  final override val length: Int,
   initial: A,
   str: Ref.AllocationStrategy,
   rig: RefIdGen,
@@ -33,15 +33,15 @@ sealed abstract class SparseArrayOfXRefs[A](
 
   protected[this] type RefT[a] <: Ref[a]
 
-  require(size > 0)
+  require(length > 0)
 
   protected[this] def createRef(initial: A, str: Ref.AllocationStrategy, id: Long): RefT[A]
 
   private[this] val arr: AtomicReferenceArray[RefT[A]] =
-    new AtomicReferenceArray[RefT[A]](size)
+    new AtomicReferenceArray[RefT[A]](length)
 
   private[this] val idBase: Long =
-    rig.nextArrayIdBase(size = size)
+    rig.nextArrayIdBase(size = length)
 
   final override def unsafeApply(idx: Int): RefT[A] =
     unsafeApplyInternal(idx)
@@ -63,7 +63,7 @@ sealed abstract class SparseArrayOfXRefs[A](
   }
 
   final override def apply(idx: Int): Option[Ref[A]] = {
-    if ((idx >= 0) && (idx < size)) {
+    if ((idx >= 0) && (idx < length)) {
       Some(this.unsafeApply(idx))
     } else {
       None
