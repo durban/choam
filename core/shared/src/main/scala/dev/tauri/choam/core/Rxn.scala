@@ -362,15 +362,27 @@ private[choam] sealed abstract class RxnImpl[+B]
 private[choam] abstract class RefGetAxn[B] extends RxnImpl[B] with MemoryLocation[B] {
 
   final def get: RxnImpl[B] =
+    getImpl
+
+  final def getImpl: RxnImpl[B] =
     this
 
   final def set(a: B): RxnImpl[Unit] =
+    setImpl(a)
+
+  final def setImpl(a: B): RxnImpl[Unit] =
     Rxn.loc.set(this, a)
 
   final def update(f: B => B): RxnImpl[Unit] =
+    updateImpl(f)
+
+  final def updateImpl(f: B => B): RxnImpl[Unit] =
     Rxn.loc.update(this, f)
 
   final def modify[C](f: B => (B, C)): RxnImpl[C] =
+    modifyImpl(f)
+
+  final def modifyImpl[C](f: B => (B, C)): RxnImpl[C] =
     Rxn.loc.modify(this, f)
 
   final def getAndSet(nv: B): RxnImpl[B] =
