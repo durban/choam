@@ -57,8 +57,6 @@ trait RefSpec_Ref2[F[_]] extends RefSpec_Real[F] { this: McasImplSpec =>
 
 trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
 
-  import Rxn._
-
   override type RefType[A] = Ref[A]
 
   override def newRef[A](initial: A): F[RefType[A]] = {

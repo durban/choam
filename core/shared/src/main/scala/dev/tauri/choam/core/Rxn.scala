@@ -2073,7 +2073,7 @@ object Rxn extends RxnInstances0 {
           }
         case _: AlwaysRetry[_] => // AlwaysRetry
           loop(retry())
-        case c: PostCommit[a] => // PostCommit
+        case c: PostCommit[_] => // PostCommit
           contT.push(RxnConsts.ContRegisterPostCommit)
           contK.push(c.pc)
           loop(c.rxn)
