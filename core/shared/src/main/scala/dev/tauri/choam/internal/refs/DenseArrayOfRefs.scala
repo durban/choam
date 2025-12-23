@@ -19,6 +19,10 @@ package dev.tauri.choam
 package internal
 package refs
 
+import scala.reflect.ClassTag
+
+import cats.data.Chain
+
 import core.Ref
 import mcas.RefIdGen
 
@@ -35,8 +39,10 @@ sealed abstract class DenseArrayOfXRefs[A](
 
   protected[this] def createRef(initial: A, str: Ref.AllocationStrategy, rig: RefIdGen): RefT[A]
 
+  protected[this] implicit def refTTag: ClassTag[RefT[A]]
+
   protected[this] val arr: scala.Array[RefT[A]] = {
-    val a = new scala.Array[Ref[A]](length)
+    val a = new scala.Array[RefT[A]](length)
     var idx = 0
     while (idx < length) {
       a(idx) = this.createRef(initial, str, rig)
@@ -50,13 +56,8 @@ sealed abstract class DenseArrayOfXRefs[A](
     this.arr(idx)
   }
 
-  final override def apply(idx: Int): Option[Ref[A]] = {
-    if ((idx >= 0) && (idx < length)) {
-      Some(this.unsafeApply(idx))
-    } else {
-      None
-    }
-  }
+  final override def refs: Chain[RefT[A]] =
+    Chain.fromSeq(scala.collection.immutable.ArraySeq.unsafeWrapArray(this.arr))
 }
 
 private[choam] final class DenseArrayOfRefs[A](
@@ -70,6 +71,9 @@ private[choam] final class DenseArrayOfRefs[A](
 
   protected[this] def createRef(initial: A, str: Ref.AllocationStrategy, rig: RefIdGen): RefT[A] =
     Ref.unsafe(initial, str, rig)
+
+  protected[this] def refTTag: ClassTag[RefT[A]] =
+    ClassTag[Ref[A]](classOf[Ref[A]])
 }
 
 private[choam] final class DenseArrayOfTRefs[A](
@@ -84,6 +88,9 @@ private[choam] final class DenseArrayOfTRefs[A](
 
   protected[this] final override def createRef(initial: A, str: Ref.AllocationStrategy, rig: RefIdGen): RefT[A] =
     Ref.unsafeTRef(initial, str, rig)
+
+  protected[this] def refTTag: ClassTag[RefT[A]] =
+    ClassTag[RefT[A]](classOf[Ref[A]])
 
   private[this] final def getOrNull(idx: Int): stm.TRef[A] = {
     if ((idx >= 0) && (idx < size)) {

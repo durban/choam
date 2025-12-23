@@ -19,6 +19,8 @@ package dev.tauri.choam
 package internal
 package refs
 
+import cats.data.Chain
+
 import core.Ref
 
 private[choam] final class EmptyRefArray[A] extends Ref.UnsealedArray0[A] with stm.TArray.UnsealedTArray[A] {
@@ -29,11 +31,11 @@ private[choam] final class EmptyRefArray[A] extends Ref.UnsealedArray0[A] with s
   final override def toString: String =
     s"Ref.Array[0]@${java.lang.Long.toHexString(0L)}" // TODO: this is incorrect for TArray
 
+  final override def refs: Chain[Ref[A]] =
+    Chain.empty
+
   private[this] final def throwOob(idx: Int): Nothing =
     throw new IndexOutOfBoundsException(s"Index ${idx} out of bounds for length 0")
-
-  final override def apply(idx: Int): Option[Ref[A]] =
-    None
 
   final override def unsafeApply(idx: Int): Ref[A] =
     throwOob(idx)

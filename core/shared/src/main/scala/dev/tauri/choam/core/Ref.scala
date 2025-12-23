@@ -20,6 +20,7 @@ package core
 
 import scala.math.Ordering
 
+import cats.data.Chain
 import cats.kernel.{ Hash, Order }
 import cats.effect.kernel.{ Ref => CatsRef }
 
@@ -104,9 +105,9 @@ object Ref extends RefInstances0 {
 
     def length: Int
 
-    def unsafeApply(idx: Int): Ref[A] // TODO:0.5: better name
+    def unsafeApply(idx: Int): Ref[A] // TODO:0.5: remove this
 
-    def apply(idx: Int): Option[Ref[A]]
+    def refs: Chain[Ref[A]]
   }
 
   final object Array {

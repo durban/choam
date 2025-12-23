@@ -19,9 +19,12 @@ package dev.tauri.choam
 package internal
 package refs
 
+import scala.reflect.ClassTag
+
+import cats.data.Chain
+
 import core.Ref
 import mcas.RefIdGen
-
 import CompatPlatform.AtomicReferenceArray
 
 sealed abstract class SparseArrayOfXRefs[A](
@@ -36,6 +39,8 @@ sealed abstract class SparseArrayOfXRefs[A](
   require(length > 0)
 
   protected[this] def createRef(initial: A, str: Ref.AllocationStrategy, id: Long): RefT[A]
+
+  protected[this] implicit def refTTag: ClassTag[RefT[A]]
 
   private[this] val arr: AtomicReferenceArray[RefT[A]] =
     new AtomicReferenceArray[RefT[A]](length)
@@ -62,12 +67,11 @@ sealed abstract class SparseArrayOfXRefs[A](
     }
   }
 
-  final override def apply(idx: Int): Option[Ref[A]] = {
-    if ((idx >= 0) && (idx < length)) {
-      Some(this.unsafeApply(idx))
-    } else {
-      None
+  final override def refs: Chain[Ref[A]] = {
+    val arr = Array.tabulate(length) { idx =>
+      this.unsafeApplyInternal(idx)
     }
+    Chain.fromSeq(scala.collection.immutable.ArraySeq.unsafeWrapArray(arr))
   }
 }
 
@@ -80,8 +84,11 @@ private[choam] final class SparseArrayOfRefs[A](
 
   protected[this] final override type RefT[a] = Ref[a]
 
-  protected[this] def createRef(initial: A, str: Ref.AllocationStrategy, id: Long): RefT[A] =
+  protected[this] final override def createRef(initial: A, str: Ref.AllocationStrategy, id: Long): RefT[A] =
     Ref.unsafeWithId(initial, str, id)
+
+  protected[this] final override def refTTag: ClassTag[RefT[A]] =
+    ClassTag[Ref[A]](classOf[Ref[_]])
 }
 
 private[choam] final class SparseArrayOfTRefs[A](
@@ -96,6 +103,9 @@ private[choam] final class SparseArrayOfTRefs[A](
 
   protected[this] def createRef(initial: A, str: Ref.AllocationStrategy, id: Long): RefT[A] =
     stm.TRef.unsafeRefWithId(initial, id) // TODO: padded
+
+  protected[this] final override def refTTag: ClassTag[RefT[A]] =
+    ClassTag[Ref[A] with stm.TRef[A]](classOf[Ref[_]])
 
   final override def unsafeGet(idx: Int): stm.Txn[A] = {
     unsafeApplyInternal(idx).get
