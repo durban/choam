@@ -68,6 +68,10 @@ sealed abstract class SparseArrayOfXRefs[A](
     unsafeApplyInternal(idx).getImpl
   }
 
+  final override def unsafeSet(idx: Int, nv: A): RxnImpl[Unit] = {
+    unsafeApplyInternal(idx).setImpl(nv)
+  }
+
   final override def refs: Chain[Ref[A]] = {
     val arr = Array.tabulate(length) { idx =>
       this.unsafeApplyInternal(idx)
@@ -107,10 +111,6 @@ private[choam] final class SparseArrayOfTRefs[A](
 
   protected[this] final override def refTTag: ClassTag[RefT[A]] =
     ClassTag[Ref[A] with stm.TRef[A]](classOf[Ref[_]])
-
-  final override def unsafeSet(idx: Int, nv: A): stm.Txn[Unit] = {
-    unsafeApplyInternal(idx).set(nv)
-  }
 
   final override def unsafeUpdate(idx: Int, f: A => A): stm.Txn[Unit] = {
     unsafeApplyInternal(idx).update(f)

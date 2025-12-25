@@ -106,6 +106,7 @@ object Ref extends RefInstances0 {
     def length: Int
 
     def unsafeGet(idx: Int): Rxn[A]
+    def unsafeSet(idx: Int, nv: A): Rxn[Unit]
 
     def refs: Chain[Ref[A]]
 
