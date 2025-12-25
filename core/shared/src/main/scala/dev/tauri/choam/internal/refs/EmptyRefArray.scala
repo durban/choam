@@ -21,7 +21,7 @@ package refs
 
 import cats.data.Chain
 
-import core.Ref
+import core.{ Ref, RxnImpl }
 
 private[choam] final class EmptyRefArray[A] extends Ref.UnsealedArray0[A] with stm.TArray.UnsealedTArray[A] {
 
@@ -37,10 +37,7 @@ private[choam] final class EmptyRefArray[A] extends Ref.UnsealedArray0[A] with s
   private[this] final def throwOob(idx: Int): Nothing =
     throw new IndexOutOfBoundsException(s"Index ${idx} out of bounds for length 0")
 
-  final override def unsafeApply(idx: Int): Ref[A] =
-    throwOob(idx)
-
-  final override def unsafeGet(idx: Int): stm.Txn[A] =
+  final override def unsafeGet(idx: Int): RxnImpl[A] =
     throwOob(idx)
 
   final override def unsafeSet(idx: Int, nv: A): stm.Txn[Unit] =

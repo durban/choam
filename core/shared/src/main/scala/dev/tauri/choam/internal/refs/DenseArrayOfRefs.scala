@@ -23,7 +23,7 @@ import scala.reflect.ClassTag
 
 import cats.data.Chain
 
-import core.Ref
+import core.{ Ref, RxnImpl }
 import mcas.RefIdGen
 
 sealed abstract class DenseArrayOfXRefs[A](
@@ -51,9 +51,9 @@ sealed abstract class DenseArrayOfXRefs[A](
     a.asInstanceOf[scala.Array[RefT[A]]]
   }
 
-  final override def unsafeApply(idx: Int): Ref[A] = {
-    internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, length) // TODO: check other places where we might need this
-    this.arr(idx)
+  final override def unsafeGet(idx: Int): RxnImpl[A] = {
+    internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, length)
+    this.arr(idx).getImpl
   }
 
   final override def refs: Chain[RefT[A]] =
@@ -98,11 +98,6 @@ private[choam] final class DenseArrayOfTRefs[A](
     } else {
       null
     }
-  }
-
-  final override def unsafeGet(idx: Int): stm.Txn[A] = {
-    internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, size)
-    this.arr(idx).get
   }
 
   final override def unsafeSet(idx: Int, nv: A): stm.Txn[Unit] = {

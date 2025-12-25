@@ -21,7 +21,7 @@ package refs
 
 import cats.data.Chain
 
-import core.Ref
+import core.{ Ref, RxnImpl }
 import stm.Txn
 
 private sealed abstract class SparseXRefArray[A](
@@ -39,11 +39,6 @@ private sealed abstract class SparseXRefArray[A](
 
   final override def length: Int =
     this._size
-
-  final override def unsafeApply(idx: Int): Ref[A] = {
-    this.checkIndex(idx)
-    this.getOrCreateRef(idx)
-  }
 
   protected[this] final def getOrNull(idx: Int): RefT[A] = {
     if ((idx >= 0) && (idx < length)) {
@@ -70,6 +65,11 @@ private sealed abstract class SparseXRefArray[A](
         case other => other.asInstanceOf[RefT[A]]
       }
     }
+  }
+
+  final override def unsafeGet(idx: Int): RxnImpl[A] = {
+    this.checkIndex(idx)
+    this.getOrCreateRef(idx).get
   }
 
   final override def refs: Chain[Ref[A]] = {
@@ -104,11 +104,6 @@ private final class SparseTRefArray[A](
 
   protected[this] final override def createRef(i: Int): RefArrayTRef[A] = {
     new RefArrayTRef[A](this, i)
-  }
-
-  final override def unsafeGet(idx: Int): Txn[A] = {
-    this.checkIndex(idx)
-    this.getOrCreateRef(idx).get
   }
 
   final override def unsafeSet(idx: Int, nv: A): Txn[Unit] = {

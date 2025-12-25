@@ -23,7 +23,7 @@ import scala.reflect.ClassTag
 
 import cats.data.Chain
 
-import core.Ref
+import core.{ Ref, RxnImpl }
 import mcas.RefIdGen
 import CompatPlatform.AtomicReferenceArray
 
@@ -48,9 +48,6 @@ sealed abstract class SparseArrayOfXRefs[A](
   private[this] val idBase: Long =
     rig.nextArrayIdBase(size = length)
 
-  final override def unsafeApply(idx: Int): RefT[A] =
-    unsafeApplyInternal(idx)
-
   protected[this] final def unsafeApplyInternal(idx: Int): RefT[A] = {
     val arr = this.arr
     arr.getOpaque(idx) match { // FIXME: reading a `Ref` with a race!
@@ -65,6 +62,10 @@ sealed abstract class SparseArrayOfXRefs[A](
       case ref =>
         ref
     }
+  }
+
+  final override def unsafeGet(idx: Int): RxnImpl[A] = {
+    unsafeApplyInternal(idx).getImpl
   }
 
   final override def refs: Chain[Ref[A]] = {
@@ -106,10 +107,6 @@ private[choam] final class SparseArrayOfTRefs[A](
 
   protected[this] final override def refTTag: ClassTag[RefT[A]] =
     ClassTag[Ref[A] with stm.TRef[A]](classOf[Ref[_]])
-
-  final override def unsafeGet(idx: Int): stm.Txn[A] = {
-    unsafeApplyInternal(idx).get
-  }
 
   final override def unsafeSet(idx: Int, nv: A): stm.Txn[Unit] = {
     unsafeApplyInternal(idx).set(nv)

@@ -27,6 +27,7 @@ private[choam] sealed abstract class StripedRef[A] {
   def fold[B](z: B)(f: (B, RefLike[A]) => B): B
 
   // TODO: `fold` should be able to short-circuit
+  // TODO: `fold` should work without materializing `Ref`s
 }
 
 private[choam] object StripedRef {
@@ -54,37 +55,25 @@ private[choam] object StripedRef {
       this
 
     final override def fold[B](z: B)(f: (B, RefLike[A]) => B): B = {
-      val len = stripes.length
-      @tailrec
-      def go(idx: Int, acc: B): B = {
-        if (idx >= len) {
-          acc
-        } else {
-          val ref = stripes.unsafeApply(idx)
-          go(idx + 1, f(acc, ref))
-        }
-      }
-
-      go(0, z)
+      stripes.refs.foldLeft(z)(f)
     }
 
     final override def get: Rxn[A] = Rxn.unsafe.suspendContext { ctx =>
-      val ref = stripes.unsafeApply(ctx.stripeId)
-      ref.get
+      stripes.unsafeGet(ctx.stripeId)
     }
 
     final override def modify[B](f: A => (A, B)): Rxn[B] = Rxn.unsafe.suspendContext { ctx =>
-      val ref = stripes.unsafeApply(ctx.stripeId)
+      val ref: Ref[A] = stripes.unsafeApply(ctx.stripeId) // TODO: avoid unsafeApply
       ref.modify(f)
     }
 
     final override def set(a: A): Rxn[Unit] = Rxn.unsafe.suspendContext { ctx =>
-      val ref = stripes.unsafeApply(ctx.stripeId)
+      val ref: Ref[A] = stripes.unsafeApply(ctx.stripeId) // TODO: avoid unsafeApply
       ref.set(a)
     }
 
     final override def update(f: A => A): Rxn[Unit] = Rxn.unsafe.suspendContext { ctx =>
-      val ref = stripes.unsafeApply(ctx.stripeId)
+      val ref: Ref[A] = stripes.unsafeApply(ctx.stripeId) // TODO: avoid unsafeApply
       ref.update(f)
     }
   }

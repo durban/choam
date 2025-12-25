@@ -105,9 +105,12 @@ object Ref extends RefInstances0 {
 
     def length: Int
 
-    def unsafeApply(idx: Int): Ref[A] // TODO:0.5: remove this
+    def unsafeGet(idx: Int): Rxn[A]
 
     def refs: Chain[Ref[A]]
+
+    private[choam] final def unsafeApply(idx: Int): Ref[A] = // TODO: remove this (or only use in tests)
+      this.refs.get(idx.toLong).getOrElse(throw new ArrayIndexOutOfBoundsException)
   }
 
   final object Array {
