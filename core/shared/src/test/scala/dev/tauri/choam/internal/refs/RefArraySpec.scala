@@ -27,7 +27,7 @@ import cats.data.Chain
 import munit.Location
 
 import core.{ Ref, Rxn }
-import internal.mcas.Mcas
+import internal.mcas.{ Mcas, Consts }
 import internal.mcas.RefIdGenBase.GAMMA
 
 final class RefArraySpec_Strict extends RefArraySpecIds {
@@ -188,7 +188,7 @@ trait RefArraySpec extends BaseSpec with SpecDefaultMcas {
 
   test("refs") {
     val a0 = mkRefArray("foo", 0)
-    assertEquals(a0.refs, Chain.empty)
+    assertEquals(a0.refs : Chain[Ref[String]], Chain.empty)
     val a1 = mkRefArray("foo", 1)
     assertEquals(a1.refs.length, 1L)
     val r10 = a1.refs.get(0L).getOrElse(fail("missing ref"))
@@ -202,6 +202,28 @@ trait RefArraySpec extends BaseSpec with SpecDefaultMcas {
       ref.get.flatMap { s => acc.map(_ + s) }
     }.unsafePerform(this.mcasImpl)
     assertEquals(vs, "foobarfoo")
+  }
+
+  test("refs (STM)") {
+    val a0 = Ref.safeTArrayImpl(0, "foo", stm.TArray.DefaultAllocationStrategy).unsafePerform(this.mcasImpl)
+    assertEquals(a0.refs : Chain[Ref[String]], Chain.empty)
+    val a1 = Ref.safeTArrayImpl(1, "foo", stm.TArray.DefaultAllocationStrategy).unsafePerform(this.mcasImpl)
+    assertEquals(a1.refs.length, 1L)
+    val r10: Ref[String] = a1.refs.get(0L).getOrElse(fail("missing ref"))
+    r10 match {
+      case _: stm.TRef[_] => // ok
+      case _ => fail("expected a TRef")
+    }
+    var listenerCalled = 0
+    val id = r10.loc.withListeners.unsafeRegisterListener(
+      this.mcasImpl.currentContext(),
+      { _ => listenerCalled += 1 },
+      this.mcasImpl.currentContext().readVersion(r10.loc),
+    )
+    assertNotEquals(id, Consts.InvalidListenerId)
+    assertEquals(listenerCalled, 0)
+    assertEquals(r10.getAndSet("bar").unsafePerform(this.mcasImpl), "foo")
+    assertEquals(listenerCalled, 1)
   }
 
   test("consistentRead") {
