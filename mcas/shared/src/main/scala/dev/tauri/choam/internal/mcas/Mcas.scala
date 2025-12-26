@@ -310,11 +310,14 @@ object Mcas extends McasCompanionPlatform {
       // TODO: We should figure out if we can safely do a 1-CAS instead.
       _assert(!equ(ov, nv))
       val hwd = this.readIntoHwd(ref)
-      val d0 = this.start() // do this AFTER reading, so version is deemed valid // TODO: is this still true?
+      val d0 = this.start() // do this AFTER reading, so version is deemed valid
       _assert(d0.isValidHwd(hwd))
       if (equ(hwd.ov, ov)) {
         val d1 = d0.add(hwd.withNv(nv))
-        this.tryPerformInternal(d1, optimism = Consts.PESSIMISTIC) == McasStatus.Successful
+        val res = this.tryPerformInternal(d1, optimism = Consts.PESSIMISTIC)
+        _assert(res != Version.Reserved)
+        _assert(!VersionFunctions.isValid(res)) // TODO: remove this, only correct for exchanger
+        res == McasStatus.Successful
       } else {
         false
       }
