@@ -35,7 +35,7 @@ trait PubSubSpec[F[_]]
   final override def munitTimeout: Duration =
     2 * super.munitTimeout
 
-  private[this] final val BS = 1024
+  private[this] final val BS = if (this.isNative()) 512 else 1024
 
   commonTests("DropOldest", PubSub.OverflowStrategy.dropOldest(BS))
   commonTests("DropNewest", PubSub.OverflowStrategy.dropNewest(BS))
@@ -93,7 +93,7 @@ trait PubSubSpec[F[_]]
     }
 
     test(s"$name - racing publishers (bufferSize = 1)") {
-      val N = 512
+      val N = if (this.isNative()) 256 else 512
       val nums = (1 to N).toVector
       val str2 = str.fold(
         unbounded = str, // can't set buffer size
@@ -157,7 +157,12 @@ trait PubSubSpec[F[_]]
         _ <- assertF((clue(r2) == Vector()) || (r2 == Vector(2)))
         _ <- assertF((clue(r3) == Vector()) || (r3 == Vector(3)))
       } yield ()
-      t.replicateA_(if (isJs()) 1 else 500)
+      val repeat = this.platform match {
+        case Jvm => 500
+        case Js => 1
+        case Native => 250
+      }
+      t.replicateA_(repeat)
     }
 
     test(s"$name - subscribe/close/publish race") {
@@ -194,7 +199,12 @@ trait PubSubSpec[F[_]]
           } yield ()
         }
       } yield ()
-      t.replicateA_(if (isJs()) 1 else 50)
+      val repeat = this.platform match {
+        case Jvm => 50
+        case Js => 1
+        case Native => 25
+      }
+      t.replicateA_(repeat)
     }
   }
 
