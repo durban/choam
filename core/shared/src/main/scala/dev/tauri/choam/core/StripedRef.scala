@@ -72,8 +72,7 @@ private[choam] object StripedRef {
     }
 
     final override def update(f: A => A): Rxn[Unit] = Rxn.unsafe.suspendContext { ctx =>
-      val ref: Ref[A] = stripes.unsafeApply(ctx.stripeId) // TODO: avoid unsafeApply
-      ref.update(f)
+      stripes.unsafeUpdate(ctx.stripeId, f)
     }
   }
 }

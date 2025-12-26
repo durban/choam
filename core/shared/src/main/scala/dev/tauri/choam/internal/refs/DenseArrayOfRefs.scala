@@ -61,6 +61,11 @@ sealed abstract class DenseArrayOfXRefs[A](
     this.arr(idx).setImpl(nv)
   }
 
+  final override def unsafeUpdate(idx: Int, f: A => A): RxnImpl[Unit] = {
+    internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, length)
+    this.arr(idx).updateImpl(f)
+  }
+
   final override def refs: Chain[RefT[A]] =
     Chain.fromSeq(scala.collection.immutable.ArraySeq.unsafeWrapArray(this.arr))
 }
@@ -103,11 +108,6 @@ private[choam] final class DenseArrayOfTRefs[A](
     } else {
       null
     }
-  }
-
-  final override def unsafeUpdate(idx: Int, f: A => A): stm.Txn[Unit] = {
-    internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, size)
-    this.arr(idx).update(f)
   }
 
   final override def get(idx: Int): stm.Txn[Option[A]] = {

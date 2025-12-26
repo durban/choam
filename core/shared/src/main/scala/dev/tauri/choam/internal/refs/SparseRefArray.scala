@@ -77,6 +77,11 @@ private sealed abstract class SparseXRefArray[A](
     this.getOrCreateRef(idx).set(nv)
   }
 
+  final override def unsafeUpdate(idx: Int, f: A => A): RxnImpl[Unit] = {
+    this.checkIndex(idx)
+    this.getOrCreateRef(idx).update(f)
+  }
+
   final override def refs: Chain[Ref[A]] = {
     val arr = Array.tabulate[Ref[A]](length) { idx =>
       this.getOrCreateRef(idx)
@@ -109,11 +114,6 @@ private final class SparseTRefArray[A](
 
   protected[this] final override def createRef(i: Int): RefArrayTRef[A] = {
     new RefArrayTRef[A](this, i)
-  }
-
-  final override def unsafeUpdate(idx: Int, f: A => A): Txn[Unit] = {
-    this.checkIndex(idx)
-    this.getOrCreateRef(idx).update(f)
   }
 
   final override def get(idx: Int): Txn[Option[A]] = {
