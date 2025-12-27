@@ -112,6 +112,7 @@ object Ref extends RefInstances0 {
 
     def get(idx: Int): Rxn[Option[A]]
     def set(idx: Int, nv: A): Rxn[Boolean]
+    def update(idx: Int, f: A => A): Rxn[Boolean]
 
     def refs: Chain[Ref[A]]
 

@@ -266,6 +266,26 @@ trait RefArraySpec extends BaseSpec with SpecDefaultMcas {
     assertEquals(arr.unsafeGet(1).unsafePerform(this.mcasImpl), "bar1")
   }
 
+  test("update") {
+    val arr = mkRefArray("foo", 2)
+    val r0 = arr.update(0, { ov =>
+      assertEquals(ov, "foo")
+      "bar0"
+    }).unsafePerform(this.mcasImpl)
+    assertEquals(r0, true)
+    val r1 = arr.update(1, { ov =>
+      assertEquals(ov, "foo")
+      "bar1"
+    }).unsafePerform(this.mcasImpl)
+    assertEquals(r1, true)
+    assertEquals(arr.unsafeGet(0).unsafePerform(this.mcasImpl), "bar0")
+    assertEquals(arr.unsafeGet(1).unsafePerform(this.mcasImpl), "bar1")
+    assertEquals(arr.update(2, _ => "").unsafePerform(this.mcasImpl), false)
+    assertEquals(arr.update(-1, _ => "").unsafePerform(this.mcasImpl), false)
+    assertEquals(arr.unsafeGet(0).unsafePerform(this.mcasImpl), "bar0")
+    assertEquals(arr.unsafeGet(1).unsafePerform(this.mcasImpl), "bar1")
+  }
+
   test("refs") {
     val a0 = mkRefArray("foo", 0)
     assertEquals(a0.refs : Chain[Ref[String]], Chain.empty)

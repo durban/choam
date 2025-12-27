@@ -85,6 +85,13 @@ private sealed class DenseRefArray[A](
     }
   }
 
+  final override def update(idx: Int, f: A => A): RxnImpl[Boolean] = {
+    this.getOrNull(idx) match {
+      case null => Rxn.falseImpl
+      case ref => ref.updateImpl(f).as(true)
+    }
+  }
+
   final override def refs: Chain[Ref[A]] = {
     val arr = Array.tabulate(length) { idx =>
       this.getOrNull(idx)
@@ -101,24 +108,5 @@ private final class DenseTRefArray[A](
 
   final override def createRef(i: Int): RefArrayTRef[A] = {
     new RefArrayTRef[A](this, i)
-  }
-
-  private[this] final def getOrNull(idx: Int): Ref[A] with stm.TRef[A] = {
-    if ((idx >= 0) && (idx < length)) {
-      val refIdx = 3 * idx
-      // `RefArrayTRef`s were initialized into
-      // a final field (`items`), and they
-      // never change, so we can read with plain:
-      this.getP(refIdx).asInstanceOf[Ref[A] with stm.TRef[A]] // TODO: avoid cast
-    } else {
-      null
-    }
-  }
-
-  final override def update(idx: Int, f: A => A): stm.Txn[Boolean] = {
-    (this.getOrNull(idx) : stm.TRef[A]) match {
-      case null => stm.Txn._false
-      case tref => tref.update(f).as(true)
-    }
   }
 }

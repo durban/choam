@@ -459,16 +459,16 @@ object Rxn extends RxnInstances0 {
   private[choam] final def nullOf[A]: Rxn[A] =
     _nullOf.asInstanceOf[Rxn[A]]
 
-  private[choam] final def true_[A]: Rxn[Boolean] =
+  private[choam] final def true_ : Rxn[Boolean] =
     _true
 
-  private[choam] final def trueImpl[A]: RxnImpl[Boolean] =
+  private[choam] final def trueImpl: RxnImpl[Boolean] =
     _true
 
-  private[choam] final def false_[A]: Rxn[Boolean] =
+  private[choam] final def false_ : Rxn[Boolean] =
     _false
 
-  private[choam] final def falseImpl[A]: RxnImpl[Boolean] =
+  private[choam] final def falseImpl: RxnImpl[Boolean] =
     _false
 
   private[choam] final def rightUnit: Rxn[Right[Nothing, Unit]] =

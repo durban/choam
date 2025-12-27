@@ -93,6 +93,13 @@ sealed abstract class DenseArrayOfXRefs[A](
     }
   }
 
+  final override def update(idx: Int, f: A => A): RxnImpl[Boolean] = {
+    this.getOrNull(idx) match {
+      case null => Rxn.falseImpl
+      case ref => ref.updateImpl(f).as(true)
+    }
+  }
+
   final override def refs: Chain[RefT[A]] =
     Chain.fromSeq(scala.collection.immutable.ArraySeq.unsafeWrapArray(this.arr))
 }
@@ -128,11 +135,4 @@ private[choam] final class DenseArrayOfTRefs[A](
 
   protected[this] def refTTag: ClassTag[RefT[A]] =
     ClassTag[RefT[A]](classOf[Ref[A]])
-
-  final override def update(idx: Int, f: A => A): stm.Txn[Boolean] = {
-    (this.getOrNull(idx) : stm.TRef[A]) match {
-      case null => stm.Txn._false
-      case tref => tref.update(f).as(true)
-    }
-  }
 }
