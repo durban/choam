@@ -94,6 +94,13 @@ private sealed abstract class SparseXRefArray[A](
     }
   }
 
+  final override def set(idx: Int, nv: A): RxnImpl[Boolean] = {
+    this.getOrNull(idx) match {
+      case null => Rxn.falseImpl
+      case ref => ref.set(nv).as(true)
+    }
+  }
+
   final override def refs: Chain[Ref[A]] = {
     val arr = Array.tabulate[Ref[A]](length) { idx =>
       this.getOrCreateRef(idx)
@@ -126,13 +133,6 @@ private final class SparseTRefArray[A](
 
   protected[this] final override def createRef(i: Int): RefArrayTRef[A] = {
     new RefArrayTRef[A](this, i)
-  }
-
-  final override def set(idx: Int, nv: A): Txn[Boolean] = {
-    this.getOrNull(idx) match {
-      case null => Txn._false
-      case tref => tref.set(nv).as(true)
-    }
   }
 
   final override def update(idx: Int, f: A => A): Txn[Boolean] = {

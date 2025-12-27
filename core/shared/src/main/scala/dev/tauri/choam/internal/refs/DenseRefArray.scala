@@ -78,6 +78,13 @@ private sealed class DenseRefArray[A](
     }
   }
 
+  final override def set(idx: Int, nv: A): RxnImpl[Boolean] = {
+    this.getOrNull(idx) match {
+      case null => Rxn.falseImpl
+      case ref => ref.setImpl(nv).as(true)
+    }
+  }
+
   final override def refs: Chain[Ref[A]] = {
     val arr = Array.tabulate(length) { idx =>
       this.getOrNull(idx)
@@ -105,13 +112,6 @@ private final class DenseTRefArray[A](
       this.getP(refIdx).asInstanceOf[Ref[A] with stm.TRef[A]] // TODO: avoid cast
     } else {
       null
-    }
-  }
-
-  final override def set(idx: Int, nv: A): stm.Txn[Boolean] = {
-    (this.getOrNull(idx) : stm.TRef[A]) match {
-      case null => stm.Txn._false
-      case tref => tref.set(nv).as(true)
     }
   }
 

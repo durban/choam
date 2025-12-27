@@ -52,8 +52,8 @@ private[choam] final class EmptyRefArray[A] extends Ref.UnsealedArray0[A] with s
   final override def get(idx: Int): RxnImpl[Option[A]] =
     Rxn.noneImpl
 
-  final override def set(idx: Int, nv: A): stm.Txn[Boolean] =
-    stm.Txn._false
+  final override def set(idx: Int, nv: A): RxnImpl[Boolean] =
+    Rxn.falseImpl
 
   final override def update(idx: Int, f: A => A): stm.Txn[Boolean] =
     stm.Txn._false
