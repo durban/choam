@@ -66,6 +66,11 @@ sealed abstract class DenseArrayOfXRefs[A](
     this.arr(idx).updateImpl(f)
   }
 
+  final override def unsafeModify[B](idx: Int, f: A => (A, B)): RxnImpl[B] = {
+    internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, length)
+    this.arr(idx).modifyImpl(f)
+  }
+
   final override def refs: Chain[RefT[A]] =
     Chain.fromSeq(scala.collection.immutable.ArraySeq.unsafeWrapArray(this.arr))
 }

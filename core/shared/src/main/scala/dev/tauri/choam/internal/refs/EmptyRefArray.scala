@@ -46,6 +46,9 @@ private[choam] final class EmptyRefArray[A] extends Ref.UnsealedArray0[A] with s
   final override def unsafeUpdate(idx: Int, f: A => A): RxnImpl[Unit] =
     throwOob(idx)
 
+  final override def unsafeModify[B](idx: Int, f: A => (A, B)): RxnImpl[B] =
+    throwOob(idx)
+
   final override def get(idx: Int): stm.Txn[Option[A]] =
     stm.Txn.none
 

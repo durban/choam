@@ -66,6 +66,11 @@ private sealed class DenseRefArray[A](
     this.getOrNull(idx).updateImpl(f)
   }
 
+  final override def unsafeModify[B](idx: Int, f: A => (A, B)): RxnImpl[B] = {
+    this.checkIndex(idx)
+    this.getOrNull(idx).modifyImpl(f)
+  }
+
   final override def refs: Chain[Ref[A]] = {
     val arr = Array.tabulate(length) { idx =>
       this.getOrNull(idx)
