@@ -71,6 +71,11 @@ sealed abstract class DenseArrayOfXRefs[A](
     this.arr(idx).modifyImpl(f)
   }
 
+  private[choam] final override def unsafeFlatModify[B](idx: Int, f: A => (A, Rxn[B])): RxnImpl[B] = {
+    internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, length)
+    this.arr(idx).flatModifyImpl(f)
+  }
+
   protected[this] final def getOrNull(idx: Int): RefT[A] = {
     if ((idx >= 0) && (idx < length)) {
       this.arr(idx)

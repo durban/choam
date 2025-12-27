@@ -71,6 +71,11 @@ private sealed class DenseRefArray[A](
     this.getOrNull(idx).modifyImpl(f)
   }
 
+  private[choam] final override def unsafeFlatModify[B](idx: Int, f: A => (A, Rxn[B])): RxnImpl[B] = {
+    this.checkIndex(idx)
+    this.getOrNull(idx).flatModifyImpl(f)
+  }
+
   final override def get(idx: Int): RxnImpl[Option[A]] = {
     this.getOrNull(idx) match {
       case null => Rxn.noneImpl

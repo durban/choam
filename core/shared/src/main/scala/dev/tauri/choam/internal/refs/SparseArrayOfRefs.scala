@@ -80,6 +80,10 @@ sealed abstract class SparseArrayOfXRefs[A](
     unsafeApplyInternal(idx).modifyImpl(f)
   }
 
+  private[choam] final override def unsafeFlatModify[B](idx: Int, f: A => (A, Rxn[B])): RxnImpl[B] = {
+    unsafeApplyInternal(idx).flatModifyImpl(f)
+  }
+
   final override def get(idx: Int): RxnImpl[Option[A]] = {
     if ((idx >= 0) && (idx < length)) {
       unsafeGet(idx).map(Some(_))

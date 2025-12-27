@@ -385,6 +385,9 @@ private[choam] abstract class RefGetAxn[B] extends RxnImpl[B] with MemoryLocatio
   final def modifyImpl[C](f: B => (B, C)): RxnImpl[C] =
     Rxn.loc.modify(this, f)
 
+  final def flatModifyImpl[C](f: B => (B, Rxn[C])): RxnImpl[C] =
+    this.modifyImpl(f).flatten
+
   final def getAndSet(nv: B): RxnImpl[B] =
     getAndUpdate { _ => nv }
 

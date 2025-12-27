@@ -86,6 +86,11 @@ private sealed abstract class SparseXRefArray[A](
     this.getOrCreateRef(idx).modify(f)
   }
 
+  private[choam] final override def unsafeFlatModify[B](idx: Int, f: A => (A, Rxn[B])): RxnImpl[B] = {
+    this.checkIndex(idx)
+    this.getOrCreateRef(idx).flatModifyImpl(f)
+  }
+
   final override def get(idx: Int): RxnImpl[Option[A]] = {
     this.getOrNull(idx) match {
       case null => Rxn.noneImpl

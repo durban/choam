@@ -49,6 +49,7 @@ sealed trait Ref[A] extends RefLike.UnsealedRefLike[A] { this: MemoryLocation[A]
   private[choam] def setImpl(a: A): RxnImpl[Unit]
   private[choam] def updateImpl(f: A => A): RxnImpl[Unit]
   private[choam] def modifyImpl[C](f: A => (A, C)): RxnImpl[C]
+  private[choam] def flatModifyImpl[C](f: A => (A, Rxn[C])): RxnImpl[C]
 }
 
 private[choam] trait UnsealedRef[A] extends Ref[A] { this: MemoryLocation[A] & core.RefGetAxn[A] =>
@@ -109,6 +110,7 @@ object Ref extends RefInstances0 {
     def unsafeSet(idx: Int, nv: A): Rxn[Unit]
     def unsafeUpdate(idx: Int, f: A => A): Rxn[Unit]
     def unsafeModify[B](idx: Int, f: A => (A, B)): Rxn[B]
+    private[choam] def unsafeFlatModify[B](idx: Int, f: A => (A, Rxn[B])): Rxn[B]
 
     def get(idx: Int): Rxn[Option[A]]
     def set(idx: Int, nv: A): Rxn[Boolean]
