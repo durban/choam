@@ -21,7 +21,7 @@ package refs
 
 import cats.data.Chain
 
-import core.{ Ref, RxnImpl }
+import core.{ Ref, Rxn, RxnImpl }
 
 private[choam] final class EmptyRefArray[A] extends Ref.UnsealedArray0[A] with stm.TArray.UnsealedTArray[A] {
 
@@ -49,8 +49,8 @@ private[choam] final class EmptyRefArray[A] extends Ref.UnsealedArray0[A] with s
   final override def unsafeModify[B](idx: Int, f: A => (A, B)): RxnImpl[B] =
     throwOob(idx)
 
-  final override def get(idx: Int): stm.Txn[Option[A]] =
-    stm.Txn.none
+  final override def get(idx: Int): RxnImpl[Option[A]] =
+    Rxn.noneImpl
 
   final override def set(idx: Int, nv: A): stm.Txn[Boolean] =
     stm.Txn._false

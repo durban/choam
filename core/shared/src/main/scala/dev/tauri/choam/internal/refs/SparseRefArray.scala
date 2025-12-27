@@ -21,7 +21,7 @@ package refs
 
 import cats.data.Chain
 
-import core.{ Ref, RxnImpl }
+import core.{ Ref, Rxn, RxnImpl }
 import stm.Txn
 
 private sealed abstract class SparseXRefArray[A](
@@ -87,6 +87,13 @@ private sealed abstract class SparseXRefArray[A](
     this.getOrCreateRef(idx).modify(f)
   }
 
+  final override def get(idx: Int): RxnImpl[Option[A]] = {
+    this.getOrNull(idx) match {
+      case null => Rxn.noneImpl
+      case ref => ref.get.map(Some(_))
+    }
+  }
+
   final override def refs: Chain[Ref[A]] = {
     val arr = Array.tabulate[Ref[A]](length) { idx =>
       this.getOrCreateRef(idx)
@@ -119,13 +126,6 @@ private final class SparseTRefArray[A](
 
   protected[this] final override def createRef(i: Int): RefArrayTRef[A] = {
     new RefArrayTRef[A](this, i)
-  }
-
-  final override def get(idx: Int): Txn[Option[A]] = {
-    this.getOrNull(idx) match {
-      case null => Txn.pure(None)
-      case tref => tref.get.map(Some(_))
-    }
   }
 
   final override def set(idx: Int, nv: A): Txn[Boolean] = {

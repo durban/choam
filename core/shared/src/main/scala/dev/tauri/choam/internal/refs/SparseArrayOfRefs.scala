@@ -23,7 +23,7 @@ import scala.reflect.ClassTag
 
 import cats.data.Chain
 
-import core.{ Ref, RxnImpl }
+import core.{ Ref, Rxn, RxnImpl }
 import mcas.RefIdGen
 import CompatPlatform.AtomicReferenceArray
 
@@ -80,6 +80,14 @@ sealed abstract class SparseArrayOfXRefs[A](
     unsafeApplyInternal(idx).modifyImpl(f)
   }
 
+  final override def get(idx: Int): RxnImpl[Option[A]] = {
+    if ((idx >= 0) && (idx < length)) {
+      unsafeGet(idx).map(Some(_))
+    } else {
+      Rxn.noneImpl
+    }
+  }
+
   final override def refs: Chain[Ref[A]] = {
     val arr = Array.tabulate(length) { idx =>
       this.unsafeApplyInternal(idx)
@@ -119,14 +127,6 @@ private[choam] final class SparseArrayOfTRefs[A](
 
   protected[this] final override def refTTag: ClassTag[RefT[A]] =
     ClassTag[Ref[A] with stm.TRef[A]](classOf[Ref[_]])
-
-  final override def get(idx: Int): stm.Txn[Option[A]] = {
-    if ((idx >= 0) && (idx < size)) {
-      unsafeGet(idx).map(Some(_))
-    } else {
-      stm.Txn.none
-    }
-  }
 
   final override def set(idx: Int, nv: A): stm.Txn[Boolean] = {
     if ((idx >= 0) && (idx < size)) {

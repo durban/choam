@@ -110,6 +110,8 @@ object Ref extends RefInstances0 {
     def unsafeUpdate(idx: Int, f: A => A): Rxn[Unit]
     def unsafeModify[B](idx: Int, f: A => (A, B)): Rxn[B]
 
+    def get(idx: Int): Rxn[Option[A]]
+
     def refs: Chain[Ref[A]]
 
     private[choam] final def unsafeApply(idx: Int): Ref[A] = // TODO: remove this (or only use in tests)

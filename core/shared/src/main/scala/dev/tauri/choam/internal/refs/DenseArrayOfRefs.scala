@@ -23,7 +23,7 @@ import scala.reflect.ClassTag
 
 import cats.data.Chain
 
-import core.{ Ref, RxnImpl }
+import core.{ Ref, Rxn, RxnImpl }
 import mcas.RefIdGen
 
 sealed abstract class DenseArrayOfXRefs[A](
@@ -71,6 +71,21 @@ sealed abstract class DenseArrayOfXRefs[A](
     this.arr(idx).modifyImpl(f)
   }
 
+  protected[this] final def getOrNull(idx: Int): RefT[A] = {
+    if ((idx >= 0) && (idx < length)) {
+      this.arr(idx)
+    } else {
+      nullOf[RefT[A]]
+    }
+  }
+
+  final override def get(idx: Int): RxnImpl[Option[A]] = {
+    this.getOrNull(idx) match {
+      case null => Rxn.noneImpl[A]
+      case tref => tref.getImpl.map(Some(_))
+    }
+  }
+
   final override def refs: Chain[RefT[A]] =
     Chain.fromSeq(scala.collection.immutable.ArraySeq.unsafeWrapArray(this.arr))
 }
@@ -107,30 +122,15 @@ private[choam] final class DenseArrayOfTRefs[A](
   protected[this] def refTTag: ClassTag[RefT[A]] =
     ClassTag[RefT[A]](classOf[Ref[A]])
 
-  private[this] final def getOrNull(idx: Int): stm.TRef[A] = {
-    if ((idx >= 0) && (idx < size)) {
-      this.arr(idx)
-    } else {
-      null
-    }
-  }
-
-  final override def get(idx: Int): stm.Txn[Option[A]] = {
-    this.getOrNull(idx) match {
-      case null => stm.Txn.none[A]
-      case tref => tref.get.map(Some(_))
-    }
-  }
-
   final override def set(idx: Int, nv: A): stm.Txn[Boolean] = {
-    this.getOrNull(idx) match {
+    (this.getOrNull(idx) : stm.TRef[A]) match {
       case null => stm.Txn._false
       case tref => tref.set(nv).as(true)
     }
   }
 
   final override def update(idx: Int, f: A => A): stm.Txn[Boolean] = {
-    this.getOrNull(idx) match {
+    (this.getOrNull(idx) : stm.TRef[A]) match {
       case null => stm.Txn._false
       case tref => tref.update(f).as(true)
     }

@@ -21,7 +21,7 @@ package refs
 
 import cats.data.Chain
 
-import core.{ Ref, RxnImpl }
+import core.{ Ref, Rxn, RxnImpl }
 
 private sealed class DenseRefArray[A](
   __size: Int,
@@ -71,6 +71,13 @@ private sealed class DenseRefArray[A](
     this.getOrNull(idx).modifyImpl(f)
   }
 
+  final override def get(idx: Int): RxnImpl[Option[A]] = {
+    this.getOrNull(idx) match {
+      case null => Rxn.noneImpl
+      case ref => ref.getImpl.map(Some(_))
+    }
+  }
+
   final override def refs: Chain[Ref[A]] = {
     val arr = Array.tabulate(length) { idx =>
       this.getOrNull(idx)
@@ -98,13 +105,6 @@ private final class DenseTRefArray[A](
       this.getP(refIdx).asInstanceOf[Ref[A] with stm.TRef[A]] // TODO: avoid cast
     } else {
       null
-    }
-  }
-
-  final override def get(idx: Int): stm.Txn[Option[A]] = {
-    (this.getOrNull(idx) : stm.TRef[A]) match {
-      case null => stm.Txn.none
-      case tref => tref.get.map(Some(_))
     }
   }
 
