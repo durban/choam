@@ -92,6 +92,13 @@ private sealed class DenseRefArray[A](
     }
   }
 
+  final override def modify[B](idx: Int, f: A => (A, B)): RxnImpl[Option[B]] = {
+    this.getOrNull(idx) match {
+      case null => Rxn.noneImpl
+      case ref => ref.modifyImpl(f).map(Some(_))
+    }
+  }
+
   final override def refs: Chain[Ref[A]] = {
     val arr = Array.tabulate(length) { idx =>
       this.getOrNull(idx)

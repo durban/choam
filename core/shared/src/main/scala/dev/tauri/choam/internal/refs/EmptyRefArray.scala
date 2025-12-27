@@ -57,4 +57,7 @@ private[choam] final class EmptyRefArray[A] extends Ref.UnsealedArray0[A] with s
 
   final override def update(idx: Int, f: A => A): RxnImpl[Boolean] =
     Rxn.falseImpl
+
+  final override def modify[B](idx: Int, f: A => (A, B)): RxnImpl[Option[B]] =
+    Rxn.noneImpl
 }

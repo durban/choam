@@ -100,6 +100,13 @@ sealed abstract class DenseArrayOfXRefs[A](
     }
   }
 
+  final override def modify[B](idx: Int, f: A => (A, B)): RxnImpl[Option[B]] = {
+    this.getOrNull(idx) match {
+      case null => Rxn.noneImpl
+      case ref => ref.modifyImpl(f).map(Some(_))
+    }
+  }
+
   final override def refs: Chain[RefT[A]] =
     Chain.fromSeq(scala.collection.immutable.ArraySeq.unsafeWrapArray(this.arr))
 }

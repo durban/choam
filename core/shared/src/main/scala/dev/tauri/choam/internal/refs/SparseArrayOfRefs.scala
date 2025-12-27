@@ -104,6 +104,14 @@ sealed abstract class SparseArrayOfXRefs[A](
     }
   }
 
+  final override def modify[B](idx: Int, f: A => (A, B)): RxnImpl[Option[B]] = {
+    if ((idx >= 0) && (idx < length)) {
+      unsafeModify(idx, f).map(Some(_))
+    } else {
+      Rxn.noneImpl
+    }
+  }
+
   final override def refs: Chain[Ref[A]] = {
     val arr = Array.tabulate(length) { idx =>
       this.unsafeApplyInternal(idx)
