@@ -48,7 +48,7 @@ sealed abstract class SparseArrayOfXRefs[A](
   private[this] val idBase: Long =
     rig.nextArrayIdBase(size = length)
 
-  protected[this] final def unsafeApplyInternal(idx: Int): RefT[A] = {
+  protected[this] final def getOrCreateRef(idx: Int): RefT[A] = {
     val arr = this.arr
     arr.getOpaque(idx) match { // FIXME: reading a `Ref` with a race!
       case null =>
@@ -65,23 +65,23 @@ sealed abstract class SparseArrayOfXRefs[A](
   }
 
   final override def unsafeGet(idx: Int): RxnImpl[A] = {
-    unsafeApplyInternal(idx).getImpl
+    getOrCreateRef(idx).getImpl
   }
 
   final override def unsafeSet(idx: Int, nv: A): RxnImpl[Unit] = {
-    unsafeApplyInternal(idx).setImpl(nv)
+    getOrCreateRef(idx).setImpl(nv)
   }
 
   final override def unsafeUpdate(idx: Int, f: A => A): RxnImpl[Unit] = {
-    unsafeApplyInternal(idx).updateImpl(f)
+    getOrCreateRef(idx).updateImpl(f)
   }
 
   final override def unsafeModify[B](idx: Int, f: A => (A, B)): RxnImpl[B] = {
-    unsafeApplyInternal(idx).modifyImpl(f)
+    getOrCreateRef(idx).modifyImpl(f)
   }
 
   private[choam] final override def unsafeFlatModify[B](idx: Int, f: A => (A, Rxn[B])): RxnImpl[B] = {
-    unsafeApplyInternal(idx).flatModifyImpl(f)
+    getOrCreateRef(idx).flatModifyImpl(f)
   }
 
   final override def get(idx: Int): RxnImpl[Option[A]] = {
@@ -118,7 +118,7 @@ sealed abstract class SparseArrayOfXRefs[A](
 
   final override def refs: Chain[Ref[A]] = {
     val arr = Array.tabulate(length) { idx =>
-      this.unsafeApplyInternal(idx)
+      this.getOrCreateRef(idx)
     }
     Chain.fromSeq(scala.collection.immutable.ArraySeq.unsafeWrapArray(arr))
   }
