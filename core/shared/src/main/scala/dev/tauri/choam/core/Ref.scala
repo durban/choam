@@ -127,13 +127,6 @@ object Ref extends RefInstances0 {
         case ref => ref.getAndSet(nv)
       }
     }
-
-    private[choam] final def unsafeApply(idx: Int): Ref[A] = { // TODO: remove this (or only use in tests)
-      this.getOrCreateRefOrNull(idx) match {
-        case null => throw new ArrayIndexOutOfBoundsException
-        case ref => ref
-      }
-    }
   }
 
   final object Array {
@@ -142,6 +135,10 @@ object Ref extends RefInstances0 {
       arr1.unsafeGet(idx1).flatMap { o1 =>
         arr2.unsafeModify(idx2, { o2 => (o1, o2) }).flatMap(arr1.unsafeSet(idx1, _))
       }
+    }
+
+    private[choam] final def unsafeConsistentRead[A, B](arr1: Ref.Array[A], idx1: Int, arr2: Ref.Array[B], idx2: Int): Rxn[(A, B)] = {
+      arr1.unsafeGet(idx1) * arr2.unsafeGet(idx2)
     }
 
     sealed abstract class AllocationStrategy extends Ref.AllocationStrategy {

@@ -67,9 +67,9 @@ trait RefLikeSpecJvm[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
       p1p1._2.loc,
       p2._1.loc,
       p2._2.loc,
-      arr.unsafeApply(0).loc,
-      arr.unsafeApply(1).loc,
-      arr.unsafeApply(2).loc,
+      arr.getOrCreateRefOrNull(0).loc,
+      arr.getOrCreateRefOrNull(1).loc,
+      arr.getOrCreateRefOrNull(2).loc,
     )
     refs.traverse { ref =>
       F.delay {

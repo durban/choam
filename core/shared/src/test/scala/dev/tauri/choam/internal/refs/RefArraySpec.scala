@@ -358,16 +358,16 @@ trait RefArraySpec extends BaseSpec with SpecDefaultMcas {
 
   test("consistentRead") {
     val a = mkRefArray[Int](42)
-    a.unsafeApply(0).update(_ + 1).unsafePerform(this.defaultMcasInstance)
-    val (x, y) = Ref.consistentRead(a.unsafeApply(0), a.unsafeApply(2)).unsafePerform(this.defaultMcasInstance)
+    a.unsafeUpdate(0, _ + 1).unsafePerform(this.defaultMcasInstance)
+    val (x, y) = Ref.Array.unsafeConsistentRead(a, 0, a, 2).unsafePerform(this.defaultMcasInstance)
     assert(x == 43)
     assert(y == 42)
   }
 
   test("read/write/cas") {
     val a = mkRefArray[String]("a")
-    val r1 = a.unsafeApply(1).loc
-    val r2 = a.unsafeApply(2).loc
+    val r1 = a.getOrCreateRefOrNull(1).loc
+    val r2 = a.getOrCreateRefOrNull(2).loc
     assert(r1.unsafeGetV() eq "a")
     assert(r2.unsafeGetV() eq "a")
     r1.unsafeSetV("b")
