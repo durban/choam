@@ -121,8 +121,19 @@ object Ref extends RefInstances0 {
     private[choam] def unsafeFlatModify[B](idx: Int, f: A => (A, Rxn[B])): Rxn[B]
     private[choam] def getOrCreateRefOrNull(idx: Int): Ref[A]
 
-    private[choam] final def unsafeApply(idx: Int): Ref[A] = // TODO: remove this (or only use in tests)
-      this.refs.get(idx.toLong).getOrElse(throw new ArrayIndexOutOfBoundsException)
+    private[choam] final def unsafeGetAndSet(idx: Int, nv: A): Rxn[A] = {
+      this.getOrCreateRefOrNull(idx) match {
+        case null => throw new ArrayIndexOutOfBoundsException
+        case ref => ref.getAndSet(nv)
+      }
+    }
+
+    private[choam] final def unsafeApply(idx: Int): Ref[A] = { // TODO: remove this (or only use in tests)
+      this.getOrCreateRefOrNull(idx) match {
+        case null => throw new ArrayIndexOutOfBoundsException
+        case ref => ref
+      }
+    }
   }
 
   final object Array {

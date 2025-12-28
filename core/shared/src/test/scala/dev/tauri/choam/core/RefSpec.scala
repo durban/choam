@@ -144,23 +144,20 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  private def unsafeApply[A](arr: Ref.Array[A], idx: Int): Ref[A] =
-    arr.refs.get(idx.toLong).getOrElse(fail(s"missing ref for index ${idx}"))
-
   test("Ref.array") {
     for {
       a <- Ref.array[String](size = 4, initial = "x").run[F]
-      _ <- unsafeApply(a, 0).getAndSet("a").run
-      _ <- unsafeApply(a, 1).getAndSet("b").run
-      _ <- unsafeApply(a, 2).getAndSet("c").run
-      _ <- unsafeApply(a, 3).getAndSet("d").run
-      sw02 = Ref.swap(unsafeApply(a, 0), unsafeApply(a, 2))
-      sw13 = Ref.swap(unsafeApply(a, 1), unsafeApply(a, 3))
+      _ <- a.unsafeGetAndSet(0, "a").run
+      _ <- a.unsafeGetAndSet(1, "b").run
+      _ <- a.unsafeGetAndSet(2, "c").run
+      _ <- a.unsafeGetAndSet(3, "d").run
+      sw02 = Ref.Array.unsafeSwap(a, 0, a, 2)
+      sw13 = Ref.Array.unsafeSwap(a, 1, a, 3)
       _ <- (sw02 * sw13).run[F]
-      _ <- assertResultF(unsafeApply(a, 0).get.run[F], "c")
-      _ <- assertResultF(unsafeApply(a, 1).get.run[F], "d")
-      _ <- assertResultF(unsafeApply(a, 2).get.run[F], "a")
-      _ <- assertResultF(unsafeApply(a, 3).get.run[F], "b")
+      _ <- assertResultF(a.unsafeGet(0).run[F], "c")
+      _ <- assertResultF(a.unsafeGet(1).run[F], "d")
+      _ <- assertResultF(a.unsafeGet(2).run[F], "a")
+      _ <- assertResultF(a.unsafeGet(3).run[F], "b")
     } yield ()
   }
 
@@ -168,20 +165,20 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
     val N = 0xffff
     for {
       a <- Ref.array[String](size = N, initial = "x").run[F]
-      _ <- assertResultF(unsafeApply(a, 0).get.run[F], "x")
-      _ <- assertResultF(unsafeApply(a, 1).get.run[F], "x")
-      _ <- assertResultF(unsafeApply(a, 2).get.run[F], "x")
-      _ <- assertResultF(unsafeApply(a, 3).get.run[F], "x")
-      _ <- assertResultF(unsafeApply(a, N - 1).get.run[F], "x")
+      _ <- assertResultF(a.unsafeGet(0).run[F], "x")
+      _ <- assertResultF(a.unsafeGet(1).run[F], "x")
+      _ <- assertResultF(a.unsafeGet(2).run[F], "x")
+      _ <- assertResultF(a.unsafeGet(3).run[F], "x")
+      _ <- assertResultF(a.unsafeGet(N - 1).run[F], "x")
       idx <- F.delay {
         val tlr = java.util.concurrent.ThreadLocalRandom.current()
         (tlr.nextInt().abs % (N - 2)) + 1
       }
-      _ <- assertResultF(unsafeApply(a, idx).get.run[F], "x")
-      _ <- unsafeApply(a, idx).getAndSet("foo").run
-      _ <- assertResultF(unsafeApply(a, 0).get.run[F], "x")
-      _ <- assertResultF(unsafeApply(a, idx).get.run[F], "foo")
-      _ <- assertResultF(unsafeApply(a, N - 1).get.run[F], "x")
+      _ <- assertResultF(a.unsafeGet(idx).run[F], "x")
+      _ <- a.unsafeGetAndSet(idx, "foo").run
+      _ <- assertResultF(a.unsafeGet(0).run[F], "x")
+      _ <- assertResultF(a.unsafeGet(idx).run[F], "foo")
+      _ <- assertResultF(a.unsafeGet(N - 1).run[F], "x")
     } yield ()
   }
 
