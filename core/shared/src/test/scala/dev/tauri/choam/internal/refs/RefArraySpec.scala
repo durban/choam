@@ -68,26 +68,26 @@ trait RefArraySpecIds extends RefArraySpec {
       case other =>
         fail(s"didn't match: '${other}'")
     }
-    assertEquals(clue(arr.unsafeApply(0).toString), s"ARef@${baseHash}+0")
-    assertEquals(clue(arr.unsafeApply(1).toString), s"ARef@${baseHash}+1")
-    assertEquals(clue(arr.unsafeApply(2).toString), s"ARef@${baseHash}+2")
-    assertEquals(clue(arr.unsafeApply(3).toString), s"ARef@${baseHash}+3")
+    assertEquals(clue(arr.getOrCreateRefOrNull(0).toString), s"ARef@${baseHash}+0")
+    assertEquals(clue(arr.getOrCreateRefOrNull(1).toString), s"ARef@${baseHash}+1")
+    assertEquals(clue(arr.getOrCreateRefOrNull(2).toString), s"ARef@${baseHash}+2")
+    assertEquals(clue(arr.getOrCreateRefOrNull(3).toString), s"ARef@${baseHash}+3")
   }
 
   test("equals/toString") {
     val a: Ref.Array[String] = mkRefArray[String]("a")
-    val r1: Ref[String] = a.unsafeApply(0)
-    val r2: Ref[String] = a.unsafeApply(1)
+    val r1: Ref[String] = a.getOrCreateRefOrNull(0)
+    val r2: Ref[String] = a.getOrCreateRefOrNull(1)
     assert((a : AnyRef) ne r1)
     assert((a : Any) != r1)
     assert((a : AnyRef) ne r2)
     assert((a : Any) != r2)
     assert(r1 ne r2)
     assert(r1 != r2)
-    assert(r1 eq a.unsafeApply(0))
-    assert(r1 == a.unsafeApply(0))
-    assert(r2 eq a.unsafeApply(1))
-    assert(r2 == a.unsafeApply(1))
+    assert(r1 eq a.getOrCreateRefOrNull(0))
+    assert(r1 == a.getOrCreateRefOrNull(0))
+    assert(r2 eq a.getOrCreateRefOrNull(1))
+    assert(r2 == a.getOrCreateRefOrNull(1))
     assert(r1.toString != r2.toString)
     assertEquals(r1.loc.id + GAMMA, r2.loc.id)
   }
@@ -129,7 +129,7 @@ trait RefArraySpec extends BaseSpec with SpecDefaultMcas {
     val arr = mkRefArray("foo", 0)
     val pat = "Ref\\.Array\\[0\\]\\@[\\da-f]+".r
     assert(pat.matches(clue(arr.toString)))
-    assert(Try { arr.unsafeApply(0) }.isFailure)
+    assert(Try { arr.unsafeGet(0) }.isFailure)
   }
 
   test("big array") {
@@ -139,35 +139,35 @@ trait RefArraySpec extends BaseSpec with SpecDefaultMcas {
       case Native => 0x3fffff
     }
     val arr = mkRefArray("foo", size)
-    val r = arr.unsafeApply(size / 2)
+    val r = arr.getOrCreateRefOrNull(size / 2)
     r.update { ov => assertEquals(ov, "foo"); "bar" }.unsafePerform(this.defaultMcasInstance)
     r.update { ov => assertEquals(ov, "bar"); "xyz" }.unsafePerform(this.defaultMcasInstance)
     assertSameInstance(r.get.unsafePerform(this.defaultMcasInstance), "xyz")
     if (isMultithreaded()) {
       assert(r.loc.unsafeGetMarkerV() ne null)
     }
-    val r2 = arr.unsafeApply(size - 1)
+    val r2 = arr.getOrCreateRefOrNull(size - 1)
     val res = Ref.consistentRead(r, r2).unsafePerform(this.defaultMcasInstance)
     assertEquals(res, ("xyz", "foo"))
   }
 
   test("indexing error") {
-    def checkError(op: => Ref[String])(implicit loc: Location): Unit = {
+    def checkError(op: => Rxn[String])(implicit loc: Location): Unit = {
       val ok = Try(op).failed.get.isInstanceOf[IndexOutOfBoundsException]
       assert(ok)
     }
     val arr1 = mkRefArray("foo", 4) // even
-    checkError { arr1.unsafeApply(4) }
-    checkError { arr1.unsafeApply(5) }
-    checkError { arr1.unsafeApply(-1) }
-    checkError { arr1.unsafeApply(Int.MinValue) }
-    checkError { arr1.unsafeApply(Int.MaxValue) }
+    checkError { arr1.unsafeGet(4) }
+    checkError { arr1.unsafeGet(5) }
+    checkError { arr1.unsafeGet(-1) }
+    checkError { arr1.unsafeGet(Int.MinValue) }
+    checkError { arr1.unsafeGet(Int.MaxValue) }
     val arr2 = mkRefArray("foo", 5) // odd
-    checkError { arr2.unsafeApply(5) }
-    checkError { arr2.unsafeApply(6) }
-    checkError { arr2.unsafeApply(-1) }
-    checkError { arr2.unsafeApply(Int.MinValue) }
-    checkError { arr2.unsafeApply(Int.MaxValue) }
+    checkError { arr2.unsafeGet(5) }
+    checkError { arr2.unsafeGet(6) }
+    checkError { arr2.unsafeGet(-1) }
+    checkError { arr2.unsafeGet(Int.MinValue) }
+    checkError { arr2.unsafeGet(Int.MaxValue) }
   }
 
   // TODO: reenable this test:
@@ -186,10 +186,20 @@ trait RefArraySpec extends BaseSpec with SpecDefaultMcas {
   //   assert(arr.apply(Int.MaxValue).isEmpty)
   // }
 
+  test("unsafeSwap") {
+    val arr1 = mkRefArray("foo", 2)
+    arr1.unsafeSet(0, "bar").unsafePerform(this.mcasImpl)
+    val arr2 = mkRefArray("xyz", 2)
+    Ref.Array.unsafeSwap(arr1, 0, arr2, 1).unsafePerform(this.mcasImpl)
+    assertEquals(arr1.unsafeGet(0).unsafePerform(this.mcasImpl), "xyz")
+    assertEquals(arr2.unsafeGet(1).unsafePerform(this.mcasImpl), "bar")
+    assertEquals(arr2.unsafeGet(0).unsafePerform(this.mcasImpl), "xyz")
+  }
+
   test("unsafeGet") {
     val arr = mkRefArray("foo", 2)
     assertEquals(arr.unsafeGet(0).unsafePerform(this.mcasImpl), "foo")
-    arr.unsafeApply(1).set("bar").unsafePerform(this.mcasImpl)
+    arr.unsafeSet(1, "bar").unsafePerform(this.mcasImpl)
     assertEquals(arr.unsafeGet(1).unsafePerform(this.mcasImpl), "bar")
     assert(Either.catchNonFatal(arr.unsafeGet(2)).isLeft)
     assert(Either.catchNonFatal(arr.unsafeGet(-1)).isLeft)

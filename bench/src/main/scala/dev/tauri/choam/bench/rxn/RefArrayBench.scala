@@ -95,8 +95,9 @@ object RefArrayBench {
     def setup(): Unit = {
       val a = this.mkArr(this.size)
       (0 until this.size).foreach { idx =>
-        a.unsafeApply(idx).set(
-          ThreadLocalRandom.current().nextInt().toString
+        a.unsafeSet(
+          idx,
+          ThreadLocalRandom.current().nextInt().toString,
         ).unsafePerform(this.mcasImpl)
       }
       this._arr = a
@@ -113,7 +114,7 @@ object RefArrayBench {
       var acc = Rxn.pure(0)
       var idx = r.nextIntBounded(4)
       while (idx < len) {
-        val hs = arr.unsafeApply(idx).get.map(_.##)
+        val hs = arr.unsafeGet(idx).map(_.##)
         acc = acc.flatMap { acc => hs.map(_ ^ acc) }
         idx += incr
       }
@@ -127,7 +128,7 @@ object RefArrayBench {
 
     final def swapAndGetAxn(idx1: Int, idx2: Int, idx3: Int): Rxn[String] = {
       val arr = this.arr
-      Ref.swap(arr.unsafeApply(idx1), arr.unsafeApply(idx2)) *> arr.unsafeApply(idx3).get
+      Ref.Array.unsafeSwap(arr, idx1, arr, idx2) *> arr.unsafeGet(idx3)
     }
   }
 

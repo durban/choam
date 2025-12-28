@@ -127,6 +127,12 @@ object Ref extends RefInstances0 {
 
   final object Array {
 
+    final def unsafeSwap[A](arr1: Ref.Array[A], idx1: Int, arr2: Ref.Array[A], idx2: Int): Rxn[Unit] = {
+      arr1.unsafeGet(idx1).flatMap { o1 =>
+        arr2.unsafeModify(idx2, { o2 => (o1, o2) }).flatMap(arr1.unsafeSet(idx1, _))
+      }
+    }
+
     sealed abstract class AllocationStrategy extends Ref.AllocationStrategy {
 
       def sparse: Boolean

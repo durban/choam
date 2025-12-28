@@ -35,9 +35,6 @@ object JmxDemo extends IOApp.Simple with RxnAppMixin {
 
   private final val N = 1024
 
-  private[this] def unsafeApply[A](arr: Ref.Array[A], idx: Int): Ref[A] = // TODO: avoid this
-    arr.refs.get(idx.toLong).getOrElse(throw new IllegalStateException)
-
   def run: IO[Unit] = {
     for {
       r1 <- Ref("foo").run[IO]
@@ -45,14 +42,14 @@ object JmxDemo extends IOApp.Simple with RxnAppMixin {
       arr <- Ref.array(N, "x").run[IO]
       tsk = Ref.swap(r1, r2).run[IO].parReplicateA_(0xffff)
       arrTsk = (0 until N by 4).toVector.traverse_ { idx =>
-        unsafeApply(arr, idx).update(_ + "y") // TODO: avoid throw
+        arr.unsafeUpdate(idx, _ + "y")
       }.run[IO].parReplicateA_(0xfff)
       _ <- IO.both(IO.both(tsk, tsk), arrTsk)
       ta1 = trickyRxn(r1, r2)
       ta2 = trickyRxn(r2, r1)
       runTricky = IO.both(ta1.run[IO], ta2.run[IO])
       _ <- (runTricky *> IO.sleep(0.01.second)).foreverM.background.use { _ =>
-        (IO.sleep(1.second) *> Ref.swap(unsafeApply(arr, 1), unsafeApply(arr, 2)).run[IO]).replicateA_(120)
+        (IO.sleep(1.second) *> Ref.Array.unsafeSwap(arr, 1, arr, 2).run[IO]).replicateA_(120)
       }
       _ <- IO { checkConsistency() }
     } yield ()
