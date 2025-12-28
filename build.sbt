@@ -626,6 +626,9 @@ lazy val testExt = crossProject(JVMPlatform, JSPlatform, NativePlatform)
       "-Ddev.tauri.choam.internal.mcas.impl=SpinLockMcas",
       "-Ddev.tauri.choam.testProperty=true",
     ),
+    Test / run / javaOptions ++= List(
+      "-Ddev.tauri.choam.internal.mcas.impl=Emcas", // so that JmxDemo works
+    ),
     Test / test := Def.sequential(
       Test / test,
       (Compile / run).toTask(""), // this runs CeAppMixinTest
