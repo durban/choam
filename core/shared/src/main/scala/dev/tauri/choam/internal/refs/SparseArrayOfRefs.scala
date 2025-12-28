@@ -64,6 +64,14 @@ sealed abstract class SparseArrayOfXRefs[A](
     }
   }
 
+  final override def getOrCreateRefOrNull(idx: Int): RefT[A] = {
+    if ((idx >= 0) && (idx < length)) {
+      this.getOrCreateRef(idx)
+    } else {
+      nullOf[RefT[A]]
+    }
+  }
+
   final override def unsafeGet(idx: Int): RxnImpl[A] = {
     getOrCreateRef(idx).getImpl
   }

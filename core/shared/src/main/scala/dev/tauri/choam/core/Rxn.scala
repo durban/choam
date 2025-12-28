@@ -2569,10 +2569,24 @@ object Rxn extends RxnInstances0 {
       }
     }
 
+    final override def readRefArray[A](arr: Ref.Array[A], idx: Int): A = {
+      arr.getOrCreateRefOrNull(idx) match {
+        case null => Rxn.unsafe.imperativePanicImpl(new ArrayIndexOutOfBoundsException)
+        case ref => readRef(ref.loc)
+      }
+    }
+
     final override def writeRef[A](ref: MemoryLocation[A], nv: A): Unit = {
       val c = new Rxn.UpdSet1(ref, nv)
       if (!handleUpd(c)) {
         throw unsafe2.RetryException.notPermanentFailure
+      }
+    }
+
+    final override def writeRefArray[A](arr: Ref.Array[A], idx: Int, nv: A): Unit = {
+      arr.getOrCreateRefOrNull(idx) match {
+        case null => Rxn.unsafe.imperativePanicImpl(new ArrayIndexOutOfBoundsException)
+        case ref => writeRef(ref.loc, nv)
       }
     }
 

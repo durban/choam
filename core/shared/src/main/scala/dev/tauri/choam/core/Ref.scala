@@ -102,7 +102,7 @@ object Ref extends RefInstances0 {
       Array.AllocationStrategy.Default.withPadded(this.padded).withStm(this.stm)
   }
 
-  sealed trait Array[A] { // TODO:0.5: revise `Array` API (future-proofing in case we'll have OffsetMemoryLocation)
+  sealed trait Array[A] {
 
     def length: Int
 
@@ -110,7 +110,6 @@ object Ref extends RefInstances0 {
     def unsafeSet(idx: Int, nv: A): Rxn[Unit]
     def unsafeUpdate(idx: Int, f: A => A): Rxn[Unit]
     def unsafeModify[B](idx: Int, f: A => (A, B)): Rxn[B]
-    private[choam] def unsafeFlatModify[B](idx: Int, f: A => (A, Rxn[B])): Rxn[B]
 
     def get(idx: Int): Rxn[Option[A]]
     def set(idx: Int, nv: A): Rxn[Boolean]
@@ -118,6 +117,9 @@ object Ref extends RefInstances0 {
     def modify[B](idx: Int, f: A => (A, B)): Rxn[Option[B]]
 
     def refs: Chain[Ref[A]]
+
+    private[choam] def unsafeFlatModify[B](idx: Int, f: A => (A, Rxn[B])): Rxn[B]
+    private[choam] def getOrCreateRefOrNull(idx: Int): Ref[A]
 
     private[choam] final def unsafeApply(idx: Int): Ref[A] = // TODO: remove this (or only use in tests)
       this.refs.get(idx.toLong).getOrElse(throw new ArrayIndexOutOfBoundsException)

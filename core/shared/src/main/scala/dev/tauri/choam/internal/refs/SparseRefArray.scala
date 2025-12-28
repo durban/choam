@@ -39,7 +39,7 @@ private sealed abstract class SparseXRefArray[A](
   final override def length: Int =
     this._size
 
-  protected[this] final def getOrNull(idx: Int): RefT[A] = {
+  final override def getOrCreateRefOrNull(idx: Int): RefT[A] = {
     if ((idx >= 0) && (idx < length)) {
       this.getOrCreateRef(idx)
     } else {
@@ -92,28 +92,28 @@ private sealed abstract class SparseXRefArray[A](
   }
 
   final override def get(idx: Int): RxnImpl[Option[A]] = {
-    this.getOrNull(idx) match {
+    this.getOrCreateRefOrNull(idx) match {
       case null => Rxn.noneImpl
       case ref => ref.get.map(Some(_))
     }
   }
 
   final override def set(idx: Int, nv: A): RxnImpl[Boolean] = {
-    this.getOrNull(idx) match {
+    this.getOrCreateRefOrNull(idx) match {
       case null => Rxn.falseImpl
       case ref => ref.set(nv).as(true)
     }
   }
 
   final override def update(idx: Int, f: A => A): RxnImpl[Boolean] = {
-    this.getOrNull(idx) match {
+    this.getOrCreateRefOrNull(idx) match {
       case null => Rxn.falseImpl
       case ref => ref.update(f).as(true)
     }
   }
 
   final override def modify[B](idx: Int, f: A => (A, B)): RxnImpl[Option[B]] = {
-    this.getOrNull(idx) match {
+    this.getOrCreateRefOrNull(idx) match {
       case null => Rxn.noneImpl
       case ref => ref.modify(f).map(Some(_))
     }

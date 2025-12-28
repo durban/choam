@@ -136,6 +136,27 @@ trait CommonImperativeApiSpec[F[_]]
     } yield ()
   }
 
+  test("RefArraySyntax") {
+    def useArr(arr: Ref.Array[Int])(implicit ir: InRxn): Unit = {
+      val v1 = arr(0)
+      assertEquals(v1, 0)
+      arr(0) = 42
+      assertEquals(arr(0), 42)
+      assertEquals(arr(1), 0)
+      assert(Either.catchNonFatal { arr(2) }.isLeft)
+      assert(Either.catchNonFatal { arr(-1) }.isLeft)
+    }
+    for {
+      arr <- runBlock(newRefArray(2, 0)(using _))
+      _ <- runBlock { implicit ir =>
+        useArr(arr)
+      }
+      _ <- runBlock { implicit ir =>
+        assertEquals(arr(0), 42)
+      }
+    } yield ()
+  }
+
   test("Ref.Array") {
     for {
       arr1 <- runBlock(newRefArray[String](16, "")(using _))
@@ -272,11 +293,18 @@ trait CommonImperativeApiSpec[F[_]]
   test("Read-only") {
     for {
       ref <- runBlock(newRef(1)(using _))
+      arr <- runBlock(newRefArray(2, "")(using _))
       _ <- runBlock(writeRef(ref, 42)(using _))
+      _ <- runBlock(writeRefArray(arr, 0, "foo")(using _))
       _ <- assertResultF(runRoBlock { implicit ir =>
         ref.value
       }, 42)
       _ <- assertResultF(runRoBlock(readRef(ref)(using _)), 42)
+      _ <- assertResultF(runRoBlock(readRefArray(arr, 0)(using _)), "foo")
+      _ <- runRoBlock { implicit ir =>
+        assertEquals(arr(0), "foo")
+        assertEquals(arr(1), "")
+      }
       _ <- assertResultF(runRoBlock(tentativeRead(ref)(using _)), 42)
       v1 <- runRoBlock { implicit ir =>
         val t = ticketRead(ref)

@@ -18,12 +18,13 @@
 package dev.tauri.choam
 package unsafe
 
-import core.{ Rxn, InternalLocal, InternalLocalArray }
+import core.{ Rxn, Ref, InternalLocal, InternalLocalArray }
 import core.unsafe.RxnLocal
 import internal.mcas.{ Mcas, MemoryLocation, LogEntry }
 
 sealed trait InRoRxn {
   private[choam] def readRef[A](ref: MemoryLocation[A]): A
+  private[choam] def readRefArray[A](arr: Ref.Array[A], idx: Int): A
   private[choam] def imperativeTentativeRead[A](ref: MemoryLocation[A]): A
   private[choam] def imperativeTicketRead[A](ref: MemoryLocation[A]): Ticket[A]
   private[choam] def imperativeTicketValidate[A](hwd: LogEntry[A]): Unit
@@ -35,6 +36,7 @@ sealed trait InRxn extends InRoRxn {
   private[choam] def invalidateCtx(): Unit
   private[choam] def imperativeRetry(): Option[CanSuspendInF]
   private[choam] def writeRef[A](ref: MemoryLocation[A], nv: A): Unit
+  private[choam] def writeRefArray[A](arr: Ref.Array[A], idx: Int, nv: A): Unit
   private[choam] def updateRef[A](ref: MemoryLocation[A], f: A => A): Unit
   private[choam] def getAndSetRef[A](ref: MemoryLocation[A], nv: A): A
   private[choam] def imperativeTicketWrite[A](hwd: LogEntry[A], newest: A): Unit

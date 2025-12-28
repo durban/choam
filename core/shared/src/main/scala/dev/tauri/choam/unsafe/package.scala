@@ -37,6 +37,15 @@ package object unsafe {
       ir.writeRef(self.loc, nv)
   }
 
+  implicit final class RefArraySyntax[A](private val self: Ref.Array[A]) extends AnyVal {
+
+    final def apply(idx: Int)(implicit ir: InRoRxn): A =
+      ir.readRefArray(self, idx)
+
+    final def update(idx: Int, nv: A)(implicit ir: InRxn): Unit =
+      ir.writeRefArray(self, idx, nv)
+  }
+
   /** @see [[dev.tauri.choam.core.Ref.apply]] */
   final def newRef[A](
     initial: A,
@@ -62,12 +71,20 @@ package object unsafe {
     ir.readRef(ref.loc)
   }
 
+  final def readRefArray[A](arr: Ref.Array[A], idx: Int)(implicit ir: InRoRxn): A = {
+    ir.readRefArray(arr, idx)
+  }
+
   /**
    * @see [[dev.tauri.choam.core.Ref.set]]
    * @see [[dev.tauri.choam.unsafe.RefSyntax.value_=]]
    */
   final def writeRef[A](ref: Ref[A], nv: A)(implicit ir: InRxn): Unit = {
     ir.writeRef(ref.loc, nv)
+  }
+
+  final def writeRefArray[A](arr: Ref.Array[A], idx: Int, nv: A)(implicit ir: InRxn): Unit = {
+    ir.writeRefArray(arr, idx, nv)
   }
 
   /** @see [[dev.tauri.choam.core.Ref.update]] */

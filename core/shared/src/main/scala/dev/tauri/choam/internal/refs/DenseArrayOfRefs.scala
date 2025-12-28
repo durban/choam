@@ -76,7 +76,7 @@ sealed abstract class DenseArrayOfXRefs[A](
     this.arr(idx).flatModifyImpl(f)
   }
 
-  protected[this] final def getOrNull(idx: Int): RefT[A] = {
+  private[choam] final override def getOrCreateRefOrNull(idx: Int): RefT[A] = {
     if ((idx >= 0) && (idx < length)) {
       this.arr(idx)
     } else {
@@ -85,28 +85,28 @@ sealed abstract class DenseArrayOfXRefs[A](
   }
 
   final override def get(idx: Int): RxnImpl[Option[A]] = {
-    this.getOrNull(idx) match {
+    this.getOrCreateRefOrNull(idx) match {
       case null => Rxn.noneImpl[A]
       case tref => tref.getImpl.map(Some(_))
     }
   }
 
   final override def set(idx: Int, nv: A): RxnImpl[Boolean] = {
-    this.getOrNull(idx) match {
+    this.getOrCreateRefOrNull(idx) match {
       case null => Rxn.falseImpl
       case ref => ref.setImpl(nv).as(true)
     }
   }
 
   final override def update(idx: Int, f: A => A): RxnImpl[Boolean] = {
-    this.getOrNull(idx) match {
+    this.getOrCreateRefOrNull(idx) match {
       case null => Rxn.falseImpl
       case ref => ref.updateImpl(f).as(true)
     }
   }
 
   final override def modify[B](idx: Int, f: A => (A, B)): RxnImpl[Option[B]] = {
-    this.getOrNull(idx) match {
+    this.getOrCreateRefOrNull(idx) match {
       case null => Rxn.noneImpl
       case ref => ref.modifyImpl(f).map(Some(_))
     }
