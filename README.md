@@ -19,7 +19,7 @@
 
 # CHOAM
 
-<!-- TODO:0.5:
+<!-- TODO: after 0.5 is released:
 [![choam-core version](https://index.scala-lang.org/durban/choam/choam-core/latest.svg)](https://index.scala-lang.org/durban/choam/choam-core)
 -->
 
@@ -258,6 +258,19 @@ Throughout the library, we're assuming the following:
         ... // use `ar`
     }
     ```
+- References passed to the library are non-`null`:
+  - The library usually dereferences the references passed to it without defensive `null` checks.
+  - On the JVM (and Scala Native), this works as expected: if something is `null`,
+    but it shouldn't be, the result is a `NullPointerException` being thrown (such
+    exceptions should be expected in these cases).
+  - On Scala.js however, dereferencing `null` is
+    [undefined behavior](https://www.scala-js.org/doc/semantics.html#undefined-behaviors);
+    thus, we recommend configuring `scalaJSLinkerConfig` to be `Compliant` (see there),
+    or otherwise guaranteeing that `null`s aren't passed to the library.
+  - For example, `Reactive#run` expects the `Rxn` passed to it to be non-`null`, and
+    doesn't perform any defensive `null` checks on it.
+  - An exception to this rule: a generic payload being `null` is completely fine,
+    e.g., storing `null` in a `Ref[String]` or `Queue[String]` works correctly.
 
 ### Backwards compatibility
 
