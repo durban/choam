@@ -43,7 +43,7 @@ is an effect type with result type `A`. Thus, it is similar to, e.g., `IO[A]`, b
 ## Getting started
 
 ```scala
-libraryDependencies += "dev.tauri" %%% "choam-core" % "0.5.0-RC5"
+libraryDependencies += "dev.tauri" %%% "choam-core" % "0.5.0-RC6"
 ```
 
 The `choam-core` module contains the fundamental types for working with `Rxn`s.
