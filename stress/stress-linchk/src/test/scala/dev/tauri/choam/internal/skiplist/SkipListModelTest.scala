@@ -19,9 +19,9 @@ package dev.tauri.choam
 package internal
 package skiplist
 
-import org.jetbrains.kotlinx.lincheck.LinChecker
 import org.jetbrains.kotlinx.lincheck.paramgen.{ IntGen, StringGen }
-import org.jetbrains.kotlinx.lincheck.annotations.{ Operation, Param, StateRepresentation }
+import org.jetbrains.kotlinx.lincheck.annotations.StateRepresentation
+import org.jetbrains.lincheck.datastructures.{ Operation, Param }
 
 import munit.FunSuite
 
@@ -31,7 +31,7 @@ final class SkipListModelTest extends FunSuite with BaseLinchkSpec {
     val opts = defaultModelCheckingOptions()
       .sequentialSpecification(classOf[SkipListModelTest.TestStateSequential])
     printFatalErrors {
-      LinChecker.check(classOf[SkipListModelTest.TestState], opts)
+      opts.check(classOf[SkipListModelTest.TestState])
     }
   }
 }
