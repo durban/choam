@@ -37,8 +37,8 @@ import java.util.concurrent.atomic.{
 
 import scala.util.control.NonFatal
 
-import org.jetbrains.kotlinx.lincheck.strategy.managed.ManagedStrategyGuarantee
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
+import org.jetbrains.lincheck.datastructures.ManagedStrategyGuarantee
+import org.jetbrains.lincheck.datastructures.ModelCheckingOptions
 
 trait LinchkUtils {
 
@@ -105,7 +105,7 @@ trait LinchkUtils {
     // things here):
     val timeoutMs = 10000L // default: 10000L
     type Opts = {
-      def invocationTimeout$lincheck(timeoutMs: Long): org.jetbrains.kotlinx.lincheck.Options[?, ?]
+      def invocationTimeout$lincheck(timeoutMs: Long): org.jetbrains.lincheck.datastructures.Options[?, ?]
     }
     def increaseTimeout(mco: ModelCheckingOptions): ModelCheckingOptions = {
       mco.asInstanceOf[Opts].invocationTimeout$lincheck(timeoutMs).asInstanceOf[ModelCheckingOptions]

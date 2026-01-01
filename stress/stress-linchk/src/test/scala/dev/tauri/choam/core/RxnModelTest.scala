@@ -20,9 +20,8 @@ package core
 
 import cats.syntax.all._
 
-import org.jetbrains.kotlinx.lincheck.LinChecker
 import org.jetbrains.kotlinx.lincheck.paramgen.{ StringGen, BooleanGen, IntGen }
-import org.jetbrains.kotlinx.lincheck.annotations.{ Operation, Param }
+import org.jetbrains.lincheck.datastructures.{ Operation, Param }
 
 import munit.FunSuite
 
@@ -32,7 +31,7 @@ final class RxnModelTest extends FunSuite with RxnLinchkSpec {
 
   test("Model checking Rxn".tag(SLOW)) {
     val opts = fastModelCheckingOptions()
-    LinChecker.check(classOf[TestState], opts)
+    opts.check(classOf[TestState])
   }
 }
 
@@ -68,30 +67,32 @@ object RxnModelTest {
     }
 
     @Operation
-    def writeOnly(s: String, t: String, i: Int): (String, String) = {
-      val (ref1, ref2) = this.select2(i)
-      (ref1.getAndUpdate(s + _), ref2.getAndUpdate(t + _)).tupled.unsafePerform(emcas)
+    def writeOnly(): String = { //, t: String, i: Int): (String, String) = {
+      r1.getAndSet("foo").unsafePerform(emcas)
+      // val (ref1, ref2) = this.select2(i)
+      // (ref1.getAndUpdate(s + _), ref2.getAndUpdate(t + _)).tupled.unsafePerform(emcas)
     }
 
-    @Operation
-    def readWrite(s: String, i: Int, b: Boolean): (String, String) = {
-      val (ref1, ref2) = this.select2(i)
-      val rxn = if (b) {
-        ref1.getAndSet(s) * ref2.get
-      } else {
-        ref2.get * ref1.getAndSet(s)
-      }
-      rxn.unsafePerform(emcas)
-    }
+    // @Operation
+    // def readWrite(s: String, i: Int, b: Boolean): (String, String) = {
+    //   val (ref1, ref2) = this.select2(i)
+    //   val rxn = if (b) {
+    //     ref1.getAndSet(s) * ref2.get
+    //   } else {
+    //     ref2.get * ref1.getAndSet(s)
+    //   }
+    //   rxn.unsafePerform(emcas)
+    // }
 
     @Operation
-    def readOnly(b: Boolean): (String, String, String) = {
-      val tup = if (b) {
-        (r1.get, r2.get, r3.get)
-      } else {
-        (r2.get, r1.get, r3.get)
-      }
-      tup.tupled.unsafePerform(emcas)
+    def readOnly(): String = { // b: Boolean): (String, String, String) = {
+      r1.get.unsafePerform(emcas)
+      // val tup = if (b) {
+      //   (r1.get, r2.get, r3.get)
+      // } else {
+      //   (r2.get, r1.get, r3.get)
+      // }
+      // tup.tupled.unsafePerform(emcas)
     }
   }
 }

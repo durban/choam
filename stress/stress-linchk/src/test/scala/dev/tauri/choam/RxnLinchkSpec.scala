@@ -60,7 +60,7 @@ object RxnLinchkSpec {
     _rtHolder.getAcquire().mcasImpl
 
   private final def init(): Unit = {
-    val newInst = ChoamRuntime.unsafeBlocking()
+    val newInst = ChoamRuntime.forTesting()
     val oldInst = _rtHolder.getAndSet(newInst)
     assert(oldInst eq null)
   }
@@ -68,6 +68,6 @@ object RxnLinchkSpec {
   private final def cleanup(): Unit = {
     val oldInst = _rtHolder.getAndSet(null)
     assert(oldInst ne null)
-    oldInst.unsafeCloseBlocking()
+    oldInst.unsafeCloseInternal()
   }
 }

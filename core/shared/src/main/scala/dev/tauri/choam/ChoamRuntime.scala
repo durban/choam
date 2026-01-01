@@ -28,6 +28,8 @@ sealed trait ChoamRuntime {
   private[choam] def mcasImpl: Mcas
 
   private[choam] def unsafeCloseBlocking(): Unit
+
+  private[choam] def unsafeCloseInternal(): Unit
 }
 
 object ChoamRuntime {
@@ -41,7 +43,7 @@ object ChoamRuntime {
       closeRt(this)
     }
 
-    private[ChoamRuntime] final def closeInternal(): Unit = {
+    private[choam] final override def unsafeCloseInternal(): Unit = {
       this.mcasImpl.close()
       this.osRng.close()
     }
@@ -68,6 +70,11 @@ object ChoamRuntime {
     val o = OsRng.mkNew() // no state to copy
     val m = old.mcasImpl.makeCopy(o)
     new ChoamRuntimeImpl(m, o)
+  }
+
+  /** Only for testing! */
+  private[choam] final def forTesting(): ChoamRuntime = {
+    constructNew()
   }
 
   /** Only for testing! */
@@ -123,7 +130,7 @@ object ChoamRuntime {
         if (holder.compareAndSet(ov, nv)) {
           newRt // we're done
         } else {
-          newRt.closeInternal()
+          newRt.unsafeCloseInternal()
           getRt()
         }
       case ov: InUse =>
@@ -168,7 +175,7 @@ object ChoamRuntime {
           if (holder.compareAndSet(ov, nv)) {
             // OK, we've closed it logically, but
             // we have to actually release resources:
-            oldRt.closeInternal()
+            oldRt.unsafeCloseInternal()
           } else {
             closeRt(rt)
           }

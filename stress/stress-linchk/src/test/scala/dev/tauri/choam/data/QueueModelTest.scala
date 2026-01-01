@@ -18,9 +18,8 @@
 package dev.tauri.choam
 package data
 
-import org.jetbrains.kotlinx.lincheck.LinChecker
 import org.jetbrains.kotlinx.lincheck.paramgen.StringGen
-import org.jetbrains.kotlinx.lincheck.annotations.{ Operation, Param }
+import org.jetbrains.lincheck.datastructures.{ Operation, Param }
 
 import munit.FunSuite
 
@@ -36,7 +35,7 @@ final class QueueModelTest extends FunSuite with RxnLinchkSpec {
 
   private def queueModelCheck(cls: Class[? <: AbstractTestState]): Unit = {
     printFatalErrors {
-      LinChecker.check(cls, defaultModelCheckingOptions())
+      defaultModelCheckingOptions().check(cls)
     }
   }
 }
