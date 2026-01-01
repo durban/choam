@@ -597,8 +597,16 @@ object Rxn extends RxnInstances0 {
     final def unread[A](r: Ref[A]): Rxn[Unit] =
       new Rxn.Unread(r)
 
-    private[choam] final def cas[A](r: Ref[A], ov: A, nv: A): Rxn[Unit] = // TODO: do we even need this?
-      new Rxn.Cas[A](r.loc, ov, nv)
+    /** TODO: we only have this due to internal backward compatibility */
+    private[choam] final def cas[A](r: Ref[A], ov: A, nv: A): Rxn[Unit] = {
+      ticketRead(r).flatMap { ticket =>
+        if (equ(ov, ticket.unsafePeek)) {
+          ticket.unsafeSet(nv)
+        } else {
+          retry
+        }
+      }
+    }
 
     @inline
     private[choam] final def retry[A]: Rxn[A] =
@@ -782,10 +790,6 @@ object Rxn extends RxnInstances0 {
 
   private[core] final class Choice[B](val left: Rxn[B], val right: Rxn[B]) extends RxnImpl[B] {
     final override def toString: String = s"Choice(${left}, ${right})"
-  }
-
-  private final class Cas[A](val ref: MemoryLocation[A], val ov: A, val nv: A) extends RxnImpl[Unit] {
-    final override def toString: String = s"Cas(${ref}, ${ov}, ${nv})"
   }
 
   private[core] final class Map2[B, C, D](val left: Rxn[B], val right: Rxn[C], val f: (B, C) => D) extends RxnImpl[D] {
@@ -2082,6 +2086,8 @@ object Rxn extends RxnInstances0 {
           loop(c.rxn)
         case c: Lift[_] => // Lift
           // TODO: Do we need to catch exceptions elsewhere? (This covers `delay`.)
+          // TODO: Probably at least:
+          // TODO: - when calling `f` in `tailRecM`
           val f = c.func
           val nxt = try {
             a = f()
@@ -2096,21 +2102,6 @@ object Rxn extends RxnInstances0 {
         case c: Choice[_] => // Choice
           saveAlt(c.right)
           loop(c.left)
-        case c: Cas[_] => // Cas
-          val hwd = readMaybeFromLog(c.ref)
-          if (hwd eq null) {
-            loop(retry())
-          } else {
-            val currVal = hwd.nv
-            if (equ(currVal, c.ov)) {
-              desc = desc.addOrOverwrite(hwd.withNv(c.nv))
-              a = () : Unit
-              loop(next())
-            }
-            else {
-              loop(retry())
-            }
-          }
         case refGet: RefGetAxn[_] => // RefGetAxn
           _assert(this._entryHolder eq null) // just to be sure
           desc = desc.computeIfAbsent(refGet.cast[Any], tok = refGet, visitor = this)
