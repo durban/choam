@@ -317,8 +317,10 @@ object Mcas extends McasCompanionPlatform {
         val res = this.tryPerformInternal(d1, optimism = Consts.PESSIMISTIC)
         _assert(res != Version.Reserved)
         _assert(!VersionFunctions.isValid(res)) // TODO: remove this, only correct for exchanger
+        _assert((res == McasStatus.Successful) || (res == McasStatus.FailedVal)) // TODO: same
         res == McasStatus.Successful
       } else {
+        _assert(!equ(hwd.ov, null)) // TODO: remove this, only correct for exchanger
         false
       }
     }
