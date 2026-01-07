@@ -169,7 +169,17 @@ private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K]
               )
             }
             // end of temporary assertion
-            arr(arrIdx) = convertForArray(av, tok, flag = flag)
+            val converted = convertForArray(av, tok, flag = flag)
+            arr(arrIdx) = converted
+            // another temporary check:
+            if (arrIdx > 0) {
+              val prevIdx = arrIdx - 1
+              val prevItem = arr(prevIdx)
+              if (prevItem eq converted) {
+                throw new AssertionError(s"wrote the same item '${converted}' into the array twice: indices ${prevIdx} and ${arrIdx}")
+              }
+            }
+            // end of temporary check
             arrIdx += 1
             isBlueSt &= isBlue(av)
           }

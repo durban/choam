@@ -181,6 +181,10 @@ private sealed trait ExchangerImplJvm[A, B]
             case _: Rescinded[_] =>
               // we're the only one who can rescind this
               impossible("Someone rescinded our Node!")
+            case null =>
+              // TODO: in theory this should not be possible, but sometimes happens in CI
+              val wit = self.hole.loc.unsafeGetV()
+              impossible(s"Found null after a failed singleCasDirect; unsafeGetV returned ${wit}")
           }
         }
     }
