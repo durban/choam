@@ -584,6 +584,16 @@ object Rxn extends RxnInstances0 {
     final def ticketRead[A](r: Ref[A]): Rxn[unsafe.Ticket[A]] =
       new Rxn.TicketRead[A](r.loc)
 
+    final def ticketReadArray[A](arr: Ref.Array[A], idx: Int): Rxn[unsafe.Ticket[A]] = {
+      // Note: `getOrCreateRefOrNull` is an essentially
+      // unobservable lazy idempotent initialization, so
+      // we don't suspend the effect here (for performance).
+      arr.getOrCreateRefOrNull(idx) match {
+        case null => throw new ArrayIndexOutOfBoundsException
+        case ref => ticketRead(ref)
+      }
+    }
+
     /**
      * Reads from `r`, but without putting it into the log.
      *
@@ -593,6 +603,16 @@ object Rxn extends RxnInstances0 {
      */
     final def tentativeRead[A](r: Ref[A]): Rxn[A] =
       new Rxn.TentativeRead[A](r.loc)
+
+    final def tentativeReadArray[A](arr: Ref.Array[A], idx: Int): Rxn[A] = {
+      // Note: `getOrCreateRefOrNull` is an essentially
+      // unobservable lazy idempotent initialization, so
+      // we don't suspend the effect here (for performance).
+      arr.getOrCreateRefOrNull(idx) match {
+        case null => throw new ArrayIndexOutOfBoundsException
+        case ref => tentativeRead(ref)
+      }
+    }
 
     final def unread[A](r: Ref[A]): Rxn[Unit] =
       new Rxn.Unread(r)
@@ -2588,6 +2608,13 @@ object Rxn extends RxnInstances0 {
       }
     }
 
+    final override def updateRefArray[A](arr: Ref.Array[A], idx: Int, f: A => A): Unit = {
+      arr.getOrCreateRefOrNull(idx) match {
+        case null => Rxn.unsafe.imperativePanicImpl(new ArrayIndexOutOfBoundsException)
+        case ref => updateRef(ref.loc, f)
+      }
+    }
+
     final override def getAndSetRef[A](ref: MemoryLocation[A], nv: A): A = {
       val c = new Rxn.UpdFull(ref, { (ov: A) => (nv, ov) })
       if (!handleUpd(c)) {
@@ -2609,12 +2636,26 @@ object Rxn extends RxnInstances0 {
       }
     }
 
+    final override def imperativeTentativeReadArray[A](arr: Ref.Array[A], idx: Int): A = {
+      arr.getOrCreateRefOrNull(idx) match {
+        case null => Rxn.unsafe.imperativePanicImpl(new ArrayIndexOutOfBoundsException)
+        case ref => imperativeTentativeRead(ref.loc)
+      }
+    }
+
     final override def imperativeTicketRead[A](ref: MemoryLocation[A]): unsafe2.Ticket[A] = {
       val hwd = readMaybeFromLog(ref)
       if (hwd eq null) {
         throw unsafe2.RetryException.notPermanentFailure
       } else {
         unsafe2.Ticket[A](hwd)
+      }
+    }
+
+    final override def imperativeTicketReadArray[A](arr: Ref.Array[A], idx: Int): unsafe2.Ticket[A] = {
+      arr.getOrCreateRefOrNull(idx) match {
+        case null => Rxn.unsafe.imperativePanicImpl(new ArrayIndexOutOfBoundsException)
+        case ref => imperativeTicketRead(ref.loc)
       }
     }
 

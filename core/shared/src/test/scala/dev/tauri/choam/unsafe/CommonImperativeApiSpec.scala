@@ -102,6 +102,19 @@ trait CommonImperativeApiSpec[F[_]]
     } yield ()
   }
 
+  test("tentativeReadArray") {
+    for {
+      arr <- runBlock(newRefArray(3, initial = 0)(using _))
+      _ <- runBlock { implicit ir =>
+        assertEquals(tentativeReadArray(arr, 1), 0)
+        updateRefArray(arr, 2)(_ + 1)
+        assertEquals(tentativeReadArray(arr, 1), 0)
+        updateRefArray(arr, 1)(_ + 1)
+        assertEquals(tentativeReadArray(arr, 1), 1)
+      }
+    } yield ()
+  }
+
   test("ticketRead") {
     for {
       r1 <- runBlock(newRef(0)(using _))
@@ -115,6 +128,22 @@ trait CommonImperativeApiSpec[F[_]]
       }
       _ <- assertResultF(runBlock(readRef(r1)(using _)), 42)
       _ <- assertResultF(runBlock(readRef(r2)(using _)), 1)
+    } yield ()
+  }
+
+  test("ticketReadArray") {
+    for {
+      arr <- runBlock(newRefArray(3, initial = 0)(using _))
+      _ <- runBlock { implicit ir =>
+        val ticket = ticketReadArray(arr, 1)
+        assertEquals(ticket.value, 0)
+        updateRefArray(arr, 2)(_ + 1)
+        ticket.value = 42
+        assertEquals(arr(1), 42)
+      }
+      _ <- assertResultF(runBlock(readRefArray(arr, 0)(using _)), 0)
+      _ <- assertResultF(runBlock(readRefArray(arr, 1)(using _)), 42)
+      _ <- assertResultF(runBlock(readRefArray(arr, 2)(using _)), 1)
     } yield ()
   }
 
@@ -180,6 +209,11 @@ trait CommonImperativeApiSpec[F[_]]
         arr2(5)
       }
       _ <- assertEqualsF(r3, "xyz")
+      _ <- runBlock { implicit ir =>
+        updateRefArray(arr2, 5)(_ + "9")
+      }
+      r4 <- runBlock(arr2(5)(using _))
+      _ <- assertEqualsF(r4, "xyz9")
     } yield ()
   }
 
@@ -306,17 +340,23 @@ trait CommonImperativeApiSpec[F[_]]
         assertEquals(arr(1), "")
       }
       _ <- assertResultF(runRoBlock(tentativeRead(ref)(using _)), 42)
+      _ <- assertResultF(runRoBlock(tentativeReadArray(arr, 0)(using _)), "foo")
       v1 <- runRoBlock { implicit ir =>
         val t = ticketRead(ref)
         t.value
       }
       _ <- assertEqualsF(v1, 42)
-      v2 <- runRoBlock { implicit ir =>
-        val t = ticketRead(ref)
+      v1a <- runRoBlock { implicit ir =>
+        val t = ticketReadArray(arr, 0)
+        t.value
+      }
+      _ <- assertEqualsF(v1a, "foo")
+      v2a <- runRoBlock { implicit ir =>
+        val t = ticketReadArray(arr, 0)
         t.validate()
         t.value
       }
-      _ <- assertEqualsF(v2, 42)
+      _ <- assertEqualsF(v2a, "foo")
     } yield  ()
   }
 }

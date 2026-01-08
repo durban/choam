@@ -1165,6 +1165,31 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("unsafe.ticketReadArray") {
+    for {
+      arr <- Ref.array(3, "a").run[F]
+      r = Rxn.unsafe.ticketReadArray(arr, 2).flatMap { ticket =>
+        arr.unsafeGetAndUpdate(1, _ + ticket.unsafePeek).flatMap { ov =>
+          if (ov === "aa") {
+            Rxn.unit
+          } else {
+            ticket.unsafeSet(ticket.unsafePeek + "x")
+          }
+        }
+      }
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(arr.unsafeGet(1).run[F], "aa")
+      _ <- assertResultF(arr.unsafeGet(2).run[F], "ax")
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(arr.unsafeGet(1).run[F], "aaax")
+      _ <- assertResultF(arr.unsafeGet(2).run[F], "ax")
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(arr.unsafeGet(1).run[F], "aaaxax")
+      _ <- assertResultF(arr.unsafeGet(2).run[F], "axx")
+      _ <- assertResultF(arr.unsafeGet(0).run[F], "a")
+    } yield ()
+  }
+
   test("unsafe.ticketRead (already in log)") {
     for {
       r2 <- Ref("a").run[F]
@@ -1179,6 +1204,25 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(r2.get.run[F], "abxbx")
       _ <- assertResultF(r.run[F], ())
       _ <- assertResultF(r2.get.run[F], "abxbxbx")
+    } yield ()
+  }
+
+  test("unsafe.ticketReadArray (already in log)") {
+    for {
+      arr <- Ref.array(3, "a").run[F]
+      r = arr.unsafeUpdate(2, _ + "b").flatMap { _ =>
+        Rxn.unsafe.ticketReadArray(arr, 2).flatMap { ticket =>
+          ticket.unsafeSet(ticket.unsafePeek + "x")
+        }
+      }
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(arr.unsafeGet(2).run[F], "abx")
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(arr.unsafeGet(2).run[F], "abxbx")
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(arr.unsafeGet(2).run[F], "abxbxbx")
+      _ <- assertResultF(arr.unsafeGet(1).run[F], "a")
+      _ <- assertResultF(arr.unsafeGet(0).run[F], "a")
     } yield ()
   }
 
@@ -1210,6 +1254,34 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("unsafe.tentativeReadArray") {
+    for {
+      arr <- Ref.array(3, "a").run[F]
+      r = Rxn.unsafe.tentativeReadArray(arr, 2).flatMap { v2 =>
+        arr.unsafeGetAndUpdate(1, _ + v2).flatMap { ov =>
+          if (ov === "aa") {
+            Rxn.unit
+          } else {
+            arr.unsafeUpdate(2, { ov =>
+              assertEquals(ov, v2)
+              ov + "x"
+            })
+          }
+        }
+      }
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(arr.unsafeGet(1).run[F], "aa")
+      _ <- assertResultF(arr.unsafeGet(2).run[F], "ax")
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(arr.unsafeGet(1).run[F], "aaax")
+      _ <- assertResultF(arr.unsafeGet(2).run[F], "ax")
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(arr.unsafeGet(1).run[F], "aaaxax")
+      _ <- assertResultF(arr.unsafeGet(2).run[F], "axx")
+      _ <- assertResultF(arr.unsafeGet(0).run[F], "a")
+    } yield ()
+  }
+
   test("unsafe.tentativeRead (already in log)") {
     for {
       r2 <- Ref("a").run[F]
@@ -1227,6 +1299,28 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(r2.get.run[F], "abxbx")
       _ <- assertResultF(r.run[F], ())
       _ <- assertResultF(r2.get.run[F], "abxbxbx")
+    } yield ()
+  }
+
+  test("unsafe.tentativeReadArray (already in log)") {
+    for {
+      arr <- Ref.array(3, "a").run[F]
+      r = arr.unsafeUpdate(2, _ + "b").flatMap { _ =>
+        Rxn.unsafe.tentativeReadArray(arr, 2).flatMap { v2 =>
+          arr.unsafeUpdate(2, { ov =>
+            assertEquals(ov, v2)
+            ov + "x"
+          })
+        }
+      }
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(arr.unsafeGet(2).run[F], "abx")
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(arr.unsafeGet(2).run[F], "abxbx")
+      _ <- assertResultF(r.run[F], ())
+      _ <- assertResultF(arr.unsafeGet(2).run[F], "abxbxbx")
+      _ <- assertResultF(arr.unsafeGet(0).run[F], "a")
+      _ <- assertResultF(arr.unsafeGet(1).run[F], "a")
     } yield ()
   }
 

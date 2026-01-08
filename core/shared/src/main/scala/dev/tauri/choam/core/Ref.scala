@@ -127,6 +127,13 @@ object Ref extends RefInstances0 {
         case ref => ref.getAndSet(nv)
       }
     }
+
+    private[choam] final def unsafeGetAndUpdate(idx: Int, f: A => A): Rxn[A] = {
+      this.getOrCreateRefOrNull(idx) match {
+        case null => throw new ArrayIndexOutOfBoundsException
+        case ref => ref.getAndUpdate(f)
+      }
+    }
   }
 
   final object Array {

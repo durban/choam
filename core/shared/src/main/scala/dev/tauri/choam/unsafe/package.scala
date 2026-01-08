@@ -92,6 +92,10 @@ package object unsafe {
     ir.updateRef(ref.loc, f)
   }
 
+  final def updateRefArray[A](arr: Ref.Array[A], idx: Int)(f: A => A)(implicit ir: InRxn): Unit = {
+    ir.updateRefArray(arr, idx, f)
+  }
+
   final def getAndSetRef[A](ref: Ref[A], nv: A)(implicit ir: InRxn): A = {
     ir.getAndSetRef(ref.loc, nv)
   }
@@ -106,9 +110,17 @@ package object unsafe {
     ir.imperativeTentativeRead(ref.loc)
   }
 
+  final def tentativeReadArray[A](arr: Ref.Array[A], idx: Int)(implicit ir: InRoRxn): A = {
+    ir.imperativeTentativeReadArray(arr, idx)
+  }
+
   /** @see [[dev.tauri.choam.core.Rxn.unsafe.ticketRead]] */
   final def ticketRead[A](ref: Ref[A])(implicit ir: InRoRxn): Ticket[A] = {
     ir.imperativeTicketRead(ref.loc)
+  }
+
+  final def ticketReadArray[A](arr: Ref.Array[A], idx: Int)(implicit ir: InRoRxn): Ticket[A] = {
+    ir.imperativeTicketReadArray(arr, idx)
   }
 
   final def panic(ex: Throwable)(implicit ir: InRxn): Nothing = {

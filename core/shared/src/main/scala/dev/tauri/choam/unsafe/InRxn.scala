@@ -26,7 +26,9 @@ sealed trait InRoRxn {
   private[choam] def readRef[A](ref: MemoryLocation[A]): A
   private[choam] def readRefArray[A](arr: Ref.Array[A], idx: Int): A
   private[choam] def imperativeTentativeRead[A](ref: MemoryLocation[A]): A
+  private[choam] def imperativeTentativeReadArray[A](arr: Ref.Array[A], idx: Int): A
   private[choam] def imperativeTicketRead[A](ref: MemoryLocation[A]): Ticket[A]
+  private[choam] def imperativeTicketReadArray[A](arr: Ref.Array[A], idx: Int): Ticket[A]
   private[choam] def imperativeTicketValidate[A](hwd: LogEntry[A]): Unit
 }
 
@@ -38,6 +40,7 @@ sealed trait InRxn extends InRoRxn {
   private[choam] def writeRef[A](ref: MemoryLocation[A], nv: A): Unit
   private[choam] def writeRefArray[A](arr: Ref.Array[A], idx: Int, nv: A): Unit
   private[choam] def updateRef[A](ref: MemoryLocation[A], f: A => A): Unit
+  private[choam] def updateRefArray[A](arr: Ref.Array[A], idx: Int, f: A => A): Unit
   private[choam] def getAndSetRef[A](ref: MemoryLocation[A], nv: A): A
   private[choam] def imperativeTicketWrite[A](hwd: LogEntry[A], newest: A): Unit
   private[choam] def imperativeCommit(): Boolean
