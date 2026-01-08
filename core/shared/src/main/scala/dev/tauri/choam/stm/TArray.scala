@@ -20,7 +20,7 @@ package stm
 
 import core.Ref
 
-sealed trait TArray[A] {
+sealed trait TArray[A] { // TODO:0.5: maybe lambda params should be in a separate paramlist?
 
   def length: Int
 

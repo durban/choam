@@ -102,7 +102,7 @@ object Ref extends RefInstances0 {
       Array.AllocationStrategy.Default.withPadded(this.padded).withStm(this.stm)
   }
 
-  sealed trait Array[A] {
+  sealed trait Array[A] { // TODO:0.5: maybe lambda params should be in a separate paramlist?
 
     def length: Int
 
@@ -116,7 +116,7 @@ object Ref extends RefInstances0 {
     def update(idx: Int, f: A => A): Rxn[Boolean]
     def modify[B](idx: Int, f: A => (A, B)): Rxn[Option[B]]
 
-    def refs: Chain[Ref[A]]
+    def refs: Chain[Ref[A]] // TODO:0.5: IndexedSeq instead of Chain?
 
     private[choam] def unsafeFlatModify[B](idx: Int, f: A => (A, Rxn[B])): Rxn[B]
     private[choam] def getOrCreateRefOrNull(idx: Int): Ref[A]
