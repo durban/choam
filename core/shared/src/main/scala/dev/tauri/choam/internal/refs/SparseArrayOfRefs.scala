@@ -80,15 +80,15 @@ sealed abstract class SparseArrayOfXRefs[A](
     getOrCreateRef(idx).setImpl(nv)
   }
 
-  final override def unsafeUpdate(idx: Int, f: A => A): RxnImpl[Unit] = {
+  final override def unsafeUpdate(idx: Int)(f: A => A): RxnImpl[Unit] = {
     getOrCreateRef(idx).updateImpl(f)
   }
 
-  final override def unsafeModify[B](idx: Int, f: A => (A, B)): RxnImpl[B] = {
+  final override def unsafeModify[B](idx: Int)(f: A => (A, B)): RxnImpl[B] = {
     getOrCreateRef(idx).modifyImpl(f)
   }
 
-  private[choam] final override def unsafeFlatModify[B](idx: Int, f: A => (A, Rxn[B])): RxnImpl[B] = {
+  private[choam] final override def unsafeFlatModify[B](idx: Int)(f: A => (A, Rxn[B])): RxnImpl[B] = {
     getOrCreateRef(idx).flatModifyImpl(f)
   }
 
@@ -108,17 +108,17 @@ sealed abstract class SparseArrayOfXRefs[A](
     }
   }
 
-  final override def update(idx: Int, f: A => A): RxnImpl[Boolean] = {
+  final override def update(idx: Int)(f: A => A): RxnImpl[Boolean] = {
     if ((idx >= 0) && (idx < length)) {
-      unsafeUpdate(idx, f).as(true)
+      unsafeUpdate(idx)(f).as(true)
     } else {
       Rxn.falseImpl
     }
   }
 
-  final override def modify[B](idx: Int, f: A => (A, B)): RxnImpl[Option[B]] = {
+  final override def modify[B](idx: Int)(f: A => (A, B)): RxnImpl[Option[B]] = {
     if ((idx >= 0) && (idx < length)) {
-      unsafeModify(idx, f).map(Some(_))
+      unsafeModify(idx)(f).map(Some(_))
     } else {
       Rxn.noneImpl
     }

@@ -45,7 +45,7 @@ private final class RingBuffer[A](
 
   final override def add(newVal: A): Rxn[Unit] = {
     tail.getAndUpdate(incrIdx).flatMap { idx =>
-      arr.unsafeFlatModify(idx, { oldVal =>
+      arr.unsafeFlatModify(idx) { oldVal =>
         if (isEmpty(oldVal)) {
           (newVal, Rxn.unit)
         } else {
@@ -53,7 +53,7 @@ private final class RingBuffer[A](
           // we also have to increment the deque index:
           (newVal, head.update(incrIdx))
         }
-      })
+      }
     }
   }
 }

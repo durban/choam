@@ -42,7 +42,7 @@ object JmxDemo extends IOApp.Simple with RxnAppMixin {
       arr <- Ref.array(N, "x").run[IO]
       tsk = Ref.swap(r1, r2).run[IO].parReplicateA_(0xffff)
       arrTsk = (0 until N by 4).toVector.traverse_ { idx =>
-        arr.unsafeUpdate(idx, _ + "y")
+        arr.unsafeUpdate(idx)(_ + "y")
       }.run[IO].parReplicateA_(0xfff)
       _ <- IO.both(IO.both(tsk, tsk), arrTsk)
       ta1 = trickyRxn(r1, r2)

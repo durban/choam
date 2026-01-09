@@ -1169,7 +1169,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       arr <- Ref.array(3, "a").run[F]
       r = Rxn.unsafe.ticketReadArray(arr, 2).flatMap { ticket =>
-        arr.unsafeGetAndUpdate(1, _ + ticket.unsafePeek).flatMap { ov =>
+        arr.unsafeGetAndUpdate(1)(_ + ticket.unsafePeek).flatMap { ov =>
           if (ov === "aa") {
             Rxn.unit
           } else {
@@ -1210,7 +1210,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("unsafe.ticketReadArray (already in log)") {
     for {
       arr <- Ref.array(3, "a").run[F]
-      r = arr.unsafeUpdate(2, _ + "b").flatMap { _ =>
+      r = arr.unsafeUpdate(2)(_ + "b").flatMap { _ =>
         Rxn.unsafe.ticketReadArray(arr, 2).flatMap { ticket =>
           ticket.unsafeSet(ticket.unsafePeek + "x")
         }
@@ -1258,14 +1258,14 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       arr <- Ref.array(3, "a").run[F]
       r = Rxn.unsafe.tentativeReadArray(arr, 2).flatMap { v2 =>
-        arr.unsafeGetAndUpdate(1, _ + v2).flatMap { ov =>
+        arr.unsafeGetAndUpdate(1)(_ + v2).flatMap { ov =>
           if (ov === "aa") {
             Rxn.unit
           } else {
-            arr.unsafeUpdate(2, { ov =>
+            arr.unsafeUpdate(2) { ov =>
               assertEquals(ov, v2)
               ov + "x"
-            })
+            }
           }
         }
       }
@@ -1305,12 +1305,12 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("unsafe.tentativeReadArray (already in log)") {
     for {
       arr <- Ref.array(3, "a").run[F]
-      r = arr.unsafeUpdate(2, _ + "b").flatMap { _ =>
+      r = arr.unsafeUpdate(2)(_ + "b").flatMap { _ =>
         Rxn.unsafe.tentativeReadArray(arr, 2).flatMap { v2 =>
-          arr.unsafeUpdate(2, { ov =>
+          arr.unsafeUpdate(2) { ov =>
             assertEquals(ov, v2)
             ov + "x"
-          })
+          }
         }
       }
       _ <- assertResultF(r.run[F], ())

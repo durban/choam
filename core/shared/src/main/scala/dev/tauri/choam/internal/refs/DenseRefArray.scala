@@ -61,17 +61,17 @@ private sealed class DenseRefArray[A](
     this.getOrCreateRefOrNull(idx).setImpl(nv)
   }
 
-  final override def unsafeUpdate(idx: Int, f: A => A): RxnImpl[Unit] = {
+  final override def unsafeUpdate(idx: Int)(f: A => A): RxnImpl[Unit] = {
     this.checkIndex(idx)
     this.getOrCreateRefOrNull(idx).updateImpl(f)
   }
 
-  final override def unsafeModify[B](idx: Int, f: A => (A, B)): RxnImpl[B] = {
+  final override def unsafeModify[B](idx: Int)(f: A => (A, B)): RxnImpl[B] = {
     this.checkIndex(idx)
     this.getOrCreateRefOrNull(idx).modifyImpl(f)
   }
 
-  private[choam] final override def unsafeFlatModify[B](idx: Int, f: A => (A, Rxn[B])): RxnImpl[B] = {
+  private[choam] final override def unsafeFlatModify[B](idx: Int)(f: A => (A, Rxn[B])): RxnImpl[B] = {
     this.checkIndex(idx)
     this.getOrCreateRefOrNull(idx).flatModifyImpl(f)
   }
@@ -90,14 +90,14 @@ private sealed class DenseRefArray[A](
     }
   }
 
-  final override def update(idx: Int, f: A => A): RxnImpl[Boolean] = {
+  final override def update(idx: Int)(f: A => A): RxnImpl[Boolean] = {
     this.getOrCreateRefOrNull(idx) match {
       case null => Rxn.falseImpl
       case ref => ref.updateImpl(f).as(true)
     }
   }
 
-  final override def modify[B](idx: Int, f: A => (A, B)): RxnImpl[Option[B]] = {
+  final override def modify[B](idx: Int)(f: A => (A, B)): RxnImpl[Option[B]] = {
     this.getOrCreateRefOrNull(idx) match {
       case null => Rxn.noneImpl
       case ref => ref.modifyImpl(f).map(Some(_))

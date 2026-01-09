@@ -382,13 +382,13 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
         latch2.await()
         // this will need to retry, because we mustn't extend the log:
         Rxn.unsafe.tentativeReadArray(arr, 2).flatMap { v2 =>
-          arr.unsafeUpdate(2, { ov =>
+          arr.unsafeUpdate(2) { ov =>
             assertEquals(ov, v2)
             99
-          }).as((v1, v2))
+          }.as((v1, v2))
         }
       }
-      rxn2Task = F.delay(latch1.await()) *> arr.unsafeUpdate(2, _ + 1).run[F] *> F.delay(latch2.countDown())
+      rxn2Task = F.delay(latch1.await()) *> arr.unsafeUpdate(2)(_ + 1).run[F] *> F.delay(latch2.countDown())
       _ <- assertResultF(F.both(rxn1.run[F], rxn2Task).map(_._1), (0, 1))
       _ <- assertResultF(arr.unsafeGet(0).run[F], 0)
       _ <- assertResultF(arr.unsafeGet(1).run[F], 0)
@@ -443,9 +443,9 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
             assertEquals(ov, v2)
             99
           }.as((v1, v2))
-        } <* arr.unsafeUpdate(0, _ + 42) // <- this will need to retry, because we mustn't extend the log
+        } <* arr.unsafeUpdate(0)(_ + 42) // <- this will need to retry, because we mustn't extend the log
       }
-      rxn2Task = F.delay(latch1.await()) *> arr.unsafeUpdate(0, _ + 1).run[F] *> F.delay(latch2.countDown())
+      rxn2Task = F.delay(latch1.await()) *> arr.unsafeUpdate(0)(_ + 1).run[F] *> F.delay(latch2.countDown())
       _ <- assertResultF(F.both(rxn1.run[F], rxn2Task).map(_._1), (0, 0))
       _ <- assertResultF(arr.unsafeGet(0).run[F], 43)
       _ <- assertResultF(arr.unsafeGet(1).run[F], 0)
@@ -497,13 +497,13 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
           latch1.countDown()
           // concurrent change to arr(2)
           latch2.await()
-          arr.unsafeUpdate(1, { ov =>
+          arr.unsafeUpdate(1) { ov =>
             assertEquals(ov, v1)
             99
-          }).as((v1, v2))
+          }.as((v1, v2))
         }
       }
-      rxn2Task = F.delay(latch1.await()) *> arr.unsafeUpdate(2, _ + 1).run[F] *> F.delay(latch2.countDown())
+      rxn2Task = F.delay(latch1.await()) *> arr.unsafeUpdate(2)(_ + 1).run[F] *> F.delay(latch2.countDown())
       _ <- assertResultF(F.both(rxn1.run[F], rxn2Task).map(_._1), (0, 0))
       _ <- assertResultF(arr.unsafeGet(0).run[F], 0)
       _ <- assertResultF(arr.unsafeGet(1).run[F], 99)
@@ -551,13 +551,13 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
           latch1.countDown()
           // concurrent change to arr(2)
           latch2.await()
-          arr.unsafeUpdate(2, { ov =>
+          arr.unsafeUpdate(2) { ov =>
             assertEquals(ov, v2)
             99
-          }).as((v1, v2))
+          }.as((v1, v2))
         }
       }
-      rxn2Task = F.delay(latch1.await()) *> arr.unsafeUpdate(2, _ + 1).run[F] *> F.delay(latch2.countDown())
+      rxn2Task = F.delay(latch1.await()) *> arr.unsafeUpdate(2)(_ + 1).run[F] *> F.delay(latch2.countDown())
       _ <- assertResultF(F.both(rxn1.run[F], rxn2Task).map(_._1), (0, 1))
       _ <- assertResultF(arr.unsafeGet(0).run[F], 0)
       _ <- assertResultF(arr.unsafeGet(1).run[F], 0)
@@ -617,16 +617,16 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       latch1 <- F.delay(new CountDownLatch(2))
       latch2 <- F.delay(new CountDownLatch(1))
       leftTries <- F.delay(new AtomicInteger)
-      left = arr.unsafeUpdate(0, _ + 1) *> Rxn.unsafe.delay {
+      left = arr.unsafeUpdate(0)(_ + 1) *> Rxn.unsafe.delay {
         latch1.countDown()
         leftTries.getAndIncrement()
         latch2.await()
       } *> ex.exchange("foo").flatMap { exVal =>
-        arr.unsafeGetAndUpdate(1, _ + 1).map { ov =>
+        arr.unsafeGetAndUpdate(1)(_ + 1).map { ov =>
           (ov, exVal)
         }
       }
-      concurrentUpdate1 = F.blocking(latch1.await()) *> arr.unsafeUpdate(1, _ + 1).run[F] *> F.delay(latch2.countDown())
+      concurrentUpdate1 = F.blocking(latch1.await()) *> arr.unsafeUpdate(1)(_ + 1).run[F] *> F.delay(latch2.countDown())
       rightTries <- F.delay(new AtomicInteger)
       right = Rxn.unsafe.tentativeReadArray(arr, 2) *> Rxn.unsafe.delay {
         latch1.countDown()
@@ -681,17 +681,17 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
       indices = (0 until 5).toList
       rxn = Rxn.unsafe.delay(Random.shuffle(indices).take(3)).flatMap {
         case idx1 :: idx2 :: idx3 :: Nil =>
-          arr.unsafeUpdate(idx1, _ + 1) *> Rxn.unsafe.tentativeReadArray(arr, idx2).flatMap { tRead =>
-            arr.unsafeUpdate(idx3, _ + 1) *> arr.unsafeUpdate(idx2, { ov =>
+          arr.unsafeUpdate(idx1)(_ + 1) *> Rxn.unsafe.tentativeReadArray(arr, idx2).flatMap { tRead =>
+            arr.unsafeUpdate(idx3)(_ + 1) *> arr.unsafeUpdate(idx2) { ov =>
               assertEquals(ov, tRead)
               ov + 1
-            })
+            }
           }
         case x =>
           Rxn.unsafe.panic(new AssertionError(s"unexpected: $x"))
       }
       bgFiber <- Rxn.unsafe.delay(Random.shuffle(indices)).flatMap { indices =>
-        indices.traverse { idx => arr.unsafeUpdate(idx, _ + 1) }
+        indices.traverse { idx => arr.unsafeUpdate(idx)(_ + 1) }
       }.run[F].foreverM[Unit].start
       _ <- F.both(F.cede *> rxn.run[F], F.cede *> rxn.run[F]).guarantee(bgFiber.cancel)
     } yield ()

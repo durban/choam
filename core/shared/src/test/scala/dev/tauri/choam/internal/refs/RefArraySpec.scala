@@ -219,38 +219,38 @@ trait RefArraySpec extends BaseSpec with SpecDefaultMcas {
 
   test("unsafeUpdate") {
     val arr = mkRefArray("foo", 2)
-    arr.unsafeUpdate(0, { ov =>
+    arr.unsafeUpdate(0) { ov =>
       assertEquals(ov, "foo")
       "bar0"
-    }).unsafePerform(this.mcasImpl)
-    arr.unsafeUpdate(1, { ov =>
+    }.unsafePerform(this.mcasImpl)
+    arr.unsafeUpdate(1) { ov =>
       assertEquals(ov, "foo")
       "bar1"
-    }).unsafePerform(this.mcasImpl)
+    }.unsafePerform(this.mcasImpl)
     assertEquals(arr.unsafeGet(0).unsafePerform(this.mcasImpl), "bar0")
     assertEquals(arr.unsafeGet(1).unsafePerform(this.mcasImpl), "bar1")
-    assert(Either.catchNonFatal(arr.unsafeUpdate(2, _ => "")).isLeft)
-    assert(Either.catchNonFatal(arr.unsafeUpdate(-1, _ => "")).isLeft)
+    assert(Either.catchNonFatal(arr.unsafeUpdate(2)(_ => "")).isLeft)
+    assert(Either.catchNonFatal(arr.unsafeUpdate(-1)(_ => "")).isLeft)
     assertEquals(arr.unsafeGet(0).unsafePerform(this.mcasImpl), "bar0")
     assertEquals(arr.unsafeGet(1).unsafePerform(this.mcasImpl), "bar1")
   }
 
   test("unsafeModify") {
     val arr = mkRefArray("foo", 2)
-    val r0 = arr.unsafeModify(0, { ov =>
+    val r0 = arr.unsafeModify(0) { ov =>
       assertEquals(ov, "foo")
       ("bar0", 42)
-    }).unsafePerform(this.mcasImpl)
+    }.unsafePerform(this.mcasImpl)
     assertEquals(r0, 42)
-    val r1 = arr.unsafeModify(1, { ov =>
+    val r1 = arr.unsafeModify(1) { ov =>
       assertEquals(ov, "foo")
       ("bar1", 43)
-    }).unsafePerform(this.mcasImpl)
+    }.unsafePerform(this.mcasImpl)
     assertEquals(r1, 43)
     assertEquals(arr.unsafeGet(0).unsafePerform(this.mcasImpl), "bar0")
     assertEquals(arr.unsafeGet(1).unsafePerform(this.mcasImpl), "bar1")
-    assert(Either.catchNonFatal(arr.unsafeModify(2, _ => ("", -1))).isLeft)
-    assert(Either.catchNonFatal(arr.unsafeModify(-1, _ => ("", -1))).isLeft)
+    assert(Either.catchNonFatal(arr.unsafeModify(2)(_ => ("", -1))).isLeft)
+    assert(Either.catchNonFatal(arr.unsafeModify(-1)(_ => ("", -1))).isLeft)
     assertEquals(arr.unsafeGet(0).unsafePerform(this.mcasImpl), "bar0")
     assertEquals(arr.unsafeGet(1).unsafePerform(this.mcasImpl), "bar1")
   }
@@ -278,40 +278,40 @@ trait RefArraySpec extends BaseSpec with SpecDefaultMcas {
 
   test("update") {
     val arr = mkRefArray("foo", 2)
-    val r0 = arr.update(0, { ov =>
+    val r0 = arr.update(0) { ov =>
       assertEquals(ov, "foo")
       "bar0"
-    }).unsafePerform(this.mcasImpl)
+    }.unsafePerform(this.mcasImpl)
     assertEquals(r0, true)
-    val r1 = arr.update(1, { ov =>
+    val r1 = arr.update(1) { ov =>
       assertEquals(ov, "foo")
       "bar1"
-    }).unsafePerform(this.mcasImpl)
+    }.unsafePerform(this.mcasImpl)
     assertEquals(r1, true)
     assertEquals(arr.unsafeGet(0).unsafePerform(this.mcasImpl), "bar0")
     assertEquals(arr.unsafeGet(1).unsafePerform(this.mcasImpl), "bar1")
-    assertEquals(arr.update(2, _ => "").unsafePerform(this.mcasImpl), false)
-    assertEquals(arr.update(-1, _ => "").unsafePerform(this.mcasImpl), false)
+    assertEquals(arr.update(2)(_ => "").unsafePerform(this.mcasImpl), false)
+    assertEquals(arr.update(-1)(_ => "").unsafePerform(this.mcasImpl), false)
     assertEquals(arr.unsafeGet(0).unsafePerform(this.mcasImpl), "bar0")
     assertEquals(arr.unsafeGet(1).unsafePerform(this.mcasImpl), "bar1")
   }
 
   test("modify") {
     val arr = mkRefArray("foo", 2)
-    val r0 = arr.modify(0, { ov =>
+    val r0 = arr.modify(0) { ov =>
       assertEquals(ov, "foo")
       ("bar0", 42)
-    }).unsafePerform(this.mcasImpl)
+    }.unsafePerform(this.mcasImpl)
     assertEquals(r0, Some(42))
-    val r1 = arr.modify(1, { ov =>
+    val r1 = arr.modify(1) { ov =>
       assertEquals(ov, "foo")
       ("bar1", 43)
-    }).unsafePerform(this.mcasImpl)
+    }.unsafePerform(this.mcasImpl)
     assertEquals(r1, Some(43))
     assertEquals(arr.unsafeGet(0).unsafePerform(this.mcasImpl), "bar0")
     assertEquals(arr.unsafeGet(1).unsafePerform(this.mcasImpl), "bar1")
-    assertEquals(arr.modify(2, _ => ("", -1)).unsafePerform(this.mcasImpl), None)
-    assertEquals(arr.modify(-1, _ => ("", -1)).unsafePerform(this.mcasImpl), None)
+    assertEquals(arr.modify(2)(_ => ("", -1)).unsafePerform(this.mcasImpl), None)
+    assertEquals(arr.modify(-1)(_ => ("", -1)).unsafePerform(this.mcasImpl), None)
     assertEquals(arr.unsafeGet(0).unsafePerform(this.mcasImpl), "bar0")
     assertEquals(arr.unsafeGet(1).unsafePerform(this.mcasImpl), "bar1")
   }
@@ -358,7 +358,7 @@ trait RefArraySpec extends BaseSpec with SpecDefaultMcas {
 
   test("consistentRead") {
     val a = mkRefArray[Int](42)
-    a.unsafeUpdate(0, _ + 1).unsafePerform(this.defaultMcasInstance)
+    a.unsafeUpdate(0)(_ + 1).unsafePerform(this.defaultMcasInstance)
     val (x, y) = Ref.Array.unsafeConsistentRead(a, 0, a, 2).unsafePerform(this.defaultMcasInstance)
     assert(x == 43)
     assert(y == 42)

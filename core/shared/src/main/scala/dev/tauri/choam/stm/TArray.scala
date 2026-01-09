@@ -20,17 +20,17 @@ package stm
 
 import core.Ref
 
-sealed trait TArray[A] { // TODO:0.5: maybe lambda params should be in a separate paramlist?
+sealed trait TArray[A] {
 
   def length: Int
 
   def unsafeGet(idx: Int): Txn[A]
   def unsafeSet(idx: Int, nv: A): Txn[Unit]
-  def unsafeUpdate(idx: Int, f: A => A): Txn[Unit]
+  def unsafeUpdate(idx: Int)(f: A => A): Txn[Unit]
 
   def get(idx: Int): Txn[Option[A]]
   def set(idx: Int, nv: A): Txn[Boolean]
-  def update(idx: Int, f: A => A): Txn[Boolean]
+  def update(idx: Int)(f: A => A): Txn[Boolean]
 
   // TODO: def refs: Vector[TRef[A]]
 }

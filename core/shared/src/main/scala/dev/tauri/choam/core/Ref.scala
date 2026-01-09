@@ -102,23 +102,23 @@ object Ref extends RefInstances0 {
       Array.AllocationStrategy.Default.withPadded(this.padded).withStm(this.stm)
   }
 
-  sealed trait Array[A] { // TODO:0.5: maybe lambda params should be in a separate paramlist?
+  sealed trait Array[A] {
 
     def length: Int
 
     def unsafeGet(idx: Int): Rxn[A]
     def unsafeSet(idx: Int, nv: A): Rxn[Unit]
-    def unsafeUpdate(idx: Int, f: A => A): Rxn[Unit]
-    def unsafeModify[B](idx: Int, f: A => (A, B)): Rxn[B]
+    def unsafeUpdate(idx: Int)(f: A => A): Rxn[Unit]
+    def unsafeModify[B](idx: Int)(f: A => (A, B)): Rxn[B]
 
     def get(idx: Int): Rxn[Option[A]]
     def set(idx: Int, nv: A): Rxn[Boolean]
-    def update(idx: Int, f: A => A): Rxn[Boolean]
-    def modify[B](idx: Int, f: A => (A, B)): Rxn[Option[B]]
+    def update(idx: Int)(f: A => A): Rxn[Boolean]
+    def modify[B](idx: Int)(f: A => (A, B)): Rxn[Option[B]]
 
     def refs: Chain[Ref[A]] // TODO:0.5: IndexedSeq instead of Chain?
 
-    private[choam] def unsafeFlatModify[B](idx: Int, f: A => (A, Rxn[B])): Rxn[B]
+    private[choam] def unsafeFlatModify[B](idx: Int)(f: A => (A, Rxn[B])): Rxn[B]
     private[choam] def getOrCreateRefOrNull(idx: Int): Ref[A]
 
     private[choam] final def unsafeGetAndSet(idx: Int, nv: A): Rxn[A] = {
@@ -128,7 +128,7 @@ object Ref extends RefInstances0 {
       }
     }
 
-    private[choam] final def unsafeGetAndUpdate(idx: Int, f: A => A): Rxn[A] = {
+    private[choam] final def unsafeGetAndUpdate(idx: Int)(f: A => A): Rxn[A] = {
       this.getOrCreateRefOrNull(idx) match {
         case null => throw new ArrayIndexOutOfBoundsException
         case ref => ref.getAndUpdate(f)
@@ -140,7 +140,7 @@ object Ref extends RefInstances0 {
 
     final def unsafeSwap[A](arr1: Ref.Array[A], idx1: Int, arr2: Ref.Array[A], idx2: Int): Rxn[Unit] = {
       arr1.unsafeGet(idx1).flatMap { o1 =>
-        arr2.unsafeModify(idx2, { o2 => (o1, o2) }).flatMap(arr1.unsafeSet(idx1, _))
+        arr2.unsafeModify(idx2) { o2 => (o1, o2) }.flatMap(arr1.unsafeSet(idx1, _))
       }
     }
 

@@ -61,17 +61,17 @@ sealed abstract class DenseArrayOfXRefs[A](
     this.arr(idx).setImpl(nv)
   }
 
-  final override def unsafeUpdate(idx: Int, f: A => A): RxnImpl[Unit] = {
+  final override def unsafeUpdate(idx: Int)(f: A => A): RxnImpl[Unit] = {
     internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, length)
     this.arr(idx).updateImpl(f)
   }
 
-  final override def unsafeModify[B](idx: Int, f: A => (A, B)): RxnImpl[B] = {
+  final override def unsafeModify[B](idx: Int)(f: A => (A, B)): RxnImpl[B] = {
     internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, length)
     this.arr(idx).modifyImpl(f)
   }
 
-  private[choam] final override def unsafeFlatModify[B](idx: Int, f: A => (A, Rxn[B])): RxnImpl[B] = {
+  private[choam] final override def unsafeFlatModify[B](idx: Int)(f: A => (A, Rxn[B])): RxnImpl[B] = {
     internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, length)
     this.arr(idx).flatModifyImpl(f)
   }
@@ -98,14 +98,14 @@ sealed abstract class DenseArrayOfXRefs[A](
     }
   }
 
-  final override def update(idx: Int, f: A => A): RxnImpl[Boolean] = {
+  final override def update(idx: Int)(f: A => A): RxnImpl[Boolean] = {
     this.getOrCreateRefOrNull(idx) match {
       case null => Rxn.falseImpl
       case ref => ref.updateImpl(f).as(true)
     }
   }
 
-  final override def modify[B](idx: Int, f: A => (A, B)): RxnImpl[Option[B]] = {
+  final override def modify[B](idx: Int)(f: A => (A, B)): RxnImpl[Option[B]] = {
     this.getOrCreateRefOrNull(idx) match {
       case null => Rxn.noneImpl
       case ref => ref.modifyImpl(f).map(Some(_))

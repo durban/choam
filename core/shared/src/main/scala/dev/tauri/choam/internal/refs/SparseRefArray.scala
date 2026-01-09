@@ -76,17 +76,17 @@ private sealed abstract class SparseXRefArray[A](
     this.getOrCreateRef(idx).set(nv)
   }
 
-  final override def unsafeUpdate(idx: Int, f: A => A): RxnImpl[Unit] = {
+  final override def unsafeUpdate(idx: Int)(f: A => A): RxnImpl[Unit] = {
     this.checkIndex(idx)
     this.getOrCreateRef(idx).update(f)
   }
 
-  final override def unsafeModify[B](idx: Int, f: A => (A, B)): RxnImpl[B] = {
+  final override def unsafeModify[B](idx: Int)(f: A => (A, B)): RxnImpl[B] = {
     this.checkIndex(idx)
     this.getOrCreateRef(idx).modify(f)
   }
 
-  private[choam] final override def unsafeFlatModify[B](idx: Int, f: A => (A, Rxn[B])): RxnImpl[B] = {
+  private[choam] final override def unsafeFlatModify[B](idx: Int)(f: A => (A, Rxn[B])): RxnImpl[B] = {
     this.checkIndex(idx)
     this.getOrCreateRef(idx).flatModifyImpl(f)
   }
@@ -105,14 +105,14 @@ private sealed abstract class SparseXRefArray[A](
     }
   }
 
-  final override def update(idx: Int, f: A => A): RxnImpl[Boolean] = {
+  final override def update(idx: Int)(f: A => A): RxnImpl[Boolean] = {
     this.getOrCreateRefOrNull(idx) match {
       case null => Rxn.falseImpl
       case ref => ref.update(f).as(true)
     }
   }
 
-  final override def modify[B](idx: Int, f: A => (A, B)): RxnImpl[Option[B]] = {
+  final override def modify[B](idx: Int)(f: A => (A, B)): RxnImpl[Option[B]] = {
     this.getOrCreateRefOrNull(idx) match {
       case null => Rxn.noneImpl
       case ref => ref.modify(f).map(Some(_))

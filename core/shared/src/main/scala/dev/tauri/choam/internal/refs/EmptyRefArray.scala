@@ -43,13 +43,13 @@ private[choam] final class EmptyRefArray[A] extends Ref.UnsealedArray0[A] with s
   final override def unsafeSet(idx: Int, nv: A): RxnImpl[Unit] =
     throwOob(idx)
 
-  final override def unsafeUpdate(idx: Int, f: A => A): RxnImpl[Unit] =
+  final override def unsafeUpdate(idx: Int)(f: A => A): RxnImpl[Unit] =
     throwOob(idx)
 
-  final override def unsafeModify[B](idx: Int, f: A => (A, B)): RxnImpl[B] =
+  final override def unsafeModify[B](idx: Int)(f: A => (A, B)): RxnImpl[B] =
     throwOob(idx)
 
-  private[choam] final override def unsafeFlatModify[B](idx: Int, f: A => (A, Rxn[B])): RxnImpl[B] =
+  private[choam] final override def unsafeFlatModify[B](idx: Int)(f: A => (A, Rxn[B])): RxnImpl[B] =
     throwOob(idx)
 
   final override def get(idx: Int): RxnImpl[Option[A]] =
@@ -58,10 +58,10 @@ private[choam] final class EmptyRefArray[A] extends Ref.UnsealedArray0[A] with s
   final override def set(idx: Int, nv: A): RxnImpl[Boolean] =
     Rxn.falseImpl
 
-  final override def update(idx: Int, f: A => A): RxnImpl[Boolean] =
+  final override def update(idx: Int)(f: A => A): RxnImpl[Boolean] =
     Rxn.falseImpl
 
-  final override def modify[B](idx: Int, f: A => (A, B)): RxnImpl[Option[B]] =
+  final override def modify[B](idx: Int)(f: A => (A, B)): RxnImpl[Option[B]] =
     Rxn.noneImpl
 
   final override def getOrCreateRefOrNull(idx: Int): Ref[A] =
