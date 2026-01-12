@@ -107,12 +107,8 @@ object RxnLocal {
       if (interpState.localOrigin eq origin) {
         this.value = f(this.value)
       } else {
-        this.updateSlowPath(f, interpState)
+        this.getAndUpdateSlowPath(f, interpState) : Unit
       }
-    }
-
-    private[this] final def updateSlowPath(f: A => A, interpState: InterpState): Unit = {
-      this.getAndUpdateSlowPath(f, interpState) : Unit
     }
 
     final override def getAndUpdate(f: A => A): RxnImpl[A] = Rxn.unsafe.delayContext2Impl { (_, interpState) =>

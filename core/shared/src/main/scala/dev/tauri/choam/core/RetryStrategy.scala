@@ -25,6 +25,7 @@ import cats.{ ~>, Hash, Show }
 import cats.syntax.all._
 import cats.effect.kernel.{ Async, Ref, Deferred }
 
+// TODO:0.5: move to dev.tauri.choam.RetryStrategy
 sealed abstract class RetryStrategy {
 
   // SPIN:

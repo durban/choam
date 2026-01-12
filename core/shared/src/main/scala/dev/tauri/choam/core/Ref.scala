@@ -57,6 +57,7 @@ private[choam] trait UnsealedRef[A] extends Ref[A] { this: MemoryLocation[A] & c
 
 object Ref extends RefInstances0 {
 
+  // TODO:0.5: unify with Array.AllocationStrategy, move to dev.tauri.choam.AllocationStrategy
   sealed abstract class AllocationStrategy {
     def padded: Boolean
     def withPadded(padded: Boolean): Ref.AllocationStrategy
