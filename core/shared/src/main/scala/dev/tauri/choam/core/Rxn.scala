@@ -27,7 +27,8 @@ import cats.data.{ Ior, State, NonEmptyList }
 import cats.effect.kernel.{ Async, Clock, Cont, Unique, MonadCancel, Ref => CatsRef }
 import cats.effect.std.{ Random, SecureRandom, UUIDGen }
 
-import dev.tauri.choam.{ unsafe => unsafe2 }
+import dev.tauri.choam.{ unsafe => unsafePackage }
+import unsafePackage.InRxn
 import stm.Txn
 import internal.mcas.{ MemoryLocation, Mcas, LogEntry, McasStatus, Descriptor, AbstractDescriptor, Consts, Hamt, Version }
 import internal.mcas.Hamt.IllegalInsertException
@@ -691,10 +692,10 @@ object Rxn extends RxnInstances0 {
       new Rxn.Ctx1[A](uf)
 
     @inline
-    private[choam] final def delayContext2[A](uf2: (Mcas.ThreadContext, unsafe2.InRxn.InterpState) => A): Rxn[A] =
+    private[choam] final def delayContext2[A](uf2: (Mcas.ThreadContext, InRxn.InterpState) => A): Rxn[A] =
       delayContext2Impl(uf2)
 
-    private[choam] final def delayContext2Impl[A](uf2: (Mcas.ThreadContext, unsafe2.InRxn.InterpState) => A): RxnImpl[A] =
+    private[choam] final def delayContext2Impl[A](uf2: (Mcas.ThreadContext, InRxn.InterpState) => A): RxnImpl[A] =
       new Rxn.Ctx2[A](uf2)
 
     @inline
@@ -710,7 +711,7 @@ object Rxn extends RxnInstances0 {
       delayImpl[A] { imperativePanicImpl[A](ex) }
 
     private[choam] final def imperativePanicImpl[A](ex: Throwable): A = {
-      if (ex.isInstanceOf[unsafe2.RetryException]) {
+      if (ex.isInstanceOf[unsafePackage.RetryException]) {
         throw new IllegalArgumentException(ex)
       } else {
         throw ex
@@ -737,19 +738,19 @@ object Rxn extends RxnInstances0 {
     // TODO: a read-only version of `embedUnsafe`
 
     /** Embeds a block of code, which uses the unsafe/imperative API, into a `Rxn`. */
-    final def embedUnsafe[A](unsafeBlock: dev.tauri.choam.unsafe.InRxn2 => A): Rxn[A] = {
-      new Rxn.Ctx3[Rxn[A]]({ (state: unsafe2.InRxn2) =>
+    final def embedUnsafe[A](unsafeBlock: unsafePackage.InRxn2 => A): Rxn[A] = {
+      new Rxn.Ctx3[Rxn[A]]({ (state: unsafePackage.InRxn2) =>
         try {
           pure[A](unsafeBlock(state))
         } catch {
-          case _: unsafe2.RetryException =>
+          case _: unsafePackage.RetryException =>
             retry[A]
         }
       }).flatten
     }
 
     /** Internal API called by `atomically` */
-    private[choam] final def startImperative(mcasImpl: Mcas, str: RetryStrategy): unsafe2.InRxn = {
+    private[choam] final def startImperative(mcasImpl: Mcas, str: RetryStrategy): InRxn = {
       new Rxn.InterpreterState[Any](
         rxn = null,
         mcas = mcasImpl,
@@ -871,19 +872,19 @@ object Rxn extends RxnInstances0 {
 
   private sealed abstract class Ctx[B] extends RxnImpl[B] {
     final override def toString: String = s"Ctx(<block>)"
-    def uf(ctx: Mcas.ThreadContext, ir: unsafe2.InRxn.InterpState): B
+    def uf(ctx: Mcas.ThreadContext, ir: InRxn.InterpState): B
   }
 
   private final class Ctx1[B](_uf: Mcas.ThreadContext => B) extends Ctx[B] {
-    final override def uf(ctx: Mcas.ThreadContext, ir: unsafe2.InRxn.InterpState): B = _uf(ctx)
+    final override def uf(ctx: Mcas.ThreadContext, ir: InRxn.InterpState): B = _uf(ctx)
   }
 
-  private final class Ctx2[B](_uf: (Mcas.ThreadContext, unsafe2.InRxn.InterpState) => B) extends Ctx[B] {
-    final override def uf(ctx: Mcas.ThreadContext, ir: unsafe2.InRxn.InterpState): B = _uf(ctx, ir)
+  private final class Ctx2[B](_uf: (Mcas.ThreadContext, InRxn.InterpState) => B) extends Ctx[B] {
+    final override def uf(ctx: Mcas.ThreadContext, ir: InRxn.InterpState): B = _uf(ctx, ir)
   }
 
-  private final class Ctx3[B](_uf: unsafe2.InRxn.InterpState => B) extends Ctx[B] {
-    final override def uf(ctx: Mcas.ThreadContext, ir: unsafe2.InRxn.InterpState): B = _uf(ir)
+  private final class Ctx3[B](_uf: InRxn.InterpState => B) extends Ctx[B] {
+    final override def uf(ctx: Mcas.ThreadContext, ir: InRxn.InterpState): B = _uf(ir)
   }
 
   private[core] final class As[A, B, C](val rxn: Rxn[B], val c: C) extends RxnImpl[C] {
@@ -943,7 +944,7 @@ object Rxn extends RxnInstances0 {
   /** Only the interpreter can use this! */
   private sealed abstract class SuspendUntil
     extends RxnImpl[Nothing]
-    with unsafe2.CanSuspendInF {
+    with unsafePackage.CanSuspendInF {
 
     def toF[F[_]](
       mcasImpl: Mcas,
@@ -1197,7 +1198,7 @@ object Rxn extends RxnInstances0 {
     strategy: RetryStrategy,
     isStm: Boolean,
   ) extends Hamt.EntryVisitor[MemoryLocation[Any], LogEntry[Any], Rxn[Any]]
-    with unsafe2.InRxn.InterpState { self =>
+    with InRxn.InterpState { self =>
 
     private[this] val maxRetries: Int =
       strategy.maxRetriesInt
@@ -2557,7 +2558,7 @@ object Rxn extends RxnInstances0 {
       }
     }
 
-    final override def imperativeRetry(): Option[unsafe2.CanSuspendInF] = {
+    final override def imperativeRetry(): Option[unsafePackage.CanSuspendInF] = {
       this.retry() match {
         case null =>
           // atomically/atomicallyInAsync has `null` as `startRxn` (and no
@@ -2579,7 +2580,7 @@ object Rxn extends RxnInstances0 {
       val hwd2 = revalidateIfNeeded(hwd)
       if (hwd2 eq null) { // need to roll back
         _assert(this._desc eq null)
-        throw unsafe2.RetryException.notPermanentFailure
+        throw unsafePackage.RetryException.notPermanentFailure
       } else {
         hwd2.nv
       }
@@ -2595,7 +2596,7 @@ object Rxn extends RxnInstances0 {
     final override def writeRef[A](ref: MemoryLocation[A], nv: A): Unit = {
       val c = new Rxn.UpdSet1(ref, nv)
       if (!handleUpd(c)) {
-        throw unsafe2.RetryException.notPermanentFailure
+        throw unsafePackage.RetryException.notPermanentFailure
       }
     }
 
@@ -2609,7 +2610,7 @@ object Rxn extends RxnInstances0 {
     final override def updateRef[A](ref: MemoryLocation[A], f: A => A): Unit = {
       val c = new Rxn.UpdUpdate1(ref, f)
       if (!handleUpd(c)) {
-        throw unsafe2.RetryException.notPermanentFailure
+        throw unsafePackage.RetryException.notPermanentFailure
       }
     }
 
@@ -2623,7 +2624,7 @@ object Rxn extends RxnInstances0 {
     final override def getAndSetRef[A](ref: MemoryLocation[A], nv: A): A = {
       val c = new Rxn.UpdFull(ref, { (ov: A) => (nv, ov) })
       if (!handleUpd(c)) {
-        throw unsafe2.RetryException.notPermanentFailure
+        throw unsafePackage.RetryException.notPermanentFailure
       } else {
         // Note: this.a is garbage now, but will be
         // overwritten with the result immediately
@@ -2635,7 +2636,7 @@ object Rxn extends RxnInstances0 {
     final override def imperativeTentativeRead[A](ref: MemoryLocation[A]): A = {
       val hwd = tentativeRead(ref)
       if (hwd eq null) {
-        throw unsafe2.RetryException.notPermanentFailure
+        throw unsafePackage.RetryException.notPermanentFailure
       } else {
         hwd.nv
       }
@@ -2648,16 +2649,16 @@ object Rxn extends RxnInstances0 {
       }
     }
 
-    final override def imperativeTicketRead[A](ref: MemoryLocation[A]): unsafe2.Ticket[A] = {
+    final override def imperativeTicketRead[A](ref: MemoryLocation[A]): unsafePackage.Ticket[A] = {
       val hwd = readMaybeFromLog(ref)
       if (hwd eq null) {
-        throw unsafe2.RetryException.notPermanentFailure
+        throw unsafePackage.RetryException.notPermanentFailure
       } else {
-        unsafe2.Ticket[A](hwd)
+        unsafePackage.Ticket[A](hwd)
       }
     }
 
-    final override def imperativeTicketReadArray[A](arr: Ref.Array[A], idx: Int): unsafe2.Ticket[A] = {
+    final override def imperativeTicketReadArray[A](arr: Ref.Array[A], idx: Int): unsafePackage.Ticket[A] = {
       arr.getOrCreateRefOrNull(idx) match {
         case null => Rxn.unsafe.imperativePanicImpl(new ArrayIndexOutOfBoundsException)
         case ref => imperativeTicketRead(ref.loc)
@@ -2673,7 +2674,7 @@ object Rxn extends RxnInstances0 {
       val c = new Rxn.TicketWrite(hwd, newest)
       if (!ticketWrite(c)) {
         _assert(this._desc eq null)
-        throw unsafe2.RetryException.notPermanentFailure
+        throw unsafePackage.RetryException.notPermanentFailure
       }
     }
 

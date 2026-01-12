@@ -52,7 +52,7 @@ sealed trait InRxn2 extends InRxn { // TODO: this only exists because only embed
   private[choam] def imperativePostCommit(pc: Rxn[Unit]): Unit
 }
 
-object InRxn {
+private[choam] object InRxn {
   private[choam] trait InterpState extends InRxn2 { // TODO: this is not really related to the imperative API
     private[choam] def localOrigin: RxnLocal.Origin
     private[choam] def registerLocal(local: InternalLocal): Unit

@@ -131,7 +131,7 @@ object RetryStrategy {
     override val randomizeSleep: Boolean,
   ) extends RetryStrategy {
 
-    require(maxRetries.forall{ mr => (mr >= 0) && (mr < Integer.MAX_VALUE) })
+    require(maxRetries.forall { mr => (mr >= 0) && (mr < Integer.MAX_VALUE) })
     require(maxSpin > 0)
     require(maxCede >= 0)
     require(!((maxCede == 0) && randomizeCede))
