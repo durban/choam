@@ -39,7 +39,7 @@ class StackTransferBench {
   def treiberStack(s: TreiberSt, bh: Blackhole, ct: McasImplState, rnd: RandomState): Unit = {
     bh.consume(s.treiberStack1.push(rnd.nextString()).unsafePerform(ct.mcasImpl))
     bh.consume(s.transfer.unsafePerform(ct.mcasImpl))
-    if (s.treiberStack2.tryPop.unsafePerform(ct.mcasImpl) eq None) throw Errors.EmptyStack
+    if (s.treiberStack2.poll.unsafePerform(ct.mcasImpl) eq None) throw Errors.EmptyStack
     Blackhole.consumeCPU(waitTime)
   }
 
@@ -84,7 +84,7 @@ object StackTransferBench {
     val treiberStack2: Stack[String] =
       Stack.fromList[SyncIO, String](Stack.apply)(Prefill.prefill())(using McasImplStateBase.reactiveSyncIO).unsafeRunSync()
     val transfer: Rxn[Unit] =
-      treiberStack1.tryPop.map(_.get).flatMap(treiberStack2.push)
+      treiberStack1.poll.map(_.get).flatMap(treiberStack2.push)
   }
 
   @State(Scope.Benchmark)

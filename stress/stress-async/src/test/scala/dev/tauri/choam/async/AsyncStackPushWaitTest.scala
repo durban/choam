@@ -74,7 +74,7 @@ class AsyncStackPushWaitTest extends StressTestBase {
     }.unsafeRunSync()(using this.runtime)
     r.r1 = oc
     r.r2 = this.popResult
-    r.r3 = this.stack.tryPop.run[IO].unsafeRunSync()(using this.runtime)
-    r.r4 = this.stack.tryPop.run[IO].unsafeRunSync()(using this.runtime)
+    r.r3 = this.stack.poll.run[IO].unsafeRunSync()(using this.runtime)
+    r.r4 = this.stack.poll.run[IO].unsafeRunSync()(using this.runtime)
   }
 }

@@ -34,11 +34,11 @@ final class EliminationStackForTesting[A] private (
   override def push(a: A): Rxn[Unit] =
     eliminator.leftOp(a)
 
-  override def tryPop: Rxn[Option[A]] =
+  override def poll: Rxn[Option[A]] =
     eliminator.rightOp(null)
 
-  override def tryPeek: Rxn[Option[A]] =
-    underlying.tryPeek
+  override def peek: Rxn[Option[A]] =
+    underlying.peek
 
   override def size: Rxn[Int] =
     underlying.size
@@ -50,7 +50,7 @@ final object EliminationStackForTesting {
       Eliminator[A, Unit, Any, Option[A]](
         underlying.push,
         Some(_),
-        _ => underlying.tryPop,
+        _ => underlying.poll,
         _ => (),
       ).map { eliminator =>
         new EliminationStackForTesting(underlying, eliminator)

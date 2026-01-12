@@ -67,7 +67,7 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
   test("EliminationStackForTesting (elimination)") {
     val t = for {
       s <- EliminationStackForTesting[Int].run[F]
-      _ <- concurrentPushPopTest(s.tryPop, s.push)
+      _ <- concurrentPushPopTest(s.poll, s.push)
     } yield ()
     t.replicateA_(repeat)
   }
@@ -81,7 +81,7 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
         // with each other, since they both touch
         // `ref` before trying to exchange; but
         // the stack should work correctly nevertheless:
-        ref.update(_ + 1) *> s.tryPop,
+        ref.update(_ + 1) *> s.poll,
         i => (ref.update(_ + 1) * s.push(i)).map(_._2),
       )
     } yield ()
@@ -90,7 +90,7 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
   test("EliminationStack (elimination)") {
     val t = for {
       s <- EliminationStack[Int].run[F]
-      _ <- concurrentPushPopTest(s.tryPop, s.push)
+      _ <- concurrentPushPopTest(s.poll, s.push)
     } yield ()
     t.replicateA_(repeat)
   }
@@ -104,7 +104,7 @@ trait EliminatorSpecJvm[F[_]] extends EliminatorSpec[F] { this: McasImplSpec =>
         // with each other, since they both touch
         // `ref` before trying to exchange; but
         // the stack should work correctly nevertheless:
-        ref.update(_ + 1) *> s.tryPop,
+        ref.update(_ + 1) *> s.poll,
         i => (ref.update(_ + 1) * s.push(i)).map(_._2),
       )
     } yield ()

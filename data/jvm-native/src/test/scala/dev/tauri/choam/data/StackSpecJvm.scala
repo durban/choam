@@ -64,7 +64,7 @@ trait StackSpecElimination12Jvm[F[_]]
       ref <- Ref(0).run[F]
       stack <- this.newStack[String]()
       rxn1 = ref.update(_ + 1) *> stack.push("a")
-      rxn2 = ref.update(_ + 2) *> stack.tryPop
+      rxn2 = ref.update(_ + 2) *> stack.poll
       tsk = F.both(F.cede *> rxn1.run[F], F.cede *> rxn2.run[F])
       _ <- F.cede
       _ <- tsk.parReplicateA_(8)
@@ -83,13 +83,13 @@ trait StackSpecJvm[F[_]] { this: StackSpec[F] & McasImplSpec =>
       _ <- s.push("b").run[F]
       _ <- s.push("c").run[F]
       _ <- s.push("d").run[F]
-      poppers <- (s.tryPeek * s.tryPop).run[F].parReplicateA(N).start
+      poppers <- (s.peek * s.poll).run[F].parReplicateA(N).start
       pushers <- s.push("x").run[F].parReplicateA(N).start
       popRes <- poppers.joinWithNever
       _ <- pushers.joinWithNever
       remaining <- {
         def drain(acc: List[String]): F[List[String]] = {
-          s.tryPop.run[F].flatMap {
+          s.poll.run[F].flatMap {
             case Some(v) => drain(v :: acc)
             case None => F.pure(acc)
           }
@@ -127,14 +127,14 @@ trait StackSpecJvm[F[_]] { this: StackSpec[F] & McasImplSpec =>
       rxn1 = ref.getAndSet(42).flatMap { ov =>
         stack.push("a") *> ref2.getAndSet(84).map { ov2 => (ov, ov2) }
       }
-      rxn2 = stack.tryPop.flatMap {
+      rxn2 = stack.poll.flatMap {
         case None => Rxn.unsafe.retry
         case Some(s) => ref2.getAndSet(66).flatMap { ov2 =>
           ref.getAndSet(33).map { ov => (ov, ov2, s) }
         }
       }
       misc1 = stack.push("b")
-      misc2 = stack.tryPop
+      misc2 = stack.poll
       tsk = F.both(
         F.both(F.cede *> rxn1.run[F], F.cede *> rxn2.run[F]),
         F.both(F.cede *> misc1.run[F], F.cede *> misc2.run[F]).parReplicateA_(6),

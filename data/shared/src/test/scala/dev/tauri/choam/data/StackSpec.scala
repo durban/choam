@@ -51,23 +51,23 @@ trait StackSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Stack push/pop/peek") {
     for {
       s <- newStack[String]()
-      _ <- assertResultF(s.tryPeek.run[F], None)
-      _ <- assertResultF(s.tryPeek.run[F], None)
-      _ <- assertResultF(s.tryPop.run[F], None)
+      _ <- assertResultF(s.peek.run[F], None)
+      _ <- assertResultF(s.peek.run[F], None)
+      _ <- assertResultF(s.poll.run[F], None)
       _ <- s.push("a").run[F]
-      _ <- assertResultF(s.tryPeek.run[F], Some("a"))
-      _ <- assertResultF(s.tryPeek.run[F], Some("a"))
+      _ <- assertResultF(s.peek.run[F], Some("a"))
+      _ <- assertResultF(s.peek.run[F], Some("a"))
       _ <- s.push("b").run[F]
-      _ <- assertResultF(s.tryPeek.run[F], Some("b"))
+      _ <- assertResultF(s.peek.run[F], Some("b"))
       _ <- s.push("c").run[F]
-      _ <- assertResultF(s.tryPeek.run[F], Some("c"))
-      _ <- assertResultF(s.tryPop.run[F], Some("c"))
-      _ <- assertResultF(s.tryPeek.run[F], Some("b"))
-      _ <- assertResultF(s.tryPop.run[F], Some("b"))
-      _ <- assertResultF(s.tryPeek.run[F], Some("a"))
-      _ <- assertResultF(s.tryPop.run[F], Some("a"))
-      _ <- assertResultF(s.tryPop.run[F], None)
-      _ <- assertResultF(s.tryPeek.run[F], None)
+      _ <- assertResultF(s.peek.run[F], Some("c"))
+      _ <- assertResultF(s.poll.run[F], Some("c"))
+      _ <- assertResultF(s.peek.run[F], Some("b"))
+      _ <- assertResultF(s.poll.run[F], Some("b"))
+      _ <- assertResultF(s.peek.run[F], Some("a"))
+      _ <- assertResultF(s.poll.run[F], Some("a"))
+      _ <- assertResultF(s.poll.run[F], None)
+      _ <- assertResultF(s.peek.run[F], None)
     } yield ()
   }
 
@@ -75,11 +75,11 @@ trait StackSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       s <- newStack[String]()
       rxn = (s.push("a") * s.push("b")) *> (
-        (s.tryPop * s.tryPeek)
+        (s.poll * s.peek)
       )
       _ <- assertResultF(rxn.run[F], (Some("b"), Some("a")))
-      _ <- assertResultF(s.tryPop.run[F], Some("a"))
-      _ <- assertResultF(s.tryPop.run[F], None)
+      _ <- assertResultF(s.poll.run[F], Some("a"))
+      _ <- assertResultF(s.poll.run[F], None)
     } yield ()
   }
 

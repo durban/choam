@@ -25,11 +25,30 @@ import core.{ Rxn, Ref, Reactive }
 
 sealed trait Stack[A] {
   def push(a: A): Rxn[Unit]
-  def tryPop: Rxn[Option[A]]
-  def tryPeek: Rxn[Option[A]]
+  def poll: Rxn[Option[A]]
+  def peek: Rxn[Option[A]]
   private[choam] def size: Rxn[Int] // TODO: Do we want this? If yes, is it correct even on elim. stack?
 }
 
+/**
+ * Various stacks
+ *
+ * The operations that may fail (e.g., trying to pop
+ * an element from an empty stack) return an `Option`
+ * (e.g., removing from an empty stack returns `None`).
+ *
+ * Method summary of the various operations:
+ *
+ * |         | `Rxn` (may fail)    | `Rxn` (succeeds) |
+ * |---------|---------------------|------------------|
+ * | insert  | -                   | `push`           |
+ * | remove  | `poll`              | -                |
+ * | examine | `peek`              | -                |
+ *
+ * @see [[dev.tauri.choam.async.AsyncStack$ AsyncStack]]
+ *      for asynchronous (possibly fiber-blocking)
+ *      variants of these methods
+ */
 object Stack {
 
   private[choam] trait UnsealedStack[A]
@@ -57,7 +76,7 @@ object Stack {
 
   private[choam] def popAll[F[_], A](s: Stack[A])(implicit F: Reactive[F]): F[List[A]] = {
     F.monad.tailRecM(List.empty[A]) { lst =>
-      F.monad.map(s.tryPop.run[F]) {
+      F.monad.map(s.poll.run[F]) {
         case None => Right(lst.reverse)
         case Some(a) => Left(a :: lst)
       }

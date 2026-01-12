@@ -56,11 +56,11 @@ trait AsyncStackSpec[F[_]]
       s <- newStack[F, String]
       _ <- s.push("foo").run[F]
       _ <- s.push("bar").run[F]
-      _ <- assertResultF(s.tryPeek.run, Some("bar"))
+      _ <- assertResultF(s.peek.run, Some("bar"))
       _ <- assertResultF(s.pop, "bar")
-      _ <- assertResultF(s.tryPeek.run, Some("foo"))
+      _ <- assertResultF(s.peek.run, Some("foo"))
       _ <- assertResultF(s.pop, "foo")
-      _ <- assertResultF(s.tryPeek.run, None)
+      _ <- assertResultF(s.peek.run, None)
     } yield ()
   }
 
@@ -155,7 +155,7 @@ trait AsyncStackSpec[F[_]]
       f2 <- s.pop.start
       _ <- this.tickAll
       rxn = (s.push("a") * s.push("b") * s.push("c")) *> (
-        (s.tryPop * s.tryPeek)
+        (s.poll * s.peek)
       )
       _ <- assertResultF(rxn.run[F], (Some("c"), Some("b")))
       _ <- this.tickAll

@@ -31,7 +31,7 @@ sealed trait Queue[A]
  * Various queues
  *
  * The operations that may fail (e.g., trying to remove
- * an element form an empty queue) return either a `Boolean`
+ * an element from an empty queue) return either a `Boolean`
  * or an `Option` (e.g., removing from an empty queue returns
  * `None`).
  *

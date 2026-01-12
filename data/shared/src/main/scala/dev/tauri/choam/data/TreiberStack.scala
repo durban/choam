@@ -30,12 +30,12 @@ private final class TreiberStack[A] private (
     new Cons(a, as)
   }
 
-  final override val tryPop: Rxn[Option[A]] = head.modify[Option[A]] {
+  final override val poll: Rxn[Option[A]] = head.modify[Option[A]] {
     case cons: Cons[_] => (cons.t, Some(cons.h))
     case End => (End, None)
   }
 
-  final override def tryPeek: Rxn[Option[A]] = head.get.map {
+  final override def peek: Rxn[Option[A]] = head.get.map {
     case cons: Cons[_] => Some(cons.h)
     case End => None
   }

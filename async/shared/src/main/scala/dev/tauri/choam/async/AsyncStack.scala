@@ -21,21 +21,32 @@ package async
 import core.{ Rxn, Ref, AsyncReactive }
 import data.Stack
 
-sealed trait AsyncStack[A] {
-  def push(a: A): Rxn[Unit]
+sealed trait AsyncStack[A] extends Stack.UnsealedStack[A] {
   def pop[F[_]](implicit F: AsyncReactive[F]): F[A]
-  def tryPop: Rxn[Option[A]]
-  def tryPeek: Rxn[Option[A]]
 }
 
-/*
- * TODO:0.5: clean up Stack API like this (FIXME: bounded stacks?):
+/**
+ * Various asynchronous stacks
+ *
+ * Adds asynchronous variants to the methods of
+ * [[dev.tauri.choam.data.Stack$ Stack]] (see the last column
+ * of the table below). These operations have a result
+ * type in an asynchronous `F`, and may be fiber-blocking.
+ * For example, asynchronously removing an element from
+ * an empty stack fiber-blocks until the stack is non-empty
+ * (or until the fiber is cancelled).
+ *
+ * Method summary of the various operations:
  *
  * |         | `Rxn` (may fail)    | `Rxn` (succeeds) | `F` (may block)        |
  * |---------|---------------------|------------------|------------------------|
  * | insert  | -                   | `push`           | -                      |
  * | remove  | `poll`              | -                | `pop`                  |
  * | examine | `peek`              | -                | -                      |
+ *
+ * @see [[dev.tauri.choam.data.Stack$ Stack]]
+ *      for the synchronous methods (all except
+ *      the last column of this table)
  */
 object AsyncStack {
 
@@ -49,16 +60,18 @@ object AsyncStack {
     Stack.eliminationStack[A].flatMap(fromSyncStack[A])
 
   private[this] final def fromSyncStack[A](stack: Stack[A]): Rxn[AsyncStack[A]] = {
-    WaitList(stack.tryPop, stack.push, stack.tryPeek).map { wl =>
+    WaitList(stack.poll, stack.push, stack.peek).map { wl =>
       new AsyncStack[A] {
         final override def push(a: A): Rxn[Unit] =
           wl.set(a).void
         final override def pop[F[_]](implicit F: AsyncReactive[F]): F[A] =
           wl.asyncGet
-        final override def tryPop: Rxn[Option[A]] =
+        final override def poll: Rxn[Option[A]] =
           wl.tryGet
-        final override def tryPeek: Rxn[Option[A]] =
+        final override def peek: Rxn[Option[A]] =
           wl.tryGetReadOnly
+        private[choam] final override def size: Rxn[Int] =
+          stack.size
       }
     }
   }

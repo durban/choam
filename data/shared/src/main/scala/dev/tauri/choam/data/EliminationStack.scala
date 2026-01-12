@@ -23,18 +23,18 @@ import java.util.concurrent.ThreadLocalRandom
 import core.{ Rxn, Ref, EliminatorImpl, Eliminator }
 
 private final class EliminationStack[A](underlying: Stack[A])
-  extends EliminatorImpl[A, Unit, Any, Option[A]](underlying.push, Some(_), _ => underlying.tryPop, _ => ())
+  extends EliminatorImpl[A, Unit, Any, Option[A]](underlying.push, Some(_), _ => underlying.poll, _ => ())
   // TODO: ^-- Unit could be Any(?); thus simplifying the conversion lambdas
   with Stack.UnsealedStack[A] {
 
   final def push(a: A): Rxn[Unit] =
     this.leftOp(a)
 
-  final def tryPop: Rxn[Option[A]] =
+  final def poll: Rxn[Option[A]] =
     this.rightOp(null)
 
-  final def tryPeek: Rxn[Option[A]] =
-    underlying.tryPeek
+  final def peek: Rxn[Option[A]] =
+    underlying.peek
 
   private[choam] final def size: Rxn[Int] =
     this.underlying.size
@@ -60,7 +60,7 @@ private object EliminationStack {
 
   final def tagged[A]: Rxn[TaggedEliminationStack[A]] = {
     TreiberStack[A](Ref.AllocationStrategy.Padded).flatMap { ul =>
-      taggedFrom(ul.push, ul.tryPop)
+      taggedFrom(ul.push, ul.poll)
     }
   }
 
@@ -71,7 +71,7 @@ private object EliminationStack {
           if (ThreadLocalRandom.current().nextBoolean()) Rxn.pure(x)
           else Rxn.unsafe.retry[Unit]
         },
-        ul.tryPop.flatMap {
+        ul.poll.flatMap {
           case None =>
             Rxn.none
           case s @ Some(_) =>
