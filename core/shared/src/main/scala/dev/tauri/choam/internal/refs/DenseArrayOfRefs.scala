@@ -29,7 +29,7 @@ sealed abstract class DenseArrayOfXRefs[A](
   initial: A,
   str: Ref.AllocationStrategy,
   rig: RefIdGen,
-) extends Ref.UnsealedArray0[A] {
+) extends Ref.UnsealedArray0[A] { self =>
 
   protected[this] type RefT[a] <: Ref[a]
 
@@ -110,8 +110,17 @@ sealed abstract class DenseArrayOfXRefs[A](
     }
   }
 
-  final override def refs: IndexedSeq[RefT[A]] =
-    scala.collection.immutable.ArraySeq.unsafeWrapArray(this.arr)
+  final override def refs: IndexedSeq[Ref[A]] = {
+    new IndexedSeq[Ref[A]] {
+      final override def apply(idx: Int): Ref[A] = {
+        internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, length)
+        self.arr(idx)
+      }
+      final override def length: Int = {
+        self.length
+      }
+    }
+  }
 }
 
 private[choam] final class DenseArrayOfRefs[A](
