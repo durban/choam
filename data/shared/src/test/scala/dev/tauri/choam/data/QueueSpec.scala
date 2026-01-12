@@ -352,23 +352,31 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   test("Queue should work correctly") {
     for {
       q <- newQueueFromList(List.empty[String])
+      _ <- assertResultF(q.peek.run[F], None)
       _ <- assertResultF(q.poll.run[F], None)
 
       _ <- assertResultF(q.poll.run, None)
       _ <- assertResultF(q.poll.run[F], None)
 
       _ <- q.add("a").run
+      _ <- assertResultF(q.peek.run[F], Some("a"))
+      _ <- assertResultF(q.peek.run[F], Some("a"))
       _ <- assertResultF(q.poll.run, Some("a"))
+      _ <- assertResultF(q.peek.run[F], None)
       _ <- assertResultF(q.poll.run, None)
+      _ <- assertResultF(q.peek.run[F], None)
 
       _ <- q.add("a").run
       _ <- q.add("b").run
       _ <- q.add("c").run
       _ <- assertResultF(q.poll.run, Some("a"))
+      _ <- assertResultF(q.peek.run[F], Some("b"))
 
       _ <- q.add("x").run
+      _ <- assertResultF(q.peek.run[F], Some("b"))
       _ <- assertResultF(q.drainOnce, List("b", "c", "x"))
       _ <- assertResultF(q.poll.run, None)
+      _ <- assertResultF(q.peek.run[F], None)
     } yield ()
   }
 
@@ -380,14 +388,17 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         _ <- q.add("a")
         _ <- q.add("b")
         _ <- q.add("c")
+        pa <- q.peek
         a <- q.poll
         b <- q.poll
         _ <- q.add("d")
+        pc <- q.peek
         c <- q.poll
         d <- q.poll
-      } yield (a, b, c, d)
+      } yield (a, pa, b, c, pc, d)
       abcd <- rxn.run[F]
-      _ <- assertEqualsF(abcd, (Some("a"), Some("b"), Some("c"), Some("d")))
+      _ <- assertEqualsF(abcd, (Some("a"), Some("a"), Some("b"), Some("c"), Some("c"), Some("d")))
+      _ <- assertResultF(q.peek.run[F], None)
       _ <- assertResultF(q.poll.run[F], None)
     } yield ()
   }
@@ -408,11 +419,15 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         if (acc.length == RxnSize) {
           Rxn.pure(acc.reverse)
         } else {
-          q.poll.flatMap {
-            case None =>
-              Rxn.unsafe.delay(assert(acc.isEmpty)).as(Nil)
-            case Some(item) =>
-              goOnce(item :: acc)
+          q.peek.flatMap { peeked =>
+            q.poll.flatMap {
+              case None =>
+                Rxn.unsafe.assert(peeked.isEmpty, s"peeked ${peeked}, but polled None") *> (
+                  Rxn.unsafe.assert(acc.isEmpty, s"expected empty, got: ${acc}").as(Nil)
+                )
+              case s @ Some(item) =>
+                Rxn.unsafe.assert(peeked == s, s"peeked ${peeked}, but polled ${s}") *> goOnce(item :: acc)
+            }
           }
         }
       }

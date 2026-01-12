@@ -33,6 +33,9 @@ private final class EliminationStack[A](underlying: Stack[A])
   final def tryPop: Rxn[Option[A]] =
     this.rightOp(null)
 
+  final def tryPeek: Rxn[Option[A]] =
+    underlying.tryPeek
+
   private[choam] final def size: Rxn[Int] =
     this.underlying.size
 }

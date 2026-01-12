@@ -47,9 +47,7 @@ sealed trait AsyncQueue[A]
  * |---------|---------------------|------------------|------------------------|
  * | insert  | `Queue.Offer#offer` | `Queue.Add#add`  | `AsyncQueue.Put#put`   |
  * | remove  | `Queue.Poll#poll`   | -                | `AsyncQueue.Take#take` |
- * | examine | `peek`              | -                | -                      |
- *
- * TODO: implement `peek`
+ * | examine | `Queue.Poll#peek`   | -                | -                      |
  *
  * @see [[dev.tauri.choam.data.Queue$ Queue]]
  *      for the synchronous methods (all except

@@ -72,6 +72,20 @@ private final class MsQueue[A] private[this] (
     }
   }
 
+  final override def peek: Rxn[Option[A]] = {
+    head.get.flatMap { node =>
+      Rxn.unsafe.ticketRead(node.next).flatMap { ticket =>
+        ticket.unsafePeek match {
+          case Node(a, _) =>
+            // see comment in `poll` above
+            Rxn.pure(Some(a))
+          case End() =>
+            ticket.unsafeValidate.as(None)
+        }
+      }
+    }
+  }
+
   final override def add(a: A): Rxn[Unit] = Rxn.unsafe.suspendContext { ctx =>
     findAndEnqueue(newNode(a, ctx))
   }
@@ -146,6 +160,10 @@ private object MsQueue {
               case r @ Some(_) => s.update(_ - 1).as(r)
               case None => Rxn.none
             }
+          }
+
+          final override def peek: Rxn[Option[A]] = {
+            q.peek
           }
 
           final override def add(a: A): Rxn[Unit] =

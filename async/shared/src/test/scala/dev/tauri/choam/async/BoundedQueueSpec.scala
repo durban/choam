@@ -22,6 +22,7 @@ import scala.util.Try
 
 import cats.effect.IO
 
+import core.Rxn
 import data.Queue.DrainOnceSyntax
 
 final class BoundedQueueSpecLinked_ThreadConfinedMcas_IO
@@ -59,9 +60,13 @@ trait BoundedQueueSpec[F[_]]
       _ <- s.put("a")
       _ <- s.put("b")
       _ <- s.put("c")
+      _ <- assertResultF(s.peek.run, Some("a"))
       _ <- assertResultF(s.take, "a")
+      _ <- assertResultF(s.peek.run, Some("b"))
       _ <- assertResultF(s.take, "b")
+      _ <- assertResultF(s.peek.run, Some("c"))
       _ <- assertResultF(s.take, "c")
+      _ <- assertResultF(s.peek.run, None)
     } yield ()
   }
 
@@ -113,12 +118,14 @@ trait BoundedQueueSpec[F[_]]
       _ <- assertResultF(s.offer("a").run[F], true)
       _ <- assertResultF(s.offer("b").run[F], true)
       _ <- assertResultF(s.offer("c").run[F], true)
+      _ <- assertResultF(s.peek.run[F], Some("a"))
       _ <- assertResultF(s.poll.run[F], Some("a"))
       _ <- assertResultF(s.offer("d").run[F], true)
       _ <- assertResultF(s.offer("e").run[F], true)
       _ <- assertResultF(s.offer("x").run[F], false)
       _ <- assertResultF(s.drainOnce, List("b", "c", "d", "e"))
       _ <- assertResultF(s.poll.run[F], None)
+      _ <- assertResultF(s.peek.run[F], None)
     } yield ()
   }
 
@@ -134,6 +141,7 @@ trait BoundedQueueSpec[F[_]]
       _ <- assertResultF(s.offer("b").run[F], true)
       _ <- assertResultF(f2.joinWithNever, "b")
       _ <- assertResultF(s.offer("c").run[F], true)
+      _ <- assertResultF(s.peek.run[F], Some("c"))
       _ <- assertResultF(s.poll.run[F], Some("c"))
       _ <- assertResultF(s.poll.run[F], None)
     } yield ()
@@ -148,8 +156,8 @@ trait BoundedQueueSpec[F[_]]
       _ <- this.tickAll
       f3 <- s.take.start
       _ <- this.tickAll
-      rxn = s.offer("a") * s.offer("b") * s.offer("c")
-      _ <- rxn.run[F]
+      rxn = s.offer("a") *> s.offer("b") *> s.offer("c") *> s.peek
+      _ <- assertResultF(rxn.run[F], Some("a"))
       // since `rxn` awakes all fibers in its post-commit actions, their order is non-deterministic:
       v1 <- f1.joinWithNever
       v2 <- f2.joinWithNever
@@ -333,8 +341,9 @@ trait BoundedQueueSpec[F[_]]
       rxn = (
         (q.offer("a") *> q.size).flatMap { s1 =>
           (q.offer("b") *> q.size).flatMap { s2 =>
-            (q.poll *> q.size).map { s3 =>
-              (s1, s2, s3)
+            (q.peek * q.poll * q.size).flatMap {
+              case ((peeked, polled), s3) =>
+                Rxn.unsafe.assert(peeked == polled, s"peeked ${peeked}, but polled ${polled}").as((s1, s2, s3))
             }
           }
         }

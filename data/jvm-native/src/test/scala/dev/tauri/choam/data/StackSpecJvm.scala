@@ -76,15 +76,15 @@ trait StackSpecElimination12Jvm[F[_]]
 trait StackSpecJvm[F[_]] { this: StackSpec[F] & McasImplSpec =>
 
   test("Multiple producers/consumers") {
-    val N = 4
+    val N = 5
     val tsk = for {
       s <- this.newStack[String]()
       _ <- s.push("a").run[F]
       _ <- s.push("b").run[F]
       _ <- s.push("c").run[F]
       _ <- s.push("d").run[F]
-      poppers <- F.parReplicateAN(Int.MaxValue)(replicas = N, ma = s.tryPop.run[F]).start
-      pushers <- F.parReplicateAN(Int.MaxValue)(replicas = N, ma = s.push("x").run[F]).start
+      poppers <- (s.tryPeek * s.tryPop).run[F].parReplicateA(N).start
+      pushers <- s.push("x").run[F].parReplicateA(N).start
       popRes <- poppers.joinWithNever
       _ <- pushers.joinWithNever
       remaining <- {
@@ -96,12 +96,18 @@ trait StackSpecJvm[F[_]] { this: StackSpec[F] & McasImplSpec =>
         }
         drain(Nil)
       }
+      _ <- popRes.traverse[F, Unit] {
+        case (None, None) => F.unit // ok
+        case (Some(peeked), Some(popped)) => assertEqualsF(peeked, popped)
+        case (s @ Some(_), None) => failF(s"peeked = $s; popped = None")
+        case (None, s @ Some(_)) => failF(s"peeked = None; popped = $s")
+      }
       _ <- assertEqualsF(
-        (popRes.collect { case Some(v) => v } ++ remaining).toSet,
+        (popRes.collect { case (_, Some(v)) => v } ++ remaining).toSet,
         (List("a", "b", "c", "d") ++ List.fill(N)("x")).toSet,
       )
     } yield ()
-    tsk.replicateA(64).void
+    tsk.replicateA(512).void
   }
 
   test("Elimination stack conflict after the elimination") { // TODO: expected failure with EliminationStack

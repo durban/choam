@@ -35,6 +35,11 @@ private final class TreiberStack[A] private (
     case End => (End, None)
   }
 
+  final override def tryPeek: Rxn[Option[A]] = head.get.map {
+    case cons: Cons[_] => Some(cons.h)
+    case End => None
+  }
+
   private[choam] final override val size: Rxn[Int] = // TODO: this is O(n)
     head.get.map(_.length)
 }

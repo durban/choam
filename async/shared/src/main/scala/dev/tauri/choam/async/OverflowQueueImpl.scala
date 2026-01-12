@@ -32,7 +32,7 @@ private object OverflowQueueImpl {
 
   final def droppingQueue[A](capacity: Int): Rxn[AsyncQueue.WithSize[A]] = {
     data.Queue.dropping[A](capacity).flatMap { dq =>
-      GenWaitList[A](dq.poll, dq.offer).map { gwl =>
+      GenWaitList[A](dq.poll, dq.offer, dq.peek).map { gwl =>
         new DroppingQueue[A](dq, gwl)
       }
     }
@@ -46,7 +46,7 @@ private object OverflowQueueImpl {
   }
 
   private[this] final def makeRingBuffer[A](underlying: data.Queue.WithSize[A]): Rxn[AsyncQueue.WithSize[A]] = {
-    WaitList(underlying.poll, underlying.add).map { wl =>
+    WaitList(underlying.poll, underlying.add, underlying.peek).map { wl =>
       new RingBuffer(underlying, wl)
     }
   }
@@ -71,6 +71,9 @@ private object OverflowQueueImpl {
     final override def poll: Rxn[Option[A]] =
       wl.tryGet
 
+    final override def peek: Rxn[Option[A]] =
+      wl.tryGetReadOnly
+
     final override def take[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
       F.monad.widen(wl.asyncGet)
   }
@@ -94,6 +97,9 @@ private object OverflowQueueImpl {
 
     final override def poll: Rxn[Option[A]] =
       gwl.tryGet
+
+    final override def peek: Rxn[Option[A]] =
+      gwl.tryGetReadOnly
 
     final override def take[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
       F.monad.widen(gwl.asyncGet)

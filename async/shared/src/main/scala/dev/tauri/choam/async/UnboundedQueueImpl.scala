@@ -26,7 +26,7 @@ private object UnboundedQueueImpl {
 
   final def apply[A]: Rxn[AsyncQueue[A]] = {
     data.Queue.unbounded[A].flatMap { q =>
-      WaitList[A](q.poll, q.add).map { wl =>
+      WaitList[A](q.poll, q.add, q.peek).map { wl =>
         new AsyncQueue.UnsealedAsyncQueue[A] {
           final override def offer(a: A): Rxn[Boolean] =
             this.add(a).as(true)
@@ -34,6 +34,8 @@ private object UnboundedQueueImpl {
             wl.set(a).void
           final override def poll: Rxn[Option[A]] =
             wl.tryGet
+          final override def peek: Rxn[Option[A]] =
+            wl.tryGetReadOnly
           final override def take[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
             F.monad.widen(wl.asyncGet)
         }
@@ -43,7 +45,7 @@ private object UnboundedQueueImpl {
 
   final def withSize[A]: Rxn[AsyncQueue.WithSize[A]] = {
     data.Queue.unboundedWithSize[A].flatMap { q =>
-      WaitList[A](q.poll, q.add).map { wl =>
+      WaitList[A](q.poll, q.add, q.peek).map { wl =>
         new AsyncQueue.UnsealedAsyncQueueWithSize[A] {
           final override def offer(a: A): Rxn[Boolean] =
             this.add(a).as(true)
@@ -51,6 +53,8 @@ private object UnboundedQueueImpl {
             wl.set(a).void
           final override def poll: Rxn[Option[A]] =
             wl.tryGet
+          final override def peek: Rxn[Option[A]] =
+            wl.tryGetReadOnly
           final override def take[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
             F.monad.widen(wl.asyncGet)
           final override def size: Rxn[Int] =

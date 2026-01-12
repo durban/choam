@@ -34,6 +34,8 @@ private[choam] sealed trait GenWaitList[A] { self =>
 
   def tryGet: Rxn[Option[A]]
 
+  def tryGetReadOnly: Rxn[Option[A]]
+
   def asyncSet[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit]
 
   def asyncSetCb(a: A, cb: Either[Throwable, Unit] => Unit, firstTry: Boolean, flag: GenWaitList.Flag): Rxn[Either[Rxn[Unit], Unit]]
@@ -73,18 +75,21 @@ private[choam] object WaitList { // TODO: should support AllocationStrategy
   final def apply[A](
     tryGetUnderlying: Rxn[Option[A]],
     setUnderlying: A => Rxn[Unit],
+    tryGetReadOnlyUnderlying: Rxn[Option[A]],
   ): Rxn[WaitList[A]] = {
-    GenWaitList.waitListForAsync[A](tryGetUnderlying, setUnderlying)
+    GenWaitList.waitListForAsync[A](tryGetUnderlying, setUnderlying, tryGetReadOnlyUnderlying)
   }
 
   private[choam] final def debug[A](
     tryGetUnderlying: Rxn[Option[A]],
     setUnderlying: A => Rxn[Unit],
+    tryGetReadOnlyUnderlying: Rxn[Option[A]],
   ): Rxn[GenWaitList.Debug[A]] = {
     (Ref(0), Ref(0)).flatMapN { (tguCount, suCount) =>
       apply[A](
         tryGetUnderlying = tryGetUnderlying <* tguCount.update(_ + 1),
         setUnderlying = { a => setUnderlying(a) <* suCount.update(_ + 1) },
+        tryGetReadOnlyUnderlying = tryGetReadOnlyUnderlying,
       ).map { wl =>
         GenWaitList.Debug.from(wl, tguCount = tguCount, tsuCount = suCount)
       }
@@ -103,10 +108,17 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
   final def apply[A](
     tryGetUnderlying: Rxn[Option[A]],
     trySetUnderlying: A => Rxn[Boolean],
+    tryGetReadOnlyUnderlying: Rxn[Option[A]],
   ): Rxn[GenWaitList[A]] = {
     RemoveQueue[Either[Throwable, Unit] => Unit].flatMap { getters =>
       RemoveQueue[Either[Throwable, Unit] => Unit].map { setters =>
-        new AsyncGenWaitList[A](tryGetUnderlying, trySetUnderlying, getters, setters)
+        new AsyncGenWaitList[A](
+          tryGetUnderlying = tryGetUnderlying,
+          trySetUnderlying = trySetUnderlying,
+          tryGetReadOnlyUnderlying = tryGetReadOnlyUnderlying,
+          getters = getters,
+          setters = setters,
+        )
       }
     }
   }
@@ -137,6 +149,8 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
           gwl.asyncSetCbFallback(flag)
         final override def tryGet: Rxn[Option[A]] =
           gwl.tryGet
+        final override def tryGetReadOnly: Rxn[Option[A]] =
+          gwl.tryGetReadOnly
         final override def trySet(a: A): Rxn[Boolean] =
           gwl.trySet(a)
         final override def trySetDirectly(a: A): Rxn[Boolean] =
@@ -148,11 +162,13 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
   private[choam] final def debug[A](
     tryGetUnderlying: Rxn[Option[A]],
     trySetUnderlying: A => Rxn[Boolean],
+    tryGetReadOnlyUnderlying: Rxn[Option[A]],
   ): Rxn[GenWaitList.Debug[A]] = {
     (Ref(0), Ref(0)).flatMapN { (tguCount, tsuCount) =>
       apply[A](
         tryGetUnderlying = tryGetUnderlying <* tguCount.update(_ + 1),
         trySetUnderlying = { a => trySetUnderlying(a) <* tsuCount.update(_ + 1) },
+        tryGetReadOnlyUnderlying = tryGetReadOnlyUnderlying,
       ).map { gwl =>
         GenWaitList.Debug.from(gwl, tguCount = tguCount, tsuCount = tsuCount)
       }
@@ -162,9 +178,10 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
   private[async] final def waitListForAsync[A](
     tryGetUnderlying: Rxn[Option[A]],
     setUnderlying: A => Rxn[Unit],
+    tryGetReadOnlyUnderlying: Rxn[Option[A]],
   ): Rxn[WaitList[A]] = {
     RemoveQueue[Either[Throwable, Unit] => Unit].map { waiters =>
-      new AsyncWaitList[A](tryGetUnderlying, setUnderlying, waiters)
+      new AsyncWaitList[A](tryGetUnderlying, setUnderlying, tryGetReadOnlyUnderlying, waiters)
     }
   }
 
@@ -319,6 +336,7 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
   private final class AsyncGenWaitList[A](
     tryGetUnderlying: Rxn[Option[A]],
     trySetUnderlying: A => Rxn[Boolean],
+    tryGetReadOnlyUnderlying: Rxn[Option[A]],
     getters: RemoveQueue[Either[Throwable, Unit] => Unit],
     setters: RemoveQueue[Either[Throwable, Unit] => Unit],
   ) extends GenWaitListCommon[A] { self =>
@@ -375,6 +393,16 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
           }
         } else {
           // there are already getters waiting
+          Rxn.none
+        }
+      }
+    }
+
+    final override def tryGetReadOnly: Rxn[Option[A]] = {
+      this.getters.isEmpty.flatMap { noGetters =>
+        if (noGetters) {
+          this.tryGetReadOnlyUnderlying
+        } else {
           Rxn.none
         }
       }
@@ -458,6 +486,7 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
   private final class AsyncWaitList[A](
     tryGetUnderlying: Rxn[Option[A]],
     setUnderlying: A => Rxn[Unit],
+    tryGetReadOnlyUnderlying: Rxn[Option[A]],
     waiters: RemoveQueue[Either[Throwable, Unit] => Unit],
   ) extends GenWaitListCommon[A]
     with WaitList[A] { self =>
@@ -466,6 +495,16 @@ private[choam] object GenWaitList { // TODO: should support AllocationStrategy
       this.waiters.isEmpty.flatMap { noWaiters =>
         if (noWaiters) {
           this.tryGetUnderlying
+        } else {
+          Rxn.none
+        }
+      }
+    }
+
+    final override def tryGetReadOnly: Rxn[Option[A]] = {
+      this.waiters.isEmpty.flatMap { noWaiters =>
+        if (noWaiters) {
+          this.tryGetReadOnlyUnderlying
         } else {
           Rxn.none
         }

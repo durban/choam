@@ -81,9 +81,13 @@ trait UnboundedQueueSpec[F[_]]
       _ <- s.put[F]("a")
       _ <- s.put[F]("b")
       _ <- s.put[F]("c")
+      _ <- assertResultF(s.peek.run, Some("a"))
       _ <- assertResultF(s.take, "a")
+      _ <- assertResultF(s.peek.run, Some("b"))
       _ <- assertResultF(s.take, "b")
+      _ <- assertResultF(s.peek.run, Some("c"))
       _ <- assertResultF(s.take, "c")
+      _ <- assertResultF(s.peek.run, None)
     } yield ()
   }
 
@@ -117,8 +121,8 @@ trait UnboundedQueueSpec[F[_]]
       _ <- this.tickAll
       f3 <- s.take.start
       _ <- this.tickAll
-      rxn = s.add("a") * s.add("b") * s.add("c")
-      _ <- rxn.run[F]
+      rxn = s.add("a") *> s.add("b") *> s.add("c") *> s.peek
+      _ <- assertResultF(rxn.run[F], Some("a"))
       // since `rxn` awakes all fibers in its post-commit actions, their order is non-deterministic:
       v1 <- f1.joinWithNever
       v2 <- f2.joinWithNever
@@ -135,10 +139,10 @@ trait UnboundedQueueSpec[F[_]]
       f2 <- s.take.start
       _ <- this.tickAll
       rxn = (s.add("a") * s.add("b") * s.add("c")) *> (
-        s.poll
+        (s.peek * s.poll)
       )
       deqRes <- rxn.run[F]
-      _ <- assertEqualsF(deqRes, Some("a"))
+      _ <- assertEqualsF(deqRes, (Some("a"), Some("a")))
       // since `rxn` awakes all fibers in its post-commit actions, their order is non-deterministic:
       v1 <- f1.joinWithNever
       v2 <- f2.joinWithNever

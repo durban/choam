@@ -37,6 +37,9 @@ final class EliminationStackForTesting[A] private (
   override def tryPop: Rxn[Option[A]] =
     eliminator.rightOp(null)
 
+  override def tryPeek: Rxn[Option[A]] =
+    underlying.tryPeek
+
   override def size: Rxn[Int] =
     underlying.size
 }

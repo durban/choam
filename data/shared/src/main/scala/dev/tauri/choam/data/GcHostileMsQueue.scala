@@ -56,6 +56,19 @@ private final class GcHostileMsQueue[A] private[this] (sentinel: Node[A], initRi
     }
   }
 
+  final override def peek: Rxn[Option[A]] = {
+    head.get.flatMap { node =>
+      Rxn.unsafe.ticketRead(node.next).flatMap { ticket =>
+        ticket.unsafePeek match {
+          case Node(a, _) =>
+            Rxn.pure(Some(a))
+          case End() =>
+            ticket.unsafeValidate.as(None)
+        }
+      }
+    }
+  }
+
   final override def add(a: A): Rxn[Unit] = {
     Ref[Elem[A]](End(), Ref.AllocationStrategy.Default).flatMap { newRef =>
       findAndEnqueue(Node(a, newRef))

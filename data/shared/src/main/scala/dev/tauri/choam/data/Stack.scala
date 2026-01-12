@@ -26,6 +26,7 @@ import core.{ Rxn, Ref, Reactive }
 sealed trait Stack[A] {
   def push(a: A): Rxn[Unit]
   def tryPop: Rxn[Option[A]]
+  def tryPeek: Rxn[Option[A]]
   private[choam] def size: Rxn[Int] // TODO: Do we want this? If yes, is it correct even on elim. stack?
 }
 

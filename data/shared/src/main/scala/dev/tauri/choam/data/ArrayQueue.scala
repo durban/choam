@@ -54,6 +54,18 @@ private abstract class ArrayQueue[A](
     }
   }
 
+  final override def peek: Rxn[Option[A]] = {
+    head.get.flatMap { idx =>
+      arr.unsafeGet(idx).map { a =>
+        if (isEmpty(a)) {
+          None
+        } else {
+          Some(a)
+        }
+      }
+    }
+  }
+
   // Note: not final, because `RingBuffer` needs to override it
   override def offer(newVal: A): Rxn[Boolean] = {
     tail.get.flatMap { idx =>

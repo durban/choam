@@ -48,16 +48,26 @@ trait StackSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   def newStack[A](as: A*): F[Stack[A]]
 
-  test("Stack push/pop") {
+  test("Stack push/pop/peek") {
     for {
       s <- newStack[String]()
+      _ <- assertResultF(s.tryPeek.run[F], None)
+      _ <- assertResultF(s.tryPeek.run[F], None)
+      _ <- assertResultF(s.tryPop.run[F], None)
       _ <- s.push("a").run[F]
+      _ <- assertResultF(s.tryPeek.run[F], Some("a"))
+      _ <- assertResultF(s.tryPeek.run[F], Some("a"))
       _ <- s.push("b").run[F]
+      _ <- assertResultF(s.tryPeek.run[F], Some("b"))
       _ <- s.push("c").run[F]
+      _ <- assertResultF(s.tryPeek.run[F], Some("c"))
       _ <- assertResultF(s.tryPop.run[F], Some("c"))
+      _ <- assertResultF(s.tryPeek.run[F], Some("b"))
       _ <- assertResultF(s.tryPop.run[F], Some("b"))
+      _ <- assertResultF(s.tryPeek.run[F], Some("a"))
       _ <- assertResultF(s.tryPop.run[F], Some("a"))
       _ <- assertResultF(s.tryPop.run[F], None)
+      _ <- assertResultF(s.tryPeek.run[F], None)
     } yield ()
   }
 
@@ -65,9 +75,9 @@ trait StackSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       s <- newStack[String]()
       rxn = (s.push("a") * s.push("b")) *> (
-        s.tryPop
+        (s.tryPop * s.tryPeek)
       )
-      _ <- assertResultF(rxn.run[F], Some("b"))
+      _ <- assertResultF(rxn.run[F], (Some("b"), Some("a")))
       _ <- assertResultF(s.tryPop.run[F], Some("a"))
       _ <- assertResultF(s.tryPop.run[F], None)
     } yield ()

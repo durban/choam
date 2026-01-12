@@ -30,19 +30,20 @@ private[choam] object BoundedQueueImpl {
     (Queue.unbounded[A] * Ref[Int](0)).flatMap {
       case (q, size) =>
         GenWaitList[A](
-          q.poll.flatMap {
+          tryGetUnderlying = q.poll.flatMap {
             case some @ Some(_) =>
               size.update(_ - 1).as(some)
             case None =>
               Rxn.none
           },
-          a => size.flatModify { s =>
+          trySetUnderlying = (a) => size.flatModify { s =>
             if (s < bound) {
               (s + 1, q.add(a).as(true))
             } else {
               (s, Rxn.false_)
             }
           },
+          tryGetReadOnlyUnderlying = q.peek,
         ).map { gwl =>
           new LinkedBoundedQueue[A](size, gwl)
         }
@@ -53,8 +54,9 @@ private[choam] object BoundedQueueImpl {
     require(bound > 0)
     Queue.dropping[A](bound).flatMap { q =>
       GenWaitList[A](
-        q.poll,
-        q.offer,
+        tryGetUnderlying = q.poll,
+        trySetUnderlying = q.offer,
+        tryGetReadOnlyUnderlying = q.peek,
       ).map { gwl =>
         new ArrayBoundedQueue[A](q, gwl)
       }
@@ -68,6 +70,9 @@ private[choam] object BoundedQueueImpl {
 
     final override def poll: Rxn[Option[A]] =
       gwl.tryGet
+
+    final override def peek: Rxn[Option[A]] =
+      gwl.tryGetReadOnly
 
     final override def take[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
       F.monad.widen(gwl.asyncGet)
@@ -93,6 +98,9 @@ private[choam] object BoundedQueueImpl {
 
     final override def poll: Rxn[Option[A]] =
       gwl.tryGet
+
+    final override def peek: Rxn[Option[A]] =
+      gwl.tryGetReadOnly
 
     final override def take[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA] =
       F.monad.widen(gwl.asyncGet)

@@ -25,8 +25,18 @@ sealed trait AsyncStack[A] {
   def push(a: A): Rxn[Unit]
   def pop[F[_]](implicit F: AsyncReactive[F]): F[A]
   def tryPop: Rxn[Option[A]]
+  def tryPeek: Rxn[Option[A]]
 }
 
+/*
+ * TODO:0.5: clean up Stack API like this (FIXME: bounded stacks?):
+ *
+ * |         | `Rxn` (may fail)    | `Rxn` (succeeds) | `F` (may block)        |
+ * |---------|---------------------|------------------|------------------------|
+ * | insert  | -                   | `push`           | -                      |
+ * | remove  | `poll`              | -                | `pop`                  |
+ * | examine | `peek`              | -                | -                      |
+ */
 object AsyncStack {
 
   final def apply[A]: Rxn[AsyncStack[A]] =
@@ -39,14 +49,16 @@ object AsyncStack {
     Stack.eliminationStack[A].flatMap(fromSyncStack[A])
 
   private[this] final def fromSyncStack[A](stack: Stack[A]): Rxn[AsyncStack[A]] = {
-    WaitList(stack.tryPop, stack.push).map { wl =>
+    WaitList(stack.tryPop, stack.push, stack.tryPeek).map { wl =>
       new AsyncStack[A] {
         final override def push(a: A): Rxn[Unit] =
           wl.set(a).void
         final override def pop[F[_]](implicit F: AsyncReactive[F]): F[A] =
           wl.asyncGet
         final override def tryPop: Rxn[Option[A]] =
-          stack.tryPop
+          wl.tryGet
+        final override def tryPeek: Rxn[Option[A]] =
+          wl.tryGetReadOnly
       }
     }
   }

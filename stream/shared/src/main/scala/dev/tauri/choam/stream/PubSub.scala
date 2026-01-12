@@ -235,11 +235,13 @@ object PubSub {
             _assert(ok)
             ()
           },
+          tryGetReadOnlyUnderlying = this.tryGetReadOnlyUnderlying(underlying),
         )
       } else {
         GenWaitList.apply[Chunk[A]]( // TODO: pass AllocationStrategy
           tryGetUnderlying = this.tryGetUnderlying(underlying, size),
           trySetUnderlying = this.setUnderlying(_, underlying, capacity, size, canSuspend = true),
+          tryGetReadOnlyUnderlying = this.tryGetReadOnlyUnderlying(underlying)
         )
       }
     }
@@ -262,6 +264,12 @@ object PubSub {
             newSize
           }.as(some)
       }
+    }
+
+    private[this] final def tryGetReadOnlyUnderlying[A](
+      underlying: UnboundedDeque[Chunk[A]],
+    ): Rxn[Option[Chunk[A]]] = {
+      underlying.peekLast
     }
 
     private[this] final def setUnderlying[A](

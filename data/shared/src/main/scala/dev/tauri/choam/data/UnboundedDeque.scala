@@ -29,6 +29,10 @@ private[choam] sealed abstract class UnboundedDeque[A] { // TODO: consider makin
   def tryTakeFirst: Rxn[Option[A]]
 
   def tryTakeLast: Rxn[Option[A]]
+
+  def peekFirst: Rxn[Option[A]]
+
+  def peekLast: Rxn[Option[A]]
 }
 
 private[choam] object UnboundedDeque {
@@ -48,7 +52,7 @@ private[choam] object UnboundedDeque {
     last: Ref[Node[A]],
   ) extends UnboundedDeque[A] {
 
-    def addFirst(a: A): Rxn[Unit] = first.get.flatMap { fst =>
+    final override def addFirst(a: A): Rxn[Unit] = first.get.flatMap { fst =>
       if (fst.isSentinel) {
         newNode(a, prev = null, next = null).flatMap { node =>
           first.set(node) *> last.set(node)
@@ -60,7 +64,7 @@ private[choam] object UnboundedDeque {
       }
     }
 
-    def addLast(a: A): Rxn[Unit] = last.get.flatMap { lst =>
+    final override def addLast(a: A): Rxn[Unit] = last.get.flatMap { lst =>
       if (lst.isSentinel) {
         newNode(a, prev = null, next = null).flatMap { node =>
           last.set(node) *> first.set(node)
@@ -72,7 +76,7 @@ private[choam] object UnboundedDeque {
       }
     }
 
-    def tryTakeFirst: Rxn[Option[A]] = first.get.flatMap { fst =>
+    final override def tryTakeFirst: Rxn[Option[A]] = first.get.flatMap { fst =>
       if (fst.isSentinel) {
         Rxn.none
       } else {
@@ -88,7 +92,7 @@ private[choam] object UnboundedDeque {
       }
     }
 
-    def tryTakeLast: Rxn[Option[A]] = last.get.flatMap { lst =>
+    final override def tryTakeLast: Rxn[Option[A]] = last.get.flatMap { lst =>
       if (lst.isSentinel) {
         Rxn.none
       } else {
@@ -102,6 +106,16 @@ private[choam] object UnboundedDeque {
           }
         }.as(Some(lst.a)).postCommit(lst.prev.set(null)) // postCommit to help GC
       }
+    }
+
+    final override def peekFirst: Rxn[Option[A]] = first.get.map { fst =>
+      if (fst.isSentinel) None
+      else Some(fst.a)
+    }
+
+    final override def peekLast: Rxn[Option[A]] = last.get.map { lst =>
+      if (lst.isSentinel) None
+      else Some(lst.a)
     }
   }
 

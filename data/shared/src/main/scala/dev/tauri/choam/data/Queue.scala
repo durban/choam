@@ -41,9 +41,7 @@ sealed trait Queue[A]
  * |---------|---------------------|------------------|
  * | insert  | `Queue.Offer#offer` | `Queue.Add#add`  |
  * | remove  | `Queue.Poll#poll`   | -                |
- * | examine | `peek`              | -                |
- *
- * TODO: implement `peek`
+ * | examine | `Queue.Poll#peek`   | -                |
  *
  * @see [[dev.tauri.choam.async.AsyncQueue$ AsyncQueue]]
  *      for asynchronous (possibly fiber-blocking)
@@ -53,6 +51,7 @@ object Queue {
 
   sealed trait Poll[+A] {
     def poll: Rxn[Option[A]]
+    def peek: Rxn[Option[A]]
   }
 
   sealed trait Offer[-A] {

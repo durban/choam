@@ -701,6 +701,11 @@ object Rxn extends RxnInstances0 {
     final def panic[A](ex: Throwable): Rxn[A] =
       panicImpl(ex)
 
+    private[choam] final def assert(cond: Boolean, msg: String): Rxn[Unit] = {
+      if (cond) Rxn.unit
+      else panic(new AssertionError(msg))
+    }
+
     private[choam] final def panicImpl[A](ex: Throwable): RxnImpl[A] =
       delayImpl[A] { imperativePanicImpl[A](ex) }
 

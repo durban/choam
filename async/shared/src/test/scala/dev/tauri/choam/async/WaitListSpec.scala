@@ -42,7 +42,8 @@ trait WaitListSpec[F[_]]
       ref <- Ref[Option[Int]](None).run[F]
       wl <- WaitList[Int](
         ref.get,
-        i => ref.getAndSet(Some(i)).void
+        i => ref.getAndSet(Some(i)).void,
+        ref.get,
       ).run[F]
       f1 <- wl.asyncGet.start
       _ <- this.tickAll
@@ -60,7 +61,8 @@ trait WaitListSpec[F[_]]
       ref <- Ref[Option[Int]](None).run[F]
       wl <- WaitList[Int](
         ref.get,
-        i => ref.getAndSet(Some(i)).void
+        i => ref.set(Some(i)),
+        ref.get,
       ).run[F]
       flag <- GenWaitList.Flag.mkNew(true).run
       _ <- F.asyncCheckAttempt[Unit] { cb =>
@@ -78,7 +80,8 @@ trait WaitListSpec[F[_]]
         i => ref.modify {
           case None => (Some(i), true)
           case s => (s, false)
-        }
+        },
+        ref.get,
       ).run[F]
       flag0 <- GenWaitList.Flag.mkNew(true).run
       _ <- F.asyncCheckAttempt[Unit] { cb =>
@@ -489,6 +492,7 @@ object WaitListSpec {
         GenWaitList.debug[A](
           tryGetUnderlying = underlying.poll,
           trySetUnderlying = underlying.offer,
+          tryGetReadOnlyUnderlying = underlying.peek,
         ).flatMap(gwl => debugQueue(gwl))
       }
     case None =>
@@ -496,6 +500,7 @@ object WaitListSpec {
         WaitList.debug[A](
           tryGetUnderlying = underlying.poll,
           setUnderlying = underlying.add,
+          tryGetReadOnlyUnderlying = underlying.peek,
         ).flatMap(wl => debugQueue(wl))
       }
   }
@@ -509,6 +514,7 @@ object WaitListSpec {
         final override def trySetUnderlyingCount: Rxn[Int] = wl.trySetUnderlyingCount
         final override def offer(a: A): Rxn[Boolean] = wl.trySet(a)
         final override def poll: Rxn[Option[A]] = wl.tryGet
+        final override def peek: Rxn[Option[A]] = wl.tryGetReadOnly
         final override def take[G[_], AA >: A](implicit G: AsyncReactive[G]): G[AA] = G.monad.widen(wl.asyncGet(using G))
         final override def put[G[_]](a: A)(implicit G: AsyncReactive[G]): G[Unit] = wl.asyncSet[G](a)
       }
