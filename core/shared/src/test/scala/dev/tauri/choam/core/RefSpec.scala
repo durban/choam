@@ -47,7 +47,7 @@ final class RefSpec_Ref2_ThreadConfinedMcas_IO
 
 trait RefSpec_Arr[F[_]] extends RefSpec_Real[F] { this: McasImplSpec =>
   override def newRef[A](initial: A): F[RefType[A]] =
-    Ref.array(1, initial).run[F].map(_.refs.get(0).getOrElse(fail("missing ref")))
+    Ref.array(1, initial).run[F].map(_.refs(0))
 }
 
 trait RefSpec_Ref2[F[_]] extends RefSpec_Real[F] { this: McasImplSpec =>

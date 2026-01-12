@@ -22,7 +22,6 @@ package refs
 import scala.util.Try
 
 import cats.syntax.all._
-import cats.data.Chain
 
 import munit.Location
 
@@ -318,16 +317,16 @@ trait RefArraySpec extends BaseSpec with SpecDefaultMcas {
 
   test("refs") {
     val a0 = mkRefArray("foo", 0)
-    assertEquals(a0.refs : Chain[Ref[String]], Chain.empty)
+    assertEquals(a0.refs : IndexedSeq[Ref[String]], IndexedSeq.empty)
     val a1 = mkRefArray("foo", 1)
-    assertEquals(a1.refs.length, 1L)
-    val r10 = a1.refs.get(0L).getOrElse(fail("missing ref"))
+    assertEquals(a1.refs.length, 1)
+    val r10 = a1.refs(0)
     assertEquals(r10.getAndSet("bar").unsafePerform(this.mcasImpl), "foo")
     assertSameInstance(a1.refs.headOption.getOrElse(fail("missing ref")), r10)
     assertEquals(r10.get.unsafePerform(this.mcasImpl), "bar")
-    assertEquals(a1.refs.get(1L), None)
+    assert(Either.catchNonFatal { a1.refs(1) }.isLeft)
     val a2 = mkRefArray("foo", 3)
-    a2.refs.get(1L).getOrElse(fail("missing ref")).set("bar").unsafePerform(this.mcasImpl)
+    a2.refs(1).set("bar").unsafePerform(this.mcasImpl)
     val vs = a2.refs.foldLeft(Rxn.pure("")) { (acc, ref) =>
       ref.get.flatMap { s => acc.map(_ + s) }
     }.unsafePerform(this.mcasImpl)
@@ -336,10 +335,10 @@ trait RefArraySpec extends BaseSpec with SpecDefaultMcas {
 
   test("refs (STM)") {
     val a0 = Ref.safeTArrayImpl(0, "foo", stm.TArray.DefaultAllocationStrategy).unsafePerform(this.mcasImpl)
-    assertEquals(a0.refs : Chain[Ref[String]], Chain.empty)
+    assertEquals(a0.refs : IndexedSeq[Ref[String]], IndexedSeq.empty)
     val a1 = Ref.safeTArrayImpl(1, "foo", stm.TArray.DefaultAllocationStrategy).unsafePerform(this.mcasImpl)
-    assertEquals(a1.refs.length, 1L)
-    val r10: Ref[String] = a1.refs.get(0L).getOrElse(fail("missing ref"))
+    assertEquals(a1.refs.length, 1)
+    val r10: Ref[String] = a1.refs(0)
     r10 match {
       case _: stm.TRef[_] => // ok
       case _ => fail("expected a TRef")

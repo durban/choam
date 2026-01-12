@@ -21,8 +21,6 @@ package refs
 
 import scala.reflect.ClassTag
 
-import cats.data.Chain
-
 import core.{ Ref, Rxn, RxnImpl }
 import mcas.RefIdGen
 
@@ -112,8 +110,8 @@ sealed abstract class DenseArrayOfXRefs[A](
     }
   }
 
-  final override def refs: Chain[RefT[A]] =
-    Chain.fromSeq(scala.collection.immutable.ArraySeq.unsafeWrapArray(this.arr))
+  final override def refs: IndexedSeq[RefT[A]] =
+    scala.collection.immutable.ArraySeq.unsafeWrapArray(this.arr)
 }
 
 private[choam] final class DenseArrayOfRefs[A](

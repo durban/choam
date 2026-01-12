@@ -21,8 +21,6 @@ package refs
 
 import scala.reflect.ClassTag
 
-import cats.data.Chain
-
 import core.{ Ref, Rxn, RxnImpl }
 import mcas.RefIdGen
 import CompatPlatform.AtomicReferenceArray
@@ -32,7 +30,7 @@ sealed abstract class SparseArrayOfXRefs[A](
   initial: A,
   str: Ref.AllocationStrategy,
   rig: RefIdGen,
-) extends Ref.UnsealedArray0[A] {
+) extends Ref.UnsealedArray0[A] { self =>
 
   protected[this] type RefT[a] <: Ref[a]
 
@@ -124,11 +122,15 @@ sealed abstract class SparseArrayOfXRefs[A](
     }
   }
 
-  final override def refs: Chain[Ref[A]] = {
-    val arr = Array.tabulate(length) { idx =>
-      this.getOrCreateRef(idx)
+  final override def refs: IndexedSeq[Ref[A]] = {
+    new IndexedSeq[Ref[A]] {
+      final override def apply(idx: Int): Ref[A] = {
+        self.getOrCreateRef(idx)
+      }
+      final override def length: Int = {
+        self.length
+      }
     }
-    Chain.fromSeq(scala.collection.immutable.ArraySeq.unsafeWrapArray(arr))
   }
 }
 

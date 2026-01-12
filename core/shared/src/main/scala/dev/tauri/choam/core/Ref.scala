@@ -20,7 +20,6 @@ package core
 
 import scala.math.Ordering
 
-import cats.data.Chain
 import cats.kernel.{ Hash, Order }
 import cats.effect.kernel.{ Ref => CatsRef }
 
@@ -117,7 +116,7 @@ object Ref extends RefInstances0 {
     def update(idx: Int)(f: A => A): Rxn[Boolean]
     def modify[B](idx: Int)(f: A => (A, B)): Rxn[Option[B]]
 
-    def refs: Chain[Ref[A]] // TODO:0.5: IndexedSeq instead of Chain?
+    def refs: IndexedSeq[Ref[A]]
 
     private[choam] def unsafeFlatModify[B](idx: Int)(f: A => (A, Rxn[B])): Rxn[B]
     private[choam] def getOrCreateRefOrNull(idx: Int): Ref[A]

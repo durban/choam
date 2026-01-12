@@ -19,8 +19,6 @@ package dev.tauri.choam
 package internal
 package refs
 
-import cats.data.Chain
-
 import core.{ Ref, Rxn, RxnImpl }
 
 private sealed abstract class SparseXRefArray[A](
@@ -28,7 +26,7 @@ private sealed abstract class SparseXRefArray[A](
   initial: A,
   _idBase: Long,
 ) extends SparseRefArrayBase[A](__size, box(initial), _idBase) // TODO: try to avoid `box`
-  with Ref.UnsealedArray[A] {
+  with Ref.UnsealedArray[A] { self =>
 
   protected[this] type RefT[a] <: RefArrayRef[a]
 
@@ -119,11 +117,16 @@ private sealed abstract class SparseXRefArray[A](
     }
   }
 
-  final override def refs: Chain[Ref[A]] = {
-    val arr = Array.tabulate[Ref[A]](length) { idx =>
-      this.getOrCreateRef(idx)
+  final override def refs: IndexedSeq[Ref[A]] = {
+    new IndexedSeq[Ref[A]] {
+      final override def apply(idx: Int): Ref[A] = {
+        self.checkIndex(idx)
+        self.getOrCreateRefOrNull(idx)
+      }
+      final override def length: Int = {
+        self.length
+      }
     }
-    Chain.fromSeq(scala.collection.immutable.ArraySeq.unsafeWrapArray(arr))
   }
 }
 
