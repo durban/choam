@@ -313,6 +313,7 @@ object Mcas extends McasCompanionPlatform {
       val d0 = this.start() // do this AFTER reading, so version is deemed valid
       _assert(d0.isValidHwd(hwd))
       if (equ(hwd.ov, ov)) {
+        _assert(hwd.oldVersion == Version.Start) // TODO: ?
         val d1 = d0.add(hwd.withNv(nv))
         val res = this.tryPerformInternal(d1, optimism = Consts.PESSIMISTIC)
         _assert(res != Version.Reserved)
