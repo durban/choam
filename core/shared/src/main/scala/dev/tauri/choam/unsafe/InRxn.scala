@@ -19,7 +19,6 @@ package dev.tauri.choam
 package unsafe
 
 import core.{ Rxn, Ref, InternalLocal, InternalLocalArray }
-import core.unsafe.RxnLocal
 import internal.mcas.{ Mcas, MemoryLocation, LogEntry }
 
 sealed trait InRoRxn {

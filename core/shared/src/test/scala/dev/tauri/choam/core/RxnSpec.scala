@@ -29,7 +29,7 @@ import cats.effect.IO
 import cats.effect.kernel.{ Ref => CatsRef }
 
 import internal.mcas.Mcas
-import core.unsafe.RxnLocal
+import unsafe.RxnLocal
 
 final class RxnSpec_ThreadConfinedMcas_IO
   extends BaseSpecIO

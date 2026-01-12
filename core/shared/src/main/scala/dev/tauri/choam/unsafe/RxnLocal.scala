@@ -16,12 +16,12 @@
  */
 
 package dev.tauri.choam
-package core
 package unsafe
 
 import java.util.Arrays
 
-import dev.tauri.choam.unsafe.InRxn.InterpState
+import core.{ Rxn, RxnImpl }
+import InRxn.InterpState
 
 sealed abstract class RxnLocal[A] private () {
   def get: Rxn[A]
@@ -42,7 +42,7 @@ object RxnLocal {
     def unsafeSet(idx: Int, nv: A): Rxn[Unit]
   }
 
-  private[core] final def newLocal[A](initial: A): Rxn[RxnLocal[A]] = {
+  private[choam] final def newLocal[A](initial: A): Rxn[RxnLocal[A]] = {
     newLocalImpl(initial)
   }
 
@@ -58,7 +58,7 @@ object RxnLocal {
     }
   }
 
-  private[core] final def newLocalArray[A](size: Int, initial: A): Rxn[RxnLocal.Array[A]] = {
+  private[choam] final def newLocalArray[A](size: Int, initial: A): Rxn[RxnLocal.Array[A]] = {
     newLocalArrayImpl(size, initial)
   }
 
@@ -79,7 +79,7 @@ object RxnLocal {
   private[this] final class RxnLocalImpl[A](_initial: A, origin: RxnLocal.Origin)
     extends RxnLocal[A]
     with stm.TxnLocal.UnsealedTxnLocal[A]
-    with InternalLocal {
+    with core.InternalLocal {
 
     private[this] var value: A =
       _initial
@@ -150,7 +150,7 @@ object RxnLocal {
     origin: RxnLocal.Origin,
   ) extends RxnLocal.Array[A]
     with stm.TxnLocal.UnsealedTxnLocalArray[A]
-    with InternalLocalArray {
+    with core.InternalLocalArray {
 
     final override def initial: AnyRef =
       box(_initial)

@@ -546,7 +546,7 @@ object Rxn extends RxnInstances0 {
 
   final object unsafe {
 
-    import core.unsafe.RxnLocal
+    import unsafePackage.RxnLocal
 
     @inline
     final def newLocal[A](initial: A): Rxn[RxnLocal[A]] =
@@ -1287,8 +1287,8 @@ object Rxn extends RxnInstances0 {
       }
     }
 
-    private[choam] final override val localOrigin: core.unsafe.RxnLocal.Origin =
-      new core.unsafe.RxnLocal.Origin
+    private[choam] final override val localOrigin: unsafePackage.RxnLocal.Origin =
+      new unsafePackage.RxnLocal.Origin
 
     private[this] val contT: ByteStack = new ByteStack(initSize = 8)
     private[this] var contK: ObjStack[Any] = mkInitialContK()

@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package stm
 
-import core.unsafe.RxnLocal
+import unsafe.RxnLocal
 
 sealed trait TxnLocal[A] {
   def get: Txn[A]
