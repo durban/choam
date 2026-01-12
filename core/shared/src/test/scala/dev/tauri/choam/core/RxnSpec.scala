@@ -1394,6 +1394,16 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("assert") {
+    for {
+      _ <- assertResultF(Rxn.unsafe.assert(true, "foo").run[F], ())
+      _ <- Rxn.unsafe.assert(false, "bar").run[F].attempt.flatMap {
+        case Left(ex) => assertF(ex.isInstanceOf[AssertionError]) *> assertEqualsF(ex.getMessage, "bar")
+        case Right(a) => failF[Unit](s"unexpected success: ${a}")
+      }
+    } yield ()
+  }
+
   test("panic in post-commit actions (1)") {
     val exc = new RxnSpec.MyException
     for {
