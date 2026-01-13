@@ -298,6 +298,7 @@ object Mcas extends McasCompanionPlatform {
       Descriptor.merge(to, from, this, canExtend)
     }
 
+    // TODO: this whole method should be replaced an exchanger-specific (optimized) variant
     final def singleCasDirect[A](ref: MemoryLocation[A], ov: A, nv: A): Boolean = {
       // TODO: This method used to perform a "bare" 1-CAS, without
       // TODO: changing the global version. This broke opacity
@@ -316,11 +317,8 @@ object Mcas extends McasCompanionPlatform {
         val d1 = d0.add(hwd.withNv(nv))
         val res = this.tryPerformInternal(d1, optimism = Consts.PESSIMISTIC)
         _assert(res != Version.Reserved)
-        _assert(!VersionFunctions.isValid(res)) // TODO: remove this, only correct for exchanger
-        _assert((res == McasStatus.Successful) || (res == McasStatus.FailedVal)) // TODO: same
         res == McasStatus.Successful
       } else {
-        _assert(!equ(hwd.ov, null)) // TODO: remove this, only correct for exchanger
         false
       }
     }
