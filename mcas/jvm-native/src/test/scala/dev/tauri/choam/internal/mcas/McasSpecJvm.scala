@@ -29,7 +29,30 @@ final class McasSpecJvmEmcas
 
 final class McasSpecJvmSpinLockMcas
   extends McasSpecJvm
-  with SpecSpinLockMcas
+  with SpecSpinLockMcas {
+
+  test("If a location is locked, tryPerform must retry immediately (i.e., spin)") {
+    val r1 = MemoryLocation.unsafeUnpadded("a", this.rigInstance)
+    val r2 = MemoryLocation.unsafeUnpadded("x", this.rigInstance)
+    var result: Boolean = false
+    val t1 = new Thread(() => {
+      val ctx = mcasImpl.currentContext()
+      val b = new Mcas.Builder(ctx, ctx.start(), canExtend = true)
+      result = b.casRef(r1, "a", "b").casRef(r2, "x", "y").tryPerformOk()
+    })
+    val (toLock, ov) = if (MemoryLocation.globalCompare(r1, r2) < 0) {
+      (r2.cast[AnyRef], "x")
+    } else {
+      (r1.cast[AnyRef], "a")
+    }
+    toLock.unsafeSetV(SpinLockMcas.Locked)
+    t1.start()
+    Thread.sleep(300L)
+    assert(toLock.unsafeCasV(SpinLockMcas.Locked, ov))
+    t1.join()
+    assert(result)
+  }
+}
 
 final class McasSpecJvmThreadConfinedMcas
   extends McasSpecJvm

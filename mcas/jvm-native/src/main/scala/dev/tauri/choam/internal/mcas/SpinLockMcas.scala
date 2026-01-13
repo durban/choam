@@ -22,6 +22,8 @@ package mcas
 import java.util.concurrent.ThreadLocalRandom
 import java.util.concurrent.atomic.AtomicLong
 
+import scala.runtime.BooleanRef
+
 /**
  * Naïve k-CAS algorithm as described in [Reagents: Expressing and Composing
  * Fine-grained Concurrency](https://www.ccs.neu.edu/home/turon/reagents.pdf)
@@ -81,16 +83,11 @@ private final class SpinLockMcas private (
     final override def tryPerformInternal(desc: AbstractDescriptor, optimism: Long): Long = {
       val ops = desc.hwdIterator.toList
       _assert(ops.nonEmpty)
-      perform(ops)
-    }
-
-    private[this] final object Locked {
-      def as[A]: A =
-        this.asInstanceOf[A]
+      perform(ops, BooleanRef.zero())
     }
 
     private[this] def locked[A]: A =
-      Locked.as[A]
+      SpinLockMcas.Locked.as[A]
 
     private[this] def isLocked[A](a: A): Boolean =
       equ(a, locked[A])
@@ -150,7 +147,8 @@ private final class SpinLockMcas private (
       desc.validateAndTryExtendVer(commitTs.get(), this, hwd)
     }
 
-    private def perform(ops: List[LogEntry[?]]): Long = {
+    @tailrec
+    private[this] final def perform(ops: List[LogEntry[?]], retry: BooleanRef): Long = {
 
       @tailrec
       def lock(ops: List[LogEntry[?]]): List[LogEntry[?]] = ops match {
@@ -164,10 +162,13 @@ private final class SpinLockMcas private (
                 lock(tail)
               } else {
                 head.address.unsafeSetV(head.ov)
-                ops // rollback
+                ops // rollback; failure
               }
+            } else if (isLocked[a](witness)) {
+              retry.elem = true
+              ops // rollback; retry
             } else {
-              ops // rollback
+              ops // rollback; failure
             }
         }
       }
@@ -210,6 +211,7 @@ private final class SpinLockMcas private (
         case Nil =>
           McasStatus.Successful
         case l @ (_ :: _) =>
+          retry.elem = false
           lock(l) match {
             case Nil =>
               val newVersion = incrTs()
@@ -217,9 +219,21 @@ private final class SpinLockMcas private (
               McasStatus.Successful
             case to @ (_ :: _) =>
               rollback(l, to)
-              McasStatus.FailedVal
+              if (retry.elem) {
+                perform(ops, retry)
+              } else {
+                McasStatus.FailedVal
+              }
           }
       }
     }
+  }
+}
+
+private object SpinLockMcas {
+
+  private[mcas] final object Locked {
+    def as[A]: A =
+      this.asInstanceOf[A]
   }
 }
