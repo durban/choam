@@ -107,7 +107,7 @@ trait StackSpecJvm[F[_]] { this: StackSpec[F] & McasImplSpec =>
         (List("a", "b", "c", "d") ++ List.fill(N)("x")).toSet,
       )
     } yield ()
-    tsk.replicateA(512).void
+    tsk.replicateA_(if (this.isJvm()) 4096 else 2048)
   }
 
   test("Elimination stack conflict after the elimination") { // TODO: expected failure with EliminationStack
