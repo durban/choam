@@ -31,6 +31,7 @@ addSbtPlugin("org.typelevel" % "sbt-typelevel-sonatype" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-github" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-github-actions" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-ci" % sbtTypelevelVersion)
+addSbtPlugin("com.github.sbt" % "sbt-unidoc" % "0.6.1") // TODO: we can remove this when sbt-typelevel also updates
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.6") // https://github.com/scalameta/sbt-scalafmt
 addSbtPlugin("com.github.sbt" % "sbt-header" % "5.11.0") // https://github.com/sbt/sbt-header
 addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.14.5") // https://github.com/scalacenter/sbt-scalafix
