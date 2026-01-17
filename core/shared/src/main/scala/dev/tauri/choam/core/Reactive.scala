@@ -30,7 +30,7 @@ import internal.mcas.Mcas
 
 sealed trait Reactive[F[_]] {
 
-  def run[A](a: Rxn[A], s: RetryStrategy.Spin): F[A]
+  def run[A](a: Rxn[A], s: RetryStrategy.CanSuspend[false]): F[A]
 
   final def run[A](a: Rxn[A]): F[A] =
     run(a, RetryStrategy.Default)
@@ -57,7 +57,7 @@ object Reactive {
     final override val mcasImpl: Mcas,
   )(implicit F: Sync[F]) extends Reactive[F] {
 
-    final override def run[A](r: Rxn[A], s: RetryStrategy.Spin): F[A] = {
+    final override def run[A](r: Rxn[A], s: RetryStrategy.CanSuspend[false]): F[A] = {
       F.delay { r.unsafePerform(mcas = this.mcasImpl, strategy = s) }
     }
 
@@ -69,7 +69,7 @@ object Reactive {
     underlying: Reactive[F],
     t: F ~> G,
   )(implicit G: Monad[G]) extends Reactive[G] {
-    final override def run[A](r: Rxn[A], s: RetryStrategy.Spin): G[A] =
+    final override def run[A](r: Rxn[A], s: RetryStrategy.CanSuspend[false]): G[A] =
       t(underlying.run(r, s))
     final override def mcasImpl: Mcas =
       underlying.mcasImpl

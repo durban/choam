@@ -28,7 +28,7 @@ sealed trait Transactive[F[_]] {
   final def commit[B](txn: Txn[B]): F[B] =
     this.commit(txn, RetryStrategy.DefaultSleep)
 
-  private[choam] def commit[B](txn: Txn[B], str: RetryStrategy): F[B]
+  private[choam] def commit[B](txn: Txn[B], str: RetryStrategy.CanSuspend[true]): F[B]
 
   private[choam] def commitWithStepper[B](txn: Txn[B], stepper: RetryStrategy.Internal.Stepper[F]): F[B]
 }
@@ -46,7 +46,7 @@ object Transactive {
 
   private[choam] final class TransactiveImpl[F[_] : Async](m: Mcas)
     extends Reactive.SyncReactive[F](m) with Transactive[F] {
-    final override def commit[B](txn: Txn[B], str: RetryStrategy): F[B] = {
+    final override def commit[B](txn: Txn[B], str: RetryStrategy.CanSuspend[true]): F[B] = {
       txn.impl.performStm[F, B](this.mcasImpl, str)
     }
     private[choam] final override def commitWithStepper[B](txn: Txn[B], stepper: RetryStrategy.Internal.Stepper[F]): F[B] = {

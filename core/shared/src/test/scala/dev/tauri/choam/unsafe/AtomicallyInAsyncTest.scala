@@ -30,7 +30,7 @@ final class AtomicallyInAsyncSpec_DefaultMcas_IO
 trait AtomicallyInAsyncSpec[F[_]] extends UnsafeApiSpecBase[F] { this: McasImplSpec =>
 
   private[this] val str: RetryStrategy =
-    RetryStrategy.Default.withCede(true)
+    RetryStrategy.Default.withCede
 
   final override def runBlock[A](block: InRxn => A): F[A] = {
     api.atomicallyInAsync(str)(block)

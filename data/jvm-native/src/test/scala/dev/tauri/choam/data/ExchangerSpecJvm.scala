@@ -257,7 +257,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   test("The 2 `Rxn`s run with separated logs") {
     val maxRetries = Some(4096)
-    val str = RetryStrategy.Default.withCede(true).withMaxRetries(maxRetries)
+    val str = RetryStrategy.Default.withCede.withMaxRetries(maxRetries)
     for {
       ref <- Ref(0).run[F]
       leftReceived <- F.delay(new AtomicInteger(-1))

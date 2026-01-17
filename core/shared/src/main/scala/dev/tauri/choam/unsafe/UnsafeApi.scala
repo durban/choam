@@ -44,7 +44,7 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
    * to methods called from the `block`.
    */
   final def atomically[A](block: InRxn => A): A = {
-    val state = Rxn.unsafe.startImperative(this.rt.mcasImpl, RetryStrategy.Default : RetryStrategy.Spin)
+    val state = Rxn.unsafe.startImperative(this.rt.mcasImpl, RetryStrategy.Default : RetryStrategy.CanSuspend[false])
     state.initCtx(this.rt.mcasImpl.currentContext())
 
     @tailrec

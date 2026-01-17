@@ -149,12 +149,12 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
    */
   final def unsafePerform(
     rt: ChoamRuntime,
-    strategy: RetryStrategy.Spin,
+    strategy: RetryStrategy.CanSuspend[false],
   ): B = this.unsafePerform(rt.mcasImpl, strategy)
 
   private[choam] final def unsafePerform(
     mcas: Mcas,
-    strategy: RetryStrategy.Spin = RetryStrategy.Default,
+    strategy: RetryStrategy.CanSuspend[false] = RetryStrategy.Default,
   ): B = {
     new Rxn.InterpreterState[B](
       rxn = this,
@@ -206,7 +206,7 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
   /** Only for tests/benchmarks */
   private[choam] final def unsafePerformInternal(
     ctx: Mcas.ThreadContext,
-    str: RetryStrategy.Spin = RetryStrategy.Default,
+    str: RetryStrategy.CanSuspend[false] = RetryStrategy.Default,
   ): B = {
     new Rxn.InterpreterState[B](
       this,
@@ -218,7 +218,7 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
 
   private[choam] final def performStm[F[_], X >: B](
     mcas: Mcas,
-    strategy: RetryStrategy,
+    strategy: RetryStrategy.CanSuspend[true],
   )(implicit F: Async[F]): F[X] = {
     // It is unsafe to accept a `Stepper` through
     // this method, since it could be a `Stepper[G]`,
@@ -236,9 +236,9 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
 
   private[this] final def performStmInternal[F[_], X >: B](
     mcas: Mcas,
-    strategy: RetryStrategy,
+    strategy: RetryStrategy.CanSuspend[true],
   )(implicit F: Async[F]): F[X] = {
-    require(strategy.canSuspend)
+    _assert(strategy.canSuspend)
     F.uncancelable { poll =>
       F.defer {
         new Rxn.InterpreterState[X](
@@ -1206,7 +1206,7 @@ object Rxn extends RxnInstances0 {
     private[this] val canSuspend: Boolean = {
       val cs = strategy.canSuspend
       _assert( // just to be sure:
-        ((!cs) == strategy.isInstanceOf[RetryStrategy.Spin]) &&
+        ((!cs) == RetryStrategy.isSpin(strategy)) &&
         (cs || (!isStm))
       )
       cs
@@ -1802,12 +1802,12 @@ object Rxn extends RxnInstances0 {
     ): Rxn[Any] = {
       if (this.strategy.isDebug && (!noDebug)) {
         this.strategy match {
-          case str @ ((_: RetryStrategy.Spin) | (_: RetryStrategy.StrategyFull)) =>
-            impossible(s"$str returned isDebug == true")
           case stepper: RetryStrategy.Internal.Stepper[_] =>
             return new SuspendWithStepper(stepper, stepper.asyncF.delay { // scalafix:ok
               this.retry(canSuspend, permanent, noDebug = true)
             })
+          case str =>
+            impossible(s"$str returned isDebug == true")
         }
       }
       val alt = tryLoadAlt(isPermanentFailure = permanent)

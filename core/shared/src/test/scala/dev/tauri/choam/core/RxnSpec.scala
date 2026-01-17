@@ -1671,7 +1671,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         else Rxn.unsafe.retry[String]
       }
     }
-    def maxRetries(mr: Option[Int]): RetryStrategy.Spin =
+    def maxRetries(mr: Option[Int]): RetryStrategy.CanSuspend[false] =
       RetryStrategy.Default.withMaxRetries(mr)
     for {
       // finite maxRetries:

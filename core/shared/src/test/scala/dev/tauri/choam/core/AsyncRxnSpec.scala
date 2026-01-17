@@ -35,19 +35,19 @@ trait AsyncRxnSpec[F[_]]
   test("applyAsync") {
     val r: Rxn[Int] = Rxn.pure(3)
     val never: Rxn[Int] = Rxn.unsafe.retry
-    val sSpin = RetryStrategy.spin(
+    val sSpin: RetryStrategy.CanSuspend[false] = RetryStrategy.spin(
       maxRetries = Some(128),
       maxSpin = 512,
       randomizeSpin = true,
     )
-    val sCede = RetryStrategy.cede(
+    val sCede: RetryStrategy.CanSuspend[true] = RetryStrategy.cede(
       maxRetries = Some(128),
       maxSpin = 512,
       randomizeSpin = true,
       maxCede = 1,
       randomizeCede = false,
     )
-    val sSleep = RetryStrategy.sleep(
+    val sSleep: RetryStrategy.CanSuspend[true] = RetryStrategy.sleep(
       maxRetries = Some(128),
       maxSpin = 512,
       randomizeSpin = true,
@@ -69,8 +69,8 @@ trait AsyncRxnSpec[F[_]]
   test("Exception passthrough (AsyncReactive)") {
     throwingRxns.traverse_[F, Unit] { r =>
       AsyncReactive[F].runAsync(r, RetryStrategy.Default).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
-      AsyncReactive[F].runAsync(r, RetryStrategy.Default.withCede(true)).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
-      AsyncReactive[F].runAsync(r, RetryStrategy.Default.withSleep(true)).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
+      AsyncReactive[F].runAsync(r, RetryStrategy.Default.withCede).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
+      AsyncReactive[F].runAsync(r, RetryStrategy.Default.withSleep).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
     }
   }
 }

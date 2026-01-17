@@ -28,7 +28,7 @@ import core.{ RetryStrategy => Strategy }
 final class StrategySpec extends BaseSpec {
 
   test("RetryStrategy constructors") {
-    val s1: Strategy.Spin = Strategy.spin(
+    val s1: Strategy.CanSuspend[false] = Strategy.spin(
       maxRetries = Some(42),
       maxSpin = 999,
       randomizeSpin = false,
@@ -39,7 +39,7 @@ final class StrategySpec extends BaseSpec {
     assertEquals(s1.maxSpin, 999)
     assertEquals(s1.randomizeSpin, false)
 
-    val s2: Strategy = Strategy.cede(
+    val s2: Strategy.CanSuspend[true] = Strategy.cede(
       maxRetries = Some(42),
       maxSpin = 999,
       randomizeSpin = false,
@@ -53,8 +53,10 @@ final class StrategySpec extends BaseSpec {
     assertEquals(s2.randomizeSpin, false)
     assertEquals(s2.maxCede, 2)
     assertEquals(s2.randomizeCede, false)
+    assertEquals(s2.maxSleep, Duration.Zero)
+    assertEquals(s2.randomizeSleep, false)
 
-    val s3: Strategy = Strategy.sleep(
+    val s3: Strategy.CanSuspend[true] = Strategy.sleep(
       maxRetries = Some(42),
       maxSpin = 999,
       randomizeSpin = false,
@@ -76,23 +78,23 @@ final class StrategySpec extends BaseSpec {
   }
 
   test("RetryStrategy copy") {
-    val s1: Strategy.Spin = Strategy.Default
+    val s1: Strategy.CanSuspend[false] = Strategy.Default
     assertEquals(s1.canSuspend, false)
-    val s2: Strategy.Spin = s1.withMaxRetries(Some(42))
+    val s2: Strategy.CanSuspend[false] = s1.withMaxRetries(Some(42))
     assertEquals(s2.canSuspend, false)
     assertEquals(s2.maxRetries, Some(42))
     assertEquals(s2.maxRetriesInt, 42)
-    val s3: Strategy.Spin = s2.withMaxRetries(None).withMaxSpin(999)
+    val s3: Strategy.CanSuspend[false] = s2.withMaxRetries(None).withMaxSpin(999)
     assertEquals(s3.canSuspend, false)
     assertEquals(s3.maxRetries, None)
     assertEquals(s3.maxRetriesInt, -1)
-    val s4: Strategy.Spin = s3.withRandomizeSpin(false)
+    val s4: Strategy.CanSuspend[false] = s3.withRandomizeSpin(false)
     assertEquals(s4.canSuspend, false)
     assertEquals(s4.maxRetries, None)
     assertEquals(s4.maxRetriesInt, -1)
     assertEquals(s4.randomizeSpin, false)
 
-    val s5: Strategy = s4.withMaxSleep(1.second)
+    val s5: Strategy.CanSuspend[true] = s4.withSleep(1.second)
     assertEquals(s5.canSuspend, true)
     assertEquals(s5.maxRetries, None)
     assertEquals(s5.maxRetriesInt, -1)
@@ -100,25 +102,23 @@ final class StrategySpec extends BaseSpec {
     assertEquals(s5.maxSleep, 1.second)
     assertEquals(s5.maxSleepNanos, 1.second.toNanos)
     assertEquals(s5.randomizeSleep, true)
-    val s6: Strategy = s5.withRandomizeSleep(false)
+    val s6: Strategy.CanSuspend[true] = s5.withSleep(2.second, false)
     assertEquals(s6.canSuspend, true)
     assertEquals(s6.maxRetries, None)
     assertEquals(s6.maxRetriesInt, -1)
     assertEquals(s6.randomizeSpin, false)
-    assertEquals(s6.maxSleep, 1.second)
-    assertEquals(s6.maxSleepNanos, 1.second.toNanos)
+    assertEquals(s6.maxSleep, 2.second)
+    assertEquals(s6.maxSleepNanos, 2.second.toNanos)
     assertEquals(s6.randomizeSleep, false)
 
-    val s7: Strategy = s4.withMaxCede(1)
-    assertNotEquals(s7, s4)
+    val s7: Strategy.CanSuspend[true] = s4.withCede(1)
+    assertNotEquals(s7 : Strategy, s4 : Strategy)
     assertEquals(s7.maxRetries, s4.maxRetries)
     assertEquals(s7.maxSpin, s4.maxSpin)
     assertEquals(s7.randomizeSpin, s4.randomizeSpin)
     assertEquals(s7.maxSleep, Duration.Zero)
     assertEquals(s7.randomizeSleep, false)
-    assertEquals(s7.withMaxCede(0), s4)
-    assertEquals(s7.withMaxCede(1), s7)
-    assertEquals(s7.withMaxCede(0).withMaxCede(1), s7)
+    assertEquals(s7.withCede(1), s7)
   }
 
   test("RetryStrategy illegal arguments") {
@@ -132,12 +132,12 @@ final class StrategySpec extends BaseSpec {
 
   test("RetryStrategy Show/toString") {
     val s1 = Strategy.spin()
-    assertEquals(Show[Strategy].show(s1), "RetryStrategy.Spin(maxRetries=∞, spin=..4096⚄)")
+    assertEquals(Show[Strategy].show(s1), "RetryStrategy(maxRetries=∞, spin=..4096⚄)")
     val s2 = s1.withRandomizeSpin(false)
-    assertEquals(Show[Strategy].show(s2), "RetryStrategy.Spin(maxRetries=∞, spin=..4096)")
-    val s3 = s2.withCede(true)
+    assertEquals(Show[Strategy].show(s2), "RetryStrategy(maxRetries=∞, spin=..4096)")
+    val s3 = s2.withCede
     assertEquals(Show[Strategy].show(s3), "RetryStrategy(maxRetries=∞, spin=..4096, cede=..8⚄, sleep=0)")
-    val s4 = s3.withSleep(true).withCede(false)
-    assertEquals(s4.toString(), "RetryStrategy(maxRetries=∞, spin=..4096, cede=0, sleep=..64000000 nanoseconds⚄)")
+    val s4 = s3.withSleep
+    assertEquals(s4.toString(), "RetryStrategy(maxRetries=∞, spin=..4096, cede=..8⚄, sleep=..64000000 nanoseconds⚄)")
   }
 }

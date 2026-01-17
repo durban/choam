@@ -27,7 +27,7 @@ import cats.effect.kernel.{ Temporal, Poll }
 
 import munit.Location
 
-class BackoffSpec extends BaseSpec {
+final class BackoffSpec extends BaseSpec {
 
   private def backoffTokens(
     retries: Int,
@@ -218,7 +218,33 @@ class BackoffSpec extends BaseSpec {
       canSuspend: Boolean,
     ): Foo[Unit] = {
       val str = if (ignoreRandomize) {
-        strategy.withRandomizeSpin(false).withRandomizeCede(false).withRandomizeSleep(false)
+        if (strategy.canSuspend) {
+          if (strategy.maxSleep > Duration.Zero) {
+            RetryStrategy.sleep(
+              maxRetries = strategy.maxRetries,
+              maxSpin = strategy.maxSpin,
+              randomizeSpin = false,
+              maxCede = strategy.maxCede,
+              randomizeCede = false,
+              maxSleep = strategy.maxSleep,
+              randomizeSleep = false,
+            )
+          } else {
+            RetryStrategy.cede(
+              maxRetries = strategy.maxRetries,
+              maxSpin = strategy.maxSpin,
+              randomizeSpin = false,
+              maxCede = strategy.maxCede,
+              randomizeCede = false,
+            )
+          }
+        } else {
+          RetryStrategy.spin(
+            maxRetries = strategy.maxRetries,
+            maxSpin = strategy.maxSpin,
+            randomizeSpin = false,
+          )
+        }
       } else {
         strategy
       }
@@ -494,7 +520,7 @@ class BackoffSpec extends BaseSpec {
       Pause(128), Pause(256), Pause(512),
     ) ++ List.fill(20)(Pause(1000))
     assertEquals(actual1, expected1)
-    val str2 = str1.withMaxCede(5).withRandomizeCede(false)
+    val str2 = str1.withCede(5, false)
     val actual2 = (1 to 30).map { retries =>
       Test.backoffStrT(retries, str2, canSuspend = true)
     }.toList
@@ -504,7 +530,7 @@ class BackoffSpec extends BaseSpec {
       Cede(1), Cede(2), Cede(4),
     ) ++ List.fill(17)(Cede(5))
     assertEquals(actual2, expected2)
-    val str3 = str2.withMaxSleep(100.millis).withRandomizeSleep(false)
+    val str3 = str2.withSleep(100.millis, false)
     val actual3 = (1 to 30).map { retries =>
       Test.backoffStrT(retries, str3, canSuspend = true)
     }.toList
@@ -516,7 +542,7 @@ class BackoffSpec extends BaseSpec {
     ) ++ List.fill(13)(Sleep(88.millis)) // sleep time is quantized to multiples of sleepAtom
     assertEquals(actual3, expected3)
     // really big maxSleep:
-    val str4 = str3.withMaxSleep(10.minutes)
+    val str4 = str3.withSleep(10.minutes)
     val actual4 = (1 to 30).map { retries =>
       Test.backoffStrT(retries, str4, canSuspend = true)
     }.toList
@@ -569,10 +595,8 @@ class BackoffSpec extends BaseSpec {
       randomizeSpin = true,
     )
     val str = str0
-      .withMaxCede(5)
-      .withRandomizeCede(true)
-      .withMaxSleep(10.minutes)
-      .withRandomizeSleep(true)
+      .withCede(5, true)
+      .withSleep(10.minutes, true)
     val rs1 = for (_ <- 1 to 1000) yield Test.backoffStrT(9, str, canSuspend = true) // Pause(0..256)
     checkResults(rs1, { case Pause(n) => n }, max = 256, expAvg = 128, tolerance = 20)
     val rs2 = for (_ <- 1 to 1000) yield Test.backoffStrT(10, str, canSuspend = true) // Pause(0..512)
