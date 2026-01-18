@@ -28,7 +28,7 @@ import cats.effect.kernel.testkit.TestContext
 import cats.effect.unsafe.{ IORuntime, IORuntimeConfig, Scheduler }
 
 import core.{ Rxn, Reactive, AsyncReactive }
-import core.RetryStrategy.Internal.Stepper
+import RetryStrategy.Internal.Stepper
 import internal.{ LazyIdempotent, ChoamCatsEffectSuite }
 
 import munit.{ Location, FunSuite, FailException }

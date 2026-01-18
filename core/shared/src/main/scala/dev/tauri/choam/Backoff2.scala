@@ -16,7 +16,6 @@
  */
 
 package dev.tauri.choam
-package core
 
 import java.util.concurrent.ThreadLocalRandom
 
@@ -24,9 +23,9 @@ import scala.concurrent.duration._
 
 import cats.effect.kernel.GenTemporal
 
-private object Backoff2 extends Backoff2
+private[choam] object Backoff2 extends Backoff2
 
-private abstract class Backoff2 extends BackoffPlatform {
+private[choam] abstract class Backoff2 extends BackoffPlatform {
 
   // - We first start PAUSEing: 1, 2, 4, 8, ... 4096 (but user configurable).
   //   (Then we don't any more, because 10000 PAUSE ≅ 1 CEDE, and we do

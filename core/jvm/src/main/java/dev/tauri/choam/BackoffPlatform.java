@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package dev.tauri.choam.core;
+package dev.tauri.choam;
 
 import java.util.concurrent.TimeUnit;
 
@@ -48,7 +48,7 @@ abstract class BackoffPlatform {
   static final long backoffSleepMark = 3L << 32;
   static final long backoffTokenMask = 0xFFFFFFFFL;
 
-  final void once() {
+  public final void once() {
     Thread.onSpinWait();
   }
 }

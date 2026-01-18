@@ -23,7 +23,7 @@ import scala.concurrent.duration._
 import cats.Show
 import cats.syntax.all._
 
-import core.{ RetryStrategy => Strategy }
+import dev.tauri.choam.{ RetryStrategy => Strategy }
 
 final class StrategySpec extends BaseSpec {
 

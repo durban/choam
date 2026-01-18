@@ -19,7 +19,7 @@ package com.example.choamtest
 
 import scala.concurrent.duration._
 
-import dev.tauri.choam.core.{ RetryStrategy => Strategy }
+import dev.tauri.choam.{ RetryStrategy => Strategy }
 import dev.tauri.choam.BaseSpec
 
 final class StrategySpecExt extends BaseSpec {

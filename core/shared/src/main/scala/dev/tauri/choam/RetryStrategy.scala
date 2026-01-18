@@ -16,7 +16,6 @@
  */
 
 package dev.tauri.choam
-package core
 
 import scala.concurrent.duration._
 import scala.util.hashing.MurmurHash3
@@ -25,7 +24,6 @@ import cats.{ ~>, Hash, Show }
 import cats.syntax.all._
 import cats.effect.kernel.{ Async, Ref, Deferred }
 
-// TODO:0.5: move to dev.tauri.choam.RetryStrategy
 sealed abstract class RetryStrategy {
 
   type CanSuspend <: Boolean
@@ -36,7 +34,7 @@ sealed abstract class RetryStrategy {
 
   def withMaxRetries(maxRetries: Option[Int]): RetryStrategy.CanSuspend[this.CanSuspend]
 
-  private[core] def maxRetriesInt: Int
+  private[choam] def maxRetriesInt: Int
 
   def maxSpin: Int
 
@@ -70,14 +68,14 @@ sealed abstract class RetryStrategy {
   def withSleep(maxSleep: FiniteDuration, randomizeSleep: Boolean): RetryStrategy.CanSuspend[true]
 
   def maxSleep: FiniteDuration
-  private[core] def maxSleepNanos: Long
+  private[choam] def maxSleepNanos: Long
   def randomizeSleep: Boolean
 
   // MISC.:
 
   private[choam] def canSuspend: CanSuspend
 
-  private[core] def isDebug: Boolean
+  private[choam] def isDebug: Boolean
 }
 
 object RetryStrategy {
@@ -86,7 +84,7 @@ object RetryStrategy {
     type CanSuspend = B
   }
 
-  private[core] final def isSpin(str: RetryStrategy): Boolean =
+  private[choam] final def isSpin(str: RetryStrategy): Boolean =
     str.isInstanceOf[StrategySpin]
 
   implicit val showForRetryStrategy: Show[RetryStrategy] = {
@@ -216,18 +214,18 @@ object RetryStrategy {
       )
     }
 
-    private[core] override val maxRetriesInt: Int = maxRetries match {
+    private[choam] override val maxRetriesInt: Int = maxRetries match {
       case Some(n) => n
       case None => -1
     }
 
-    private[core] override val maxSleepNanos: Long =
+    private[choam] override val maxSleepNanos: Long =
       maxSleep.toNanos
 
     private[choam] final override def canSuspend: true =
       true
 
-    private[core] final override def isDebug: Boolean =
+    private[choam] final override def isDebug: Boolean =
       false
   }
 
@@ -341,7 +339,7 @@ object RetryStrategy {
       )
     }
 
-    private[core] override val maxRetriesInt: Int = maxRetries match {
+    private[choam] override val maxRetriesInt: Int = maxRetries match {
       case Some(n) => n
       case None => -1
     }
@@ -355,7 +353,7 @@ object RetryStrategy {
     final override def maxSleep: FiniteDuration =
       Duration.Zero
 
-    private[core] final override def maxSleepNanos: Long =
+    private[choam] final override def maxSleepNanos: Long =
       0L
 
     final override def randomizeSleep: Boolean =
@@ -499,7 +497,7 @@ object RetryStrategy {
         }
       }
 
-      private[core] final override def isDebug: Boolean =
+      private[choam] final override def isDebug: Boolean =
         true
 
       private[choam] final override def canSuspend: true =
@@ -511,13 +509,13 @@ object RetryStrategy {
       final override def maxRetries: Option[Int] =
         None
 
-      private[core] final override def maxRetriesInt: Int =
+      private[choam] final override def maxRetriesInt: Int =
         -1
 
       final override def maxSleep: FiniteDuration =
         0.seconds
 
-      private[core] final override def maxSleepNanos: Long =
+      private[choam] final override def maxSleepNanos: Long =
         0
 
       final override def maxSpin: Int =

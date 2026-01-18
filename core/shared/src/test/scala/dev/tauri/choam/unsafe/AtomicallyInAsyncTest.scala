@@ -20,7 +20,7 @@ package unsafe
 
 import cats.effect.IO
 
-import core.{ Ref, RetryStrategy }
+import core.Ref
 
 final class AtomicallyInAsyncSpec_DefaultMcas_IO
   extends BaseSpecIO

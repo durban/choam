@@ -16,7 +16,6 @@
  */
 
 package dev.tauri.choam
-package core
 
 import java.util.concurrent.ThreadLocalRandom
 import java.lang.Math.{ min, max }
@@ -28,7 +27,7 @@ import cats.effect.kernel.GenTemporal
 /**
  * Utilities for exponential backoff.
  */
-private object Backoff extends BackoffPlatform {
+private[choam] object Backoff extends BackoffPlatform {
 
   private[this] final val sleepIncrementNanos =
     1.micros.toNanos // TODO: measure appropriate default; replace method call with const
@@ -133,7 +132,7 @@ private object Backoff extends BackoffPlatform {
     if (targetSleepNanos > maxSleepNanos) maxSleepNanos else targetSleepNanos
   }
 
-  private[core] final def constTokens(retries: Int, maxBackoff: Int): Int = {
+  private[choam] final def constTokens(retries: Int, maxBackoff: Int): Int = {
     require(retries > 0)
     java.lang.Math.min(1 << normalizeRetries(retries), maxBackoff)
   }
@@ -203,7 +202,7 @@ private object Backoff extends BackoffPlatform {
     else (1L + random.nextLong(maxNanos))
   }
 
-  private[core] final def randomTokens(retries: Int, halfMaxBackoff: Int, random: ThreadLocalRandom): Int = {
+  private[choam] final def randomTokens(retries: Int, halfMaxBackoff: Int, random: ThreadLocalRandom): Int = {
     require(retries > 0)
     val max = java.lang.Math.min(1 << normalizeRetries(retries + 1), halfMaxBackoff << 1)
     if (max < 2) 1
@@ -211,7 +210,7 @@ private object Backoff extends BackoffPlatform {
   }
 
   @tailrec
-  private[core] final def spin(n: Int): Unit = {
+  private[choam] final def spin(n: Int): Unit = {
     if (n > 0) {
       once()
       spin(n - 1)

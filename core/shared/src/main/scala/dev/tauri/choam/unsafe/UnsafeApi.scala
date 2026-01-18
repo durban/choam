@@ -21,7 +21,7 @@ package unsafe
 import cats.~>
 import cats.effect.kernel.Async
 
-import core.{ Rxn, RetryStrategy }
+import core.Rxn
 import internal.mcas.Mcas
 
 object UnsafeApi {

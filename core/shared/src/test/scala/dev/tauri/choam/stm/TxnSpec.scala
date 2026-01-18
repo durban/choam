@@ -30,8 +30,6 @@ import cats.effect.kernel.Unique
 import cats.effect.std.UUIDGen
 import cats.effect.IO
 
-import core.RetryStrategy
-
 final class TxnSpec_DefaultMcas_IO
   extends BaseSpecIO
   with SpecDefaultMcas

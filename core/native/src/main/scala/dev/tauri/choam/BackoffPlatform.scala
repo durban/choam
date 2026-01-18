@@ -16,7 +16,6 @@
  */
 
 package dev.tauri.choam
-package core
 
 import scala.concurrent.duration._
 

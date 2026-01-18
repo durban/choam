@@ -24,7 +24,7 @@ import scala.concurrent.duration._
 
 import cats.effect.{ IO, Outcome }
 
-import core.{ Rxn, Ref, RetryStrategy }
+import core.{ Rxn, Ref }
 
 final class ExchangerSpecCommon_Emcas_IO
   extends BaseSpecIO
@@ -202,7 +202,7 @@ trait ExchangerSpecJvm[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       // we'll run the `Rxn`s with CEDE strategy, because otherwise
       // the retrying in a tight loop could cause the timer not to
       // fire, and thus the fallbacks wouldn't start:
-      rxn.perform(this.runtime, core.RetryStrategy.cede())(using F)
+      rxn.perform(this.runtime, RetryStrategy.cede())(using F)
     }
     val tsk = for {
       ref <- Ref("abc").run[F]

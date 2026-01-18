@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package stm
 
-import core.RetryStrategy.Internal.Stepper
+import RetryStrategy.Internal.Stepper
 
 trait TxnBaseSpecTicked[F[_]] extends TxnBaseSpec[F]  with TestContextSpec[F] { self: McasImplSpec =>
 

@@ -20,7 +20,7 @@ package stm
 
 import cats.effect.kernel.{ Async, Sync, Resource }
 
-import core.{ Reactive, RetryStrategy }
+import core.Reactive
 import internal.mcas.Mcas
 
 sealed trait Transactive[F[_]] {
