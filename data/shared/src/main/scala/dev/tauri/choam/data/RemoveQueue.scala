@@ -39,8 +39,9 @@ private[choam] final class RemoveQueue[A] private[this] (
 
   // TODO: do the optimization with ticketRead (like in `MsQueue`)
 
-  private[this] val head: Ref[Node[A]] = Ref.unsafe(sentinel, str.withPadded(true), initRig)
-  private[this] val tail: Ref[Node[A]] = Ref.unsafe(sentinel, str.withPadded(true), initRig)
+  // TODO: remove withFlat(false) when it works with padded
+  private[this] val head: Ref[Node[A]] = Ref.unsafe(sentinel, str.withFlat(false).withPadded(true), initRig)
+  private[this] val tail: Ref[Node[A]] = Ref.unsafe(sentinel, str.withFlat(false).withPadded(true), initRig)
 
   def this(str: AllocationStrategy, initRig: RefIdGen) =
     this(Node(nullOf[Ref[A]], Ref.unsafe[Elem[A]](End[A](), str, initRig)), str, initRig = initRig)

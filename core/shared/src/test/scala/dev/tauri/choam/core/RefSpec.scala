@@ -61,7 +61,8 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
 
   override def newRef[A](initial: A): F[RefType[A]] = {
     F.delay(ThreadLocalRandom.current().nextBoolean()).flatMap { padded =>
-      Ref(initial, AllocationStrategy.Default.withPadded(padded)).run[F]
+      val str = if (padded) AllocationStrategy.Padded else AllocationStrategy.Unpadded
+      Ref(initial, str).run[F]
     }
   }
 

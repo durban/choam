@@ -38,8 +38,9 @@ private final class MsQueue[A] private[this] (
   initRig: RefIdGen,
 ) extends Queue.UnsealedQueue[A] {
 
-  private[this] val head: Ref[Node[A]] = Ref.unsafe(sentinel, str.withPadded(true), initRig)
-  private[this] val tail: Ref[Node[A]] = Ref.unsafe(sentinel, str.withPadded(true), initRig)
+  // TODO: remove withFlat(false) when it works with padded
+  private[this] val head: Ref[Node[A]] = Ref.unsafe(sentinel, str.withFlat(false).withPadded(true), initRig)
+  private[this] val tail: Ref[Node[A]] = Ref.unsafe(sentinel, str.withFlat(false).withPadded(true), initRig)
 
   private def this(str: AllocationStrategy, initRig: RefIdGen) =
     this(Node(nullOf[A], Ref.unsafe(End[A](), str, initRig)), str = str, initRig = initRig)
@@ -152,8 +153,8 @@ private object MsQueue {
       Rxn.unsafe.delayContext { ctx =>
         new Queue.UnsealedQueueWithSize[A] {
 
-          private[this] val s =
-            Ref.unsafe[Int](0, AllocationStrategy.Default.withPadded(true), ctx.refIdGen)
+          private[this] val s = // TODO: remove withFlat(false) when it works with padded
+            Ref.unsafe[Int](0, AllocationStrategy.Default.withFlat(false).withPadded(true), ctx.refIdGen)
 
           final override def poll: Rxn[Option[A]] = {
             q.poll.flatMap {

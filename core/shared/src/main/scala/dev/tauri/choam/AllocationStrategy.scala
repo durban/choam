@@ -41,8 +41,8 @@ object AllocationStrategy {
     stm = false,
   )
 
-  val Padded: AllocationStrategy =
-    Default.withPadded(true)
+  val Padded: AllocationStrategy = // TODO: remove `withFlat(false)` when it's working with padded
+    Default.withFlat(false).withPadded(true)
 
   val Unpadded: AllocationStrategy =
     Default.withPadded(false)
