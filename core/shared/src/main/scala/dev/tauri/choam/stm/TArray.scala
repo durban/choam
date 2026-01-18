@@ -39,8 +39,8 @@ object TArray {
 
   private[choam] trait UnsealedTArray[A] extends TArray[A]
 
-  private[choam] final val DefaultAllocationStrategy: Ref.Array.AllocationStrategy =
-    Ref.Array.AllocationStrategy.SparseFlat.withStm(true)
+  private[choam] final val DefaultAllocationStrategy: AllocationStrategy =
+    AllocationStrategy.SparseFlat.withStm(true)
 
   final def apply[A](
     length: Int,
@@ -52,7 +52,7 @@ object TArray {
   private[choam] final def apply[A](
     length: Int,
     initial: A,
-    strategy: Ref.Array.AllocationStrategy,
+    strategy: AllocationStrategy,
   ): Txn[TArray[A]] = {
     val stmStr = strategy.withStm(true)
     Ref.safeTArrayImpl(size = length, initial = initial, str = stmStr)

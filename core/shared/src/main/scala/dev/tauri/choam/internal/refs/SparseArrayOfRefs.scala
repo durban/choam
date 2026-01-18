@@ -28,7 +28,7 @@ import CompatPlatform.AtomicReferenceArray
 sealed abstract class SparseArrayOfXRefs[A](
   final override val length: Int,
   initial: A,
-  str: Ref.AllocationStrategy,
+  str: AllocationStrategy,
   rig: RefIdGen,
 ) extends Ref.UnsealedArray0[A] { self =>
 
@@ -36,7 +36,7 @@ sealed abstract class SparseArrayOfXRefs[A](
 
   require(length > 0)
 
-  protected[this] def createRef(initial: A, str: Ref.AllocationStrategy, id: Long): RefT[A]
+  protected[this] def createRef(initial: A, str: AllocationStrategy, id: Long): RefT[A]
 
   protected[this] implicit def refTTag: ClassTag[RefT[A]]
 
@@ -137,13 +137,13 @@ sealed abstract class SparseArrayOfXRefs[A](
 private[choam] final class SparseArrayOfRefs[A](
   size: Int,
   initial: A,
-  str: Ref.AllocationStrategy,
+  str: AllocationStrategy,
   rig: RefIdGen,
 ) extends SparseArrayOfXRefs[A](size, initial, str, rig) {
 
   protected[this] final override type RefT[a] = Ref[a]
 
-  protected[this] final override def createRef(initial: A, str: Ref.AllocationStrategy, id: Long): RefT[A] =
+  protected[this] final override def createRef(initial: A, str: AllocationStrategy, id: Long): RefT[A] =
     Ref.unsafeWithId(initial, str, id)
 
   protected[this] final override def refTTag: ClassTag[RefT[A]] =
@@ -153,14 +153,14 @@ private[choam] final class SparseArrayOfRefs[A](
 private[choam] final class SparseArrayOfTRefs[A](
   size: Int,
   initial: A,
-  str: Ref.AllocationStrategy,
+  str: AllocationStrategy,
   rig: RefIdGen,
 ) extends SparseArrayOfXRefs[A](size, initial, str, rig)
   with stm.TArray.UnsealedTArray[A] {
 
   protected[this] final override type RefT[a] = Ref[a] with stm.TRef[a]
 
-  protected[this] def createRef(initial: A, str: Ref.AllocationStrategy, id: Long): RefT[A] =
+  protected[this] def createRef(initial: A, str: AllocationStrategy, id: Long): RefT[A] =
     stm.TRef.unsafeRefWithId(initial, id) // TODO: padded
 
   protected[this] final override def refTTag: ClassTag[RefT[A]] =

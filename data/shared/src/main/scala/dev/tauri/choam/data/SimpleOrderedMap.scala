@@ -168,7 +168,7 @@ private final class SimpleOrderedMap[K, V] private (
 
 private object SimpleOrderedMap {
 
-  private[data] final def apply[K: Order, V](str: Ref.AllocationStrategy): Rxn[Map.Extra[K, V]] = {
+  private[data] final def apply[K: Order, V](str: AllocationStrategy): Rxn[Map.Extra[K, V]] = {
     Ref(AvlMap.empty[K, V], str).map(new SimpleOrderedMap(_))
   }
 }

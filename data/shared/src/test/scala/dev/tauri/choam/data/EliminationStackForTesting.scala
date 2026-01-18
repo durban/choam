@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import core.{ Rxn, Ref, Eliminator }
+import core.{ Rxn, Eliminator }
 
 /**
  * This is like `EliminationStack2`, but:
@@ -46,7 +46,7 @@ final class EliminationStackForTesting[A] private (
 
 final object EliminationStackForTesting {
   def apply[A]: Rxn[EliminationStackForTesting[A]] = {
-    TreiberStack[A](Ref.AllocationStrategy.Default).flatMap { underlying =>
+    TreiberStack[A](AllocationStrategy.Default).flatMap { underlying =>
       Eliminator[A, Unit, Any, Option[A]](
         underlying.push,
         Some(_),

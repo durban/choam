@@ -20,8 +20,6 @@ package data
 
 import cats.effect.IO
 
-import core.Ref
-
 final class StackSpec_Treiber_ThreadConfinedMcas_IO
   extends BaseSpecIO
   with SpecThreadConfinedMcas
@@ -34,7 +32,7 @@ final class StackSpec_Elimination2_ThreadConfinedMcas_IO
 
 trait StackSpecTreiber[F[_]] extends StackSpec[F] { this: McasImplSpec =>
   final override def newStack[A](as: A*): F[Stack[A]] = {
-    TreiberStack.fromList(as.toList, Ref.AllocationStrategy.Default)
+    TreiberStack.fromList(as.toList, AllocationStrategy.Default)
   }
 }
 

@@ -39,10 +39,10 @@ class RemoveQueueComposedTest3 extends RemoveQueueStressTestBase {
     this.newQueue[String]()
 
   private[this] val latch =
-    Ref.unsafe[Boolean](false, Ref.AllocationStrategy.Padded, this.rig)
+    Ref.unsafe[Boolean](false, AllocationStrategy.Padded, this.rig)
 
   private[this] val dummy =
-    Ref.unsafe[Int](0, Ref.AllocationStrategy.Padded, this.rig)
+    Ref.unsafe[Int](0, AllocationStrategy.Padded, this.rig)
 
   private[this] val deq =
     queue.poll * (dummy.update { _ + 1 }.flatMap { _ => latch.getAndUpdate(_ => true) })

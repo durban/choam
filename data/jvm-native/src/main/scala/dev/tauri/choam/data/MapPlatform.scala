@@ -20,23 +20,23 @@ package data
 
 import cats.kernel.{ Hash, Order }
 
-import core.{ Rxn, Ref, Reactive }
+import core.{ Rxn, Reactive }
 
 private[data] abstract class MapPlatform extends AbstractMapPlatform {
 
   final override def hashMap[K: Hash, V]: Rxn[Map[K, V]] =
-    hashMap(Ref.AllocationStrategy.Default)
+    hashMap(AllocationStrategy.Default)
 
-  final override def hashMap[K: Hash, V](str: Ref.AllocationStrategy): Rxn[Map[K, V]] =
+  final override def hashMap[K: Hash, V](str: AllocationStrategy): Rxn[Map[K, V]] =
     Ttrie.apply[K, V](str)
 
   final override def orderedMap[K: Order, V]: Rxn[Map[K, V]] =
-    orderedMap(Ref.AllocationStrategy.Default)
+    orderedMap(AllocationStrategy.Default)
 
-  final override def orderedMap[K: Order, V](str: Ref.AllocationStrategy): Rxn[Map[K, V]] =
+  final override def orderedMap[K: Order, V](str: AllocationStrategy): Rxn[Map[K, V]] =
     Ttrie.skipListBased[K, V](str)
 
-  private[choam] final def ttrie[K: Hash, V](str: Ref.AllocationStrategy): Rxn[Map[K, V]] =
+  private[choam] final def ttrie[K: Hash, V](str: AllocationStrategy): Rxn[Map[K, V]] =
     Ttrie.apply[K, V](str)
 
   private[data] override def unsafeSnapshot[F[_], K, V](m: Map[K, V])(implicit F: Reactive[F]) = {

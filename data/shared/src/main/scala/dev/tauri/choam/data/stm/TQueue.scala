@@ -19,7 +19,6 @@ package dev.tauri.choam
 package data
 package stm
 
-import core.Ref
 import dev.tauri.choam.stm.{ Txn, TRef }
 
 sealed abstract class TQueue[A] { // TODO: move it to -data(?)
@@ -67,13 +66,13 @@ object TQueue {
   final object WQueue {
 
     final def unbounded[A]: Txn[WQueue[A]] = {
-      Queue.unbounded[A](Ref.AllocationStrategy.Default.withStm(true)).impl.map { q =>
+      Queue.unbounded[A](AllocationStrategy.Default.withStm(true)).impl.map { q =>
         new WQueue[A](q)
       }
     }
 
     final def bounded[A](bound: Int): Txn[WQueue[A]] = {
-      Queue.bounded[A](bound, Ref.AllocationStrategy.Default.withStm(true)).impl.map { q =>
+      Queue.bounded[A](bound, AllocationStrategy.Default.withStm(true)).impl.map { q =>
         new WQueue[A](q)
       }
     }

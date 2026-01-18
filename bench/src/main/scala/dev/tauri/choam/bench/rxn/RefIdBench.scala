@@ -33,12 +33,12 @@ class RefIdBench {
 
   @Benchmark
   def createPaddedCtx(k: McasImplState): Ref[String] = {
-    Ref.unsafe("", Ref.AllocationStrategy.Padded, k.mcasCtx.refIdGen)
+    Ref.unsafe("", AllocationStrategy.Padded, k.mcasCtx.refIdGen)
   }
 
   @Benchmark
   def createUnpaddedCtx(k: McasImplState): Ref[String] = {
-    Ref.unsafe("", Ref.AllocationStrategy.Unpadded, k.mcasCtx.refIdGen)
+    Ref.unsafe("", AllocationStrategy.Unpadded, k.mcasCtx.refIdGen)
   }
 
   @Benchmark
@@ -70,12 +70,12 @@ object RefIdBench {
   @State(Scope.Thread)
   class PaddedSt extends McasImplStateBase {
     val refs: Array[Ref[String]] =
-      Array.fill(N)(Ref.unsafe("", Ref.AllocationStrategy.Padded, this.mcasImpl.currentContext().refIdGen))
+      Array.fill(N)(Ref.unsafe("", AllocationStrategy.Padded, this.mcasImpl.currentContext().refIdGen))
   }
 
   @State(Scope.Thread)
   class UnpaddedSt extends McasImplStateBase {
     val refs: Array[Ref[String]] =
-      Array.fill(N)(Ref.unsafe("", Ref.AllocationStrategy.Unpadded, this.mcasImpl.currentContext().refIdGen))
+      Array.fill(N)(Ref.unsafe("", AllocationStrategy.Unpadded, this.mcasImpl.currentContext().refIdGen))
   }
 }

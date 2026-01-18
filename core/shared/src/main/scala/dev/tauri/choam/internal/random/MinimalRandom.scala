@@ -31,12 +31,12 @@ import mcas.RefIdGen
  */
 private object MinimalRandom {
 
-  def unsafe1(initialSeed: Long, rig: RefIdGen): Random[Rxn] = {
-    new MinimalRandom1(Ref.unsafe(initialSeed, Ref.AllocationStrategy.Padded, rig), RandomBase.GoldenGamma)
+  final def unsafe1(initialSeed: Long, rig: RefIdGen): Random[Rxn] = {
+    new MinimalRandom1(Ref.unsafe(initialSeed, AllocationStrategy.Padded, rig), RandomBase.GoldenGamma)
   }
 
-  def unsafe2(initialSeed: Long, rig: RefIdGen): Random[Rxn] = {
-    new MinimalRandom2(Ref.unsafe(initialSeed, Ref.AllocationStrategy.Padded, rig), RandomBase.GoldenGamma)
+  final def unsafe2(initialSeed: Long, rig: RefIdGen): Random[Rxn] = {
+    new MinimalRandom2(Ref.unsafe(initialSeed, AllocationStrategy.Padded, rig), RandomBase.GoldenGamma)
   }
 }
 

@@ -26,8 +26,6 @@ import cats.effect.IO
 import org.scalacheck.effect.PropF
 import munit.ScalaCheckEffectSuite
 
-import core.Ref
-
 final class MapSpecPar_TtrieHash_SpinLockMcas_IO
   extends BaseSpecIO
   with SpecSpinLockMcas
@@ -51,12 +49,12 @@ final class MapSpecPar_TtrieOrder_Emcas_IO
 
 trait MapSpecParTtrieHash[F[_]] extends MapSpecPar[F] { this: McasImplSpec =>
   def mkEmptyMap[K : Hash : Order, V]: F[Map[K, V]] =
-    Ttrie.apply[K, V](Ref.AllocationStrategy.Default).run[F].widen
+    Ttrie.apply[K, V](AllocationStrategy.Default).run[F].widen
 }
 
 trait MapSpecParTtrieOrder[F[_]] extends MapSpecPar[F] { this: McasImplSpec =>
   def mkEmptyMap[K : Hash : Order, V]: F[Map[K, V]] =
-    Ttrie.skipListBased[K, V](Ref.AllocationStrategy.Default).run[F].widen
+    Ttrie.skipListBased[K, V](AllocationStrategy.Default).run[F].widen
 }
 
 trait MapSpecPar[F[_]] extends BaseSpecAsyncF[F] with ScalaCheckEffectSuite { this: McasImplSpec =>

@@ -33,7 +33,7 @@ import RemoveQueue.{ Elem, Node, End, dequeued, isDequeued, isRemoved }
  */
 private[choam] final class RemoveQueue[A] private[this] (
   sentinel: Node[A],
-  str: Ref.AllocationStrategy,
+  str: AllocationStrategy,
   initRig: RefIdGen,
 ) extends Queue.UnsealedQueue[A] {
 
@@ -42,7 +42,7 @@ private[choam] final class RemoveQueue[A] private[this] (
   private[this] val head: Ref[Node[A]] = Ref.unsafe(sentinel, str.withPadded(true), initRig)
   private[this] val tail: Ref[Node[A]] = Ref.unsafe(sentinel, str.withPadded(true), initRig)
 
-  def this(str: Ref.AllocationStrategy, initRig: RefIdGen) =
+  def this(str: AllocationStrategy, initRig: RefIdGen) =
     this(Node(nullOf[Ref[A]], Ref.unsafe[Elem[A]](End[A](), str, initRig)), str, initRig = initRig)
 
   final override val poll: Rxn[Option[A]] = {
@@ -158,10 +158,10 @@ private[choam] final class RemoveQueue[A] private[this] (
 
 private[choam] object RemoveQueue {
 
-  def apply[A]: Rxn[RemoveQueue[A]] =
-    apply(Ref.AllocationStrategy.Default)
+  final def apply[A]: Rxn[RemoveQueue[A]] =
+    apply(AllocationStrategy.Default)
 
-  def apply[A](str: Ref.AllocationStrategy): Rxn[RemoveQueue[A]] =
+  final def apply[A](str: AllocationStrategy): Rxn[RemoveQueue[A]] =
     Rxn.unsafe.delayContext { ctx => new RemoveQueue(str, ctx.refIdGen) }
 
   private sealed trait Elem[A]

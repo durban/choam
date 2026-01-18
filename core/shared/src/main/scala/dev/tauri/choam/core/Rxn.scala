@@ -524,12 +524,12 @@ object Rxn extends RxnInstances0 {
 
   final def deterministicRandom(
     initialSeed: Long,
-    str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default
+    str: AllocationStrategy = AllocationStrategy.Default
   ): Rxn[SplittableRandom[Rxn]] = {
     random.deterministicRandom(initialSeed, str)
   }
 
-  final def memoize[A](rxn: Rxn[A], str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Rxn[Memo[A]] =
+  final def memoize[A](rxn: Rxn[A], str: AllocationStrategy = AllocationStrategy.Default): Rxn[Memo[A]] =
     Memo(rxn, str)
 
   private[choam] final object loc {
@@ -2910,7 +2910,7 @@ private sealed abstract class RxnInstances11 extends RxnSyntax0 { self: Rxn.type
 
   private[this] val _catsRefMakeInstance: CatsRef.Make[Rxn] = new CatsRef.Make[Rxn] {
     final override def refOf[A](a: A): Rxn[CatsRef[Rxn, A]] = {
-      Ref(initial = a, str = Ref.AllocationStrategy.Unpadded).map { underlying =>
+      Ref(initial = a, str = AllocationStrategy.Unpadded).map { underlying =>
         new CatsRef[Rxn, A] {
           final override def get: Rxn[A] =
             underlying.get

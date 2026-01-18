@@ -24,8 +24,6 @@ import cats.kernel.{ Hash, Order }
 import cats.Applicative
 import cats.effect.IO
 
-import core.Ref
-
 final class RefSpec_Map_TtrieHash_ThreadConfinedMcas_IO
   extends BaseSpecIO
   with SpecThreadConfinedMcas
@@ -78,12 +76,12 @@ final class RefSpec_Map_SimpleOrdered_SpinLockMcas_IO
 
 trait RefSpec_Map_TtrieHash[F[_]] extends RefSpec_Map_Ttrie[F] { this: McasImplSpec =>
   final override def newMap[K : Hash : Order, V]: F[MapType[K, V]] =
-    Ttrie[K, V](Ref.AllocationStrategy.Default).run[F]
+    Ttrie[K, V](AllocationStrategy.Default).run[F]
 }
 
 trait RefSpec_Map_TtrieOrder[F[_]] extends RefSpec_Map_Ttrie[F] { this: McasImplSpec =>
   final override def newMap[K : Hash : Order, V]: F[MapType[K, V]] =
-    Ttrie.skipListBased[K, V](Ref.AllocationStrategy.Default).run[F]
+    Ttrie.skipListBased[K, V](AllocationStrategy.Default).run[F]
 }
 
 trait RefSpec_Map_Ttrie[F[_]] extends RefSpecMap[F] { this: McasImplSpec =>

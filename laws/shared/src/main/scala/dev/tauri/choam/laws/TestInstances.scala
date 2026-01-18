@@ -36,8 +36,8 @@ trait TestInstances { self =>
     arbA.arbitrary.flatMap { a =>
       Gen.oneOf(
         Gen.oneOf(
-          Gen.delay(Ref.unsafe(a, Ref.AllocationStrategy.Unpadded, this.rigInstance)),
-          Gen.delay(Ref.unsafe(a, Ref.AllocationStrategy.Padded, this.rigInstance)),
+          Gen.delay(Ref.unsafe(a, AllocationStrategy.Unpadded, this.rigInstance)),
+          Gen.delay(Ref.unsafe(a, AllocationStrategy.Padded, this.rigInstance)),
         ),
         Gen.oneOf(
           Gen.delay(Ref2.p1p1[A, String](a, "foo").unsafePerform(this.mcasImpl)._1),
@@ -48,7 +48,7 @@ trait TestInstances { self =>
         Gen.choose(1, 8).flatMap { s =>
           Arbitrary.arbBool.arbitrary.flatMap { sparse =>
             Arbitrary.arbBool.arbitrary.flatMap { flat =>
-              val str = Ref.Array.AllocationStrategy(sparse = sparse, flat = flat, padded = false)
+              val str = AllocationStrategy(sparse = sparse, flat = flat, padded = false)
               Gen.delay { Ref.unsafeArray[A](size = s, initial = a, str = str, rig = this.rigInstance) }.flatMap { arr =>
                 Gen.oneOf(Gen.const(0), Gen.choose(0, s - 1)).flatMap { idx =>
                   Gen.delay { arr.getOrCreateRefOrNull(idx) }
@@ -158,13 +158,13 @@ trait TestInstances { self =>
       },
       arbB.arbitrary.flatMap { b =>
         Gen.delay {
-          val ref = Ref.unsafe(b, Ref.AllocationStrategy.Padded, this.rigInstance)
+          val ref = Ref.unsafe(b, AllocationStrategy.Padded, this.rigInstance)
           ResetRxn(ref.get, Set(ResetRef(ref, b)))
         }
       },
       arbB.arbitrary.flatMap { b =>
         Gen.delay {
-          val ref = Ref.unsafe(b, Ref.AllocationStrategy.Padded, this.rigInstance)
+          val ref = Ref.unsafe(b, AllocationStrategy.Padded, this.rigInstance)
           ResetRxn(Rxn.unsafe.directRead(ref), Set(ResetRef(ref, b)))
         }
       },
@@ -172,7 +172,7 @@ trait TestInstances { self =>
         ab <- arbAB.arbitrary
         a0 <- arbA.arbitrary
         aa <- arbAA.arbitrary
-        ref <- Gen.delay { Ref.unsafe(a0, Ref.AllocationStrategy.Padded, this.rigInstance) }
+        ref <- Gen.delay { Ref.unsafe(a0, AllocationStrategy.Padded, this.rigInstance) }
       } yield {
         val rxn = ref.modify[B] { aOld => (aa(aOld), ab(aOld)) }
         ResetRxn(rxn, Set(ResetRef(ref, a0)))
@@ -195,7 +195,7 @@ trait TestInstances { self =>
           r <- arbResetRxn[A, B].arbitrary
           b <- arbB.arbitrary
           b2 <- arbB.arbitrary
-          ref <- Gen.delay { Ref.unsafe[B](b, Ref.AllocationStrategy.Padded, this.rigInstance) }
+          ref <- Gen.delay { Ref.unsafe[B](b, AllocationStrategy.Padded, this.rigInstance) }
         } yield {
           ResetRxn(
             r.rxn.postCommit(ref.set(b2)),

@@ -23,7 +23,6 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 import util._
-import core.Ref
 import data.Counter
 
 @Fork(2)
@@ -68,10 +67,10 @@ object CounterBench {
   @State(Scope.Benchmark)
   class ReactSt extends McasImplStateBase {
     val rxnSimpleUnpadded: Counter =
-      Counter.simple(Ref.AllocationStrategy(padded = false)).unsafePerform(this.mcasImpl)
+      Counter.simple(AllocationStrategy.Unpadded).unsafePerform(this.mcasImpl)
     val rxnSimplePadded: Counter =
-      Counter.simple(Ref.AllocationStrategy(padded = true)).unsafePerform(this.mcasImpl)
+      Counter.simple(AllocationStrategy.Padded).unsafePerform(this.mcasImpl)
     val rxnStripedPadded: Counter =
-      Counter.striped(Ref.AllocationStrategy.Padded).unsafePerform(this.mcasImpl)
+      Counter.striped(AllocationStrategy.Padded).unsafePerform(this.mcasImpl)
   }
 }

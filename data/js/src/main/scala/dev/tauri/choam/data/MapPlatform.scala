@@ -20,20 +20,20 @@ package data
 
 import cats.kernel.{ Hash, Order }
 
-import core.{ Rxn, Ref, Reactive }
+import core.{ Rxn, Reactive }
 
 private[data] abstract class MapPlatform extends AbstractMapPlatform {
 
   final override def hashMap[K: Hash, V]: Rxn[Map[K, V]] =
     this.simpleHashMap[K, V]
 
-  final override def hashMap[K: Hash, V](str: Ref.AllocationStrategy): Rxn[Map[K, V]] =
+  final override def hashMap[K: Hash, V](str: AllocationStrategy): Rxn[Map[K, V]] =
     hashMap[K, V]
 
   final override def orderedMap[K: Order, V]: Rxn[Map[K, V]] =
     this.simpleOrderedMap[K, V]
 
-  final override def orderedMap[K: Order, V](str: Ref.AllocationStrategy): Rxn[Map[K, V]] =
+  final override def orderedMap[K: Order, V](str: AllocationStrategy): Rxn[Map[K, V]] =
     orderedMap[K, V]
 
   private[data] override def unsafeSnapshot[F[_], K, V](m: Map[K, V])(implicit F: Reactive[F]) = {

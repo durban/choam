@@ -58,7 +58,7 @@ import internal.mcas.Mcas
  */
 private final class Ttrie[K, V] private (
   m: CMap[K, Ref[V]],
-  str: Ref.AllocationStrategy,
+  str: AllocationStrategy,
 ) extends Map.UnsealedMap[K, V] { self =>
 
   import Ttrie.{ ReplaceResult, ModifyResult, Init, isInit, End, isEnd, TrueNoCleanup, FalseNoCleanup, FalseCleanup }
@@ -428,7 +428,7 @@ private object Ttrie {
     final override def needsCleanup = true
   }
 
-  def apply[K, V](str: Ref.AllocationStrategy)(implicit K: Hash[K]): Rxn[Ttrie[K, V]] = {
+  final def apply[K, V](str: AllocationStrategy)(implicit K: Hash[K]): Rxn[Ttrie[K, V]] = {
     Rxn.unsafe.delay {
       val m = new TrieMap[K, Ref[V]](
         hashf = { k => byteswap32(K.hash(k)) },
@@ -438,7 +438,7 @@ private object Ttrie {
     }
   }
 
-  def skipListBased[K, V](str: Ref.AllocationStrategy)(implicit K: Order[K]): Rxn[Ttrie[K, V]] = {
+  final def skipListBased[K, V](str: AllocationStrategy)(implicit K: Order[K]): Rxn[Ttrie[K, V]] = {
     Rxn.unsafe.delay {
       val m = new SkipListMap[K, Ref[V]]()
       new Ttrie[K, V](m, str)

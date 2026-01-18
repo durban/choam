@@ -22,7 +22,7 @@ import java.util.UUID
 
 import cats.effect.std.{ Random, SecureRandom }
 
-import core.{ Rxn, Ref, SplittableRandom }
+import core.{ Rxn, SplittableRandom }
 
 package object random {
 
@@ -40,7 +40,7 @@ package object random {
   private[choam] final def newSecureRandom: SecureRandom[Rxn] =
     new SecureRandomRxn
 
-  private[choam] final def deterministicRandom(initialSeed: Long, str: Ref.AllocationStrategy): Rxn[SplittableRandom[Rxn]] =
+  private[choam] final def deterministicRandom(initialSeed: Long, str: AllocationStrategy): Rxn[SplittableRandom[Rxn]] =
     DeterministicRandom(initialSeed, str)
 
   // TODO: do we need this?

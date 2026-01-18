@@ -24,7 +24,7 @@ sealed abstract class Memo[A] {
 
 private object Memo {
 
-  final def apply[A](axn: Rxn[A], str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Rxn[Memo[A]] = {
+  final def apply[A](axn: Rxn[A], str: AllocationStrategy = AllocationStrategy.Default): Rxn[Memo[A]] = {
     val init = newInitializer[A](axn)
     Ref[A](init, str).map { st => new MemoImpl(st) }
   }

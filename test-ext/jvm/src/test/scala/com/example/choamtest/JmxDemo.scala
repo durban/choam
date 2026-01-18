@@ -23,6 +23,7 @@ import scala.util.hashing.byteswap32
 import cats.syntax.all._
 import cats.effect.{ IO, IOApp }
 
+import dev.tauri.choam.AllocationStrategy
 import dev.tauri.choam.core.{ Rxn, Ref }
 import dev.tauri.choam.ce.RxnAppMixin
 
@@ -38,7 +39,7 @@ object JmxDemo extends IOApp.Simple with RxnAppMixin {
   def run: IO[Unit] = {
     for {
       r1 <- Ref("foo").run[IO]
-      r2 <- Ref("bar", Ref.AllocationStrategy(padded = true)).run[IO]
+      r2 <- Ref("bar", AllocationStrategy.Padded).run[IO]
       arr <- Ref.array(N, "x").run[IO]
       tsk = Ref.swap(r1, r2).run[IO].parReplicateA_(0xffff)
       arrTsk = (0 until N by 4).toVector.traverse_ { idx =>

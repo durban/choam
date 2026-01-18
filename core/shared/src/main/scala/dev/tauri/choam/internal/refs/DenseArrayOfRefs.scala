@@ -27,7 +27,7 @@ import mcas.RefIdGen
 sealed abstract class DenseArrayOfXRefs[A](
   final override val length: Int,
   initial: A,
-  str: Ref.AllocationStrategy,
+  str: AllocationStrategy,
   rig: RefIdGen,
 ) extends Ref.UnsealedArray0[A] { self =>
 
@@ -35,7 +35,7 @@ sealed abstract class DenseArrayOfXRefs[A](
 
   require(length > 0)
 
-  protected[this] def createRef(initial: A, str: Ref.AllocationStrategy, rig: RefIdGen): RefT[A]
+  protected[this] def createRef(initial: A, str: AllocationStrategy, rig: RefIdGen): RefT[A]
 
   protected[this] implicit def refTTag: ClassTag[RefT[A]]
 
@@ -126,13 +126,13 @@ sealed abstract class DenseArrayOfXRefs[A](
 private[choam] final class DenseArrayOfRefs[A](
   size: Int,
   initial: A,
-  str: Ref.AllocationStrategy,
+  str: AllocationStrategy,
   rig: RefIdGen,
 ) extends DenseArrayOfXRefs[A](size, initial, str, rig) {
 
   protected[this] final override type RefT[a] = Ref[a]
 
-  protected[this] def createRef(initial: A, str: Ref.AllocationStrategy, rig: RefIdGen): RefT[A] =
+  protected[this] def createRef(initial: A, str: AllocationStrategy, rig: RefIdGen): RefT[A] =
     Ref.unsafe(initial, str, rig)
 
   protected[this] def refTTag: ClassTag[RefT[A]] =
@@ -142,14 +142,14 @@ private[choam] final class DenseArrayOfRefs[A](
 private[choam] final class DenseArrayOfTRefs[A](
   size: Int,
   initial: A,
-  str: Ref.AllocationStrategy,
+  str: AllocationStrategy,
   rig: RefIdGen,
 ) extends DenseArrayOfXRefs[A](size, initial, str, rig)
   with stm.TArray.UnsealedTArray[A] {
 
   protected[this] final override type RefT[a] = Ref[a] with stm.TRef[a]
 
-  protected[this] final override def createRef(initial: A, str: Ref.AllocationStrategy, rig: RefIdGen): RefT[A] =
+  protected[this] final override def createRef(initial: A, str: AllocationStrategy, rig: RefIdGen): RefT[A] =
     Ref.unsafeTRef(initial, str, rig)
 
   protected[this] def refTTag: ClassTag[RefT[A]] =

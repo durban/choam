@@ -42,7 +42,7 @@ class RefArrayLazyInitTest extends StressTestBase {
 
   @Actor
   def write(): Unit = {
-    this.arr = Ref.unsafeArray[String](4, "x", Ref.Array.AllocationStrategy.SparseFlat, this.rig)
+    this.arr = Ref.unsafeArray[String](4, "x", AllocationStrategy.SparseFlat, this.rig)
   }
 
   @Actor

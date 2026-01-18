@@ -95,7 +95,7 @@ object MapBench {
     private[this] val refs = List.fill(size) {
       Ref.unsafe[String](
         ThreadLocalRandom.current().nextInt().toString,
-        Ref.AllocationStrategy.Padded,
+        AllocationStrategy.Padded,
         this.mcasImpl.currentContext().refIdGen,
       )
     }

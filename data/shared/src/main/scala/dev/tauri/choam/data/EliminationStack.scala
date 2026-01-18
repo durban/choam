@@ -20,7 +20,7 @@ package data
 
 import java.util.concurrent.ThreadLocalRandom
 
-import core.{ Rxn, Ref, EliminatorImpl, Eliminator }
+import core.{ Rxn, EliminatorImpl, Eliminator }
 
 private final class EliminationStack[A](underlying: Stack[A])
   extends EliminatorImpl[A, Unit, Any, Option[A]](underlying.push, Some(_), _ => underlying.poll, _ => ())
@@ -48,7 +48,7 @@ private object EliminationStack {
     // stack, then contention is likely high, so
     // Padded should be also useful. In other words,
     // an unpadded elimination stack would be strange.
-    TreiberStack[A](Ref.AllocationStrategy.Padded).flatMap { ul =>
+    TreiberStack[A](AllocationStrategy.Padded).flatMap { ul =>
       Rxn.unsafe.delay { new EliminationStack[A](ul) }
     }
   }
@@ -59,13 +59,13 @@ private object EliminationStack {
   }
 
   final def tagged[A]: Rxn[TaggedEliminationStack[A]] = {
-    TreiberStack[A](Ref.AllocationStrategy.Padded).flatMap { ul =>
+    TreiberStack[A](AllocationStrategy.Padded).flatMap { ul =>
       taggedFrom(ul.push, ul.poll)
     }
   }
 
   final def taggedFlaky[A]: Rxn[TaggedEliminationStack[A]] = {
-    TreiberStack[A](Ref.AllocationStrategy.Padded).flatMap { ul =>
+    TreiberStack[A](AllocationStrategy.Padded).flatMap { ul =>
       taggedFrom(
         a => ul.push(a).flatMap { x =>
           if (ThreadLocalRandom.current().nextBoolean()) Rxn.pure(x)

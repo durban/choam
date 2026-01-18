@@ -37,10 +37,10 @@ import core.{ Rxn, Ref }
 class DirectReadTest extends StressTestBase {
 
   private[this] val ref1: Ref[String] =
-    Ref.unsafe("a", Ref.AllocationStrategy.Padded, this.rig)
+    Ref.unsafe("a", AllocationStrategy.Padded, this.rig)
 
   private[this] val ref2: Ref[String] =
-    Ref.unsafe("x", Ref.AllocationStrategy.Padded, this.rig)
+    Ref.unsafe("x", AllocationStrategy.Padded, this.rig)
 
   private[this] val read1: Rxn[String] =
     Rxn.unsafe.directRead(ref1)

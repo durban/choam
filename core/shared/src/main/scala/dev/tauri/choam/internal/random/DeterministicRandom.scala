@@ -27,7 +27,7 @@ import RandomBase._
 // TODO: everything could be optimized to a single `seed.modify { ... }`
 
 private object DeterministicRandom {
-  def apply(initialSeed: Long, str: Ref.AllocationStrategy): Rxn[SplittableRandom[Rxn]] = {
+  def apply(initialSeed: Long, str: AllocationStrategy): Rxn[SplittableRandom[Rxn]] = {
     Ref(initialSeed, str).map { (seed: Ref[Long]) =>
       new DeterministicRandom(seed, GoldenGamma, str)
     }
@@ -55,7 +55,7 @@ private object DeterministicRandom {
 private final class DeterministicRandom(
   seed: Ref[Long],
   gamma: Long,
-  str: Ref.AllocationStrategy,
+  str: AllocationStrategy,
 ) extends RandomBase
   with SplittableRandom.UnsealedSplittableRandom[Rxn] {
 

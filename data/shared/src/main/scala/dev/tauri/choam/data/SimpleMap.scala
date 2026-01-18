@@ -154,6 +154,6 @@ private final class SimpleMap[K, V] private (
 }
 
 private object SimpleMap {
-  private[data] final def apply[K: Hash, V](str: Ref.AllocationStrategy): Rxn[Map.Extra[K, V]] =
+  private[data] final def apply[K: Hash, V](str: AllocationStrategy): Rxn[Map.Extra[K, V]] =
     Ref(HashMap.empty[K, V], str).map(new SimpleMap(_))
 }

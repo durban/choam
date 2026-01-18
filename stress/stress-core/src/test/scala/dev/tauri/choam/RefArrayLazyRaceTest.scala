@@ -40,7 +40,7 @@ class RefArrayLazyRaceTest extends StressTestBase {
     { _ => "y2" }
 
   private[this] final val arr: Ref.Array[String] =
-    Ref.unsafeArray[String](4, "x", Ref.Array.AllocationStrategy.SparseFlat, this.rig)
+    Ref.unsafeArray[String](4, "x", AllocationStrategy.SparseFlat, this.rig)
 
   @Actor
   def upd1(r: LLLLL_Result): Unit = {

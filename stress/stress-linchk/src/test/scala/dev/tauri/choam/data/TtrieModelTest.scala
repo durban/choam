@@ -24,7 +24,6 @@ import org.jetbrains.kotlinx.lincheck.annotations.{ Operation, Param }
 
 import munit.FunSuite
 
-import core.Ref
 import internal.mcas.Mcas
 
 import TtrieModelTest._
@@ -80,12 +79,12 @@ private[data] object TtrieModelTest {
 
   class TrieMapTestState extends AbstractTestState {
     protected[this] override val m: Ttrie[String, String] =
-      Ttrie[String, String](Ref.AllocationStrategy.Default).unsafePerform(emcas)
+      Ttrie[String, String](AllocationStrategy.Default).unsafePerform(emcas)
   }
 
   class SkipListTestState extends AbstractTestState {
     protected[this] override val m: Ttrie[String, String] =
-      Ttrie.skipListBased[String, String](Ref.AllocationStrategy.Default).flatMap { (m: Ttrie[String, String]) =>
+      Ttrie.skipListBased[String, String](AllocationStrategy.Default).flatMap { (m: Ttrie[String, String]) =>
         m.get("dummy").as(m) // FIXME?
       }.unsafePerform(emcas)
   }

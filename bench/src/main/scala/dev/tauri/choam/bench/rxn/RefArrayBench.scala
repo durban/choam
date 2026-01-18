@@ -138,7 +138,7 @@ object RefArrayBench {
       Ref.array(
         this.size,
         INIT,
-        Ref.Array.AllocationStrategy(sparse = false, flat = true, padded = false),
+        AllocationStrategy(sparse = false, flat = true, padded = false),
       ).unsafePerform(this.mcasImpl)
     }
   }
@@ -149,7 +149,7 @@ object RefArrayBench {
       Ref.array(
         this.size,
         INIT,
-        Ref.Array.AllocationStrategy(sparse = true, flat = true, padded = false),
+        AllocationStrategy(sparse = true, flat = true, padded = false),
       ).unsafePerform(this.mcasImpl)
     }
   }
@@ -160,7 +160,7 @@ object RefArrayBench {
       Ref.array(
         this.size,
         INIT,
-        Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = false),
+        AllocationStrategy(sparse = false, flat = false, padded = false),
       ).unsafePerform(this.mcasImpl)
     }
   }
@@ -171,7 +171,7 @@ object RefArrayBench {
       Ref.array(
         this.size,
         INIT,
-        Ref.Array.AllocationStrategy(sparse = true, flat = false, padded = false),
+        AllocationStrategy(sparse = true, flat = false, padded = false),
       ).unsafePerform(this.mcasImpl)
     }
   }

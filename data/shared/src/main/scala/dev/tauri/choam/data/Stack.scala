@@ -21,7 +21,7 @@ package data
 import cats.Monad
 import cats.syntax.all._
 
-import core.{ Rxn, Ref, Reactive }
+import core.{ Rxn, Reactive }
 
 sealed trait Stack[A] {
   def push(a: A): Rxn[Unit]
@@ -55,9 +55,9 @@ object Stack {
     extends Stack[A]
 
   final def apply[A]: Rxn[Stack[A]] =
-    apply[A](Ref.AllocationStrategy.Default)
+    apply[A](AllocationStrategy.Default)
 
-  final def apply[A](str: Ref.AllocationStrategy): Rxn[Stack[A]] =
+  final def apply[A](str: AllocationStrategy): Rxn[Stack[A]] =
     TreiberStack[A](str)
 
   // TODO: on JS, we could just return a TreiberStack

@@ -71,12 +71,12 @@ object PubSub {
   final def simple[A](
     overflowStr: OverflowStrategy,
   ): Rxn[PubSub.Simple[A]] = {
-    simple(overflowStr, Ref.AllocationStrategy.Default)
+    simple(overflowStr, AllocationStrategy.Default)
   }
 
   final def simple[A](
     overflowStr: OverflowStrategy,
-    allocStr: Ref.AllocationStrategy,
+    allocStr: AllocationStrategy,
   ): Rxn[PubSub.Simple[A]] = {
     impl(overflowStr, allocStr, publishCanSuspend = false)
   }
@@ -84,12 +84,12 @@ object PubSub {
   final def async[A](
     overflowStr: OverflowStrategy,
   ): Rxn[PubSub[A]] = {
-    async(overflowStr, Ref.AllocationStrategy.Default)
+    async(overflowStr, AllocationStrategy.Default)
   }
 
   final def async[A](
     overflowStr: OverflowStrategy,
-    allocStr: Ref.AllocationStrategy,
+    allocStr: AllocationStrategy,
   ): Rxn[PubSub[A]] = {
     impl(overflowStr, allocStr, publishCanSuspend = true)
   }
@@ -99,7 +99,7 @@ object PubSub {
 
   private[this] final def impl[A](
     overflowStr: OverflowStrategy,
-    allocStr: Ref.AllocationStrategy,
+    allocStr: AllocationStrategy,
     publishCanSuspend: Boolean,
   ): Rxn[PubSub[A]] = {
     // TODO: if `str` is padded, this AtomicLong should also be padded
@@ -115,7 +115,7 @@ object PubSub {
               // TODO: solely to support the FS2 Topic API.
               impl[Int](
                 defaultSizeSignalStr,
-                Ref.AllocationStrategy.Default,
+                AllocationStrategy.Default,
                 publishCanSuspend = false,
               ).map { sizeSignal =>
                 new PubSubImpl[A](

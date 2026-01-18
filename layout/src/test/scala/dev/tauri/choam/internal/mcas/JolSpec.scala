@@ -89,7 +89,7 @@ final class JolSpec extends BaseSpec with SpecDefaultMcas {
     assumeOpenJdk()
     assumeNotMac()
     val refs = List[MemoryLocation[String]](
-      Ref.unsafe("foo", Ref.AllocationStrategy.Padded, this.rigInstance).loc,
+      Ref.unsafe("foo", AllocationStrategy.Padded, this.rigInstance).loc,
       MemoryLocation.unsafePadded("foo", this.rigInstance),
     )
     for (ref <- refs) {
@@ -102,7 +102,7 @@ final class JolSpec extends BaseSpec with SpecDefaultMcas {
     assumeOpenJdk()
     assumeNotMac()
     val refs = List[MemoryLocation[String]](
-      Ref.unsafe("bar", Ref.AllocationStrategy.Unpadded, this.rigInstance).loc,
+      Ref.unsafe("bar", AllocationStrategy.Unpadded, this.rigInstance).loc,
       MemoryLocation.unsafeUnpadded("bar", this.rigInstance),
     )
     for (ref <- refs) {

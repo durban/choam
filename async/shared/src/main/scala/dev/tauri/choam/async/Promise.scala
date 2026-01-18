@@ -24,7 +24,6 @@ import cats.{ Functor, Invariant, Contravariant }
 import cats.effect.kernel.{ Deferred, DeferredSource, DeferredSink }
 
 import core.{ Rxn, Ref, Reactive, AsyncReactive }
-import Ref.AllocationStrategy
 
 sealed trait Promise[A] extends Promise.Get[A] with Promise.Complete[A] {
 

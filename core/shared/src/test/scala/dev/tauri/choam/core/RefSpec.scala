@@ -61,12 +61,12 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
 
   override def newRef[A](initial: A): F[RefType[A]] = {
     F.delay(ThreadLocalRandom.current().nextBoolean()).flatMap { padded =>
-      Ref(initial, Ref.AllocationStrategy(padded = padded)).run[F]
+      Ref(initial, AllocationStrategy.Default.withPadded(padded)).run[F]
     }
   }
 
   test("Ref/TRef creation") {
-    val str = Ref.AllocationStrategy.Default.withStm(true)
+    val str = AllocationStrategy.Default.withStm(true)
     for {
       r <- this.newRef("foo")
       _ <- assertF(!r.isInstanceOf[stm.TRef[_]])

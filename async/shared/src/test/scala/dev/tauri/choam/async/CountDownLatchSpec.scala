@@ -18,8 +18,6 @@
 package dev.tauri.choam
 package async
 
-import core.Ref
-
 import cats.effect.IO
 import cats.effect.kernel.Outcome
 
@@ -67,7 +65,7 @@ trait CountDownLatchSpecTicked[F[_]]
 
   test("AllocationStrategy") {
     for {
-      cdl <- CountDownLatch(2, Ref.AllocationStrategy(true)).run[F]
+      cdl <- CountDownLatch(2, AllocationStrategy.Padded).run[F]
       fib1 <- cdl.await.start
       fib2 <- cdl.await.start
       _ <- this.tickAll

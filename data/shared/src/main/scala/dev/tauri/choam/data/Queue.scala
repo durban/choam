@@ -21,7 +21,7 @@ package data
 import cats.Monad
 import cats.syntax.all._
 
-import core.{ Rxn, Ref, Reactive }
+import core.{ Rxn, Reactive }
 
 sealed trait Queue[A]
   extends Queue.SourceSink[A]
@@ -71,18 +71,18 @@ object Queue {
   }
 
   final def unbounded[A]: Rxn[Queue[A]] =
-    unbounded(Ref.AllocationStrategy.Default)
+    unbounded(AllocationStrategy.Default)
 
   final def bounded[A](bound: Int): Rxn[Queue.SourceSink[A]] =
-    bounded(bound, Ref.AllocationStrategy.Default)
+    bounded(bound, AllocationStrategy.Default)
 
-  final def bounded[A](bound: Int, str: Ref.AllocationStrategy): Rxn[Queue.SourceSink[A]] =
+  final def bounded[A](bound: Int, str: AllocationStrategy): Rxn[Queue.SourceSink[A]] =
     dropping(bound, str)
 
   final def dropping[A](capacity: Int): Rxn[Queue.WithSize[A]] =
-    dropping(capacity, Ref.AllocationStrategy.Default)
+    dropping(capacity, AllocationStrategy.Default)
 
-  final def dropping[A](capacity: Int, str: Ref.AllocationStrategy): Rxn[Queue.WithSize[A]] =
+  final def dropping[A](capacity: Int, str: AllocationStrategy): Rxn[Queue.WithSize[A]] =
     DroppingQueue.apply[A](capacity, str)
 
   final def ringBuffer[A](capacity: Int): Rxn[Queue.WithSize[A]] =
@@ -93,7 +93,7 @@ object Queue {
 
   // TODO: boundedWithSize : Queue.SourceSinkWithSize (?)
 
-  private[choam] final def unbounded[A](str: Ref.AllocationStrategy): Rxn[Queue[A]] =
+  private[choam] final def unbounded[A](str: AllocationStrategy): Rxn[Queue[A]] =
     MsQueue[A](str)
 
   private[choam] trait UnsealedQueuePoll[+A]
@@ -124,7 +124,7 @@ object Queue {
 
   private[choam] final def msQueueFromList[F[_] : Reactive, A](
     as: List[A],
-    str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default,
+    str: AllocationStrategy = AllocationStrategy.Default,
   ): F[Queue[A]] = {
     Reactive[F].monad.widen(fromList(MsQueue[A](str))(as))
   }

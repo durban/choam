@@ -46,10 +46,10 @@ private final class TreiberStack[A] private (
 
 private object TreiberStack {
 
-  private[data] final def apply[A](str: Ref.AllocationStrategy): Rxn[TreiberStack[A]] =
+  private[data] final def apply[A](str: AllocationStrategy): Rxn[TreiberStack[A]] =
     Ref[Lst[A]](End, str).map(new TreiberStack[A](_))
 
-  private[data] final def fromList[F[_], A](as: List[A], str: Ref.AllocationStrategy)(implicit F: Reactive[F]): F[Stack[A]] = {
+  private[data] final def fromList[F[_], A](as: List[A], str: AllocationStrategy)(implicit F: Reactive[F]): F[Stack[A]] = {
     Stack.fromList(this.apply[A](str))(as)
   }
 

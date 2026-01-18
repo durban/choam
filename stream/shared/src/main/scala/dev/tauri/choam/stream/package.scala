@@ -20,7 +20,7 @@ package dev.tauri.choam
 import fs2.{ Chunk, Stream }
 import fs2.concurrent.SignallingRef
 
-import core.{ Rxn, Ref, RefLike, AsyncReactive }
+import core.{ Rxn, RefLike, AsyncReactive }
 import async.AsyncQueue
 
 package object stream {
@@ -41,13 +41,13 @@ package object stream {
    *         the same underlying storage).
    */
   final def signallingRef[F[_] : AsyncReactive, A](initial: A): Rxn[(RefLike[A], SignallingRef[F, A])] = {
-    signallingRef(initial, Ref.AllocationStrategy.Default)
+    signallingRef(initial, AllocationStrategy.Default)
   }
 
   // TODO: make this public + also an overload with configurable OverflowStrategy
   private[stream] final def signallingRef[F[_] : AsyncReactive, A](
     initial: A,
-    str: Ref.AllocationStrategy,
+    str: AllocationStrategy,
   ): Rxn[(RefLike[A], SignallingRef[F, A])] = {
     Fs2SignallingRefWrapper[F, A](initial, str).map { sRef => (sRef.refLike, sRef) }
   }

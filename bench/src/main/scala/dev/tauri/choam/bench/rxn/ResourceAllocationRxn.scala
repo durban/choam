@@ -80,7 +80,7 @@ object ResourceAllocationRxn {
       Vector.fill(nRes)(scala.util.Random.nextString(10))
 
     final val rss: Array[Ref[String]] =
-      initialValues.map(Ref.unsafe(_, Ref.AllocationStrategy.Padded, this.mcasImpl.currentContext().refIdGen)).toArray
+      initialValues.map(Ref.unsafe(_, AllocationStrategy.Padded, this.mcasImpl.currentContext().refIdGen)).toArray
 
     @TearDown
     final def checkResults(): Unit = {

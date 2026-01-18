@@ -34,10 +34,10 @@ import core.{ Rxn, Ref }
 class ConsistentRead extends StressTestBase {
 
   private[this] val ref1 =
-    Ref.unsafe("-", Ref.AllocationStrategy.Padded, this.rig)
+    Ref.unsafe("-", AllocationStrategy.Padded, this.rig)
 
   private[this] val ref2 =
-    Ref.unsafe("y", Ref.AllocationStrategy.Padded, this.rig)
+    Ref.unsafe("y", AllocationStrategy.Padded, this.rig)
 
   private[this] val upd: Rxn[Unit] =
     ref1.update(_ + "1") *> ref2.update(_ + "1")

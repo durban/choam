@@ -56,52 +56,6 @@ private[choam] trait UnsealedRef[A] extends Ref[A] { this: MemoryLocation[A] & c
 
 object Ref extends RefInstances0 {
 
-  // TODO:0.5: unify with Array.AllocationStrategy, move to dev.tauri.choam.AllocationStrategy
-  sealed abstract class AllocationStrategy {
-    def padded: Boolean
-    def withPadded(padded: Boolean): Ref.AllocationStrategy
-    def toArrayAllocationStrategy: Array.AllocationStrategy
-    private[choam] def stm: Boolean
-    private[choam] def withStm(stm: Boolean): Ref.AllocationStrategy
-  }
-
-  final object AllocationStrategy {
-
-    final val Default: Ref.AllocationStrategy =
-      AllocationStrategy(padded = false)
-
-    final def apply(padded: Boolean): Ref.AllocationStrategy =
-      new AllocationStrategyImpl(padded = padded, stm = false)
-
-    private[choam] final val Padded: Ref.AllocationStrategy =
-      Ref.AllocationStrategy(padded = true)
-
-    private[choam] final val Unpadded: Ref.AllocationStrategy =
-      Ref.AllocationStrategy(padded = false)
-
-    private[choam] final val Stm: Ref.AllocationStrategy =
-      new AllocationStrategyImpl(padded = false, stm = true)
-  }
-
-  private[this] final class AllocationStrategyImpl(
-    final override val padded: Boolean,
-    private[choam] final override val stm: Boolean,
-  ) extends AllocationStrategy {
-
-    final override def withPadded(padded: Boolean): AllocationStrategy = {
-      if (this.padded == padded) this
-      else new AllocationStrategyImpl(padded = padded, stm = this.stm)
-    }
-
-    private[choam] final override def withStm(stm: Boolean): Ref.AllocationStrategy = {
-      if (this.stm == stm) this
-      else new AllocationStrategyImpl(padded = this.padded, stm = stm)
-    }
-
-    final override def toArrayAllocationStrategy: Array.AllocationStrategy =
-      Array.AllocationStrategy.Default.withPadded(this.padded).withStm(this.stm)
-  }
-
   sealed trait Array[A] {
 
     def length: Int
@@ -147,89 +101,6 @@ object Ref extends RefInstances0 {
     private[choam] final def unsafeConsistentRead[A, B](arr1: Ref.Array[A], idx1: Int, arr2: Ref.Array[B], idx2: Int): Rxn[(A, B)] = {
       arr1.unsafeGet(idx1) * arr2.unsafeGet(idx2)
     }
-
-    sealed abstract class AllocationStrategy extends Ref.AllocationStrategy {
-
-      def sparse: Boolean
-      def withSparse(sparse: Boolean): Array.AllocationStrategy
-      def flat: Boolean
-      def withFlat(flat: Boolean): Array.AllocationStrategy
-
-      override def withPadded(padded: Boolean): Array.AllocationStrategy
-      private[choam] override def withStm(stm: Boolean): Array.AllocationStrategy
-
-      final override def toArrayAllocationStrategy: Array.AllocationStrategy =
-        this
-
-      private[Ref] final def toInt: Int = {
-        var r = 0
-        if (this.sparse) {
-          r |= 4
-        }
-        if (this.flat) {
-          r |= 2
-        }
-        if (this.padded) {
-          r |= 1
-        }
-        r
-      }
-    }
-
-    final object AllocationStrategy {
-
-      final val Default: Array.AllocationStrategy =
-        this.apply(sparse = false, flat = true, padded = false)
-
-      private[choam] val SparseFlat: Array.AllocationStrategy =
-        this.apply(sparse = true, flat = true, padded = false)
-
-      private[Ref] final val DefaultInt: Int =
-        2
-
-      final def apply(sparse: Boolean, flat: Boolean, padded: Boolean): Array.AllocationStrategy =
-        new AllocationStrategyImpl(sparse = sparse, flat = flat, padded = padded, stm = false)
-    }
-
-    private[this] final class AllocationStrategyImpl (
-      final override val sparse: Boolean,
-      final override val flat: Boolean,
-      final override val padded: Boolean,
-      final override val stm: Boolean,
-    ) extends AllocationStrategy {
-
-      require(!(padded && flat), "padding is currently not supported for flat = true")
-
-      final override def withSparse(sparse: Boolean): AllocationStrategy =
-        this.copy(sparse = sparse)
-
-      final override def withFlat(flat: Boolean): AllocationStrategy =
-        this.copy(flat = flat)
-
-      final override def withPadded(padded: Boolean): AllocationStrategy =
-        this.copy(padded = padded)
-
-      private[choam] final override def withStm(stm: Boolean): AllocationStrategy =
-        this.copy(stm = stm)
-
-      private[this] final def copy(
-        sparse: Boolean = this.sparse,
-        flat: Boolean = this.flat,
-        padded: Boolean = this.padded,
-        stm: Boolean = this.stm,
-      ): AllocationStrategyImpl = {
-        if (
-          (sparse == this.sparse) &&
-          (flat == this.flat) &&
-          (padded == this.padded) &&
-          (stm == this.stm)
-        ) {
-          this
-        } else {
-          new AllocationStrategyImpl(sparse = sparse, flat = flat, padded = padded, stm = stm)
-        }
-      }
-    }
   }
 
   private[choam] trait UnsealedArray0[A] extends Array[A] // TODO: better name
@@ -248,7 +119,7 @@ object Ref extends RefInstances0 {
     }
   }
 
-  final def apply[A](initial: A, str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Rxn[Ref[A]] = {
+  final def apply[A](initial: A, str: AllocationStrategy = AllocationStrategy.Default): Rxn[Ref[A]] = {
     Rxn.unsafe.delayContext { ctx =>
       Ref.unsafe(initial, str, ctx.refIdGen)
     }
@@ -264,22 +135,22 @@ object Ref extends RefInstances0 {
   final def array[A](
     size: Int,
     initial: A,
-    strategy: Ref.Array.AllocationStrategy = Ref.Array.AllocationStrategy.Default,
+    strategy: AllocationStrategy = AllocationStrategy.Default,
   ): Rxn[Ref.Array[A]] = {
     safeArray(size = size, initial = initial, str = strategy)
   }
 
-  private[choam] final def arrayImpl[A](size: Int, initial: A, strategy: Ref.Array.AllocationStrategy): RxnImpl[Ref.Array[A]] = {
+  private[choam] final def arrayImpl[A](size: Int, initial: A, strategy: AllocationStrategy): RxnImpl[Ref.Array[A]] = {
     safeArrayImpl(size, initial, strategy)
   }
 
-  private[this] final def safeArray[A](size: Int, initial: A, str: Ref.Array.AllocationStrategy): Rxn[Ref.Array[A]] = {
+  private[this] final def safeArray[A](size: Int, initial: A, str: AllocationStrategy): Rxn[Ref.Array[A]] = {
     safeArrayImpl(size, initial, str)
   }
 
   // the duplicated logic with `unsafeArray` is
   // to avoid having the `if`s inside the `Rxn`:
-  private[this] final def safeArrayImpl[A](size: Int, initial: A, str: Ref.Array.AllocationStrategy): RxnImpl[Ref.Array[A]] = {
+  private[this] final def safeArrayImpl[A](size: Int, initial: A, str: AllocationStrategy): RxnImpl[Ref.Array[A]] = {
     if (str.stm) {
       safeTArrayImpl(size, initial, str)
     } else {
@@ -300,7 +171,7 @@ object Ref extends RefInstances0 {
     }
   }
 
-  private[choam] final def safeTArrayImpl[A](size: Int, initial: A, str: Ref.Array.AllocationStrategy): RxnImpl[Ref.Array[A] with stm.TArray[A]] = {
+  private[choam] final def safeTArrayImpl[A](size: Int, initial: A, str: AllocationStrategy): RxnImpl[Ref.Array[A] with stm.TArray[A]] = {
     require(str.stm)
     if (size > 0) {
       if (str.flat) {
@@ -318,7 +189,7 @@ object Ref extends RefInstances0 {
     }
   }
 
-  private[choam] final def unsafeArray[A](size: Int, initial: A, str: Ref.Array.AllocationStrategy, rig: RefIdGen): Ref.Array[A] = {
+  private[choam] final def unsafeArray[A](size: Int, initial: A, str: AllocationStrategy, rig: RefIdGen): Ref.Array[A] = {
     if (str.stm) {
       unsafeTArray(size, initial, str, rig)
     } else {
@@ -339,7 +210,7 @@ object Ref extends RefInstances0 {
     }
   }
 
-  private[this] final def unsafeTArray[A](size: Int, initial: A, str: Ref.Array.AllocationStrategy, rig: RefIdGen): Ref.Array[A] with stm.TArray[A] = {
+  private[this] final def unsafeTArray[A](size: Int, initial: A, str: AllocationStrategy, rig: RefIdGen): Ref.Array[A] with stm.TArray[A] = {
     require(str.stm)
     if (size > 0) {
       if (str.flat) {

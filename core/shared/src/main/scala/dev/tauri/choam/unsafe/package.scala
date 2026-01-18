@@ -49,7 +49,7 @@ package object unsafe {
   /** @see [[dev.tauri.choam.core.Ref.apply]] */
   final def newRef[A](
     initial: A,
-    strategy: Ref.AllocationStrategy = Ref.AllocationStrategy.Default,
+    strategy: AllocationStrategy = AllocationStrategy.Default,
   )(implicit ir: InRxn): Ref[A] = {
     Ref.unsafe(initial, strategy, ir.currentContext().refIdGen)
   }
@@ -58,7 +58,7 @@ package object unsafe {
   final def newRefArray[A](
     size: Int,
     initial: A,
-    strategy: Ref.Array.AllocationStrategy = Ref.Array.AllocationStrategy.Default,
+    strategy: AllocationStrategy = AllocationStrategy.Default,
   )(implicit ir: InRxn): Ref.Array[A] = {
     Ref.unsafeArray(size, initial, strategy, ir.currentContext().refIdGen)
   }

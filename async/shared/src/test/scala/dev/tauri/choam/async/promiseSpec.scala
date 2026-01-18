@@ -25,7 +25,7 @@ import cats.effect.IO
 import cats.effect.std.CountDownLatch
 import cats.effect.kernel.{ Outcome, DeferredSource, DeferredSink }
 
-import core.{ Rxn, Ref }
+import core.Rxn
 
 final class PromiseSpec_ThreadConfinedMcas_IO_Real
   extends BaseSpecIO
@@ -110,7 +110,7 @@ trait PromiseSpecTicked[F[_]]
   test("Promise.unsafeNew") {
     for {
       pp <- Rxn.unsafe.embedUnsafe { implicit ir =>
-        (Promise.unsafeNew[Int](), Promise.unsafeNew[String](Ref.AllocationStrategy.Padded))
+        (Promise.unsafeNew[Int](), Promise.unsafeNew[String](AllocationStrategy.Padded))
       }.run[F]
       (p1, p2) = pp
       fib1 <- p1.get.start

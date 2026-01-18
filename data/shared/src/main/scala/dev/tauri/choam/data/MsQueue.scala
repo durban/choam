@@ -34,14 +34,14 @@ import MsQueue._
  */
 private final class MsQueue[A] private[this] (
   sentinel: Node[A],
-  str: Ref.AllocationStrategy,
+  str: AllocationStrategy,
   initRig: RefIdGen,
 ) extends Queue.UnsealedQueue[A] {
 
   private[this] val head: Ref[Node[A]] = Ref.unsafe(sentinel, str.withPadded(true), initRig)
   private[this] val tail: Ref[Node[A]] = Ref.unsafe(sentinel, str.withPadded(true), initRig)
 
-  private def this(str: Ref.AllocationStrategy, initRig: RefIdGen) =
+  private def this(str: AllocationStrategy, initRig: RefIdGen) =
     this(Node(nullOf[A], Ref.unsafe(End[A](), str, initRig)), str = str, initRig = initRig)
 
   final override val poll: Rxn[Option[A]] = {
@@ -141,9 +141,9 @@ private final class MsQueue[A] private[this] (
 private object MsQueue {
 
   final def apply[A]: Rxn[MsQueue[A]] =
-    apply[A](Ref.AllocationStrategy.Default)
+    apply[A](AllocationStrategy.Default)
 
-  final def apply[A](str: Ref.AllocationStrategy): Rxn[MsQueue[A]] = {
+  final def apply[A](str: AllocationStrategy): Rxn[MsQueue[A]] = {
     Rxn.unsafe.delayContext { ctx => new MsQueue(str = str, initRig = ctx.refIdGen) }
   }
 
@@ -153,7 +153,7 @@ private object MsQueue {
         new Queue.UnsealedQueueWithSize[A] {
 
           private[this] val s =
-            Ref.unsafe[Int](0, Ref.AllocationStrategy.Default.withPadded(true), ctx.refIdGen)
+            Ref.unsafe[Int](0, AllocationStrategy.Default.withPadded(true), ctx.refIdGen)
 
           final override def poll: Rxn[Option[A]] = {
             q.poll.flatMap {

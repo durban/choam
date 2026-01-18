@@ -34,7 +34,7 @@ import core.{ Rxn, Ref }
 class WriteAfterGet extends StressTestBase {
 
   private[this] val ref: Ref[String] =
-    Ref.unsafe("a", Ref.AllocationStrategy.Padded, this.rig)
+    Ref.unsafe("a", AllocationStrategy.Padded, this.rig)
 
   private[this] val write1: Rxn[String] = {
     ref.get.flatMap { old1 =>

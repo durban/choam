@@ -23,7 +23,7 @@ import cats.data.Chain
 import cats.effect.kernel.{ Ref => CatsRef }
 import cats.effect.std.MapRef
 
-import core.{ Rxn, Ref, RefLike, Reactive }
+import core.{ Rxn, RefLike, Reactive }
 
 sealed trait Map[K, V] { self =>
 
@@ -68,15 +68,15 @@ object Map extends MapPlatform {
   private[data] trait UnsealedMapExtra[K, V] extends Map.Extra[K, V]
 
   final override def simpleHashMap[K: Hash, V]: Rxn[Extra[K, V]] =
-    SimpleMap[K, V](Ref.AllocationStrategy.Default)
+    SimpleMap[K, V](AllocationStrategy.Default)
 
-  final override def simpleHashMap[K: Hash, V](str: Ref.AllocationStrategy): Rxn[Extra[K, V]] =
+  final override def simpleHashMap[K: Hash, V](str: AllocationStrategy): Rxn[Extra[K, V]] =
     SimpleMap[K, V](str)
 
   final override def simpleOrderedMap[K: Order, V]: Rxn[Extra[K, V]] =
-    SimpleOrderedMap[K, V](Ref.AllocationStrategy.Default)
+    SimpleOrderedMap[K, V](AllocationStrategy.Default)
 
-  final override def simpleOrderedMap[K: Order, V](str: Ref.AllocationStrategy): Rxn[Extra[K, V]] =
+  final override def simpleOrderedMap[K: Order, V](str: AllocationStrategy): Rxn[Extra[K, V]] =
     SimpleOrderedMap[K, V](str)
 
   private[data] final override def unsafeSnapshot[F[_], K, V](m: Map[K, V])(implicit F: Reactive[F]) = {

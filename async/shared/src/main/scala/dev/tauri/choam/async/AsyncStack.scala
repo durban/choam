@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package async
 
-import core.{ Rxn, Ref, AsyncReactive }
+import core.{ Rxn, AsyncReactive }
 import data.Stack
 
 sealed trait AsyncStack[A] extends Stack.UnsealedStack[A] {
@@ -53,7 +53,7 @@ object AsyncStack {
   final def apply[A]: Rxn[AsyncStack[A]] =
     Stack[A].flatMap(fromSyncStack[A])
 
-  final def apply[A](str: Ref.AllocationStrategy): Rxn[AsyncStack[A]] =
+  final def apply[A](str: AllocationStrategy): Rxn[AsyncStack[A]] =
     Stack[A](str).flatMap(fromSyncStack[A])
 
   final def eliminationStack[A]: Rxn[AsyncStack[A]] =

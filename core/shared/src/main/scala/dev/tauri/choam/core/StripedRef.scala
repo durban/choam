@@ -33,17 +33,15 @@ private[choam] sealed abstract class StripedRef[A] {
 private[choam] object StripedRef {
 
   final def apply[A](initial: A): Rxn[StripedRef[A]] = Rxn.unsafe.delayContext { ctx =>
-    unsafe(initial, Ref.AllocationStrategy.Padded, ctx)
+    unsafe(initial, this.DefaultAllocationStrategy, ctx)
   }
 
-  private[choam] final def unsafe[A](initial: A, str: Ref.AllocationStrategy, ctx: Mcas.ThreadContext): StripedRef[A] = {
-    val arr = Ref.unsafeArray(ctx.stripes, initial, strFromRefStr(str), ctx.refIdGen)
+  private[choam] val DefaultAllocationStrategy: AllocationStrategy = // TODO: use flat = true when it supports padding
+    AllocationStrategy(padded = true, sparse = false, flat = false)
+
+  private[choam] final def unsafe[A](initial: A, str: AllocationStrategy, ctx: Mcas.ThreadContext): StripedRef[A] = {
+    val arr = Ref.unsafeArray(ctx.stripes, initial, str, ctx.refIdGen)
     new StripedRefImpl(arr)
-  }
-
-  private[this] final def strFromRefStr(refStr: Ref.AllocationStrategy): Ref.Array.AllocationStrategy = {
-    // TODO: use flat = true when it supports padding
-    Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = refStr.padded)
   }
 
   private[this] final class StripedRefImpl[A](stripes: Ref.Array[A])

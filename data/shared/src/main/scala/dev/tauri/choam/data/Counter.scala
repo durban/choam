@@ -37,18 +37,18 @@ sealed abstract class Counter {
 object Counter {
 
   final def simple: Rxn[Counter] =
-    simple(Ref.AllocationStrategy.Default)
+    simple(AllocationStrategy.Default)
 
-  final def simple(str: Ref.AllocationStrategy): Rxn[Counter] =
+  final def simple(str: AllocationStrategy): Rxn[Counter] =
     Ref(0L, str).map(new SimpleCounter(_))
 
   final def striped: Rxn[Counter] = {
     // default to padded, because for a striped
     // counter it is very likely to be more useful:
-    striped(Ref.AllocationStrategy.Padded)
+    striped(AllocationStrategy.Padded)
   }
 
-  final def striped(str: Ref.AllocationStrategy): Rxn[Counter] = {
+  final def striped(str: AllocationStrategy): Rxn[Counter] = {
     Rxn.unsafe.delayContext { ctx =>
       val sref = StripedRef.unsafe(0L, str, ctx)
       new StripedCounter(sref)

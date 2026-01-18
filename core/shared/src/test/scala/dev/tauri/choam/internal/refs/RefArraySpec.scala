@@ -32,25 +32,25 @@ import internal.mcas.RefIdGenBase.GAMMA
 final class RefArraySpec_Strict extends RefArraySpecIds {
 
   final override def mkRefArray[A](a: A, size: Int, ctx: Mcas.ThreadContext): Ref.Array[A] =
-    Ref.unsafeArray(size, a, Ref.Array.AllocationStrategy(sparse = false, flat = true, padded = false), rig = ctx.refIdGen)
+    Ref.unsafeArray(size, a, AllocationStrategy(sparse = false, flat = true, padded = false), rig = ctx.refIdGen)
 }
 
 final class RefArraySpec_Lazy extends RefArraySpecIds {
 
   final override def mkRefArray[A](a: A, size: Int, ctx: Mcas.ThreadContext): Ref.Array[A] =
-    Ref.unsafeArray(size, a, Ref.Array.AllocationStrategy(sparse = true, flat = true, padded = false), rig = ctx.refIdGen)
+    Ref.unsafeArray(size, a, AllocationStrategy(sparse = true, flat = true, padded = false), rig = ctx.refIdGen)
 }
 
 final class RefArraySpec_StrictArrayOfRefs extends RefArraySpec {
 
   final override def mkRefArray[A](a: A, size: Int, ctx: Mcas.ThreadContext): Ref.Array[A] =
-    Ref.unsafeArray(size, a, Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = false), rig = ctx.refIdGen)
+    Ref.unsafeArray(size, a, AllocationStrategy(sparse = false, flat = false, padded = false), rig = ctx.refIdGen)
 }
 
 final class RefArraySpec_LazyArrayOfRefs extends RefArraySpec {
 
   final override def mkRefArray[A](a: A, size: Int, ctx: Mcas.ThreadContext): Ref.Array[A] =
-    Ref.unsafeArray(size, a, Ref.Array.AllocationStrategy(sparse = true, flat = false, padded = false), rig = ctx.refIdGen)
+    Ref.unsafeArray(size, a, AllocationStrategy(sparse = true, flat = false, padded = false), rig = ctx.refIdGen)
 }
 
 trait RefArraySpecIds extends RefArraySpec {
@@ -102,26 +102,26 @@ trait RefArraySpec extends BaseSpec with SpecDefaultMcas {
     this.mkRefArray(a, size, ctx = this.mcasImpl.currentContext())
 
   test("array creation") {
-    val str0 = Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = false)
+    val str0 = AllocationStrategy(sparse = false, flat = false, padded = false)
     assert(Ref.array(N, "", str0).unsafePerform(this.defaultMcasInstance).isInstanceOf[DenseArrayOfRefs[?]])
-    val str2 = Ref.Array.AllocationStrategy(sparse = false, flat = true, padded = false)
+    val str2 = AllocationStrategy(sparse = false, flat = true, padded = false)
     assert(Ref.array(N, "", str2).unsafePerform(this.defaultMcasInstance).isInstanceOf[DenseRefArray[?]])
-    val str4 = Ref.Array.AllocationStrategy(sparse = true, flat = false, padded = false)
+    val str4 = AllocationStrategy(sparse = true, flat = false, padded = false)
     assert(Ref.array(N, "", str4).unsafePerform(this.defaultMcasInstance).isInstanceOf[SparseArrayOfRefs[?]])
-    val str6 = Ref.Array.AllocationStrategy(sparse = true, flat = true, padded = false)
+    val str6 = AllocationStrategy(sparse = true, flat = true, padded = false)
     assert(Ref.array(N, "", str6).unsafePerform(this.defaultMcasInstance).isInstanceOf[SparseRefArray[?]])
-    val str1 = Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = true)
+    val str1 = AllocationStrategy(sparse = false, flat = false, padded = true)
     assert(Ref.array(N, "", str1).unsafePerform(this.defaultMcasInstance).isInstanceOf[DenseArrayOfRefs[?]])
     assert(Either.catchOnly[IllegalArgumentException] {
-      Ref.Array.AllocationStrategy(sparse = false, flat = true, padded = true) // 3
+      AllocationStrategy(sparse = false, flat = true, padded = true) // 3
     }.isLeft)
-    val str5 = Ref.Array.AllocationStrategy(sparse = true, flat = false, padded = true)
+    val str5 = AllocationStrategy(sparse = true, flat = false, padded = true)
     assert(Ref.array(N, "", str5).unsafePerform(this.defaultMcasInstance).isInstanceOf[SparseArrayOfRefs[?]])
     assert(Either.catchOnly[IllegalArgumentException] {
-      Ref.Array.AllocationStrategy(sparse = true, flat = true, padded = true) // 7
+      AllocationStrategy(sparse = true, flat = true, padded = true) // 7
     }.isLeft)
-    assert(Ref.unsafeArray(N, "", Ref.Array.AllocationStrategy.SparseFlat, this.mcasImpl.currentContext().refIdGen).isInstanceOf[SparseRefArray[?]])
-    assert(Ref.unsafeArray(N, "", Ref.Array.AllocationStrategy.Default, this.mcasImpl.currentContext().refIdGen).isInstanceOf[DenseRefArray[?]])
+    assert(Ref.unsafeArray(N, "", AllocationStrategy.SparseFlat, this.mcasImpl.currentContext().refIdGen).isInstanceOf[SparseRefArray[?]])
+    assert(Ref.unsafeArray(N, "", AllocationStrategy.Default, this.mcasImpl.currentContext().refIdGen).isInstanceOf[DenseRefArray[?]])
   }
 
   test("empty array") {

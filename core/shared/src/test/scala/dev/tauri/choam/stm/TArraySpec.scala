@@ -22,8 +22,6 @@ import scala.concurrent.duration._
 
 import cats.effect.IO
 
-import core.Ref
-
 final class TArraySpec_DefaultMcas_IO
   extends BaseSpecIO
   with SpecDefaultMcas
@@ -110,11 +108,11 @@ trait TArraySpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     for {
       arr1 <- TArray[Int](1, 0, TArray.DefaultAllocationStrategy).commit // NB: this is sparse && flat
       _ <- checkArr(arr1)
-      arr2 <- TArray[Int](1, 0, Ref.Array.AllocationStrategy(sparse = true, flat = false, padded = false)).commit
+      arr2 <- TArray[Int](1, 0, AllocationStrategy(sparse = true, flat = false, padded = false)).commit
       _ <- checkArr(arr2)
-      arr3 <- TArray[Int](1, 0, Ref.Array.AllocationStrategy(sparse = false, flat = false, padded = false)).commit
+      arr3 <- TArray[Int](1, 0, AllocationStrategy(sparse = false, flat = false, padded = false)).commit
       _ <- checkArr(arr3)
-      arr4 <- TArray[Int](1, 0, Ref.Array.AllocationStrategy(sparse = false, flat = true, padded = false)).commit
+      arr4 <- TArray[Int](1, 0, AllocationStrategy(sparse = false, flat = true, padded = false)).commit
       _ <- checkArr(arr4)
     } yield ()
   }

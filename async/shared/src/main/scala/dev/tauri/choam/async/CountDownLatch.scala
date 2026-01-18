@@ -34,7 +34,7 @@ sealed abstract class CountDownLatch private () { self =>
 
 object CountDownLatch {
 
-  final def apply(count: Int, str: Ref.AllocationStrategy = Ref.AllocationStrategy.Default): Rxn[CountDownLatch] = {
+  final def apply(count: Int, str: AllocationStrategy = AllocationStrategy.Default): Rxn[CountDownLatch] = {
     (Ref(count, str), Promise[Unit](str)).mapN { (c, p) =>
       new CountDownLatch { self =>
         final override val release: Rxn[Unit] = {

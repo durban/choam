@@ -27,7 +27,7 @@ import io.github.timwspence.cats.stm.STM
 import zio.stm.ZSTM
 
 import util._
-import core.{ Rxn, Ref }
+import core.Rxn
 import data.Queue
 
 @Fork(1)
@@ -126,7 +126,7 @@ object QueueTransferBench {
 
     protected override def newQueue(): Queue[String] = {
       Queue.msQueueFromList[SyncIO, String](
-        Prefill.prefill().toList, Ref.AllocationStrategy.Padded
+        Prefill.prefill().toList, AllocationStrategy.Padded
       )(using McasImplStateBase.reactiveSyncIO).unsafeRunSync()
     }
 
@@ -140,7 +140,7 @@ object QueueTransferBench {
 
     protected override def newQueue(): Queue[String] = {
       Queue.msQueueFromList[SyncIO, String](
-        Prefill.prefill().toList, Ref.AllocationStrategy.Unpadded
+        Prefill.prefill().toList, AllocationStrategy.Unpadded
       )(using McasImplStateBase.reactiveSyncIO).unsafeRunSync()
     }
 
