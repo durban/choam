@@ -77,7 +77,7 @@ trait OrElseRetrySpec[F[_]] extends BaseSpecAsyncF[F] with TestContextSpec[F] { 
       if (predicate(i)) {
         rlog(s" $name succeeding with $result") *> Rxn.pure(result)
       } else {
-        rlog(s" $name retrying") *> Rxn.unsafe.retryWhenChanged
+        rlog(s" $name retrying") *> Rxn.unsafe.retryStm
       }
     }
   }

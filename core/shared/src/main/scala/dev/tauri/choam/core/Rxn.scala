@@ -646,17 +646,13 @@ object Rxn extends RxnInstances0 {
      * `(... *> retryWhenChanged) orElse (<someting which doesn't retry>)`.
      */
     @inline
-    private[choam] final def retryWhenChanged[A]: Rxn[A] = // TODO: remove this
-      StmImpl.retryWhenChanged[A]
-
-    @inline
     private[choam] final def retryStm[A]: Rxn[A] =
       StmImpl.retryWhenChanged[A]
 
     /**
      * This is primarily for STM to use, so be very careful!
      *
-     * See the comment for `retryWhenChanged`.
+     * See the comment for `retryStm`.
      */
     private[choam] final def orElse[A, B](left: Rxn[B], right: Rxn[B]): Rxn[B] =
       new OrElse(left, right)

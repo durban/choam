@@ -1506,7 +1506,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertExc(Rxn.unsafe.panic[Int](exc).map { _ => 42 })
       _ <- assertExc(Rxn.unsafe.panic[Int](exc).map2(Rxn.pure(42)) { (_, _) => 42 })
       _ <- assertExc(Rxn.unsafe.orElse(
-        Rxn.unsafe.panic(exc) *> Rxn.unsafe.retryWhenChanged,
+        Rxn.unsafe.panic(exc) *> Rxn.unsafe.retryStm,
         Rxn.pure(42)
       ))
     } yield ()

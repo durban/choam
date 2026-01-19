@@ -347,7 +347,7 @@ object PubSub {
         newChunk: Chunk[A],
         missingCapacity: Int,
         canSuspend: Boolean,
-      ): Rxn[HandleOverflowResult] = if (canSuspend) Rxn.pure(Suspend) else Rxn.unsafe.retryWhenChanged
+      ): Rxn[HandleOverflowResult] = if (canSuspend) Rxn.pure(Suspend) else Rxn.unsafe.retryStm
     }
 
     private final object Unbounded extends OverflowStrategy {
