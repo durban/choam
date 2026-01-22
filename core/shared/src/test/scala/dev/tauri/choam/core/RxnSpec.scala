@@ -38,7 +38,7 @@ final class RxnSpec_ThreadConfinedMcas_IO
 
 trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
-  import Rxn._
+  import Rxn.{ unsafe => _, _ }
 
   test("Check MCAS implementation") {
     assertSameInstance(Reactive[F].mcasImpl, this.mcasImpl) // just to be sure
@@ -1797,7 +1797,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         r.unsafePerform(this.mcasImpl)
       }.isLeft)
     }
-    for ((r, cls) <- specialExceptions(ref)) {
+    for ((r, cls) <- specialExceptions(ref, arr)) {
       assert(Either.catchOnly[Throwable] {
         r.unsafePerform(this.mcasImpl)
       } (scala.reflect.ClassTag(cls), implicitly).isLeft)
@@ -1810,7 +1810,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       throwingRxns(ref, arr).traverse_ { r =>
         r.run[F].attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
       }.flatMap { _ =>
-        specialExceptions(ref).traverse_ { case (r, cls) =>
+        specialExceptions(ref, arr).traverse_ { case (r, cls) =>
           r.run[F].attemptNarrow[Throwable](
             implicitly,
             scala.reflect.ClassTag(cls),
@@ -1819,6 +1819,44 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         }
       }
     }
+  }
+
+  test("Exception passthrough (imperative API: atomically)") {
+    import RxnSpec.MyException
+    import unsafe.{ newRef, newRefArray, updateRef, updateRefArray, panic, UnsafeApi }
+    val uapi = UnsafeApi(this.runtime)
+    import uapi.atomically
+    val ref = atomically(newRef(0)(using _))
+    val arr = atomically(newRefArray(4, initial = 0)(using _))
+
+    assert(Either.catchOnly[MyException] { atomically { implicit ir =>
+      updateRef(ref) { _ => throw new MyException(1) }
+    } }.isLeft)
+    assert(Either.catchOnly[MyException] { atomically { implicit ir =>
+      updateRefArray(arr, 0) { _ => throw new MyException(2) }
+    } }.isLeft)
+    assert(Either.catchOnly[MyException] { atomically { implicit ir =>
+      panic(new MyException(3))
+    } }.isLeft)
+  }
+
+  test("Exception passthrough (imperative API: atomicallyInAsync)") {
+    import RxnSpec.MyException
+    import unsafe.{ newRef, newRefArray, updateRef, updateRefArray, panic, UnsafeApi }
+    val uapi = UnsafeApi(this.runtime)
+    import uapi.{ atomically, atomicallyInAsync }
+    val ref = atomically(newRef(0)(using _))
+    val arr = atomically(newRefArray(4, initial = 0)(using _))
+
+    atomicallyInAsync(RetryStrategy.DefaultSleep) { implicit ir =>
+      updateRef(ref) { _ => throw new MyException(1) }
+    }.attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
+    atomicallyInAsync(RetryStrategy.DefaultSleep) { implicit ir =>
+      updateRefArray(arr, 0) { _ => throw new MyException(2) }
+    }.attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
+    atomicallyInAsync(RetryStrategy.DefaultSleep) { implicit ir =>
+      panic(new MyException(3)) : String
+    }.attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
   }
 
   test("Exception in post-commit actions") {
@@ -1858,7 +1896,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       throwingRxns(ref, arr).traverse_ { throwingRxn =>
         checkWithPc(throwingRxn, classOf[MyException])
       }.flatMap { _ =>
-        specialExceptions(ref).traverse_ { case (throwingRxn, cls) =>
+        specialExceptions(ref, arr).traverse_ { case (throwingRxn, cls) =>
           checkWithPc(throwingRxn, cls)
         }
       }
@@ -1906,25 +1944,38 @@ private[choam] object RxnSpec {
     Rxn.unsafe.suspend { throw new MyException(19) },
     Rxn.unsafe.suspendContext(_ => throw new MyException(20)),
     Rxn.unsafe.panic(new MyException(21)),
-    // TODO: do these also with `atomically`:
+    // imperative API:
     Rxn.unsafe.embedUnsafe { implicit ir =>
       unsafe.updateRef(ref) { _ => throw new MyException(22) }
     },
     Rxn.unsafe.embedUnsafe { implicit ir =>
-      unsafe.updateRefArray(arr, 0) { _ => throw new MyException(22) }
+      unsafe.updateRefArray(arr, 0) { _ => throw new MyException(23) }
     },
-    // TODO: `RxnLocal`...
+    Rxn.unsafe.embedUnsafe { implicit ir =>
+      unsafe.panic(new MyException(24))
+    },
+    // `RxnLocal` (TODO: also test with leaked locals):
+    Rxn.unsafe.newLocal(0).flatMap(_.update(_ => throw new MyException(25))),
+    Rxn.unsafe.newLocal(0).flatMap(_.getAndUpdate(_ => throw new MyException(26))),
   )
 
-  private def specialExceptions(ref: Ref[Int]) = List[(Rxn[Any], Class[_ <: Throwable])](
-    // TODO: (ref.update(_ + 1) *> Rxn.unsafe.unread(ref), classOf[internal.mcas.Hamt.IllegalRemovalException]),
+  private def specialExceptions(ref: Ref[Int], arr: Ref.Array[Int]) = List[(Rxn[Any], Class[_ <: Throwable])](
+    (ref.update(_ + 1) *> Rxn.unsafe.unread(ref), classOf[internal.mcas.Hamt.IllegalRemovalException]),
     (Rxn.unsafe.assert(false, "foo"), classOf[AssertionError]),
     (Rxn.unsafe.ticketRead(ref).flatMap { ticket =>
       ref.update(_ + 1) *> ticket.unsafeSet(99)
     }, classOf[internal.mcas.LogEntry.TicketInvalidException]),
+    (Rxn.unsafe.ticketReadArray(arr, 0).flatMap { ticket =>
+      arr.unsafeUpdate(0)(_ + 1) *> ticket.unsafeSet(99)
+    }, classOf[internal.mcas.LogEntry.TicketInvalidException]),
     (Rxn.unsafe.embedUnsafe { implicit ir =>
       val ticket = unsafe.ticketRead(ref)
       unsafe.writeRef(ref, 42)
+      ticket.value = 99
+    }, classOf[internal.mcas.LogEntry.TicketInvalidException]),
+    (Rxn.unsafe.embedUnsafe { implicit ir =>
+      val ticket = unsafe.ticketReadArray(arr, 0)
+      unsafe.writeRefArray(arr, 0, 42)
       ticket.value = 99
     }, classOf[internal.mcas.LogEntry.TicketInvalidException]),
   )
