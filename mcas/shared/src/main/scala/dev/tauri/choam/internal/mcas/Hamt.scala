@@ -462,7 +462,36 @@ private[choam] object Hamt {
   }
 
   trait EntryVisitor[K, V, T] {
+
+    /**
+     * Called when `computeIfAbsent` (or similar methods)
+     * find that an entry is already present in the HAMT.
+     *
+     * The visitor must return an appropriate `V` to
+     * choose the action to take (see below).
+     *
+     * @param k The key of the entry
+     * @param v The value of the entry
+     * @param tok The token passed to `computeIfAbsent` (or similar).
+     * @return The existing value `v` to leave the entry unmodified;
+     *         or a new value `v2` to overwrite the entry (`v2 ne v`).
+     *         (The new value `v2` must have the same hash as `v`.)
+     */
     def entryPresent(k: K, v: V, tok: T): V
+
+    /**
+     * Called when `computeIfAbsent` (or similar methods)
+     * find that an entry is absent from the HAMT.
+     *
+     * The visitor must return an appropriate `V` to
+     * choose the action to take (see below).
+     *
+     * @param k The key of the missing entry
+     * @param tok The token passed to `computeIfAbsent` (or similar).
+     * @return `null` to leave the HAMT as it is; or a non-`null`
+     *         `v: V` to insert it into the HAMT. (The new value
+     *         `v` must have the same hash as `k`.)
+     */
     def entryAbsent(k: K, tok: T): V
   }
 
@@ -505,10 +534,13 @@ private[choam] object Hamt {
 
   private[this] val _tombingVisitor: EntryVisitor[HasHash, HasKey[HasHash], Any] = {
     new EntryVisitor[HasHash, HasKey[HasHash], Any] {
-      final override def entryPresent(k: HasHash, v: HasKey[HasHash], tok: Any): HasKey[HasHash] =
+      final override def entryPresent(k: HasHash, v: HasKey[HasHash], tok: Any): HasKey[HasHash] = {
+        _assert(!v.isInstanceOf[Tombstone])
         new Tombstone(k.hash)
-      final override def entryAbsent(k: HasHash, tok: Any): HasKey[HasHash] =
+      }
+      final override def entryAbsent(k: HasHash, tok: Any): HasKey[HasHash] = {
         null // OK, nothing to delete
+      }
     }
   }
 }
