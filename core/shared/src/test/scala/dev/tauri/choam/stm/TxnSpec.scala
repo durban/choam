@@ -197,6 +197,24 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("Unhandled exceptions") {
+    val exc = new MyException
+    val txns = List[Txn[Any]](
+      Txn.pure(42).map(_ => throw exc),
+      Txn.pure(42).flatMap(_ => throw exc),
+      Txn.pure(42).flatTap(_ => throw exc),
+      Txn.defer { throw exc },
+      Txn.tailRecM(42) { _ => throw exc },
+      Txn.tailRecM(0) { i =>
+        if (i == 0) Txn.pure(Left(1))
+        else throw exc
+      },
+    )
+    txns.traverse_ { throwingTxn =>
+      assertResultF(throwingTxn.commit.attempt, Left(exc))
+    }
+  }
+
   test("Txn.unique") {
     for {
       t1 <- Txn.unique.commit

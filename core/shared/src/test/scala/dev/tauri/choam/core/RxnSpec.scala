@@ -1786,13 +1786,12 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  // TODO: v--- these tests should have Txn equivalents
-
   test("Exception passthrough (unsafePerform)") {
     import RxnSpec.{ MyException, throwingRxns, specialExceptions }
     val ref = Ref(0).unsafePerform(this.mcasImpl)
     val arr = Ref.array(4, initial = 0).unsafePerform(this.mcasImpl)
-    for (r <- throwingRxns(ref, arr)) {
+    val local = Rxn.unsafe.newLocal(0).unsafePerform(this.mcasImpl)
+    for (r <- throwingRxns(ref, arr, local)) {
       assert(Either.catchOnly[MyException] {
         r.unsafePerform(this.mcasImpl)
       }.isLeft)
@@ -1806,8 +1805,8 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   test("Exception passthrough (Reactive)") {
     import RxnSpec.{ MyException, throwingRxns, specialExceptions }
-    (Ref(0) * Ref.array(4, initial = 0)).run[F].flatMap { case (ref, arr) =>
-      throwingRxns(ref, arr).traverse_ { r =>
+    (Ref(0) * Ref.array(4, 0) * Rxn.unsafe.newLocal(0)).run[F].flatMap { case ((ref, arr), local) =>
+      throwingRxns(ref, arr, local).traverse_ { r =>
         r.run[F].attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
       }.flatMap { _ =>
         specialExceptions(ref, arr).traverse_ { case (r, cls) =>
@@ -1860,27 +1859,28 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   }
 
   test("Exception in post-commit actions") {
-    // TODO: also test nested PCAs
     import RxnSpec.{ MyException, throwingRxns, specialExceptions }
-    (Ref(0) * Ref.array(4, initial = 0)).run[F].flatMap { case (ref, arr) =>
+    (Ref(0) * Ref.array(4, 0) * Rxn.unsafe.newLocal(0)).run[F].flatMap { case ((ref, arr), local) =>
 
       def checkWithPc(throwingRxn: Rxn[Any], cls: Class[_ <: Throwable]) = {
         for {
           ref <- Ref(0).run[F]
           pcRef <- Ref(0).run[F]
           res <- ref.update(_ + 1).as("foo").postCommit { _ =>
-            throwingRxn.void
+            pcRef.update(_ + 1) *> throwingRxn.void
           }.postCommit { _ =>
             pcRef.update(_ + 1)
           }.postCommit { _ =>
-            throwingRxn.void // TODO: use a different exception
+            pcRef.update(_ + 1) *> RxnSpec.throwMyException2
           }.run[F].attempt
           _ <- assertResultF(ref.get.run, 1)
           _ <- res match {
             case Left(ex: Rxn.PostCommitException) =>
               (ex.errors match {
                 case NonEmptyList(exc0, (exc1) :: Nil) =>
-                  assertF(cls.isInstance(exc0), s"unexpected (0): ${exc0}") *> assertF(cls.isInstance(exc1), s"unexpected (1): ${exc1}")
+                  assertF(cls.isInstance(exc0), s"unexpected (0): ${exc0}") *> (
+                    assertF(exc1.isInstanceOf[RxnSpec.MyException2], s"unexpected (1): ${exc1}")
+                  )
                 case errors =>
                   failF(s"unexpected errors: ${errors}")
               }) *> assertEqualsF(ex.committedResult, "foo")
@@ -1893,11 +1893,58 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         } yield ()
       }
 
-      throwingRxns(ref, arr).traverse_ { throwingRxn =>
+      throwingRxns(ref, arr, local).traverse_ { throwingRxn =>
         checkWithPc(throwingRxn, classOf[MyException])
       }.flatMap { _ =>
         specialExceptions(ref, arr).traverse_ { case (throwingRxn, cls) =>
           checkWithPc(throwingRxn, cls)
+        }
+      }
+    }
+  }
+
+  test("Exception in nested post-commit actions") {
+    import RxnSpec.{ MyException, throwingRxns, specialExceptions }
+    (Ref(0) * Ref.array(4, 0) * Rxn.unsafe.newLocal(0)).run[F].flatMap { case ((ref, arr), local) =>
+
+      def checkWithNestedPc(throwingRxn: Rxn[Any], cls: Class[_ <: Throwable]) = {
+        for {
+          ref <- Ref(0).run[F]
+          pcRef0 <- Ref(0).run[F]
+          pcRef1 <- Ref(0).run[F]
+          pcRef2 <- Ref(0).run[F]
+          res <- ref.update(_ + 1).as("bar").postCommit { _ =>
+            pcRef0.update(_ + 1).postCommit { _ =>
+              pcRef1.update(_ + 1) *> throwingRxn.void
+            }.postCommit { _ =>
+              pcRef2.update(_ + 1)
+            }
+          }.run[F].attempt
+          _ <- assertResultF(ref.get.run, 1)
+          _ <- res match {
+            case Left(ex: Rxn.PostCommitException) =>
+              (ex.errors match {
+                case NonEmptyList(exc0, Nil) =>
+                  assertF(cls.isInstance(exc0), s"unexpected: ${exc0}")
+                case errors =>
+                  failF(s"unexpected errors: ${errors}")
+              }) *> assertEqualsF(ex.committedResult, "bar")
+            case Left(ex) =>
+              F.raiseError(ex)
+            case Right(r) =>
+              failF(s"unexpected result: ${r}")
+          }
+          _ <- assertResultF(pcRef0.get.run, 1)
+          _ <- assertResultF(pcRef1.get.run, 0)
+          _ <- assertResultF(pcRef2.get.run, 1)
+        } yield ()
+      }
+
+      throwingRxns(ref, arr, local).traverse_ { throwingRxn =>
+        checkWithNestedPc(throwingRxn, classOf[MyException])
+      }.flatMap { _ =>
+        specialExceptions(ref, arr).traverse_ { case (throwingRxn, cls) =>
+          checkWithNestedPc(throwingRxn, cls)
         }
       }
     }
@@ -1907,15 +1954,22 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 private[choam] object RxnSpec {
 
   private[choam] final class MyException(id: Int) extends Exception(id.toString) {
-
-    def this() =
-      this(0)
-
-    final override def toString: String =
-      s"MyException(${id})"
+    def this() = this(0)
+    final override def toString: String = s"MyException(${id})"
   }
 
-  private[choam] def throwingRxns(ref: Ref[Int], arr: Ref.Array[Int]) = List[Rxn[Any]](
+  private final class MyException2(id: Int) extends Exception(id.toString) {
+    final override def toString: String = s"MyException2(${id})"
+  }
+
+  private val throwMyException2: Rxn[Unit] =
+    Rxn.pure(42).map(_ => throw new MyException2(99))
+
+  private[choam] def throwingRxns(
+    ref: Ref[Int],
+    arr: Ref.Array[Int],
+    leakedLocal: unsafe.RxnLocal[Int],
+  ) = List[Rxn[Any]](
     Rxn.pure(42).map(_ => throw new MyException(0)),
     Rxn.pure(43).flatMap(_ => throw new MyException(1)),
     Rxn.pure(44).flatMap[Unit](_ => throw new MyException(2)),
@@ -1933,7 +1987,7 @@ private[choam] object RxnSpec {
     Rxn.unsafe.delayContext { _ => throw new MyException(9) },
     Rxn.unsafe.delayContext2 { (_, _) => throw new MyException(10) },
     Rxn.unsafe.embedUnsafe { _ => throw new MyException(11) },
-    // TODO + also do these with `arr`:
+    // Ref (TODO):
     // ref.modify(_ => throw new MyException(12)),
     // ref.update(_ => throw new MyException(13)),
     // ref.tryUpdate(_ => throw new MyException(14)),
@@ -1954,9 +2008,27 @@ private[choam] object RxnSpec {
     Rxn.unsafe.embedUnsafe { implicit ir =>
       unsafe.panic(new MyException(24))
     },
-    // `RxnLocal` (TODO: also test with leaked locals):
+    // RxnLocal:
     Rxn.unsafe.newLocal(0).flatMap(_.update(_ => throw new MyException(25))),
     Rxn.unsafe.newLocal(0).flatMap(_.getAndUpdate(_ => throw new MyException(26))),
+    leakedLocal.update(_ => throw new MyException(27)),
+    leakedLocal.getAndUpdate(_ => throw new MyException(28)),
+    // Typeclass instances:
+    cats.Defer[Rxn].defer { throw new MyException(29) },
+    // Ref.Array (TODO):
+    // arr.unsafeUpdate(0)(_ => throw new MyException(30)),
+    // arr.unsafeModify(0)(_ => throw new MyException(31)),
+    // arr.update(0)(_ => throw new MyException(32)),
+    // arr.modify(0)(_ => throw new MyException(33)),
+    // arr.unsafeFlatModify(0)(_ => throw new MyException(34)),
+    // arr.unsafeGetAndUpdate(0)(_ => throw new MyException(35)),
+    // arr.refs(0).modify(_ => throw new MyException(36)),
+    // arr.refs(0).update(_ => throw new MyException(37)),
+    // arr.refs(0).tryUpdate(_ => throw new MyException(38)),
+    // arr.refs(0).getAndUpdate(_ => throw new MyException(39)),
+    // arr.refs(0).updateAndGet(_ => throw new MyException(40)),
+    // arr.refs(0).tryModify(_ => throw new MyException(41)),
+    // arr.refs(0).flatModify(_ => throw new MyException(42)),
   )
 
   private def specialExceptions(ref: Ref[Int], arr: Ref.Array[Int]) = List[(Rxn[Any], Class[_ <: Throwable])](

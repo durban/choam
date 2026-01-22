@@ -67,8 +67,8 @@ trait AsyncRxnSpec[F[_]]
   }
 
   test("Exception passthrough (AsyncReactive)") {
-    (Ref(0) * Ref.array(4, initial = 0)).run[F].flatMap { case (ref, arr) =>
-      throwingRxns(ref, arr).traverse_[F, Unit] { r =>
+    (Ref(0) * Ref.array(4, 0) * Rxn.unsafe.newLocal(0)).run[F].flatMap { case ((ref, arr), local) =>
+      throwingRxns(ref, arr, local).traverse_[F, Unit] { r =>
         AsyncReactive[F].runAsync(r, RetryStrategy.Default).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
         AsyncReactive[F].runAsync(r, RetryStrategy.Default.withCede).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
         AsyncReactive[F].runAsync(r, RetryStrategy.Default.withSleep).attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
