@@ -271,19 +271,21 @@ ThisBuild / githubWorkflowAddedJobs ~= { jobs =>
     val (acc, foundDepSubmission) = st
     val trJob = job.withSteps(job.steps.map(transformWorkflowStep))
     if (trJob.id == "dependency-submission") {
-      (trJob.withPermissions(Some(Permissions.Specify(
-        actions = PermissionValue.None,
-        checks = PermissionValue.None,
-        contents = PermissionValue.Write,
-        deployments = PermissionValue.None,
-        idToken = PermissionValue.None,
-        issues = PermissionValue.None,
-        packages = PermissionValue.None,
-        pages = PermissionValue.None,
-        pullRequests = PermissionValue.None,
-        repositoryProjects = PermissionValue.None,
-        securityEvents = PermissionValue.None,
-        statuses = PermissionValue.None,
+      (trJob
+        .withOses(List("ubuntu-slim"))
+        .withPermissions(Some(Permissions.Specify(
+          actions = PermissionValue.None,
+          checks = PermissionValue.None,
+          contents = PermissionValue.Write,
+          deployments = PermissionValue.None,
+          idToken = PermissionValue.None,
+          issues = PermissionValue.None,
+          packages = PermissionValue.None,
+          pages = PermissionValue.None,
+          pullRequests = PermissionValue.None,
+          repositoryProjects = PermissionValue.None,
+          securityEvents = PermissionValue.None,
+          statuses = PermissionValue.None,
       ))) :: acc, true)
     } else {
       (trJob :: acc, foundDepSubmission)
