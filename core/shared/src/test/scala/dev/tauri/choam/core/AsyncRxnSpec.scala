@@ -75,4 +75,48 @@ trait AsyncRxnSpec[F[_]]
       }
     }
   }
+
+  test("MaxRetriesExceeded exception handling") {
+    val str = RetryStrategy.Default.withMaxRetries(Some(1))
+    val throwingRxn = Rxn.unsafe.retry[Int]
+    for {
+      // simple:
+      _ <- AsyncReactive[F].runAsync(
+        throwingRxn,
+        str,
+      ).attemptNarrow[Rxn.MaxRetriesExceeded].flatMap(e => assertF(e.isLeft))
+      // in post-commit action:
+      pcRef1 <- Ref(0).run
+      pcRef2 <- Ref(0).run
+      _ <- AsyncReactive[F].runAsync(
+        Rxn.pure(42).postCommit(pcRef1.update(_ + 1) *> throwingRxn.void).postCommit(pcRef2.update(_ + 1)),
+        str,
+      ).attemptNarrow[Rxn.PostCommitException].flatMap[Unit] {
+        case Left(ex) =>
+          assertEqualsF(ex.committedResult, 42) *> assertEqualsF(ex.errors.size, 1) *> assertF(
+            ex.errors.head.isInstanceOf[Rxn.MaxRetriesExceeded]
+          )
+        case Right(r) =>
+          failF(s"unexpected success: ${r}")
+      }
+      _ <- assertResultF(pcRef1.get.run, 0)
+      _ <- assertResultF(pcRef2.get.run, 1)
+      // in nested post-commit action:
+      pcRef3 <- Ref(0).run
+      pcRef4 <- Ref(0).run
+      _ <- AsyncReactive[F].runAsync(
+        Rxn.pure(42).postCommit(pcRef3.update(_ + 1).postCommit(throwingRxn.void).postCommit(pcRef4.update(_ + 1))),
+        str,
+      ).attemptNarrow[Rxn.PostCommitException].flatMap[Unit] {
+        case Left(ex) =>
+          assertEqualsF(ex.committedResult, 42) *> assertEqualsF(ex.errors.size, 1) *> assertF(
+            ex.errors.head.isInstanceOf[Rxn.MaxRetriesExceeded]
+          )
+        case Right(r) =>
+          failF(s"unexpected success: ${r}")
+      }
+      _ <- assertResultF(pcRef3.get.run, 1)
+      _ <- assertResultF(pcRef4.get.run, 1)
+    } yield ()
+  }
 }

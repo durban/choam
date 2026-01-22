@@ -1376,7 +1376,7 @@ object Rxn extends RxnInstances0 {
         case c: TicketWrite[_] =>
           c.hwd.withNv(c.newest).cast[Any]
         case _ =>
-          throw new AssertionError(s"unexpected Rxn: ${curr.getClass}: $curr")
+          impossible(s"unexpected Rxn: ${curr.getClass}: $curr")
       }
       this._entryHolder = res // can be null
       res
@@ -1408,7 +1408,7 @@ object Rxn extends RxnInstances0 {
           // NB: same version.
           hwd.tryMergeTicket(c.hwd.cast[Any], c.newest)
         case _ =>
-          throw new AssertionError(s"unexpected Rxn: ${curr.getClass}: $curr")
+          impossible(s"unexpected Rxn: ${curr.getClass}: $curr")
       }
       this._entryHolder = res
       res
@@ -1865,31 +1865,33 @@ object Rxn extends RxnInstances0 {
       } else {
         _assert((!permanent) || this.isStm) // otherwise it is a misused `Rxn.unsafe.retryWhenChanged`
         // really retrying:
-        val retriesNow = this.retries + 1
+        val retriesWas = this.retries
+        val retriesNow = retriesWas + 1
         this.retries = retriesNow
         // check abnormal conditions:
         val mr = this.maxRetries
         if ((mr >= 0) && ((retriesNow > mr) || (retriesNow == Integer.MAX_VALUE))) {
           // TODO: maybe we could represent "infinity" with MAX_VALUE instead of -1?
-          throw new MaxRetriesExceeded(mr)
+          this.retries = retriesWas // we're not really retrying
+          nextOnPanic(new MaxRetriesExceeded(mr))
         } else {
           maybeCheckInterrupt(retriesNow)
+          // STM might still need these:
+          val d = if (this.isStm) this._desc else null
+          // restart everything:
+          clearDesc()
+          hasTentativeRead = false
+          a = null
+          resetConts()
+          pc.clear()
+          clearLocals()
+          backoffAndNext(
+            retriesNow,
+            canSuspend = canSuspend,
+            suspendUntilChanged = permanent,
+            desc = d,
+          )
         }
-        // STM might still need these:
-        val d = if (this.isStm) this._desc else null
-        // restart everything:
-        clearDesc()
-        hasTentativeRead = false
-        a = null
-        resetConts()
-        pc.clear()
-        clearLocals()
-        backoffAndNext(
-          retriesNow,
-          canSuspend = canSuspend,
-          suspendUntilChanged = permanent,
-          desc = d,
-        )
       }
     }
 
@@ -2636,7 +2638,7 @@ object Rxn extends RxnInstances0 {
         case null =>
           this.ctx = c
         case _ =>
-          throw new IllegalStateException("ctx is already initialized")
+          impossible("ctx is already initialized")
       }
     }
 
