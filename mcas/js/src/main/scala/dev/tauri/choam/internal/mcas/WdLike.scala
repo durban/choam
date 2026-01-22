@@ -77,7 +77,7 @@ final class LogEntry[A] private ( // formerly called HWD
       // OK, was not modified since reading the ticket:
       this.withNv(newest)
     } else {
-      throw new IllegalArgumentException // TODO
+      throw new LogEntry.TicketInvalidException(ticket.address, newest)
     }
   }
 
@@ -110,7 +110,12 @@ final class LogEntry[A] private ( // formerly called HWD
   }
 }
 
-private object LogEntry {
+object LogEntry {
+
+  final class TicketInvalidException(
+    ref: MemoryLocation[_],
+    nv: Any
+  ) extends IllegalStateException(s"ticket invalid for ${ref}; cannot write new value ${nv}")
 
   private[mcas] def apply[A](
     address: MemoryLocation[A],

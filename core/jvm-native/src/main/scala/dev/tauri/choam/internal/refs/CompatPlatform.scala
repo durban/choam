@@ -25,7 +25,7 @@ private[choam] object CompatPlatform {
     _root_.java.util.concurrent.atomic.AtomicReferenceArray[A]
 
   @inline
-  final def checkArrayIndexIfScalaJs(idx: Int, length: Int): Unit = {
+  final def checkArrayIndexIfScalaJs(idx: Int, length: Int): Unit = { // TODO: make it free for non-JS (macro?)
     // scala-js needs extra check for array indexing
     ()
   }

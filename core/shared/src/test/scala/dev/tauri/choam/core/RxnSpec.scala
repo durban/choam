@@ -24,7 +24,7 @@ import scala.concurrent.duration._
 
 import cats.kernel.Monoid
 import cats.{ Applicative, StackSafeMonad, Align, Defer }
-import cats.data.Ior
+import cats.data.{ Ior, NonEmptyList }
 import cats.effect.IO
 import cats.effect.kernel.{ Ref => CatsRef }
 
@@ -1375,7 +1375,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   }
 
   test("panic") {
-    val exc = new RxnSpec.MyException
+    val exc = new RxnSpec.MyException(99)
     for {
       _ <- assertResultF(Rxn.unsafe.panic(exc).run[F].attempt, Left(exc))
       _ <- assertResultF(Rxn.unsafe.panic(exc).run[F].attempt, Left(exc))
@@ -1405,7 +1405,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   }
 
   test("panic in post-commit actions (1)") {
-    val exc = new RxnSpec.MyException
+    val exc = new RxnSpec.MyException(1)
     for {
       r0 <- Ref(0).run[F]
       r1 <- Ref(0).run[F]
@@ -1430,8 +1430,8 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   }
 
   test("panic in post-commit actions (2)") {
-    val exc = new RxnSpec.MyException
-    val exc2 = new RxnSpec.MyException
+    val exc = new RxnSpec.MyException(21)
+    val exc2 = new RxnSpec.MyException(22)
     for {
       r0 <- Ref(0).run[F]
       r1 <- Ref(0).run[F]
@@ -1466,7 +1466,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   }
 
   test("unsafe.delay(throw), i.e., unsafe.panic") {
-    val exc = new RxnSpec.MyException
+    val exc = new RxnSpec.MyException(42)
     def attemptRun[A](axn: Rxn[A]): F[Either[Throwable, A]] = {
       axn.run[F].attempt
     }
@@ -1786,32 +1786,146 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  // TODO: v--- these tests should have Txn equivalents
+
   test("Exception passthrough (unsafePerform)") {
-    import RxnSpec.{ MyException, throwingRxns }
-    for (r <- throwingRxns) {
+    import RxnSpec.{ MyException, throwingRxns, specialExceptions }
+    val ref = Ref(0).unsafePerform(this.mcasImpl)
+    val arr = Ref.array(4, initial = 0).unsafePerform(this.mcasImpl)
+    for (r <- throwingRxns(ref, arr)) {
       assert(Either.catchOnly[MyException] {
         r.unsafePerform(this.mcasImpl)
       }.isLeft)
     }
+    for ((r, cls) <- specialExceptions(ref)) {
+      assert(Either.catchOnly[Throwable] {
+        r.unsafePerform(this.mcasImpl)
+      } (scala.reflect.ClassTag(cls), implicitly).isLeft)
+    }
   }
 
   test("Exception passthrough (Reactive)") {
-    import RxnSpec.{ MyException, throwingRxns }
-    throwingRxns.traverse_ { r =>
-      r.run[F].attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
+    import RxnSpec.{ MyException, throwingRxns, specialExceptions }
+    (Ref(0) * Ref.array(4, initial = 0)).run[F].flatMap { case (ref, arr) =>
+      throwingRxns(ref, arr).traverse_ { r =>
+        r.run[F].attemptNarrow[MyException].flatMap(e => assertF(e.isLeft))
+      }.flatMap { _ =>
+        specialExceptions(ref).traverse_ { case (r, cls) =>
+          r.run[F].attemptNarrow[Throwable](
+            implicitly,
+            scala.reflect.ClassTag(cls),
+            implicitly,
+          ).flatMap(e => assertF(e.isLeft))
+        }
+      }
+    }
+  }
+
+  test("Exception in post-commit actions") {
+    // TODO: also test nested PCAs
+    import RxnSpec.{ MyException, throwingRxns, specialExceptions }
+    (Ref(0) * Ref.array(4, initial = 0)).run[F].flatMap { case (ref, arr) =>
+
+      def checkWithPc(throwingRxn: Rxn[Any], cls: Class[_ <: Throwable]) = {
+        for {
+          ref <- Ref(0).run[F]
+          pcRef <- Ref(0).run[F]
+          res <- ref.update(_ + 1).as("foo").postCommit { _ =>
+            throwingRxn.void
+          }.postCommit { _ =>
+            pcRef.update(_ + 1)
+          }.postCommit { _ =>
+            throwingRxn.void // TODO: use a different exception
+          }.run[F].attempt
+          _ <- assertResultF(ref.get.run, 1)
+          _ <- res match {
+            case Left(ex: Rxn.PostCommitException) =>
+              (ex.errors match {
+                case NonEmptyList(exc0, (exc1) :: Nil) =>
+                  assertF(cls.isInstance(exc0), s"unexpected (0): ${exc0}") *> assertF(cls.isInstance(exc1), s"unexpected (1): ${exc1}")
+                case errors =>
+                  failF(s"unexpected errors: ${errors}")
+              }) *> assertEqualsF(ex.committedResult, "foo")
+            case Left(ex) =>
+              F.raiseError(ex)
+            case Right(r) =>
+              failF(s"unexpected result: ${r}")
+          }
+          _ <- assertResultF(pcRef.get.run, 1)
+        } yield ()
+      }
+
+      throwingRxns(ref, arr).traverse_ { throwingRxn =>
+        checkWithPc(throwingRxn, classOf[MyException])
+      }.flatMap { _ =>
+        specialExceptions(ref).traverse_ { case (throwingRxn, cls) =>
+          checkWithPc(throwingRxn, cls)
+        }
+      }
     }
   }
 }
 
 private[choam] object RxnSpec {
 
-  private[choam] class MyException extends Exception
+  private[choam] final class MyException(id: Int) extends Exception(id.toString) {
 
-  private[choam] val throwingRxns = List[Rxn[Any]](
-    Rxn.unit.map(_ => throw new MyException),
-    Rxn.unit.flatMap(_ => throw new MyException),
-    Rxn.unit.flatMap[Unit](_ => throw new MyException),
-    Rxn.unsafe.delay[Unit] { throw new MyException },
-    Rxn.pure(42L).postCommit(_ => Rxn.unit.map(_ => throw new MyException)),
+    def this() =
+      this(0)
+
+    final override def toString: String =
+      s"MyException(${id})"
+  }
+
+  private[choam] def throwingRxns(ref: Ref[Int], arr: Ref.Array[Int]) = List[Rxn[Any]](
+    Rxn.pure(42).map(_ => throw new MyException(0)),
+    Rxn.pure(43).flatMap(_ => throw new MyException(1)),
+    Rxn.pure(44).flatMap[Unit](_ => throw new MyException(2)),
+    Rxn.pure(45).flatTap(_ => throw new MyException(3)),
+    Rxn.unsafe.delay[Unit] { throw new MyException(4) },
+    Rxn.tailRecM(42) { _ => throw new MyException(5) },
+    Rxn.tailRecM(0) { i =>
+      if (i == 0) Rxn.pure(Left(1))
+      else throw new MyException(6)
+    },
+    Rxn.pure(45).map2[Int, Int](Rxn.pure(46)) { (_, _) =>
+      throw new MyException(7)
+    },
+    Rxn.pure(46).postCommit { _ => throw new MyException(8) },
+    Rxn.unsafe.delayContext { _ => throw new MyException(9) },
+    Rxn.unsafe.delayContext2 { (_, _) => throw new MyException(10) },
+    Rxn.unsafe.embedUnsafe { _ => throw new MyException(11) },
+    // TODO + also do these with `arr`:
+    // ref.modify(_ => throw new MyException(12)),
+    // ref.update(_ => throw new MyException(13)),
+    // ref.tryUpdate(_ => throw new MyException(14)),
+    // ref.getAndUpdate(_ => throw new MyException(15)),
+    // ref.updateAndGet(_ => throw new MyException(16)),
+    // ref.tryModify(_ => throw new MyException(17)),
+    // ref.flatModify(_ => throw new MyException(18)),
+    Rxn.unsafe.suspend { throw new MyException(19) },
+    Rxn.unsafe.suspendContext(_ => throw new MyException(20)),
+    Rxn.unsafe.panic(new MyException(21)),
+    // TODO: do these also with `atomically`:
+    Rxn.unsafe.embedUnsafe { implicit ir =>
+      unsafe.updateRef(ref) { _ => throw new MyException(22) }
+    },
+    Rxn.unsafe.embedUnsafe { implicit ir =>
+      unsafe.updateRefArray(arr, 0) { _ => throw new MyException(22) }
+    },
+    // TODO: `RxnLocal`...
+  )
+
+  private def specialExceptions(ref: Ref[Int]) = List[(Rxn[Any], Class[_ <: Throwable])](
+    // TODO: (ref.update(_ + 1) *> Rxn.unsafe.unread(ref), classOf[internal.mcas.Hamt.IllegalRemovalException]),
+    (Rxn.unsafe.assert(false, "foo"), classOf[AssertionError]),
+    (Rxn.unsafe.ticketRead(ref).flatMap { ticket =>
+      ref.update(_ + 1) *> ticket.unsafeSet(99)
+    }, classOf[internal.mcas.LogEntry.TicketInvalidException]),
+    (Rxn.unsafe.embedUnsafe { implicit ir =>
+      val ticket = unsafe.ticketRead(ref)
+      unsafe.writeRef(ref, 42)
+      ticket.value = 99
+    }, classOf[internal.mcas.LogEntry.TicketInvalidException]),
   )
 }

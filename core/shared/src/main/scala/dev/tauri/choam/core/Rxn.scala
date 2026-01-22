@@ -306,6 +306,8 @@ private[choam] sealed abstract class RxnImpl[+B]
     this.flatMap { _ => that }
 
   final override def flatTap(f: B => Rxn[Unit]): Rxn[B] = {
+    // Note: possible exceptions when calling `f`
+    // are handled when handling `flatMap`.
     this.flatMap { b => f(b).as(b) }
   }
 
@@ -354,7 +356,7 @@ private[choam] sealed abstract class RxnImpl[+B]
   }
 
   private[choam] final override def impl: RxnImpl[B] =
-    this // Note: this is unsafe in general, we must take care to only use it on Txns
+    this
 
   // /STM
 }
@@ -479,7 +481,7 @@ object Rxn extends RxnInstances0 {
     _rightUnit
 
   final def postCommit(pc: Rxn[Unit]): Rxn[Unit] =
-    new Rxn.PostCommit[Unit](unit, _ => pc)
+    new Rxn.PostCommit[Unit](unit, _ => pc) // TODO: create a variant without the lambda allocation
 
   private[core] final def postCommit[A](rxn: Rxn[A], pc: A => Rxn[Unit]): Rxn[A] =
     new Rxn.PostCommit(rxn, pc)
@@ -1158,7 +1160,7 @@ object Rxn extends RxnInstances0 {
     ck
   }
 
-  final class MaxRetriesExceeded(val maxRetries: Int)
+  final class MaxRetriesExceeded(maxRetries: Int)
     extends Exception(s"exceeded maxRetries of ${maxRetries}") {
 
     final override def fillInStackTrace(): Throwable =
@@ -1172,9 +1174,15 @@ object Rxn extends RxnInstances0 {
   // TODO: instead of this "composite" exception.
   // TODO: But: where to store `committedResult`?
   final class PostCommitException private[Rxn] (
-    val committedResult: Any,
-    val errors: NonEmptyList[Throwable],
-  ) extends Exception(s"${errors.size} exception(s) encountered during post-commit action(s)") {
+    _committedResult: Any,
+    _errors: NonEmptyList[Throwable],
+  ) extends Exception(s"${_errors.size} exception(s) encountered during post-commit action(s)") {
+
+    final def committedResult: Any =
+      _committedResult
+
+    final def errors: NonEmptyList[Throwable] =
+      _errors
 
     final override def fillInStackTrace(): Throwable =
       this
@@ -1217,7 +1225,8 @@ object Rxn extends RxnInstances0 {
       this._exParams = null
     }
 
-    private[this] var startRxn: Rxn[Any] = rxn
+    private[this] var startRxn: Rxn[Any] =
+      rxn
 
     private[this] var _desc: AbstractDescriptor =
       null
@@ -1268,8 +1277,8 @@ object Rxn extends RxnInstances0 {
     private[this] val alts: ArrayObjStack[Any] = new ArrayObjStack[Any](initSize = 8)
     private[this] val stmAlts: ArrayObjStack[Any] = new ArrayObjStack[Any](initSize = 2)
 
-    private[this] var locals: IdentityHashMap[InternalLocal, AnyRef] =
-      null
+    private[this] var locals: IdentityHashMap[InternalLocal, AnyRef] = null
+    private[choam] final override val localOrigin: unsafePackage.RxnLocal.Origin = new unsafePackage.RxnLocal.Origin
 
     // TODO: don't always call this (there are code paths where `locals` is certainly already initialized)
     private[this] final def getOrInitLocals(): IdentityHashMap[InternalLocal, AnyRef] = {
@@ -1282,9 +1291,6 @@ object Rxn extends RxnInstances0 {
           locals
       }
     }
-
-    private[choam] final override val localOrigin: unsafePackage.RxnLocal.Origin =
-      new unsafePackage.RxnLocal.Origin
 
     private[this] val contT: ByteStack = new ByteStack(initSize = 8)
     private[this] var contK: ObjStack[Any] = mkInitialContK()
@@ -1395,7 +1401,8 @@ object Rxn extends RxnInstances0 {
           }
           hwd.withNv(nx)
         case c: TicketWrite[_] =>
-          // NB: This throws if it was modified in the meantime.
+          // NB: This throws `TicketInvalidException` if it
+          // NB: was modified in the meantime (see `ticketWrite`).
           // NB: This doesn't need extra validation, as
           // NB: `tryMergeTicket` checks that they have the
           // NB: same version.
@@ -1722,7 +1729,10 @@ object Rxn extends RxnInstances0 {
           e match {
             case Left(more) =>
               contT.push(RxnConsts.ContTailRecM)
-              f(more)
+              val nxt = try { f(more) } catch { case ex if NonFatal(ex) =>
+                nextOnPanic(ex)
+              }
+              nxt
             case Right(done) =>
               a = done
               contK.pop() // a
@@ -1756,13 +1766,32 @@ object Rxn extends RxnInstances0 {
         case 10 => // ContFlatMapF
           impossible("ContFlatMapF")
         case 11 => // ContFlatMap
-          val n = contK.pop().asInstanceOf[Function1[Any, Rxn[Any]]].apply(a)
-          a = contK.pop()
-          n
+          val f = contK.pop().asInstanceOf[Function1[Any, Rxn[Any]]]
+          var nxt: Rxn[Any] = null
+          var exc: Throwable = null
+          try { nxt = f(a) } catch { case ex if NonFatal(ex) =>
+            exc = ex //note: never `null`
+          }
+          val b = contK.pop()
+          exc match {
+            case null => a = b
+            case ex => nxt = nextOnPanic(ex)
+          }
+          nxt
         case 12 => // ContMap
-          val b = contK.pop().asInstanceOf[Function1[Any, Any]].apply(a)
-          a = b
-          next()
+          val f = contK.pop().asInstanceOf[Function1[Any, Any]]
+          var exc: Throwable = null
+          var b: Any = null
+          try { b = f(a) } catch { case ex if NonFatal(ex) =>
+            exc = ex // note: never `null`
+          }
+          exc match {
+            case null =>
+              a = b
+              next()
+            case ex =>
+              nextOnPanic(ex)
+          }
         case 13 => // ContMap2Right
           val savedA = a
           a = contK.pop()
@@ -1773,8 +1802,18 @@ object Rxn extends RxnInstances0 {
           val leftRes = contK.pop()
           val rightRes = a
           val f = contK.pop().asInstanceOf[Function2[Any, Any, Any]]
-          a = f(leftRes, rightRes)
-          next()
+          var b: Any = null
+          var exc: Throwable = null
+          try { b = f(leftRes, rightRes) } catch { case ex if NonFatal(ex) =>
+            exc = ex // note: never `null`
+          }
+          exc match {
+            case null =>
+              a = b
+              next()
+            case ex =>
+              nextOnPanic(ex)
+          }
         case 15 => // ContOrElse
           discardStmAlt()
           next()
@@ -1783,9 +1822,19 @@ object Rxn extends RxnInstances0 {
           a = null
           nxt
         case 17 => // ContRegisterPostCommit
-          val f = contK.pop().asInstanceOf[Any => Rxn[Unit]]
-          pc.push(f(a))
-          next()
+          val f = contK.pop().asInstanceOf[Function1[Any, Rxn[Unit]]]
+          var pcRxn: Rxn[Unit] = null
+          var exc: Throwable = null
+          try { pcRxn = f(a) } catch { case ex if NonFatal(ex) =>
+            exc = ex // note: never `null`
+          }
+          exc match {
+            case null =>
+              pc.push(pcRxn)
+              next()
+            case ex =>
+              nextOnPanic(ex)
+          }
         case ct => // mustn't happen
           impossible(s"Unknown contT: ${ct} (next)")
       }
@@ -1907,6 +1956,7 @@ object Rxn extends RxnInstances0 {
     }
 
     /** Returns `true` if successful, `false` if retry is needed */
+    @throws[LogEntry.TicketInvalidException]
     private[this] final def ticketWrite[A](c: TicketWrite[A]): Boolean = {
       _assert(this._entryHolder eq null) // just to be sure
       a = () : Any
@@ -2107,16 +2157,9 @@ object Rxn extends RxnInstances0 {
           contK.push(c.pc)
           loop(c.rxn)
         case c: Lift[_] => // Lift
-          // TODO: Do we need to catch exceptions elsewhere? (This covers `delay`.)
-          // TODO: Probably at least:
-          // TODO: - when calling `f` in `tailRecM`
           val f = c.func
-          val nxt = try {
-            a = f()
-            null
-          } catch {
-            case ex if NonFatal(ex) =>
-              nextOnPanic(ex)
+          val nxt = try { a = f(); null } catch { case ex if NonFatal(ex) =>
+            nextOnPanic(ex)
           }
           loop(if (nxt ne null) nxt else next())
         case _: RetryWhenChanged[_] => // RetryWhenChanged (STM)
@@ -2149,12 +2192,17 @@ object Rxn extends RxnInstances0 {
           }
           loop(nxt)
         case c: TicketWrite[_] => // TicketWrite
-          if (ticketWrite(c)) {
-            loop(next())
-          } else {
-            _assert(this._desc eq null)
-            loop(retry())
+          val nxt = try {
+            if (ticketWrite(c)) { // throw if ticket is invalid
+              next()
+            } else {
+              _assert(this._desc eq null)
+              retry()
+            }
+          } catch { case ex: LogEntry.TicketInvalidException =>
+            nextOnPanic(ex)
           }
+          loop(nxt)
         case c: DirectRead[_] => // DirectRead
           a = ctx.readDirect(c.ref)
           loop(next())
@@ -2209,9 +2257,20 @@ object Rxn extends RxnInstances0 {
               committedResult
           }
         case c: Ctx[_] =>
-          val b = c.uf(ctx, this)
-          a = b
-          loop(next())
+          val ctx = this.ctx
+          var b: Any = null
+          var exc: Throwable = null
+          try { b = c.uf(ctx, this : InRxn.InterpState) } catch { case ex if NonFatal(ex) =>
+            exc = ex // note: never `null`
+          }
+          val nxt = exc match {
+            case null =>
+              a = b
+              next()
+            case ex =>
+              nextOnPanic(ex)
+          }
+          loop(nxt)
         case c: As[_, _, _] => // As
           contT.push(RxnConsts.ContAs)
           contK.push(c.c)
@@ -2284,22 +2343,20 @@ object Rxn extends RxnInstances0 {
         case c: MergeDescs =>
           val selfDesc = descImm
           val otherDesc = c.otherDesc
+          val canExtend = !this.hasTentativeRead
           _assert(otherDesc ne null)
           contT.push(RxnConsts.ContAndThen)
-          val nxt = try {
-            ctx.addAll(selfDesc, otherDesc, canExtend = !this.hasTentativeRead) match {
-              case null => // can't extend
-                clearDesc()
-                retry()
-              case mergedDesc =>
-                desc = mergedDesc
-                next()
-            }
-          } catch {
+          val addAllRes = try { ctx.addAll(selfDesc, otherDesc, canExtend = canExtend) } catch {
             case _: IllegalInsertException =>
-              //println("can't merge overlapping descriptors")
+              null // overlapping descriptors, will retry
+          }
+          val nxt = addAllRes match {
+            case null => // can't extend, or overlapping descriptors
               clearDesc()
               retry()
+            case mergedDesc =>
+              desc = mergedDesc
+              next()
           }
           loop(nxt)
         case c: TicketRead[a] =>
@@ -2326,7 +2383,7 @@ object Rxn extends RxnInstances0 {
           loop(c.left)
         case c: FlatMap[_, _, _] => // FlatMap
           contT.push(RxnConsts.ContFlatMap)
-          contK.push2(a, c.f)
+          contK.push2(a, c.f) // TODO: do we still need to push `a` here?
           loop(c.rxn)
         case c: Flatten[_] =>
           contT.push(RxnConsts.ContFlatten)
@@ -2338,9 +2395,16 @@ object Rxn extends RxnInstances0 {
           curr.asInstanceOf[R]
         case c: TailRecM[_, _] => // TailRecM
           val f = c.f
-          val nxt = f(c.a)
-          contT.push(RxnConsts.ContTailRecM)
-          contK.push2(f, a)
+          val a = c.a
+          var panic = false
+          val nxt = try { f(a) } catch { case ex if NonFatal(ex) =>
+            panic = true
+            nextOnPanic(ex)
+          }
+          if (!panic) {
+            contT.push(RxnConsts.ContTailRecM)
+            contK.push2(f, a)
+          }
           loop(nxt)
         case c: Map_[_, _] => // Map_
           contT.push(RxnConsts.ContMap)
@@ -2353,10 +2417,28 @@ object Rxn extends RxnInstances0 {
         case c: Unread[_] => // Unread
           if ((_desc ne null) && desc.nonEmpty) {
             val loc = c.ref.loc
-            desc = desc.removeReadOnlyRef(loc) // throws if not RO ref; NOP if it doesn't contain the ref
-          } // else: empty log, nothing to do
-          a = ()
-          loop(next())
+            val oldDesc = desc
+            var exc: Hamt.IllegalRemovalException = null
+            // throws `IllegalRemovalException` if not read-only; NOP if it doesn't contain the ref:
+            val newDesc = try { oldDesc.removeReadOnlyRef(loc) } catch {
+              case ex: Hamt.IllegalRemovalException =>
+                exc = ex
+                null
+            }
+            val nxt = exc match {
+              case null =>
+                desc = newDesc
+                a = ()
+                next()
+              case ex =>
+                nextOnPanic(ex)
+            }
+            loop(nxt)
+          } else {
+            // empty log, nothing to do
+            a = ()
+            loop(next())
+          }
         case c: TentativeRead[_] => // TentativeRead
           val hwd = tentativeRead(c.loc)
           val nxt = if (hwd eq null) {
@@ -2519,6 +2601,8 @@ object Rxn extends RxnInstances0 {
               val len = local.size
               _assert(snapArr.length == len)
               val arr = new Array[AnyRef](len)
+              CompatPlatform.checkArrayIndexIfScalaJs(len - 1, snapArr.length)
+              CompatPlatform.checkArrayIndexIfScalaJs(len - 1, arr.length)
               System.arraycopy(snapArr, 0, arr, 0, len)
               locals.put(local, arr) : Unit
             case _ =>
@@ -2528,6 +2612,8 @@ object Rxn extends RxnInstances0 {
           val snapArr = snap.asInstanceOf[Array[AnyRef]]
           val len = arr.length
           _assert(snapArr.length == len)
+          CompatPlatform.checkArrayIndexIfScalaJs(len - 1, snapArr.length)
+          CompatPlatform.checkArrayIndexIfScalaJs(len - 1, arr.length)
           System.arraycopy(snapArr, 0, arr, 0, len)
         case _ =>
           impossible(s"unexpected value for ${local}")
@@ -2668,7 +2754,7 @@ object Rxn extends RxnInstances0 {
 
     final override def imperativeTicketWrite[A](hwd: LogEntry[A], newest: A): Unit = {
       val c = new Rxn.TicketWrite(hwd, newest)
-      if (!ticketWrite(c)) {
+      if (!ticketWrite(c)) { // NB: may throw TicketInvalidException, handled by `embedUnsafe`
         _assert(this._desc eq null)
         throw unsafePackage.RetryException.notPermanentFailure
       }
@@ -2708,7 +2794,7 @@ private sealed abstract class RxnInstances2 extends RxnInstances3 { this: Rxn.ty
   // inherit `StackSafeMonad`, in case someone
   // somewhere uses that as a marker or even a
   // typeclass:
-  implicit final def monadInstance: StackSafeMonad[Rxn] =
+  implicit final def monadInstance: StackSafeMonad[Rxn] = // TODO:0.5: rename to `monadForRxn` or something
     _monadInstance
 
   private[this] val _monadInstance: StackSafeMonad[Rxn] = new StackSafeMonad[Rxn] {
@@ -2739,7 +2825,7 @@ private sealed abstract class RxnInstances2 extends RxnInstances3 { this: Rxn.ty
 
 private sealed abstract class RxnInstances3 extends RxnInstances4 { self: Rxn.type =>
 
-  implicit final def uniqueInstance: Unique[Rxn] =
+  implicit final def uniqueInstance: Unique[Rxn] = // TODO:0.5: rename to `uniqueForRxn` or something
     _uniqueInstance
 
   private[this] val _uniqueInstance: Unique[Rxn] = new Unique[Rxn] {
@@ -2764,7 +2850,7 @@ private sealed abstract class RxnInstances5 extends RxnInstances6 { this: Rxn.ty
       x + y
   }
 
-  implicit final def monoidInstance[B](implicit B: Monoid[B]): Monoid[Rxn[B]] = new Monoid[Rxn[B]] {
+  implicit final def monoidInstance[B](implicit B: Monoid[B]): Monoid[Rxn[B]] = new Monoid[Rxn[B]] { // TODO:0.5: rename
     final override def combine(x: Rxn[B], y: Rxn[B]): Rxn[B] =
       x.map2(y) { (b1, b2) => B.combine(b1, b2) }
     final override def empty: Rxn[B] =
@@ -2774,7 +2860,7 @@ private sealed abstract class RxnInstances5 extends RxnInstances6 { this: Rxn.ty
 
 private sealed abstract class RxnInstances6 extends RxnInstances7 { self: Rxn.type =>
 
-  implicit final def deferInstance: Defer[Rxn] =
+  implicit final def deferInstance: Defer[Rxn] = // TODO:0.5: rename
     _deferInstance
 
   private[this] val _deferInstance: Defer[Rxn] = new Defer[Rxn] {
@@ -2837,7 +2923,7 @@ private sealed abstract class RxnInstances6 extends RxnInstances7 { self: Rxn.ty
 
 private sealed abstract class RxnInstances7 extends RxnInstances8 { self: Rxn.type =>
 
-  implicit final def showInstance[B]: Show[Rxn[B]] =
+  implicit final def showInstance[B]: Show[Rxn[B]] = // TODO:0.5: rename
     _showInstance.asInstanceOf[Show[Rxn[B]]]
 
   private[this] val _showInstance: Show[Rxn[Any]] = new Show[Rxn[Any]] {
@@ -2854,7 +2940,7 @@ private sealed abstract class RxnInstances7 extends RxnInstances8 { self: Rxn.ty
 
 private sealed abstract class RxnInstances8 extends RxnInstances9 { self: Rxn.type =>
 
-  implicit final def alignInstance: Align[Rxn] =
+  implicit final def alignInstance: Align[Rxn] = // TODO:0.5: rename
     _alignInstance
 
   private[this] val _alignInstance: Align[Rxn] = new Align[Rxn] {
@@ -2873,7 +2959,7 @@ private sealed abstract class RxnInstances8 extends RxnInstances9 { self: Rxn.ty
 
 private sealed abstract class RxnInstances9 extends RxnInstances10 { self: Rxn.type =>
 
-  implicit final def uuidGenInstance: UUIDGen[Rxn] =
+  implicit final def uuidGenInstance: UUIDGen[Rxn] = // TODO:0.5: rename
     self._uuidGen
 
   private[this] val _uuidGen: UUIDGen[Rxn] = new UUIDGen[Rxn] {
@@ -2886,7 +2972,7 @@ private sealed abstract class RxnInstances10 extends RxnInstances11 { self: Rxn.
 
   import scala.concurrent.duration.{ FiniteDuration, NANOSECONDS, MILLISECONDS }
 
-  implicit final def clockInstance: Clock[Rxn] =
+  implicit final def clockInstance: Clock[Rxn] = // TODO:0.5: rename
     _clockInstance
 
   private[this] val _clockInstance: Clock[Rxn] = new Clock[Rxn] {
@@ -2901,7 +2987,7 @@ private sealed abstract class RxnInstances10 extends RxnInstances11 { self: Rxn.
 
 private sealed abstract class RxnInstances11 extends RxnSyntax0 { self: Rxn.type =>
 
-  implicit final def catsRefMakeInstance: CatsRef.Make[Rxn] =
+  implicit final def catsRefMakeInstance: CatsRef.Make[Rxn] = // TODO:0.5: rename
     _catsRefMakeInstance
 
   private[this] val _catsRefMakeInstance: CatsRef.Make[Rxn] = new CatsRef.Make[Rxn] {
