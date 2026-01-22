@@ -1875,6 +1875,12 @@ object Rxn extends RxnInstances0 {
           this.retries = retriesWas // we're not really retrying
           nextOnPanic(new MaxRetriesExceeded(mr))
         } else {
+          // Note: if the thread is interrupted, the next line
+          // will just throw; we're intentionally NOT going through
+          // `nextOnPanic`, because that could (potentially) cause
+          // us to do more work (potentially also needing more
+          // interrupt...), and that would mean that we're not
+          // obeying the thread interruption.
           maybeCheckInterrupt(retriesNow)
           // STM might still need these:
           val d = if (this.isStm) this._desc else null
@@ -2195,7 +2201,7 @@ object Rxn extends RxnInstances0 {
           loop(nxt)
         case c: TicketWrite[_] => // TicketWrite
           val nxt = try {
-            if (ticketWrite(c)) { // throw if ticket is invalid
+            if (ticketWrite(c)) { // throws if ticket is invalid
               next()
             } else {
               _assert(this._desc eq null)
