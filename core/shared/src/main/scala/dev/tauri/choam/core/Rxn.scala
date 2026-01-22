@@ -1378,7 +1378,8 @@ object Rxn extends RxnInstances0 {
         case _ =>
           impossible(s"unexpected Rxn: ${curr.getClass}: $curr")
       }
-      this._entryHolder = res // can be null
+      _assert(res ne null)
+      this._entryHolder = res
       res
     }
 

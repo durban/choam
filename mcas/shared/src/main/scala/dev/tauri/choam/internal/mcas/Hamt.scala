@@ -464,7 +464,7 @@ private[choam] object Hamt {
   trait EntryVisitor[K, V, T] {
 
     /**
-     * Called when `computeIfAbsent` (or similar methods)
+     * Called when `computeIfAbsent` or `computeOrModify`
      * find that an entry is already present in the HAMT.
      *
      * The visitor must return an appropriate `V` to
@@ -472,22 +472,25 @@ private[choam] object Hamt {
      *
      * @param k The key of the entry
      * @param v The value of the entry
-     * @param tok The token passed to `computeIfAbsent` (or similar).
-     * @return The existing value `v` to leave the entry unmodified;
-     *         or a new value `v2` to overwrite the entry (`v2 ne v`).
-     *         (The new value `v2` must have the same hash as `v`.)
+     * @param tok The token passed to `computeIfAbsent` or `computeOrModify`.
+     * @return For `computeIfAbsent` the existing value `v` (as no modification
+     *         is allowed).
+     *         For `computeOrModify` the existing value `v` to leave the
+     *         entry unmodified; or a new value `v2` to overwrite the
+     *         entry (`v2 ne v`). (The new value `v2` must have the same
+     *         hash as `v`.)
      */
     def entryPresent(k: K, v: V, tok: T): V
 
     /**
-     * Called when `computeIfAbsent` (or similar methods)
+     * Called when `computeIfAbsent` or `computeOrModify`
      * find that an entry is absent from the HAMT.
      *
      * The visitor must return an appropriate `V` to
      * choose the action to take (see below).
      *
      * @param k The key of the missing entry
-     * @param tok The token passed to `computeIfAbsent` (or similar).
+     * @param tok The token passed to `computeIfAbsent` or `computeOrModify`.
      * @return `null` to leave the HAMT as it is; or a non-`null`
      *         `v: V` to insert it into the HAMT. (The new value
      *         `v` must have the same hash as `k`.)
