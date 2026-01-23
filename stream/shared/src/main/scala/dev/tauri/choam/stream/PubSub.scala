@@ -151,9 +151,10 @@ object PubSub {
   final object Backpressured extends Result
   final object Success extends Result // TODO: extends ClosedOrSuccess
 
-  private[this] val _axnClosed = Rxn.pure(Closed)
-  private[this] val _axnBackpressured = Rxn.pure(Backpressured)
-  private[this] val _axnSuccess = Rxn.pure(Success)
+  private[this] val _axnClosed: Rxn[Result] = Rxn.pure(Closed)
+  private[this] val _axnBackpressured: Rxn[Result] = Rxn.pure(Backpressured)
+  private[this] val _axnSuccess: Rxn[Success.type] = Rxn.pure(Success)
+  private[this] val _axnRightSuccess: Rxn[Either[Nothing, Result]] = Rxn.pure(Right(Success))
   private[this] val _rightUnit: Right[Nothing, Unit] = Right(())
   private[this] val _leftTopicClosed: Left[Topic.Closed, Nothing] = Left(Topic.Closed)
 
@@ -360,7 +361,7 @@ object PubSub {
         newChunk: Chunk[A],
         missingCapacity: Int,
         canSuspend: Boolean,
-      ): Rxn[HandleOverflowResult] = impossible(
+      ): Rxn[HandleOverflowResult] = Rxn.unsafe.impossibleRxn(
         s"OverflowStrategy.Unbounded#handleOverflow (..., chunkSize = ${newChunk.size}, missingCapacity = $missingCapacity)"
       )
     }
@@ -392,7 +393,7 @@ object PubSub {
       ): Rxn[Unit] = {
         underlying.tryTakeLast.flatMap {
           case None =>
-            impossible(s"empty UnboundedDeque, but need to drop oldest ${n}")
+            Rxn.unsafe.impossibleRxn(s"empty UnboundedDeque, but need to drop oldest ${n}")
           case Some(chunk: SignalChunk[_]) =>
             dropOldestN(underlying, n, chunk :: putItBack)
           case Some(chunk) =>
@@ -628,7 +629,7 @@ object PubSub {
                           } else {
                             publish1.flatMap {
                               case Left(_) =>
-                                impossible("dryRun = false, and got Left")
+                                Rxn.unsafe.impossibleRxn("dryRun = false, and got Left")
                               case Right(_) =>
                                 go(itr, dryRun = false)
                             }
@@ -647,11 +648,11 @@ object PubSub {
                         )))
                       case Right(()) =>
                         // dry run was successful, now we can do it for real:
-                        Rxn.unsafe.delay(subsMap.valuesIterator).flatMap(go(_, dryRun = false)).map {
+                        Rxn.unsafe.delay(subsMap.valuesIterator).flatMap(go(_, dryRun = false)).flatMap {
                           case Left(_) =>
-                            impossible("got Left after a successful dryRun")
+                            Rxn.unsafe.impossibleRxn("got Left after a successful dryRun")
                           case Right(()) =>
-                            Right(Success)
+                            _axnRightSuccess
                         }
                     }
                   }

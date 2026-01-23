@@ -60,11 +60,11 @@ private final class Fs2SignallingRefWrapper[F[_], A](
     }
 
     private[this] def notifyListeners(newVal: A): Rxn[Unit] = {
-      pubSub.emit(newVal).map {
+      pubSub.emit(newVal).flatMap {
         case PubSub.Success =>
-          () // ok
+          Rxn.unit // ok
         case otherResult =>
-          impossible(s"notifyListeners got ${otherResult}")
+          Rxn.unsafe.impossibleRxn(s"notifyListeners got ${otherResult}")
       }
     }
   }

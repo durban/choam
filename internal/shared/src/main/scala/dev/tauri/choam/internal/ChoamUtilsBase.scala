@@ -44,7 +44,8 @@ private[choam] abstract class ChoamUtilsBase extends ChoamUtilsBasePlatform {
   private[choam] final def isNull[A](a: A): Boolean =
     box(a) eq null
 
+  /** @see Rxn.unsafe.impossibleRxn */
   @inline
-  private[choam] final def impossible(s: String): Nothing = // TODO: create a (private) Rxn.impossible(...) : Rxn[Nothing]
+  private[choam] final def impossible(s: String): Nothing =
     throw new AssertionError(s)
 }

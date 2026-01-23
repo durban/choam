@@ -1404,6 +1404,12 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("impossibleRxn") {
+    Rxn.unsafe.impossibleRxn("foo").run[F].attemptNarrow[AssertionError].flatMap { (e: Either[AssertionError, Nothing]) =>
+      assertF(e.isLeft)
+    }
+  }
+
   test("panic in post-commit actions (1)") {
     val exc = new RxnSpec.MyException(1)
     for {

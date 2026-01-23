@@ -705,6 +705,11 @@ object Rxn extends RxnInstances0 {
       else panic(new AssertionError(msg))
     }
 
+    /** @see ChoamUtilsBase#impossible */
+    private[choam] final def impossibleRxn(msg: String): Rxn[Nothing] = {
+      panic(new AssertionError(msg))
+    }
+
     private[choam] final def panicImpl[A](ex: Throwable): RxnImpl[A] =
       delayImpl[A] { imperativePanicImpl[A](ex) }
 

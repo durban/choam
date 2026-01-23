@@ -73,7 +73,7 @@ private[choam] final class RemoveQueue[A] private[this] (
           if (isRemoved(a)) {
             skipRemoved(nextRef)
           } else if (isDequeued(a)) {
-            impossible("poll found an already dequeued node")
+            Rxn.unsafe.impossibleRxn("poll found an already dequeued node")
           } else {
             dataRef.set(dequeued[A]).as(Some((a, n)))
           }
@@ -90,7 +90,7 @@ private[choam] final class RemoveQueue[A] private[this] (
           if (isRemoved(a)) {
             skipRemovedRo(nextRef)
           } else if (isDequeued(a)) {
-            impossible("peek found an already dequeued node")
+            Rxn.unsafe.impossibleRxn("peek found an already dequeued node")
           } else {
             Rxn.pure(Some(a))
           }
@@ -108,7 +108,7 @@ private[choam] final class RemoveQueue[A] private[this] (
             if (isRemoved(a)) {
               go(nextRef)
             } else if (isDequeued(a)) {
-              impossible("isEmpty found an already dequeued node")
+              Rxn.unsafe.impossibleRxn("isEmpty found an already dequeued node")
             } else {
               Rxn.false_
             }
