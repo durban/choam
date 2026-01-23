@@ -1931,7 +1931,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
             case Left(ex: Rxn.PostCommitException) =>
               (ex.errors match {
                 case NonEmptyList(exc0, Nil) =>
-                  assertF(cls.isInstance(exc0), s"unexpected: ${exc0}")
+                  if (cls.isInstance(exc0)) F.unit else F.raiseError(exc0)
                 case errors =>
                   failF(s"unexpected errors: ${errors}")
               }) *> assertEqualsF(ex.committedResult, "bar")
@@ -1993,14 +1993,14 @@ private[choam] object RxnSpec {
     Rxn.unsafe.delayContext { _ => throw new MyException(9) },
     Rxn.unsafe.delayContext2 { (_, _) => throw new MyException(10) },
     Rxn.unsafe.embedUnsafe { _ => throw new MyException(11) },
-    // Ref (TODO):
-    // ref.modify(_ => throw new MyException(12)),
-    // ref.update(_ => throw new MyException(13)),
-    // ref.tryUpdate(_ => throw new MyException(14)),
-    // ref.getAndUpdate(_ => throw new MyException(15)),
-    // ref.updateAndGet(_ => throw new MyException(16)),
-    // ref.tryModify(_ => throw new MyException(17)),
-    // ref.flatModify(_ => throw new MyException(18)),
+    // Ref:
+    ref.modify(_ => throw new MyException(12)),
+    ref.update(_ => throw new MyException(13)),
+    ref.tryUpdate(_ => throw new MyException(14)),
+    ref.getAndUpdate(_ => throw new MyException(15)),
+    ref.updateAndGet(_ => throw new MyException(16)),
+    ref.tryModify(_ => throw new MyException(17)),
+    ref.flatModify(_ => throw new MyException(18)),
     Rxn.unsafe.suspend { throw new MyException(19) },
     Rxn.unsafe.suspendContext(_ => throw new MyException(20)),
     Rxn.unsafe.panic(new MyException(21)),
@@ -2021,20 +2021,20 @@ private[choam] object RxnSpec {
     leakedLocal.getAndUpdate(_ => throw new MyException(28)),
     // Typeclass instances:
     cats.Defer[Rxn].defer { throw new MyException(29) },
-    // Ref.Array (TODO):
-    // arr.unsafeUpdate(0)(_ => throw new MyException(30)),
-    // arr.unsafeModify(0)(_ => throw new MyException(31)),
-    // arr.update(0)(_ => throw new MyException(32)),
-    // arr.modify(0)(_ => throw new MyException(33)),
-    // arr.unsafeFlatModify(0)(_ => throw new MyException(34)),
-    // arr.unsafeGetAndUpdate(0)(_ => throw new MyException(35)),
-    // arr.refs(0).modify(_ => throw new MyException(36)),
-    // arr.refs(0).update(_ => throw new MyException(37)),
-    // arr.refs(0).tryUpdate(_ => throw new MyException(38)),
-    // arr.refs(0).getAndUpdate(_ => throw new MyException(39)),
-    // arr.refs(0).updateAndGet(_ => throw new MyException(40)),
-    // arr.refs(0).tryModify(_ => throw new MyException(41)),
-    // arr.refs(0).flatModify(_ => throw new MyException(42)),
+    // Ref.Array:
+    arr.unsafeUpdate(0)(_ => throw new MyException(30)),
+    arr.unsafeModify(0)(_ => throw new MyException(31)),
+    arr.update(0)(_ => throw new MyException(32)),
+    arr.modify(0)(_ => throw new MyException(33)),
+    arr.unsafeFlatModify(0)(_ => throw new MyException(34)),
+    arr.unsafeGetAndUpdate(0)(_ => throw new MyException(35)),
+    arr.refs(0).modify(_ => throw new MyException(36)),
+    arr.refs(0).update(_ => throw new MyException(37)),
+    arr.refs(0).tryUpdate(_ => throw new MyException(38)),
+    arr.refs(0).getAndUpdate(_ => throw new MyException(39)),
+    arr.refs(0).updateAndGet(_ => throw new MyException(40)),
+    arr.refs(0).tryModify(_ => throw new MyException(41)),
+    arr.refs(0).flatModify(_ => throw new MyException(42)),
   )
 
   private def specialExceptions(ref: Ref[Int], arr: Ref.Array[Int]) = List[(Rxn[Any], Class[_ <: Throwable])](

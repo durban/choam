@@ -1196,6 +1196,33 @@ object Rxn extends RxnInstances0 {
       throw new IllegalStateException // something is seriously wrong
   }
 
+  /**
+   * Used to temporarily package a `Throwable` into a known exception type
+   *
+   * We use this to distinguish exceptions thrown by user-provided "functions"
+   * from real bugs in our library. When calling a user-provided function
+   * deeply from the main loop (where we can't easily panic), we wrap any
+   * exception in this wrapper. Then, in the main loop, we catch these, and
+   * unwrap, and panic. (Conversely, for exceptions caused by real bugs here
+   * we don't want this extra handling, we want to blow up immediately.)
+   *
+   * Yes, this wrapping-unwrapping has performance penalties, but in these
+   * cases we're panicking anyway... so we don't really care how FAST we're
+   * panicking...
+   */
+  private final class WrapExc private[Rxn] (val exc: Throwable) extends Exception {
+
+    final override def fillInStackTrace(): Throwable =
+      this
+
+    final override def initCause(cause: Throwable): Throwable =
+      throw new IllegalStateException // something is seriously wrong
+  }
+
+  private[this] final def wrap(exc: Throwable): WrapExc = {
+    new WrapExc(exc)
+  }
+
   /** Panic while doing execution for the "other" side of an exchange */
   private[this] final class ExchangePanic(val ex: Throwable)
 
@@ -1366,11 +1393,11 @@ object Rxn extends RxnInstances0 {
             val ox = hwd.nv
             val nx = c match {
               case c: UpdSingle[_] =>
-                val nx = c.f(ox)
+                val nx = try { c.f(ox) } catch { case ex if NonFatal(ex) => throw wrap(ex) }
                 this.a = ()
                 nx
               case c: UpdTuple[_, _] =>
-                val (nx, b) = c.f(ox)
+                val (nx, b) = try { c.f(ox) } catch { case ex if NonFatal(ex) => throw wrap(ex) }
                 this.a = b
                 nx
             }
@@ -1397,11 +1424,11 @@ object Rxn extends RxnInstances0 {
           val ox = hwd.cast[x].nv
           val nx = c match {
             case c: UpdSingle[_] =>
-              val nx = c.f(ox)
+              val nx = try { c.f(ox) } catch { case ex if NonFatal(ex) => throw wrap(ex) }
               this.a = ()
               nx
             case c: UpdTuple[_, _] =>
-              val (nx, b) = c.f(ox)
+              val (nx, b) = try { c.f(ox) } catch { case ex if NonFatal(ex) => throw wrap(ex) }
               this.a = b
               nx
           }
@@ -1994,11 +2021,11 @@ object Rxn extends RxnInstances0 {
           val ox = hwd.cast[C].nv
           val nx = c match {
             case c: UpdSingle[_] =>
-              val nx = c.f(ox)
+              val nx = try { c.f(ox) } catch { case ex if NonFatal(ex) => throw wrap(ex) }
               this.a = ()
               nx
             case c: UpdTuple[_, _] =>
-              val (nx, b) = c.f(ox)
+              val (nx, b) = try { c.f(ox) } catch { case ex if NonFatal(ex) => throw wrap(ex) }
               this.a = b
               nx
           }
@@ -2199,11 +2226,13 @@ object Rxn extends RxnInstances0 {
           contK.push3(c.f, c.right, a)
           loop(c.left)
         case c: UpdBase[_, _] =>
-          val nxt = if (handleUpd(c)) {
-            next()
-          } else {
-            retry()
-          }
+          val nxt = try {
+            if (handleUpd(c)) { // may throw WrapExc
+              next()
+            } else {
+              retry()
+            }
+          } catch { case ex: WrapExc => nextOnPanic(ex.exc) }
           loop(nxt)
         case c: TicketWrite[_] => // TicketWrite
           val nxt = try {
@@ -2213,8 +2242,11 @@ object Rxn extends RxnInstances0 {
               _assert(this._desc eq null)
               retry()
             }
-          } catch { case ex: LogEntry.TicketInvalidException =>
-            nextOnPanic(ex)
+          } catch {
+            case ex: LogEntry.TicketInvalidException =>
+              nextOnPanic(ex)
+            case ex: WrapExc =>
+              impossible(s"wrapped exception thrown from ticketWrite: ${ex.exc}")
           }
           loop(nxt)
         case c: DirectRead[_] => // DirectRead
@@ -2670,7 +2702,10 @@ object Rxn extends RxnInstances0 {
 
     final override def readRef[A](ref: MemoryLocation[A]): A = {
       _assert(this._entryHolder eq null) // just to be sure
-      desc = desc.computeIfAbsent(ref.cast[Any], tok = ref.asInstanceOf[Rxn[Any]], visitor = this)
+      val oldDesc = desc
+      desc = try {
+        oldDesc.computeIfAbsent(ref.cast[Any], tok = ref.asInstanceOf[Rxn[Any]], visitor = this)
+      } catch { case ex: WrapExc => impossible(s"wrapped exception thrown from computeIfAbsent with Ref: ${ex.exc}") }
       val hwd = this._entryHolder.cast[A]
       this._entryHolder = null // cleanup
       val hwd2 = revalidateIfNeeded(hwd)
@@ -2691,8 +2726,12 @@ object Rxn extends RxnInstances0 {
 
     final override def writeRef[A](ref: MemoryLocation[A], nv: A): Unit = {
       val c = new Rxn.UpdSet1(ref, nv)
-      if (!handleUpd(c)) {
-        throw unsafePackage.RetryException.notPermanentFailure
+      try {
+        if (!handleUpd(c)) { // may throw WrapExc
+          throw unsafePackage.RetryException.notPermanentFailure
+        }
+      } catch { case ex: WrapExc =>
+        throw ex.exc
       }
     }
 
@@ -2705,8 +2744,12 @@ object Rxn extends RxnInstances0 {
 
     final override def updateRef[A](ref: MemoryLocation[A], f: A => A): Unit = {
       val c = new Rxn.UpdUpdate1(ref, f)
-      if (!handleUpd(c)) {
-        throw unsafePackage.RetryException.notPermanentFailure
+      try {
+        if (!handleUpd(c)) { // may throw WrapExc
+          throw unsafePackage.RetryException.notPermanentFailure
+        }
+      } catch { case ex: WrapExc =>
+        throw ex.exc
       }
     }
 
@@ -2719,13 +2762,17 @@ object Rxn extends RxnInstances0 {
 
     final override def getAndSetRef[A](ref: MemoryLocation[A], nv: A): A = {
       val c = new Rxn.UpdFull(ref, { (ov: A) => (nv, ov) })
-      if (!handleUpd(c)) {
-        throw unsafePackage.RetryException.notPermanentFailure
-      } else {
-        // Note: this.a is garbage now, but will be
-        // overwritten with the result immediately
-        // when `embedUnsafe` ends.
-        aCastTo[A]
+      try {
+        if (!handleUpd(c)) { // may throw WrapExc
+          throw unsafePackage.RetryException.notPermanentFailure
+        } else {
+          // Note: this.a is garbage now, but will be
+          // overwritten with the result immediately
+          // when `embedUnsafe` ends.
+          aCastTo[A]
+        }
+      } catch { case ex: WrapExc =>
+        throw ex.exc
       }
     }
 
@@ -2768,10 +2815,12 @@ object Rxn extends RxnInstances0 {
 
     final override def imperativeTicketWrite[A](hwd: LogEntry[A], newest: A): Unit = {
       val c = new Rxn.TicketWrite(hwd, newest)
-      if (!ticketWrite(c)) { // NB: may throw TicketInvalidException, handled by `embedUnsafe`
-        _assert(this._desc eq null)
-        throw unsafePackage.RetryException.notPermanentFailure
-      }
+      try {
+        if (!ticketWrite(c)) { // NB: may throw TicketInvalidException, handled by `embedUnsafe`
+          _assert(this._desc eq null)
+          throw unsafePackage.RetryException.notPermanentFailure
+        }
+      } catch { case ex: WrapExc => impossible(s"wrapped exception thrown from ticketWrite: ${ex.exc}") }
     }
 
     final override def imperativePostCommit(pca: Rxn[Unit]): Unit = {
