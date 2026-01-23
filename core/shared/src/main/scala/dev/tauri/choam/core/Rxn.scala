@@ -1997,7 +1997,7 @@ object Rxn extends RxnInstances0 {
     }
 
     /** Returns `true` if successful, `false` if retry is needed */
-    @throws[LogEntry.TicketInvalidException]
+    @throws[LogEntry.InvalidTicketException]
     private[this] final def ticketWrite[A](c: TicketWrite[A]): Boolean = {
       _assert(this._entryHolder eq null) // just to be sure
       a = () : Any
@@ -2243,7 +2243,7 @@ object Rxn extends RxnInstances0 {
               retry()
             }
           } catch {
-            case ex: LogEntry.TicketInvalidException =>
+            case ex: LogEntry.InvalidTicketException =>
               nextOnPanic(ex)
             case ex: WrapExc =>
               impossible(s"wrapped exception thrown from ticketWrite: ${ex.exc}")

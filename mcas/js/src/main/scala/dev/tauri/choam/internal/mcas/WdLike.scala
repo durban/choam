@@ -77,7 +77,7 @@ final class LogEntry[A] private ( // formerly called HWD
       // OK, was not modified since reading the ticket:
       this.withNv(newest)
     } else {
-      throw new LogEntry.TicketInvalidException(ticket.address, newest)
+      throw new LogEntry.InvalidTicketException(ticket.address, newest)
     }
   }
 
@@ -112,10 +112,10 @@ final class LogEntry[A] private ( // formerly called HWD
 
 object LogEntry {
 
-  final class TicketInvalidException private[LogEntry] (
+  final class InvalidTicketException private[LogEntry] (
     ref: MemoryLocation[_],
     nv: Any
-  ) extends IllegalStateException(s"ticket invalid for ${ref}; cannot write new value ${nv}") {
+  ) extends IllegalStateException(s"invalid ticket for ${ref}; cannot write new value ${nv}") {
     final override def fillInStackTrace(): Throwable =
       this
     final override def initCause(cause: Throwable): Throwable =

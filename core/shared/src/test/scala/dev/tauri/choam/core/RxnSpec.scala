@@ -2042,19 +2042,19 @@ private[choam] object RxnSpec {
     (Rxn.unsafe.assert(false, "foo"), classOf[AssertionError]),
     (Rxn.unsafe.ticketRead(ref).flatMap { ticket =>
       ref.update(_ + 1) *> ticket.unsafeSet(99)
-    }, classOf[internal.mcas.LogEntry.TicketInvalidException]),
+    }, classOf[internal.mcas.LogEntry.InvalidTicketException]),
     (Rxn.unsafe.ticketReadArray(arr, 0).flatMap { ticket =>
       arr.unsafeUpdate(0)(_ + 1) *> ticket.unsafeSet(99)
-    }, classOf[internal.mcas.LogEntry.TicketInvalidException]),
+    }, classOf[internal.mcas.LogEntry.InvalidTicketException]),
     (Rxn.unsafe.embedUnsafe { implicit ir =>
       val ticket = unsafe.ticketRead(ref)
       unsafe.writeRef(ref, 42)
       ticket.value = 99
-    }, classOf[internal.mcas.LogEntry.TicketInvalidException]),
+    }, classOf[internal.mcas.LogEntry.InvalidTicketException]),
     (Rxn.unsafe.embedUnsafe { implicit ir =>
       val ticket = unsafe.ticketReadArray(arr, 0)
       unsafe.writeRefArray(arr, 0, 42)
       ticket.value = 99
-    }, classOf[internal.mcas.LogEntry.TicketInvalidException]),
+    }, classOf[internal.mcas.LogEntry.InvalidTicketException]),
   )
 }
