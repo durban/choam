@@ -91,6 +91,6 @@ object RandomBench {
     val rndSecure: SecureRandom[Rxn] =
       Rxn.slowRandom
     val uuidGen: UUIDGen[Rxn] =
-      Rxn.uuidGenInstance
+      Rxn.uuidGenForRxn
   }
 }

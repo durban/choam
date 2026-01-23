@@ -2857,7 +2857,7 @@ private sealed abstract class RxnInstances2 extends RxnInstances3 { this: Rxn.ty
   // inherit `StackSafeMonad`, in case someone
   // somewhere uses that as a marker or even a
   // typeclass:
-  implicit final def monadInstance: StackSafeMonad[Rxn] = // TODO:0.5: rename to `monadForRxn` or something
+  implicit final def monadForRxn: StackSafeMonad[Rxn] =
     _monadInstance
 
   private[this] val _monadInstance: StackSafeMonad[Rxn] = new StackSafeMonad[Rxn] {
@@ -2888,12 +2888,12 @@ private sealed abstract class RxnInstances2 extends RxnInstances3 { this: Rxn.ty
 
 private sealed abstract class RxnInstances3 extends RxnInstances4 { self: Rxn.type =>
 
-  implicit final def uniqueInstance: Unique[Rxn] = // TODO:0.5: rename to `uniqueForRxn` or something
+  implicit final def uniqueForRxn: Unique[Rxn] =
     _uniqueInstance
 
   private[this] val _uniqueInstance: Unique[Rxn] = new Unique[Rxn] {
     final override def applicative: Applicative[Rxn] =
-      self.monadInstance
+      self.monadForRxn
     final override def unique: Rxn[Unique.Token] =
       self.unique
   }
@@ -2913,7 +2913,7 @@ private sealed abstract class RxnInstances5 extends RxnInstances6 { this: Rxn.ty
       x + y
   }
 
-  implicit final def monoidInstance[B](implicit B: Monoid[B]): Monoid[Rxn[B]] = new Monoid[Rxn[B]] { // TODO:0.5: rename
+  implicit final def monoidForRxn[B](implicit B: Monoid[B]): Monoid[Rxn[B]] = new Monoid[Rxn[B]] {
     final override def combine(x: Rxn[B], y: Rxn[B]): Rxn[B] =
       x.map2(y) { (b1, b2) => B.combine(b1, b2) }
     final override def empty: Rxn[B] =
@@ -2923,7 +2923,7 @@ private sealed abstract class RxnInstances5 extends RxnInstances6 { this: Rxn.ty
 
 private sealed abstract class RxnInstances6 extends RxnInstances7 { self: Rxn.type =>
 
-  implicit final def deferInstance: Defer[Rxn] = // TODO:0.5: rename
+  implicit final def deferForRxn: Defer[Rxn] =
     _deferInstance
 
   private[this] val _deferInstance: Defer[Rxn] = new Defer[Rxn] {
@@ -2976,7 +2976,7 @@ private sealed abstract class RxnInstances6 extends RxnInstances7 { self: Rxn.ty
    */
   private[choam] final def deferFixWithoutFences[A](fn: Rxn[A] => Rxn[A]): Rxn[A] = {
     val ref = new scala.runtime.ObjectRef[Rxn[A]](null)
-    val res = fn(deferInstance.defer {
+    val res = fn(deferForRxn.defer {
       ref.elem
     })
     ref.elem = res
@@ -2986,7 +2986,7 @@ private sealed abstract class RxnInstances6 extends RxnInstances7 { self: Rxn.ty
 
 private sealed abstract class RxnInstances7 extends RxnInstances8 { self: Rxn.type =>
 
-  implicit final def showInstance[B]: Show[Rxn[B]] = // TODO:0.5: rename
+  implicit final def showForRxn[B]: Show[Rxn[B]] =
     _showInstance.asInstanceOf[Show[Rxn[B]]]
 
   private[this] val _showInstance: Show[Rxn[Any]] = new Show[Rxn[Any]] {
@@ -3003,12 +3003,12 @@ private sealed abstract class RxnInstances7 extends RxnInstances8 { self: Rxn.ty
 
 private sealed abstract class RxnInstances8 extends RxnInstances9 { self: Rxn.type =>
 
-  implicit final def alignInstance: Align[Rxn] = // TODO:0.5: rename
+  implicit final def alignForRxn: Align[Rxn] =
     _alignInstance
 
   private[this] val _alignInstance: Align[Rxn] = new Align[Rxn] {
     final override def functor: Functor[Rxn] =
-      self.monadInstance
+      self.monadForRxn
     final override def align[A, B](fa: Rxn[A], fb: Rxn[B]): Rxn[Ior[A, B]] = {
       val leftOrBoth = (fa * fb.?).map {
         case (a, Some(b)) => Ior.both(a, b)
@@ -3022,7 +3022,7 @@ private sealed abstract class RxnInstances8 extends RxnInstances9 { self: Rxn.ty
 
 private sealed abstract class RxnInstances9 extends RxnInstances10 { self: Rxn.type =>
 
-  implicit final def uuidGenInstance: UUIDGen[Rxn] = // TODO:0.5: rename
+  implicit final def uuidGenForRxn: UUIDGen[Rxn] =
     self._uuidGen
 
   private[this] val _uuidGen: UUIDGen[Rxn] = new UUIDGen[Rxn] {
@@ -3035,12 +3035,12 @@ private sealed abstract class RxnInstances10 extends RxnInstances11 { self: Rxn.
 
   import scala.concurrent.duration.{ FiniteDuration, NANOSECONDS, MILLISECONDS }
 
-  implicit final def clockInstance: Clock[Rxn] = // TODO:0.5: rename
+  implicit final def clockForRxn: Clock[Rxn] =
     _clockInstance
 
   private[this] val _clockInstance: Clock[Rxn] = new Clock[Rxn] {
     final override def applicative: Applicative[Rxn] =
-      Rxn.monadInstance
+      Rxn.monadForRxn
     final override def monotonic: Rxn[FiniteDuration] =
       Rxn.unsafe.delay { FiniteDuration(System.nanoTime(), NANOSECONDS) }
     final override def realTime: Rxn[FiniteDuration] =
@@ -3050,7 +3050,7 @@ private sealed abstract class RxnInstances10 extends RxnInstances11 { self: Rxn.
 
 private sealed abstract class RxnInstances11 extends RxnSyntax0 { self: Rxn.type =>
 
-  implicit final def catsRefMakeInstance: CatsRef.Make[Rxn] = // TODO:0.5: rename
+  implicit final def catsRefForRxn: CatsRef.Make[Rxn] =
     _catsRefMakeInstance
 
   private[this] val _catsRefMakeInstance: CatsRef.Make[Rxn] = new CatsRef.Make[Rxn] {

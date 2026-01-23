@@ -137,7 +137,7 @@ object MapBench {
             case MapDirect =>
               acc.map(dummy)
             case MonadMap =>
-              monadMap(acc, dummy)(using Rxn.monadInstance)
+              monadMap(acc, dummy)(using Rxn.monadForRxn)
             case Map2AndAlsoTupled =>
               map2WithAndAlsoTupled(acc, last)(take1)
             case Map2FlatMapMap =>

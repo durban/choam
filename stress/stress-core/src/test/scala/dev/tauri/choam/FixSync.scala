@@ -44,7 +44,7 @@ class FixSync extends StressTestBase {
 
   @Actor
   def writer(): Unit = {
-    val rxn = Rxn.deferInstance.fix[String] { rec => // Note: if instead of this line,
+    val rxn = Rxn.deferForRxn.fix[String] { rec => // Note: if instead of this line,
     // we do this:
     //   val rxn = Rxn.deferFixWithoutFences[String] { rec =>
     // then this test fails on ARM Linux, because a `null`
