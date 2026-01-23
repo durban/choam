@@ -113,7 +113,7 @@ final class LogEntry[A] private ( // formerly called HWD
 
 object LogEntry {
 
-  final class TicketInvalidException( // TODO:0.5: rename to InvalidTicketException
+  final class TicketInvalidException private[LogEntry] ( // TODO:0.5: rename to InvalidTicketException
     ref: MemoryLocation[_],
     nv: Any
   ) extends IllegalStateException(s"ticket invalid for ${ref}; cannot write new value ${nv}") {

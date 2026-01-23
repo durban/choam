@@ -498,7 +498,7 @@ private[choam] object Hamt {
     def entryAbsent(k: K, tok: T): V
   }
 
-  sealed abstract class IllegalOperationException(msg: String)
+  sealed abstract class IllegalOperationException private[Hamt] (msg: String)
     extends IllegalArgumentException(msg) {
 
     final override def fillInStackTrace(): Throwable =

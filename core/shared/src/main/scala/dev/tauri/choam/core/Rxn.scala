@@ -1165,7 +1165,7 @@ object Rxn extends RxnInstances0 {
     ck
   }
 
-  final class MaxRetriesExceeded(maxRetries: Int)
+  final class MaxRetriesExceeded private[Rxn] (maxRetries: Int)
     extends Exception(s"exceeded maxRetries of ${maxRetries}") {
 
     final override def fillInStackTrace(): Throwable =
