@@ -710,7 +710,7 @@ object Rxn extends RxnInstances0 {
 
     private[choam] final def imperativePanicImpl[A](ex: Throwable): A = {
       if (ex.isInstanceOf[unsafePackage.RetryException]) {
-        throw new IllegalArgumentException(ex)
+        impossible("imperative panic with RetryException")
       } else {
         throw ex
       }
@@ -1167,7 +1167,7 @@ object Rxn extends RxnInstances0 {
       this
 
     final override def initCause(cause: Throwable): Throwable =
-      throw new IllegalStateException
+      throw new IllegalStateException // something is seriously wrong
   }
 
   // TODO: Consider using JVM exception chaining
@@ -1188,7 +1188,7 @@ object Rxn extends RxnInstances0 {
       this
 
     final override def initCause(cause: Throwable): Throwable =
-      throw new IllegalStateException
+      throw new IllegalStateException // something is seriously wrong
   }
 
   /** Panic while doing execution for the "other" side of an exchange */

@@ -26,7 +26,7 @@ private[choam] final class RetryException private () extends ControlThrowable {
     this
 
   final override def initCause(cause: Throwable): Throwable =
-    throw new IllegalStateException
+    throw new IllegalStateException // something is seriously wrong
 }
 
 private[choam] object RetryException {

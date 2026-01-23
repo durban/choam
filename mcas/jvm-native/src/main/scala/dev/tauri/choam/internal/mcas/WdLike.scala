@@ -116,7 +116,12 @@ object LogEntry {
   final class TicketInvalidException( // TODO:0.5: rename to InvalidTicketException
     ref: MemoryLocation[_],
     nv: Any
-  ) extends IllegalStateException(s"ticket invalid for ${ref}; cannot write new value ${nv}")
+  ) extends IllegalStateException(s"ticket invalid for ${ref}; cannot write new value ${nv}") {
+    final override def fillInStackTrace(): Throwable =
+      this
+    final override def initCause(cause: Throwable): Throwable =
+      throw new IllegalStateException // something is seriously wrong
+  }
 
   private[mcas] def apply[A](
     address: MemoryLocation[A],

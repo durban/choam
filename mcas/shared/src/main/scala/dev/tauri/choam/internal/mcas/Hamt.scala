@@ -505,7 +505,7 @@ private[choam] object Hamt {
       this
 
     final override def initCause(cause: Throwable): Throwable =
-      throw new IllegalStateException
+      throw new IllegalStateException // something is seriously wrong
   }
 
   final class IllegalInsertException private[mcas] (key: HasHash)
