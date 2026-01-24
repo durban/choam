@@ -1032,7 +1032,7 @@ lazy val dependencies = new {
   val jolVersion = "0.17" // https://github.com/openjdk/jol
   val scalaJsLocaleVersion = "1.5.4" // https://github.com/cquiroz/scala-java-locales
   val scalaJsTimeVersion = "2.6.0" // https://github.com/cquiroz/scala-java-time
-  val zioVersion = "2.1.23" // https://github.com/zio/zio
+  val zioVersion = "2.1.24" // https://github.com/zio/zio
 
   val catsKernel = Def.setting("org.typelevel" %%% "cats-kernel" % catsVersion)
   val catsCore = Def.setting("org.typelevel" %%% "cats-core" % catsVersion)
@@ -1064,7 +1064,7 @@ lazy val dependencies = new {
 
   val scalaStm = Def.setting("org.scala-stm" %%% "scala-stm" % "0.11.1") // https://github.com/scala-stm/scala-stm
   val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.13.4") // https://github.com/TimWSpence/cats-stm
-  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.1.0.11")
+  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.1.0.13")
   val zioStm = Def.setting("dev.zio" %%% "zio" % zioVersion)
   val zioEverything = Def.setting[Seq[ModuleID]](Seq(
     Seq(
