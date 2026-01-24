@@ -456,8 +456,8 @@ object PubSub {
 
     final override def removeSubscription(id: Long): Rxn[Int] = {
       this.subscriptions.modify { map =>
-        val newSize = map.size - 1 // TODO: size is O(n)
-        (map.removed(id), newSize)
+        val newMap = map.removed(id)
+        (newMap, newMap.size) // TODO: size is O(n)
       }
     }
 
