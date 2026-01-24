@@ -430,6 +430,7 @@ object PubSub {
 
   private[this] sealed trait HandleSubscriptions {
     def removeSubscription(id: Long): Rxn[Int]
+    def removeSubscription_(id: Long): Rxn[Unit]
     def isClosed: Ref[Boolean]
   }
 
@@ -457,6 +458,12 @@ object PubSub {
       this.subscriptions.modify { map =>
         val newSize = map.size - 1 // TODO: size is O(n)
         (map.removed(id), newSize)
+      }
+    }
+
+    final override def removeSubscription_(id: Long): Rxn[Unit] = {
+      this.subscriptions.update { map =>
+        map.removed(id)
       }
     }
 
@@ -518,7 +525,7 @@ object PubSub {
             sig.emit(newSize).run[F].void
           }
         } else {
-          subs.closeInternal.void
+          subs.closeInternal_
         }
       }
     }
@@ -853,6 +860,13 @@ object PubSub {
     final def closeInternal[F[_]](implicit F: AsyncReactive[F]): F[Int] = {
       implicit val FF: Async[F] = F.asyncInst
       F.run(hub.removeSubscription(this.id)).guarantee(
+        awaitShutdown.complete(()).run[F].void
+      )
+    }
+
+    final def closeInternal_[F[_]](implicit F: AsyncReactive[F]): F[Unit] = {
+      implicit val FF: Async[F] = F.asyncInst
+      F.run(hub.removeSubscription_(this.id)).guarantee(
         awaitShutdown.complete(()).run[F].void
       )
     }
