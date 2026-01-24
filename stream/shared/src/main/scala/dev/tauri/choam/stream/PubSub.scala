@@ -484,32 +484,47 @@ object PubSub {
       implicit val FF: Async[F] = F.asyncInst
       FF.delay(nextId.getAndIncrement()).flatMap { id =>
         Promise[Unit].run[F].flatMap { sp =>
-          val act: Rxn[(Subscription[A, B], Int)] = isClosed.get.flatMap { isClosed =>
-            if (isClosed) {
-              Rxn.pure((null, 0))
-            } else {
-              strategy.newBuffer[F, B](canSuspend = publishCanSuspend).flatMap { buf =>
-                initial.flatMap { elem => buf.enqueueSignal(signalChunk(elem)) } *> {
-                  val subs = new Subscription[B, B](id, buf, sp, this)
-                  subscriptions.modify { map =>
-                    val newSize = map.size + 1 // TODO: size is O(n)
-                    (map.updated(id, subs), (subs, newSize))
-                  }
-                }
-              }
-            }
-          }
-          val subsF = F.run(act)
-          val sig = sizeSignal
-          val subsAndNotify = if (sig ne null) {
-            subsF.flatTap { case (subs, newSize) =>
-              if (subs ne null) sig.emit(newSize).run[F].void
-              else FF.unit
+          val sig = this.sizeSignal
+          val needSize = (sig ne null)
+          val subsF = F.run(_subscribe(strategy, initial, id, sp, needSize = needSize))
+          val subsAndNotify = if (needSize) {
+            subsF.flatTap[Any] { case (subs, newSize) =>
+              if (subs ne null) sig.emit(newSize).run[F].widen
+              else FF.unit.widen
             }
           } else {
             subsF
           }
           subsAndNotify.map(_._1)
+        }
+      }
+    }
+
+    private[this] def _subscribe[F[_], B >: A](
+      strategy: PubSub.OverflowStrategy,
+      initial: Rxn[B],
+      id: Long,
+      p: Promise[Unit],
+      needSize: Boolean,
+    ): Rxn[(Subscription[A, B], Int)] = {
+      isClosed.get.flatMap { isClosed =>
+        if (isClosed) {
+          Rxn.pure((null, 0))
+        } else {
+          strategy.newBuffer[F, B](canSuspend = publishCanSuspend).flatMap { buf =>
+            initial.flatMap { elem => buf.enqueueSignal(signalChunk(elem)) } *> {
+              val subs = new Subscription[B, B](id, buf, p, this)
+              subscriptions.modify { map =>
+                val newMap = map.updated(id, subs)
+                val newSize = if (needSize) {
+                  newMap.size // TODO: size is O(n)
+                } else {
+                  0 // unused value
+                }
+                (newMap, (subs, newSize))
+              }
+            }
+          }
         }
       }
     }
