@@ -192,6 +192,8 @@ object PubSub {
 
     private[stream] def capacityOrMax: Int
 
+    private[PubSub] def canRetry: Boolean
+
     private[PubSub] def handleOverflow[A](
       underlying: UnboundedDeque[Chunk[A]],
       sizeRef: Ref[Int],
@@ -213,11 +215,11 @@ object PubSub {
     }
 
     // TODO: add an `str: AllocationStrategy` parameter, and use it
-    private[PubSub] final def newBuffer[F[_], A](canSuspend: Boolean): Rxn[PubSubBuffer[A]] = {
+    private[PubSub] final def newBuffer[F[_], A](canSuspend: Boolean, canRetry: Boolean): Rxn[PubSubBuffer[A]] = {
       UnboundedDeque[Chunk[A]].flatMap { underlying =>
         Ref[Int](0).flatMap { sizeRef =>
           mkWaitList(underlying, this.capacityOrMax, sizeRef, canSuspend = canSuspend).map { wl =>
-            new PubSubBuffer[A](sizeRef, underlying, wl)
+            new PubSubBuffer[A](sizeRef, underlying, wl, canRetry = canRetry)
           }
         }
       }
@@ -342,6 +344,8 @@ object PubSub {
 
       private[stream] final override def capacityOrMax: Int = bufferSize
 
+      private[PubSub] final override def canRetry: Boolean = true
+
       private[PubSub] final override def handleOverflow[A](
         underlying: UnboundedDeque[Chunk[A]],
         sizeRef: Ref[Int],
@@ -354,6 +358,8 @@ object PubSub {
     private final object Unbounded extends OverflowStrategy {
 
       private[stream] final override def capacityOrMax: Int = Integer.MAX_VALUE
+
+      private[PubSub] final override def canRetry: Boolean = false
 
       private[PubSub] final override def handleOverflow[A](
         underlying: UnboundedDeque[Chunk[A]],
@@ -371,6 +377,8 @@ object PubSub {
       require(bufferSize > 0)
 
       private[stream] final override def capacityOrMax: Int = bufferSize
+
+      private[PubSub] final override def canRetry: Boolean = false
 
       private[PubSub] final override def handleOverflow[A](
         underlying: UnboundedDeque[Chunk[A]],
@@ -415,6 +423,8 @@ object PubSub {
       require(bufferSize > 0)
 
       private[stream] final override def capacityOrMax: Int = bufferSize
+
+      private[PubSub] final override def canRetry: Boolean = false
 
       private[PubSub] final override def handleOverflow[A](
         underlying: UnboundedDeque[Chunk[A]],
@@ -511,7 +521,7 @@ object PubSub {
         if (isClosed) {
           Rxn.pure((null, 0))
         } else {
-          strategy.newBuffer[F, B](canSuspend = publishCanSuspend).flatMap { buf =>
+          strategy.newBuffer[F, B](canSuspend = publishCanSuspend, canRetry = strategy.canRetry).flatMap { buf =>
             initial.flatMap { elem => buf.enqueueSignal(signalChunk(elem)) } *> {
               val subs = new Subscription[B, B](id, buf, p, this)
               subscriptions.modify { map =>
@@ -560,14 +570,18 @@ object PubSub {
             subscriptions.get.flatMap { subsMap =>
               val itr = subsMap.valuesIterator
               var acc: Rxn[Result] = _axnSuccess
+              var canRetry: Boolean = false
               while (itr.hasNext) {
-                val pub1 = itr.next().publishChunkOrRetry(ch)
+                val subs = itr.next()
+                canRetry ||= subs.canRetry
+                val pub1 = subs.publishChunkOrRetry(ch)
                 acc = acc *> pub1
               }
-              // TODO: If no subscription ever retries (because
-              // TODO: all have a strategy which doesn't need it),
-              // TODO: then we could avoid creating an `orElse`.
-              Rxn.unsafe.orElse(acc, _axnBackpressured)
+              if (canRetry) {
+                Rxn.unsafe.orElse(acc, _axnBackpressured)
+              } else {
+                acc
+              }
             }
           }
         }
@@ -816,6 +830,9 @@ object PubSub {
     hub: HandleSubscriptions,
   ) {
 
+    final def canRetry: Boolean =
+      queue.canRetry
+
     final def publishChunkOrRetry(ch: Chunk[A]): Rxn[Result] = {
       queue.enqueueOrRetry(ch)
     }
@@ -891,6 +908,7 @@ object PubSub {
     val sizeRef: Ref[Int],
     val underlying: UnboundedDeque[Chunk[A]],
     val wl: GenWaitList[Chunk[A]],
+    val canRetry: Boolean,
   ) {
 
     final def enqueueSignal(chunk: SignalChunk[A]): Rxn[Unit] = {
@@ -908,6 +926,7 @@ object PubSub {
           // case we can't suspend the fiber; but no problem, we're
           // being called from `emitChunk`, whic expects a retry to
           // handle this case:
+          _assert(this.canRetry)
           Rxn.unsafe.retryStm
         }
       }

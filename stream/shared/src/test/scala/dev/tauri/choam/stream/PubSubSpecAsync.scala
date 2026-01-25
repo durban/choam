@@ -31,4 +31,27 @@ trait PubSubSpecAsync[F[_]] extends PubSubSpec[F] { this: McasImplSpec =>
 
   protected[this] final override def newHub[A](str: PubSub.OverflowStrategy): F[PubSub[A]] =
     PubSub.async[A](str).run[F]
+
+  test("Backpressure retry should work") {
+    val repeat = this.platform match {
+      case Jvm => 500
+      case Js => 2
+      case Native => 250
+    }
+    val t = for {
+      hub <- newHub[Int](PubSub.OverflowStrategy.unbounded)
+      fib1 <- hub.subscribe[F].compile.toVector.start
+      fib2 <- hub.subscribe[F](PubSub.OverflowStrategy.backpressure(2)).compile.toVector.start
+      _ <- F.cede
+      _ <- waitForSubscribers(hub, 2)
+      _ <- hub.publish(1)
+      _ <- hub.publish(2)
+      _ <- hub.publish(3)
+      _ <- hub.publish(4)
+      _ <- hub.close.run
+      _ <- assertResultF(fib1.joinWithNever, Vector(1, 2, 3, 4))
+      _ <- assertResultF(fib2.joinWithNever, Vector(1, 2, 3, 4))
+    } yield ()
+    t.replicateA_(repeat)
+  }
 }

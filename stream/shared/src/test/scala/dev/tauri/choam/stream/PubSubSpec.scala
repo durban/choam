@@ -42,16 +42,16 @@ trait PubSubSpec[F[_]]
   commonTests("Unbounded", PubSub.OverflowStrategy.unbounded)
   commonTests("Backpressure", PubSub.OverflowStrategy.backpressure(BS))
 
-  private def waitForSubscribers[A](hub: PubSub.Subscribe[A], expectedSubscribers: Int): F[Unit] = {
+  protected def waitForSubscribers[A](hub: PubSub.Subscribe[A], expectedSubscribers: Int): F[Unit] = {
     val once: F[Unit] = hub.numberOfSubscriptions.run[F].flatMap { numSubs =>
       if (numSubs >= expectedSubscribers) F.unit
       else F.raiseError[Unit](new TimeoutException(s"only ${numSubs} subscribers instead of the expected ${expectedSubscribers}"))
     }
     fs2.Stream.retry(
       once,
-      delay = 0.1.second,
+      delay = 0.05.second,
       nextDelay = { d => d * 2 },
-      maxAttempts = 7,
+      maxAttempts = 8,
       retriable = _.isInstanceOf[TimeoutException],
     ).compile.onlyOrError
   }
@@ -207,6 +207,7 @@ trait PubSubSpec[F[_]]
       t.replicateA_(repeat)
     }
   }
+
 
   private def checkOrder(v: Vector[Int], str2: PubSub.OverflowStrategy): F[Unit] = F.delay {
     val canLoseItems = str2.fold(
