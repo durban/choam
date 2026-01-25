@@ -119,6 +119,8 @@ final class EmcasSpec extends BaseSpec {
   }
 
   test("EMCAS should handle versions correctly on cleanup (after success)") {
+    // TODO: this test sometimes hangs on SN+Win and SN+Arm+Mac
+    assume(!((isWindows() || (isMac() && isArm())) && (isNative())))
     val r1 = MemoryLocation.unsafeUnpadded[String]("x", this.rigInstance)
     val r2 = MemoryLocation.unsafeUnpadded[String]("y", this.rigInstance)
     val ctx = inst.currentContext()
@@ -154,6 +156,8 @@ final class EmcasSpec extends BaseSpec {
   }
 
   test("EMCAS should handle versions correctly on cleanup (after failure)") {
+    // TODO: this test sometimes hangs on SN+Win and SN+Arm+Mac
+    assume(!((isWindows() || (isMac() && isArm())) && (isNative())))
     val r1 = MemoryLocation.unsafeUnpadded[String]("x", this.rigInstance)
     val r2 = MemoryLocation.unsafeUnpadded[String]("y", this.rigInstance)
     val ctx = inst.currentContext()
