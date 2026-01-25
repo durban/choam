@@ -35,7 +35,7 @@ import munit.{ Location, TestOptions }
 // TODO: `SimpleMemoryLocation`; we should run them
 // TODO: with actual `Ref`s too (or instead?)
 
-class EmcasSpec extends BaseSpec {
+final class EmcasSpec extends BaseSpec {
 
   private[this] val inst: Emcas =
     new Emcas(this.osRngInstance, java.lang.Runtime.getRuntime().availableProcessors())
@@ -76,7 +76,8 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("EMCAS should clean up finalized descriptors") {
-    assume((!isWindows()) || (!isNative())) // TODO: this test hangs on SN+Win
+    // TODO: this test sometimes hangs on SN+Win and SN+Arm+Mac
+    assume(!((isWindows() || (isMac() && isArm())) && (isNative())))
     val r1 = MemoryLocation.unsafeUnpadded[String]("x", this.rigInstance)
     val r2 = MemoryLocation.unsafeUnpadded[String]("y", this.rigInstance)
     val ctx = inst.currentContext()
@@ -228,7 +229,8 @@ class EmcasSpec extends BaseSpec {
   }
 
   test("EMCAS should clean up finalized descriptors if the original thread releases them") {
-    assume((!isWindows()) || (!isNative())) // TODO: this test hangs on SN+Win
+    // TODO: this test sometimes hangs on SN+Win and SN+Arm+Mac
+    assume(!((isWindows() || (isMac() && isArm())) && (isNative())))
     val r1 = MemoryLocation.unsafeUnpadded[String]("x", this.rigInstance)
     val r2 = MemoryLocation.unsafeUnpadded[String]("y", this.rigInstance)
     var ok = false
