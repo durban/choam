@@ -183,7 +183,7 @@ ThisBuild / githubWorkflowBuild := List(
   // JCStress tests (they only run if commit msg contains the project name):
   WorkflowStep.Sbt(
     List(mkStressTestCmd(projName)),
-    cond = Some(s"(${stressCond}) && (${commitContains(projName)})")
+    cond = Some(s"(matrix.ci == 'ciJVM') && (${stressCond}) && (${commitContains(projName)})")
   ),
 } ++ List(
   WorkflowStep.Use(
