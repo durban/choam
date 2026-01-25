@@ -138,7 +138,8 @@ trait MUnitUtils extends MUnitUtilsPlatform { this: FunSuite =>
   }
 
   final def isArm(): Boolean = {
-    System.getProperty("os.arch", "").toLowerCase(java.util.Locale.ROOT).equals("aarch64")
+    val arch = System.getProperty("os.arch", "").toLowerCase(java.util.Locale.ROOT)
+    arch.equals("aarch64") || arch.equals("arm64")
   }
 
   final def isMultithreaded(): Boolean = {
