@@ -154,7 +154,11 @@ object PubSub {
   private[this] val _axnClosed: Rxn[Result] = Rxn.pure(Closed)
   private[this] val _axnBackpressured: Rxn[Result] = Rxn.pure(Backpressured)
   private[this] val _axnSuccess: Rxn[Success.type] = Rxn.pure(Success)
+  private[this] val _rxnDone: Rxn[Done.type] = Rxn.pure(Done)
   private[this] val _axnRightSuccess: Rxn[Either[Nothing, Result]] = Rxn.pure(Right(Success))
+  private[this] val _rxnRightClosed: Rxn[Either[Nothing, Closed.type]] = Rxn.pure(Right(Closed))
+  private[this] val _rxnRightSuccess: Rxn[Either[Nothing, Success.type]] = Rxn.pure(Right(Success))
+  private[this] val _rxnSomeNull: Rxn[Option[Null]] = Rxn.pure(Some(null))
   private[this] val _rightUnit: Right[Nothing, Unit] = Right(())
   private[this] val _leftTopicClosed: Left[Topic.Closed, Nothing] = Left(Topic.Closed)
 
@@ -256,8 +260,8 @@ object PubSub {
       underlying.tryTakeLast.flatMap {
         case None =>
           Rxn.none
-        case some @ Some(null) =>
-          Rxn.pure(some)
+        case Some(null) =>
+          _rxnSomeNull
         case some @ Some(_: SignalChunk[_]) =>
           Rxn.pure(some)
         case some @ Some(chunk) =>
@@ -433,7 +437,7 @@ object PubSub {
         missingCapacity: Int,
         canSuspend: Boolean,
       ): Rxn[HandleOverflowResult] = {
-        Rxn.pure(Done)
+        _rxnDone
       }
     }
   }
@@ -637,9 +641,9 @@ object PubSub {
             F.run(
               isClosed.get.flatMap { isClosed =>
                 if (isClosed) {
-                  Rxn.pure(Right(Closed))
+                  _rxnRightClosed
                 } else if (ch.isEmpty) {
-                  Rxn.pure(Right(Success))
+                  _rxnRightSuccess
                 } else {
                   subscriptions.get.flatMap { subsMap =>
 
