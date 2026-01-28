@@ -84,6 +84,9 @@ private final class TRefImpl[A](
   final override def unsafeCasMarkerV(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
     marker.compareAndSet(ov, nv)
 
+  final override def unsafeCmpxchgMarkerV(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef] =
+    marker.compareAndExchange(ov, nv)
+
   final override def unsafeCmpxchgMarkerR(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef] =
     marker.compareAndExchangeRelease(ov, nv)
 

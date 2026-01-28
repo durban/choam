@@ -115,6 +115,9 @@ private sealed class RefArrayRef[A](
   final override def unsafeCasMarkerV(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
     array.casV(markerIdx, ov, nv)
 
+  final override def unsafeCmpxchgMarkerV(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef] =
+    array.cmpxchgV(markerIdx, ov, nv).asInstanceOf[WeakReference[AnyRef]]
+
   final override def unsafeCmpxchgMarkerR(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef] =
     array.cmpxchgR(markerIdx, ov, nv).asInstanceOf[WeakReference[AnyRef]]
 

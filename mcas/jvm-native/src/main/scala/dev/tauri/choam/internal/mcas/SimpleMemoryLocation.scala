@@ -79,6 +79,9 @@ private class SimpleMemoryLocation[A](initial: A)(
   final override def unsafeCasMarkerV(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean =
     this.weakMarker.compareAndSet(ov, nv)
 
+  final override def unsafeCmpxchgMarkerV(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef] =
+    this.weakMarker.compareAndExchange(ov, nv)
+
   final override def unsafeCmpxchgMarkerR(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef] =
     this.weakMarker.compareAndExchangeRelease(ov, nv)
 }

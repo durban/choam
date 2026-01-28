@@ -33,6 +33,7 @@ private trait Ref2ImplBase[A, B] {
   def unsafeCmpxchgVersion1V(ov: Long, nv: Long): Long
   def unsafeGetMarker1V(): WeakReference[AnyRef]
   def unsafeCasMarker1V(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean
+  def unsafeCmpxchgMarker1V(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef]
   def unsafeCmpxchgMarker1R(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef]
   def id0(): Long
   def dummyImpl1(v: Byte): Long

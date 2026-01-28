@@ -125,6 +125,11 @@ final class RefU1<A> extends RefIdOnly<A> implements UnsealedRef<A>, MemoryLocat
   }
 
   @Override
+  public final WeakReference<Object> unsafeCmpxchgMarkerV(WeakReference<Object> ov, WeakReference<Object> nv) {
+    return (WeakReference<Object>) MARKER.compareAndExchange(this, ov, nv);
+  }
+
+  @Override
   public final WeakReference<Object> unsafeCmpxchgMarkerR(WeakReference<Object> ov, WeakReference<Object> nv) {
     return (WeakReference<Object>) MARKER.compareAndExchangeRelease(this, ov, nv);
   }

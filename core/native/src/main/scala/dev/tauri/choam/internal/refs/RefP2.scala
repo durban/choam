@@ -156,6 +156,10 @@ private final class RefP2[A, B](
     atomicMarkerA.compareAndSet(ov, nv)
   }
 
+  final override def unsafeCmpxchgMarker1V(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef] = {
+    atomicMarkerA.compareAndExchange(ov, nv)
+  }
+
   final override def unsafeCmpxchgMarker1R(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef] = {
     atomicMarkerA.compareAndExchangeRelAcq(ov, nv) // TODO: release-only
   }
@@ -208,6 +212,10 @@ private final class RefP2[A, B](
 
   final override def unsafeCasMarker2V(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): Boolean = {
     atomicMarkerB.compareAndSet(ov, nv)
+  }
+
+  final override def unsafeCmpxchgMarker2V(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef] = {
+    atomicMarkerB.compareAndExchange(ov, nv)
   }
 
   final override def unsafeCmpxchgMarker2R(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef] = {

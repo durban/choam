@@ -123,6 +123,11 @@ abstract class RefP1P1Base<A, B>
   }
 
   @Override
+  public final WeakReference<Object> unsafeCmpxchgMarker1V(WeakReference<Object> ov, WeakReference<Object> nv) {
+    return (WeakReference<Object>) MARKER_A.compareAndExchange(this, ov, nv);
+  }
+
+  @Override
   public final WeakReference<Object> unsafeCmpxchgMarker1R(WeakReference<Object> ov, WeakReference<Object> nv) {
     return (WeakReference<Object>) MARKER_A.compareAndExchangeRelease(this, ov, nv);
   }

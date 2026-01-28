@@ -525,13 +525,45 @@ private[mcas] final class Emcas private (
 
     @tailrec
     def tryWord[A](wordDesc: EmcasWordDesc[A], newSeen: Long): Long = {
-      var content: A = nullOf[A]
-      var value: A = nullOf[A]
-      var weakref: WeakReference[AnyRef] = null
-      var mark: AnyRef = null
       val address = wordDesc.address
-      var version: Long = address.unsafeGetVersionV()
+      // Before doing anything, we make sure we
+      // hold a valid mark for this location (this
+      // way we can avoid the ABA problem even if
+      // we're working on a location with a value
+      // (i.e., not a descriptor); otherwise another
+      // op could go A->B->A, then cleanup, and we'd
+      // not notice it (if it happens after checking
+      // the expected version, but before the CAS).
+      // By holding a valid mark from the beginning,
+      // we can avoid this. (And also avoid the more
+      // likely case of having an ABA problem due to
+      // helping; see above.)
+      var weakref: WeakReference[AnyRef] = address.unsafeGetMarkerV()
+      var mark: AnyRef = if (weakref ne null) weakref.get() else null
       var go = true
+      while (go) {
+        if (mark eq null) { // initial state or already cleaned or could be cleaned
+          mark = ctx.getReusableMarker()
+          val weakref2 = ctx.getReusableWeakRef()
+          _assert((weakref2.get() eq mark) && ((weakref eq null) || (weakref.get() eq null)))
+          val wit = address.unsafeCmpxchgMarkerV(weakref, weakref2)
+          if (wit eq weakref) { // OK, installed new marker
+            weakref = weakref2
+            go = false
+          } else { // race, try to use the other marker
+            weakref = wit
+            mark = if (wit ne null) wit.get() else null
+            if (mark ne null) { // OK, we're holding a valid mark
+              go = false
+            } // else:
+              // unlikely, but the new weakref could've been already cleared;
+              // we'll do another iteration, and install ours (go == true here)
+          }
+        } else { // OK, we're holding a valid mark
+          go = false
+        }
+      }
+      _assert((mark ne null) && (weakref ne null) && (weakref.get() eq mark))
       // Read `content`, and `value` if necessary;
       // this is a specialized and inlined version
       // of `readInternal` from the paper. We're
@@ -540,97 +572,51 @@ private[mcas] final class Emcas private (
       // need both `content` and `value`, and returning
       // them would require allocating a tuple (like in
       // the paper).
+      var content: A = nullOf[A]
+      var value: A = nullOf[A]
+      var version: Long = address.unsafeGetVersionV()
+      go = true
       while (go) {
         content = address.unsafeGetV()
         content match {
           case wd: EmcasWordDesc[_] =>
-            if (mark eq null) {
-              // not holding it yet
-              weakref = address.unsafeGetMarkerV()
-              mark = if (weakref ne null) weakref.get() else null
-              if (mark ne null) {
-                // continue with another iteration, and re-read the
-                // descriptor, while holding the mark
-              } else { // mark eq null
-                // TODO: what if between reading `wd` and the mark, a lot of things happened...?
-                // the old descriptor is unused, could be detached
-                val parent = wd.parent
-                val parentStatus = parent.getStatusV()
-                if (parentStatus == McasStatus.Active) {
-                  // active op without a mark: this can
-                  // happen if a thread died during an op
-                  if (wd eq wordDesc) {
-                    // this is us!
-                    // already points to the right place, early return:
-                    return McasStatus.Successful // scalafix:ok
-                  } else {
-                    // we help the active op (who is not us)
-                    if (helpMCASforMCAS(parent, ctx = ctx, seen = newSeen, instRo = instRo)) {
-                      // oops, we'll have to finalize ourselves with CycleDetected too
-                      // TODO: Do we really have to? The other one was finalized, doesn't that break the cycle?
-                      return EmcasStatus.CycleDetected // scalafix:ok
-                    } // else: then continue with another iteration
-                  }
-                } else { // finalized op
-                  if ((parentStatus == McasStatus.FailedVal) || (parentStatus == EmcasStatus.CycleDetected)) {
-                    value = wd.cast[A].ov
-                    version = wd.oldVersion
-                  } else { // successful
-                    value = wd.cast[A].nv
-                    version = parentStatus
-                  }
-                  go = false
-                }
-              }
-            } else { // mark ne null
-              if (wd eq wordDesc) {
-                // this is us!
-                // already points to the right place, early return:
-                return McasStatus.Successful // scalafix:ok
-              } else {
-                // At this point, we're sure that `wd` belongs to another op
-                // (not `desc`), because otherwise it would've been equal to
-                // `wordDesc` (we're assuming that any EmcasWordDesc only
-                // appears at most once in an EmcasDescriptor).
-                val parent = wd.parent
-                val parentStatus = parent.getStatusV()
-                if (parentStatus == McasStatus.Active) {
-                  // Help the other op; note: we're not "helping" ourselves
-                  // for sure, see the comment above.
-                  if (helpMCASforMCAS(parent, ctx = ctx, seen = newSeen, instRo = instRo)) {
-                    // oops, we'll have to finalize ourselves with CycleDetected too
-                    // TODO: Do we really have to? The other one was finalized, doesn't that break the cycle?
-                    return EmcasStatus.CycleDetected // scalafix:ok
-                  } // else: we helped, but we still don't have the value, so the loop must retry
-                } else if ((parentStatus == McasStatus.FailedVal) || (parentStatus == EmcasStatus.CycleDetected)) {
-                  value = wd.cast[A].ov
-                  version = wd.oldVersion
-                  go = false
-                } else { // successful
-                  value = wd.cast[A].nv
-                  version = parentStatus
-                  go = false
-                }
+            if (wd eq wordDesc) {
+              // this is us!
+              // already points to the right place, early return:
+              return McasStatus.Successful // scalafix:ok
+              // ^--- TODO: reachabilityFence?
+            } else {
+              // At this point, we're sure that `wd` belongs to another op
+              // (not `desc`), because otherwise it would've been equal to
+              // `wordDesc` (we're assuming that any EmcasWordDesc only
+              // appears at most once in an EmcasDescriptor).
+              val parent = wd.parent
+              val parentStatus = parent.getStatusV()
+              if (parentStatus == McasStatus.Active) {
+                // Help the other op; note: we're not "helping" ourselves
+                // for sure, see the comment above.
+                if (helpMCASforMCAS(parent, ctx = ctx, seen = newSeen, instRo = instRo)) {
+                  // oops, we'll have to finalize ourselves with CycleDetected too
+                  // TODO: Do we really have to? The other one was finalized, doesn't that break the cycle?
+                  reachabilityFence(mark)
+                  return EmcasStatus.CycleDetected // scalafix:ok
+                } // else: we helped, but we still don't have the value, so the loop must retry
+              } else if ((parentStatus == McasStatus.FailedVal) || (parentStatus == EmcasStatus.CycleDetected)) {
+                value = wd.cast[A].ov
+                version = wd.oldVersion
+                go = false
+              } else { // successful
+                value = wd.cast[A].nv
+                version = parentStatus
+                go = false
               }
             }
           case a =>
-            value = a
             val version2 = address.unsafeGetVersionV()
             if (version == version2) {
               // ok, we have a version that belongs to `value`
+              value = a
               go = false
-              weakref = address.unsafeGetMarkerV()
-              // we found a value (i.e., not a descriptor)
-              if (weakref ne null) {
-                // in rare cases, `mark` could be non-null here
-                // (see below); but that is not a problem, we
-                // hold it here, and will use it for our descriptor
-                mark = weakref.get()
-              } else {
-                // we need to clear a possible non-null mark from
-                // a previous iteration when we found a descriptor:
-                mark = null
-              }
             } else {
               // couldn't read consistent versions for
               // the value, will try again; start from
@@ -639,9 +625,7 @@ private[mcas] final class Emcas private (
             }
         }
       }
-
-      // just to be safe:
-      _assert(((mark eq null) || (mark eq weakref.get())) && VersionFunctions.isValid(version))
+      _assert(VersionFunctions.isValid(version))
 
       val wordDescOv = wordDesc.ov
       if (equ(wordDescOv, EmcasDescriptorBase.CLEARED)) {
@@ -662,36 +646,12 @@ private[mcas] final class Emcas private (
         // we have been finalized (by a helping thread), no reason to continue
         EmcasStatus.Break
       } else {
-        // before installing our descriptor, make sure a valid mark exists:
-        val weakRefOk = if (mark eq null) {
-          _assert((weakref eq null) || (weakref.get() eq null))
-          // there was no old descriptor, or it was already unused;
-          // we'll need a new mark:
-          mark = ctx.getReusableMarker()
-          val weakref2 = ctx.getReusableWeakRef()
-          _assert(weakref2.get() eq mark)
-          address.unsafeCasMarkerV(weakref, weakref2)
-          // if this fails, we'll retry, see below
-        } else {
-          // we have a valid mark from reading
-          true
-        }
-        // If *right now* (after the CAS above), another thread, which
-        // started reading before we installed a new weakref above,
-        // finishes its read, and detaches the *previous* descriptor
-        // (since we haven't installed ours yet, and that one was unused);
-        // then the following CAS will fail (not a problem), and
-        // on our next retry, we may see a ref with a value *and*
-        // a non-empty weakref (but this case is also handled, see above).
-        if (weakRefOk && address.unsafeCasV(content, wordDesc.castToData)) {
+        if (address.unsafeCasV(content, wordDesc.castToData)) {
           reachabilityFence(mark)
           McasStatus.Successful
         } else {
-          // either we couldn't install the new mark, or
-          // the CAS on the `Ref` failed; in either case,
-          // we'll retry:
           reachabilityFence(mark)
-          tryWord(wordDesc, newSeen)
+          tryWord(wordDesc, newSeen) // retry (`content` changed)
         }
       }
     } // tryWord

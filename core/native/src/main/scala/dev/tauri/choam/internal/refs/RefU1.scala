@@ -68,9 +68,14 @@ private final class RefU1[A](
     atomicValue.compareAndSet(ov, nv)
   }
 
+  final override def unsafeCmpxchgMarkerV(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef] = {
+    atomicMarker.compareAndExchange(ov, nv)
+  }
+
   final override def unsafeCmpxchgMarkerR(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef] = {
     atomicMarker.compareAndExchangeRelAcq(ov, nv) // TODO: release-only
   }
+
   final override def unsafeCmpxchgR(ov: A, nv: A): A = {
     atomicValue.compareAndExchangeRelAcq(ov, nv) // TODO: release-only
   }

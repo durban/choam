@@ -31,6 +31,7 @@ interface Ref2ImplBase<A, B> {
   long unsafeCmpxchgVersion1V(long ov, long nv);
   WeakReference<Object> unsafeGetMarker1V();
   boolean unsafeCasMarker1V(WeakReference<Object> ov, WeakReference<Object> nv);
+  WeakReference<Object> unsafeCmpxchgMarker1V(WeakReference<Object> ov, WeakReference<Object> nv);
   WeakReference<Object> unsafeCmpxchgMarker1R(WeakReference<Object> ov, WeakReference<Object> nv);
   long id0();
   long dummyImpl1(byte v);
