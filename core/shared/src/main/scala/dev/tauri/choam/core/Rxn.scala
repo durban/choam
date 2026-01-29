@@ -2904,7 +2904,7 @@ private sealed abstract class RxnInstances4 extends RxnInstances5 { this: Rxn.ty
 
 private sealed abstract class RxnInstances5 extends RxnInstances6 { this: Rxn.type =>
 
-  /** Not implicit, because it would conflict with [[monoidInstance]]. */
+  /** Not implicit, because it would conflict with [[monoidForRxn]]. */
   final def choiceSemigroup[B]: Semigroup[Rxn[B]] =
     _choiceSemigroup.asInstanceOf[Semigroup[Rxn[B]]]
 
