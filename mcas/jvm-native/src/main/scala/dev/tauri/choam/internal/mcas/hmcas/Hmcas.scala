@@ -20,6 +20,21 @@ package internal
 package mcas
 package hmcas
 
+/**
+ * A not-wait-free (but lock-free) variant of the MCAS
+ * algorithm described in "A Wait-Free Multi-Word
+ * Compare-and-Swap Operation" by Steven Feldman, Pierre
+ * LaBorde and Damian Dechev (DOI 10.1007/s10766-014-0308-7).
+ *
+ * The main difference from the paper is that we omit the
+ * wait-free helping scheme. This makes our algorithm
+ * not-wait-free (but it is still lock-free).
+ *
+ * Methods are identified as implementing "Algorithm N" from
+ * the paper (where applicable). Lines are occasionally
+ * commented to refer to specific lines of the specific
+ * algorithm (e.g., `// X` to refer to line X).
+ */
 private[mcas] final class Hmcas(
   private[choam] final override val osRng: OsRng,
   private[choam] final override val stripes: Int,
@@ -41,8 +56,11 @@ private[mcas] final class Hmcas(
     sys.error("TODO")
   }
 
+  /**
+   * Algorithm 2 `placeMCasHelper` in the paper
+   */
   private[hmcas] final def placeMcasHelper(desc: HmcasDescriptor, idx: Int, firstTime: Boolean): Unit = {
-    val address = desc.addresses(idx).cast[AnyRef]
+    val address = desc.addresses(idx).cast[AnyRef] // 1
     val eValue = desc.ovs(idx)
     val mch = new McasHelper(desc, idx)
     if (firstTime) {
@@ -51,9 +69,9 @@ private[mcas] final class Hmcas(
 
     @tailrec
     def go(cValue: AnyRef): Unit = {
-      if (firstTime || (desc.mchs.get(idx) eq null)) {
+      if (firstTime || (desc.mchs.get(idx) eq null)) { // 11
         cValue match {
-          case other: McasHelper =>
+          case other: McasHelper => // 36
             if (other.hasSameCasRow(mch)) {
               // try to associate the other:
               val wit = desc.mchs.compareAndExchangeRelease(idx, null, other)
@@ -63,7 +81,7 @@ private[mcas] final class Hmcas(
                 ()
               }
             }
-          case _ =>
+          case _ => // 22
             val wit = address.unsafeCmpxchgR(eValue, mch)
             if (wit eq eValue) {
               if (!firstTime) {
@@ -84,6 +102,6 @@ private[mcas] final class Hmcas(
       }
     }
 
-    go(cValue = address.unsafeGetV())
+    go(cValue = address.unsafeGetV()) // 9
   }
 }
