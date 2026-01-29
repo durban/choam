@@ -22,7 +22,7 @@ package hmcas
 
 import java.util.concurrent.atomic.{ AtomicLong, AtomicReferenceArray }
 
-private[hmcas] final class HmcasDescriptor(
+private final class HmcasDescriptor(
   val state: AtomicLong,
   val addresses: Array[MemoryLocation[_]],
   val ovs: Array[AnyRef],
@@ -38,5 +38,9 @@ private[hmcas] final class HmcasDescriptor(
 
   final def length: Int = {
     addresses.length
+  }
+
+  final def lastIdx: Int = {
+    addresses.length - 1
   }
 }

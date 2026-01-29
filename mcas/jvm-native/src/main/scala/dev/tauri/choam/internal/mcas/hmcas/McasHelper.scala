@@ -20,7 +20,7 @@ package internal
 package mcas
 package hmcas
 
-private[hmcas] final class McasHelper(
+private final class McasHelper(
   val desc: HmcasDescriptor,
   val idx: Int,
 ) {
@@ -30,4 +30,9 @@ private[hmcas] final class McasHelper(
   final def hasSameCasRow(that: McasHelper): Boolean = {
     (this.desc eq that.desc) && (this.idx == that.idx)
   }
+}
+
+private object McasHelper {
+  /** Signals a failed operation to any helpers; `~0x0` in the paper */
+  val FAILED: McasHelper = new McasHelper(null, -1)
 }

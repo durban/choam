@@ -27,7 +27,7 @@ package hmcas
  * LaBorde and Damian Dechev (DOI 10.1007/s10766-014-0308-7).
  *
  * The main difference from the paper is that we omit the
- * wait-free helping scheme. This makes our algorithm
+ * wait-free announcement scheme. This makes our algorithm
  * not-wait-free (but it is still lock-free).
  *
  * Methods are identified as implementing "Algorithm N" from
@@ -39,6 +39,12 @@ private[mcas] final class Hmcas(
   private[choam] final override val osRng: OsRng,
   private[choam] final override val stripes: Int,
 ) extends Mcas.UnsealedMcas {
+
+  private[this] val RETURN: AnyRef =
+    new AnyRef
+
+  private[this] val FAIL: AnyRef =
+    new AnyRef
 
   final override def currentContext(): Mcas.ThreadContext = {
     sys.error("TODO")
@@ -58,6 +64,8 @@ private[mcas] final class Hmcas(
 
   /**
    * Algorithm 2 `placeMCasHelper` in the paper
+   *
+   * TODO: we're using *release* CASes; is this okay?
    */
   private[hmcas] final def placeMcasHelper(desc: HmcasDescriptor, idx: Int, firstTime: Boolean): Unit = {
     val address = desc.addresses(idx).cast[AnyRef] // 1
@@ -70,16 +78,38 @@ private[mcas] final class Hmcas(
     @tailrec
     def go(cValue: AnyRef): Unit = {
       if (firstTime || (desc.mchs.get(idx) eq null)) { // 11
-        cValue match {
+        val cValue2: AnyRef = cValue match {
           case other: McasHelper => // 36
-            if (other.hasSameCasRow(mch)) {
-              // try to associate the other:
+            if (other.hasSameCasRow(mch)) { // 40
+              // try to associate `other` (which also belongs to us!):
               val wit = desc.mchs.compareAndExchangeRelease(idx, null, other)
               if ((wit ne null) && (wit ne other)) {
-                // help undo:
-                address.unsafeCmpxchgR(other, eValue) // if it fails, someone else already fixed it
-                ()
+                // `other` was mistakenly installed, help fix it:
+                address.unsafeCmpxchgR(other, eValue) : Unit // if it fails, someone else already fixed it
+              } // else: associating it was successful
+              RETURN // we're done (either `other` is fine for us, or our op is done) // 47
+            } else if (shouldReplace(eValue, other)) { // 48
+              // `other` belongs to another operation; we're replacing it; TODO: why? (shouldReplace?)
+              val wit = address.unsafeCmpxchgR(cValue, mch)
+              if (wit eq cValue) {
+                if (!firstTime) {
+                  // associate it:
+                  val mchWit = desc.mchs.compareAndExchangeRelease(idx, null, mch) // 52
+                  // NB: in the previous line, the paper assigns the witness to
+                  // NB: `cValue`, but in this branch there is an unconditional
+                  // NB: return, so that's only used for `rcUnWatch`ing it
+                  if ((mchWit ne null) && (mchWit ne mch)) {
+                    // we've mistakenly installed `mch`, fix it:
+                    address.unsafeCmpxchgR(mch, eValue)
+                    ()
+                  }
+                }
+                RETURN // we're done (either associated, or our op is done) // 59
+              } else {
+                wit // retry // 62 // TODO: FIXME: the paper doesn't assign it to cValue; why?
               }
+            } else {
+              FAIL // TODO: why? (shouldReplace?) // 64
             }
           case _ => // 22
             val wit = address.unsafeCmpxchgR(eValue, mch)
@@ -88,20 +118,37 @@ private[mcas] final class Hmcas(
                 // associate it:
                 val mchWit = desc.mchs.compareAndExchangeRelease(idx, null, mch)
                 if ((mchWit ne null) && (mchWit ne mch)) {
-                  // we've mistakenly installed `mch`, remove it:
+                  // we've mistakenly installed `mch`, fix it:
                   address.unsafeCmpxchgR(mch, eValue) // if it fails, someone else already fixed it
                   ()
-                } // else: associate successful (either by us or a helper)
-              }
-              // we're done
+                } // else: associating it was successful (either by us or by a helper)
+              } // else: already associated (because firstTime)
+              RETURN // we're done // 32
             } else {
-              // retry:
-              go(cValue = wit)
+              wit // 34 // TODO: why are we retrying? the content of `address` was different from `eValue`!
             }
         }
-      }
+        if (cValue2 eq RETURN) {
+          ()
+        } else if (cValue2 eq FAIL) { // 65
+          val failWit = desc.mchs.compareAndExchangeRelease(idx, null, McasHelper.FAILED)
+          if (failWit eq null) {
+            desc.mchs.compareAndExchangeRelease(desc.lastIdx, null, McasHelper.FAILED) : Unit
+          }
+          // 71
+        } else {
+          go(cValue = cValue2)
+        }
+      } // else: () // 72
     }
 
-    go(cValue = address.unsafeGetV()) // 9
+    go(cValue = address.unsafeGetV()) : Unit // 9
+  }
+
+  /**
+   * Algorithm 3 `shouldReplace` in the paper
+   */
+  private[this] final def shouldReplace(ev: AnyRef, mch: McasHelper): Boolean = {
+    sys.error("TODO")
   }
 }
