@@ -19,6 +19,8 @@ package dev.tauri.choam
 package internal
 package mcas
 
+import java.util.Locale
+
 private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanionPlatform {
 
   private[choam] final override def newDefaultMcas(osRng: OsRng, numCpu: Int): Mcas = {
@@ -26,8 +28,8 @@ private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanion
   }
 
   protected[this] final override def newMcasFromSystemProperty(sysProp: String, osRng: OsRng, numCpu: Int): Mcas = {
-    sysProp match {
-      case null | "" | "ThreadConfinedMcas" =>
+    sysProp.toLowerCase(Locale.ROOT) match {
+      case null | "" | "threadconfinedmcas" =>
         _assert(numCpu == 1)
         this.newThreadConfinedMcas(osRng)
       case x =>
