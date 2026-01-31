@@ -24,9 +24,9 @@ import java.util.concurrent.atomic.{ AtomicLong, AtomicReferenceArray }
 
 private final class HmcasDescriptor(
   val state: AtomicLong,
-  val addresses: Array[MemoryLocation[AnyRef]],
-  val ovs: Array[AnyRef],
-  val nvs: Array[AnyRef],
+  addresses: Array[MemoryLocation[AnyRef]],
+  ovs: Array[AnyRef],
+  nvs: Array[AnyRef],
   val oldVersions: Array[Long],
   val mchs: AtomicReferenceArray[McasHelper],
 ) {
@@ -42,5 +42,17 @@ private final class HmcasDescriptor(
 
   final def lastIdx: Int = {
     addresses.length - 1
+  }
+
+  final def address(idx: Int): MemoryLocation[AnyRef] = {
+    addresses(idx)
+  }
+
+  final def expectedValue(idx: Int): AnyRef = {
+    ovs(idx)
+  }
+
+  final def newValue(idx: Int): AnyRef = {
+    nvs(idx)
   }
 }

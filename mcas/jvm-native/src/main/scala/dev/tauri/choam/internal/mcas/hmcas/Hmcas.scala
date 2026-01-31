@@ -85,8 +85,8 @@ private[mcas] final class Hmcas(
    * TODO: we're using *release* CASes; is this okay?
    */
   private[this] final def placeMcasHelper(desc: HmcasDescriptor, idx: Int, firstTime: Boolean): Unit = {
-    val address = desc.addresses(idx) // 1
-    val eValue = desc.ovs(idx)
+    val address = desc.address(idx) // 1
+    val eValue = desc.expectedValue(idx)
     val mch = new McasHelper(desc, idx)
     if (firstTime) {
       desc.mchs.setPlain(idx, mch)
@@ -178,8 +178,8 @@ private[mcas] final class Hmcas(
   private[this] final def shouldReplace(ev: AnyRef, mch: McasHelper): Boolean = {
     val desc = mch.desc
     val idx = mch.idx
-    val expectedValue = desc.ovs(idx)
-    val newValue = desc.nvs(idx)
+    val expectedValue = desc.expectedValue(idx)
+    val newValue = desc.newValue(idx)
     if ((expectedValue ne ev) && (newValue ne ev)) { // 2
       // whatever is the actual logical value, it
       // is definitely not the same as `ev`, so our
@@ -236,8 +236,8 @@ private[mcas] final class Hmcas(
     var idx = 0
     while ((idx <= lastIdx) && (desc.mchs.get(idx) ne McasHelper.FAILED)) { // 11 and 2
       val ov = desc.mchs.get(idx)
-      val nv = if (passed) desc.nvs(idx) else desc.ovs(idx)
-      desc.addresses(idx).unsafeCmpxchgR(ov, nv) : Unit // 5 and 7 // TODO: is R enough here?
+      val nv = if (passed) desc.newValue(idx) else desc.expectedValue(idx)
+      desc.address(idx).unsafeCmpxchgR(ov, nv) : Unit // 5 and 7 // TODO: is R enough here?
       idx += 1
     }
   }
