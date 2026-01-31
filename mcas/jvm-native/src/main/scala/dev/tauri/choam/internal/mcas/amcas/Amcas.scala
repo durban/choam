@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package internal
 package mcas
-package hmcas
+package amcas
 
 /**
  * A not-wait-free (but lock-free) variant of the MCAS
@@ -34,8 +34,15 @@ package hmcas
  * the paper (where applicable). Lines are occasionally
  * commented to refer to specific lines of the specific
  * algorithm (e.g., `// X` to refer to line X).
+ *
+ * Naming: the papers about this algorithm either don't
+ * name it beyond "MCAS", or call it "WFMCAS", the "WF"
+ * meaning "wait-free". As noted above, our variant of the
+ * algorithm is *not* wait-free, so calling it WFMCAS would
+ * not be appropriate. So we call it AMCAS, where "A" refers
+ * to the *association* model it uses.
  */
-private[mcas] final class Hmcas(
+private[mcas] final class Amcas(
   private[choam] final override val osRng: OsRng,
   private[choam] final override val stripes: Int,
 ) extends Mcas.UnsealedMcas {
@@ -67,7 +74,7 @@ private[mcas] final class Hmcas(
     *
     * @return `true` iff the op completed successfully
     */
-  private[hmcas] final def invokeMcas(desc: HmcasDescriptor): Boolean = {
+  private[amcas] final def invokeMcas(desc: AmcasDescriptor): Boolean = {
     val lastIdx = desc.lastIdx
     var idx = 0
     while ((idx <= lastIdx) && (desc.mchs.get(lastIdx) eq null)) { // not yet done
@@ -84,7 +91,7 @@ private[mcas] final class Hmcas(
    *
    * TODO: we're using *release* CASes; is this okay?
    */
-  private[this] final def placeMcasHelper(desc: HmcasDescriptor, idx: Int, firstTime: Boolean): Unit = {
+  private[this] final def placeMcasHelper(desc: AmcasDescriptor, idx: Int, firstTime: Boolean): Unit = {
     val address = desc.address(idx) // 1
     val eValue = desc.expectedValue(idx)
     val mch = new McasHelper(desc, idx)
@@ -231,7 +238,7 @@ private[mcas] final class Hmcas(
    * @param passed Whether the op was successful
    * @param desc The descriptor of the op
    */
-  private[this] final def removeMcasHelper(passed: Boolean, desc: HmcasDescriptor): Unit = {
+  private[this] final def removeMcasHelper(passed: Boolean, desc: AmcasDescriptor): Unit = {
     val lastIdx = desc.lastIdx
     var idx = 0
     while ((idx <= lastIdx) && (desc.mchs.get(idx) ne McasHelper.FAILED)) { // 11 and 2

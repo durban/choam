@@ -18,12 +18,12 @@
 package dev.tauri.choam
 package internal
 package mcas
-package hmcas
+package amcas
 
 import java.util.concurrent.ThreadLocalRandom
 
-private[hmcas] final class HmcasThreadContext(
-  final override val impl: Hmcas,
+private final class AmcasThreadContext(
+  final override val impl: Amcas,
   final override val refIdGen: RefIdGen, // NB: it is a `val`, not a `def`
 ) extends Mcas.UnsealedThreadContext {
 
@@ -61,7 +61,4 @@ private[hmcas] final class HmcasThreadContext(
 
   final override val buffer16BImpl: Array[Byte] =
     new Array[Byte](16)
-}
-
-private[hmcas] object HmcasThreadContext {
 }

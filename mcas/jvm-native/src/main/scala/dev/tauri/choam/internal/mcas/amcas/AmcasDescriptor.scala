@@ -18,11 +18,11 @@
 package dev.tauri.choam
 package internal
 package mcas
-package hmcas
+package amcas
 
 import java.util.concurrent.atomic.{ AtomicLong, AtomicReferenceArray }
 
-private final class HmcasDescriptor(
+private final class AmcasDescriptor(
   val state: AtomicLong,
   addresses: Array[MemoryLocation[AnyRef]],
   ovs: Array[AnyRef],

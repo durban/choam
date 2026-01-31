@@ -18,10 +18,10 @@
 package dev.tauri.choam
 package internal
 package mcas
-package hmcas
+package amcas
 
 private final class McasHelper(
-  val desc: HmcasDescriptor,
+  val desc: AmcasDescriptor,
   val idx: Int,
 ) {
 
