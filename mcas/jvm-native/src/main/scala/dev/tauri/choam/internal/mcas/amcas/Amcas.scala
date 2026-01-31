@@ -248,4 +248,33 @@ private[mcas] final class Amcas(
       idx += 1
     }
   }
+
+  /**
+   * Algorithm 7 `mcasRead` in the paper
+   *
+   * @param address The memory location to read from
+   * @return The logical value at `address` (after possibly helping an ongoing op)
+   */
+  private[amcas] final def mcasRead(address: MemoryLocation[AnyRef]): AnyRef = {
+    address.unsafeGetV() match {
+      case mch: McasHelper => // 29
+        val desc = mch.desc
+        val idx = mch.idx
+        if (desc.mchs.get(idx) eq McasHelper.FAILED) { // 33
+          // already failed, so logical value is expectedValue:
+          desc.expectedValue(idx)
+        } else {
+          val res = helpComplete(mch)
+          if (res && (desc.mchs.get(idx) eq mch)) { // 37
+            // success, and `mch` is associated with its CasRow
+            desc.newValue(idx)
+          } else {
+            // failed
+            desc.expectedValue(idx)
+          }
+        }
+      case value => // 18
+        value // 28
+    }
+  }
 }

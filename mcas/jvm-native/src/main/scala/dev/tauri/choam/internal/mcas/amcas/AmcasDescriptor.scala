@@ -22,12 +22,12 @@ package amcas
 
 import java.util.concurrent.atomic.{ AtomicLong, AtomicReferenceArray }
 
-private final class AmcasDescriptor(
-  val state: AtomicLong,
+private final class AmcasDescriptor private[this] (
+  val state: AtomicLong, // TODO: do we need this? (later probably yes, due to versions)
   addresses: Array[MemoryLocation[AnyRef]],
-  ovs: Array[AnyRef],
+  ovs: Array[AnyRef], // TODO: ovs and nvs could be one single array (with double length)
   nvs: Array[AnyRef],
-  val oldVersions: Array[Long],
+  val oldVersions: Array[Long], // TODO: actually have versions...
   val mchs: AtomicReferenceArray[McasHelper],
 ) {
 
@@ -35,6 +35,19 @@ private final class AmcasDescriptor(
     val len = addresses.length
     (ovs.length == len) && (nvs.length == len) && (oldVersions.length == len) && (mchs.length() == len)
   })
+
+  private[amcas] final def this(
+    addresses: Array[MemoryLocation[AnyRef]],
+    ovs: Array[AnyRef],
+    nvs: Array[AnyRef],
+  ) = this(
+    new AtomicLong,
+    addresses,
+    ovs,
+    nvs,
+    sys.error("TODO"),
+    new AtomicReferenceArray(addresses.length),
+  )
 
   final def length: Int = {
     addresses.length
