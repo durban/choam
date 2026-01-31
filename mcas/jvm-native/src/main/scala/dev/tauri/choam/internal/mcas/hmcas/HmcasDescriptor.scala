@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.{ AtomicLong, AtomicReferenceArray }
 
 private final class HmcasDescriptor(
   val state: AtomicLong,
-  val addresses: Array[MemoryLocation[_]],
+  val addresses: Array[MemoryLocation[AnyRef]],
   val ovs: Array[AnyRef],
   val nvs: Array[AnyRef],
   val oldVersions: Array[Long],

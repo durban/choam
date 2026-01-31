@@ -85,7 +85,7 @@ private[mcas] final class Hmcas(
    * TODO: we're using *release* CASes; is this okay?
    */
   private[this] final def placeMcasHelper(desc: HmcasDescriptor, idx: Int, firstTime: Boolean): Unit = {
-    val address = desc.addresses(idx).cast[AnyRef] // 1
+    val address = desc.addresses(idx) // 1
     val eValue = desc.ovs(idx)
     val mch = new McasHelper(desc, idx)
     if (firstTime) {
@@ -232,6 +232,13 @@ private[mcas] final class Hmcas(
    * @param desc The descriptor of the op
    */
   private[this] final def removeMcasHelper(passed: Boolean, desc: HmcasDescriptor): Unit = {
-    sys.error("TODO")
+    val lastIdx = desc.lastIdx
+    var idx = 0
+    while ((idx <= lastIdx) && (desc.mchs.get(idx) ne McasHelper.FAILED)) { // 11 and 2
+      val ov = desc.mchs.get(idx)
+      val nv = if (passed) desc.nvs(idx) else desc.ovs(idx)
+      desc.addresses(idx).unsafeCmpxchgR(ov, nv) : Unit // 5 and 7 // TODO: is R enough here?
+      idx += 1
+    }
   }
 }
