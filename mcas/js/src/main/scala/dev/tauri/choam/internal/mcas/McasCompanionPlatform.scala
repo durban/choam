@@ -28,7 +28,8 @@ private[mcas] abstract class McasCompanionPlatform extends AbstractMcasCompanion
   }
 
   protected[this] final override def newMcasFromSystemProperty(sysProp: String, osRng: OsRng, numCpu: Int): Mcas = {
-    sysProp.toLowerCase(Locale.ROOT) match {
+    val lwSysProp = if (sysProp ne null) sysProp.toLowerCase(Locale.ROOT) else null
+    lwSysProp match {
       case null | "" | "threadconfinedmcas" =>
         _assert(numCpu == 1)
         this.newThreadConfinedMcas(osRng)

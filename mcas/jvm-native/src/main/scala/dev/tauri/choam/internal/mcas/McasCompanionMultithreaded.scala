@@ -30,7 +30,8 @@ private[mcas] abstract class McasCompanionMultithreaded extends AbstractMcasComp
     new SpinLockMcas(osRng, numCpu)
 
   protected[this] final override def newMcasFromSystemProperty(sysProp: String, osRng: OsRng, numCpu: Int): Mcas = {
-    sysProp.toLowerCase(Locale.ROOT) match {
+    val lwSysProp = if (sysProp ne null) sysProp.toLowerCase(Locale.ROOT) else null
+    lwSysProp match {
       case null | "" | "emcas" =>
         this.newEmcas(osRng, numCpu)
       case "spinlockmcas" =>
