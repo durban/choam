@@ -89,9 +89,10 @@ private[mcas] final class Hmcas(
               } // else: associating it was successful
               RETURN // we're done (either `other` is fine for us, or our op is done) // 47
             } else if (shouldReplace(eValue, other)) { // 48
-              // `other` belongs to another operation; we're replacing it; TODO: why? (shouldReplace?)
-              val wit = address.unsafeCmpxchgR(cValue, mch)
-              if (wit eq cValue) {
+              // `other` belongs to another operation; we've helped it, and
+              // it's logical value matches eValue, so we can replace `other`:
+              val wit = address.unsafeCmpxchgR(other, mch)
+              if (wit eq other) {
                 if (!firstTime) {
                   // associate it:
                   val mchWit = desc.mchs.compareAndExchangeRelease(idx, null, mch) // 52
@@ -109,7 +110,8 @@ private[mcas] final class Hmcas(
                 wit // retry // 62 // TODO: FIXME: the paper doesn't assign it to cValue; why?
               }
             } else {
-              FAIL // TODO: why? (shouldReplace?) // 64
+              // `eValue` is certainly not the same as `other`'s observed logical value:
+              FAIL // 64
             }
           case _ => // 22
             val wit = address.unsafeCmpxchgR(eValue, mch)
@@ -147,8 +149,41 @@ private[mcas] final class Hmcas(
 
   /**
    * Algorithm 3 `shouldReplace` in the paper
+   *
+   * @param ev The expected value of OUR operation
+   * @param mch The `McasHelper` of another operation,
+   *            which was observed to be in the address
+   *            we want to work on.
+   * @return `true` iff the other operation was completed,
+   *         and the logical value in the address is the
+   *         same as our `ev`.
    */
   private[this] final def shouldReplace(ev: AnyRef, mch: McasHelper): Boolean = {
+    val desc = mch.desc
+    val idx = mch.idx
+    val expectedValue = desc.ovs(idx)
+    val newValue = desc.nvs(idx)
+    if ((expectedValue ne ev) && (newValue ne ev)) { // 2
+      // whatever is the actual logical value, it
+      // is definitely not the same as `ev`, so our
+      // operation must fail:
+      false
+    } else {
+      // potential match, help the other op:
+      val res = helpComplete(mch)
+      if (res && (desc.mchs.get(idx) eq mch)) { // 6
+        // success, and `mch` is associated with its CasRow,
+        // so the logical value is `newValue`
+        (newValue eq ev)
+      } else {
+        // otherwise the logical value is `expectedValue`
+        (expectedValue eq ev)
+      }
+    }
+  }
+
+  /** Algorithm 5 `helpComplete` in the paper */
+  private[this] final def helpComplete(mch: McasHelper): Boolean = {
     sys.error("TODO")
   }
 }
