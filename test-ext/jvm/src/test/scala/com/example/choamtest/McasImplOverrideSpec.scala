@@ -29,7 +29,7 @@ final class McasImplOverrideSpec extends munit.CatsEffectSuite {
     ChoamRuntime.make[IO].use { rt =>
       for {
         // check that the override is enabled:
-        _ <- assertIO(IO { System.getProperty("dev.tauri.choam.internal.mcas.impl") }, "SpinLockMcas")
+        _ <- assertIO(IO { System.getProperty("dev.tauri.choam.internal.mcas.impl") }, "SpinlockMcas")
         // check that it indeed takes effect:
         _ <- IO {
           import scala.language.reflectiveCalls
