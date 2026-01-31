@@ -40,7 +40,7 @@ final class LogMap2Spec extends ScalaCheckSuite with SpecDefaultMcas { self =>
   property("insert") {
     forAll { (seed: Long, _refs: Set[MemoryLocation[String]]) =>
       val refs = new Random(seed).shuffle(_refs.toList)
-      var lm = LogMap2.empty[String]
+      var lm = LogMap.empty[String]
       var tm = TreeMap.empty[MemoryLocation[String], LogEntry[String]](
         using MemoryLocation.orderingInstance
       )
@@ -84,9 +84,9 @@ final class LogMap2Spec extends ScalaCheckSuite with SpecDefaultMcas { self =>
     rng: Random,
     randomA: () => A,
     _refs: Set[MemoryLocation[A]],
-  ): (LogMap2[A], TreeMap[MemoryLocation[A], LogEntry[A]]) = {
+  ): (LogMap[A], TreeMap[MemoryLocation[A], LogEntry[A]]) = {
     val refs = rng.shuffle(_refs.toList)
-    var lm = LogMap2.empty[A]
+    var lm = LogMap.empty[A]
     var tm = TreeMap.empty[MemoryLocation[A], LogEntry[A]](
       using MemoryLocation.orderingInstance
     )
@@ -109,7 +109,7 @@ final class LogMap2Spec extends ScalaCheckSuite with SpecDefaultMcas { self =>
     val h32 = LogEntry(r3, "3", "y", 42L)
     val r4 = MemoryLocation.unsafeUnpadded("4", this.rigInstance)
     val h4 = LogEntry(r4, "4", "x", 42L)
-    val lm0 = LogMap2.empty[String]
+    val lm0 = LogMap.empty[String]
     assertEquals(lm0.size, 0)
     val lm1 = lm0.inserted(h1)
     assertEquals(lm1.size, 1)
@@ -132,7 +132,7 @@ final class LogMap2Spec extends ScalaCheckSuite with SpecDefaultMcas { self =>
     val h1 = LogEntry(r1, "1", "x", 42L)
     val r2 = MemoryLocation.unsafeUnpadded("2", this.rigInstance)
     val h2 = LogEntry(r2, "2", "x", 42L)
-    val lm = LogMap2
+    val lm = LogMap
       .empty[String]
       .inserted(h1)
       .inserted(h2)

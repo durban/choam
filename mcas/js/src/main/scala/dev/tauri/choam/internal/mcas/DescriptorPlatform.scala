@@ -21,5 +21,5 @@ package mcas
 
 private[mcas] abstract class DescriptorPlatform extends AbstractDescriptor {
 
-  protected def map: LogMap2[Any]
+  protected def map: LogMap[Any]
 }

@@ -22,7 +22,7 @@ package mcas
 private[mcas] final class LogMapMut[A] private (
   _logIdx: Int,
   _contents: Array[AnyRef],
-) extends MutHamt[MemoryLocation[A], LogEntry[A], WdLike[A], emcas.EmcasDescriptor, Mcas.ThreadContext, LogMap2[A], LogMapMut[A]](_logIdx, _contents) {
+) extends MutHamt[MemoryLocation[A], LogEntry[A], WdLike[A], emcas.EmcasDescriptor, Mcas.ThreadContext, LogMap[A], LogMapMut[A]](_logIdx, _contents) {
 
   final def definitelyReadOnly: Boolean =
     this.isBlueTree
@@ -37,8 +37,8 @@ private[mcas] final class LogMapMut[A] private (
   protected final override def newNode(logIdx: Int, contents: Array[AnyRef]): LogMapMut[A] =
     new LogMapMut[A](logIdx, contents)
 
-  protected final override def newImmutableNode(sizeAndBlue: Int, bitmap: Long, contents: Array[AnyRef]): LogMap2[A] =
-    new LogMap2[A](sizeAndBlue, bitmap, contents)
+  protected final override def newImmutableNode(sizeAndBlue: Int, bitmap: Long, contents: Array[AnyRef]): LogMap[A] =
+    new LogMap[A](sizeAndBlue, bitmap, contents)
 
   protected final override def newArray(size: Int): Array[WdLike[A]] =
     new Array[WdLike[A]](size)

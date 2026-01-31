@@ -22,7 +22,7 @@ package mcas
 import scala.util.hashing.MurmurHash3
 
 final class Descriptor private (
-  protected final override val map: LogMap2[Any],
+  protected final override val map: LogMap[Any],
   final override val validTs: Long,
 ) extends DescriptorPlatform {
 
@@ -41,7 +41,7 @@ final class Descriptor private (
     this.map
 
   private[choam] final override def getOrElseNull[A](ref: MemoryLocation[A]): LogEntry[A] = {
-    val r = this.map.asInstanceOf[LogMap2[A]].getOrElseNull(ref.id)
+    val r = this.map.asInstanceOf[LogMap[A]].getOrElseNull(ref.id)
     _assert((r eq null) || (r.address eq ref))
     r
   }
@@ -148,7 +148,7 @@ final class Descriptor private (
     this.map.valuesIterator
   }
 
-  private final def withLogMap(newMap: LogMap2[Any]): Descriptor = {
+  private final def withLogMap(newMap: LogMap[Any]): Descriptor = {
     if (newMap eq this.map) {
       this
     } else {
@@ -159,7 +159,7 @@ final class Descriptor private (
     }
   }
 
-  private final def withLogMapAndValidTs(newMap: LogMap2[Any], newValidTs: Long): Descriptor = {
+  private final def withLogMapAndValidTs(newMap: LogMap[Any], newValidTs: Long): Descriptor = {
     if ((newMap eq this.map) && (newValidTs == this.validTs)) {
       this
     } else {
@@ -198,13 +198,13 @@ object Descriptor {
 
   private[mcas] final def emptyFromVer(currentTs: Long): Descriptor = {
     new Descriptor(
-      LogMap2.empty,
+      LogMap.empty,
       validTs = currentTs,
     )
   }
 
   private[mcas] final def fromLogMapAndVer(
-    map: LogMap2[Any],
+    map: LogMap[Any],
     validTs: Long,
   ): Descriptor = {
     new Descriptor(
@@ -266,7 +266,7 @@ object Descriptor {
     into: Descriptor,
     from: AbstractDescriptor,
   ): Descriptor = {
-    var logMap = if (into ne null) into.map else LogMap2.empty[Any]
+    var logMap = if (into ne null) into.map else LogMap.empty[Any]
     val itr = from.hwdIterator
     val visitor = this.mergeReadsVisitor
     while (itr.hasNext) {

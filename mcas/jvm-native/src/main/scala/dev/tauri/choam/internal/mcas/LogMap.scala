@@ -23,11 +23,11 @@ package mcas
 // TODO: of read-only status (which could help with
 // TODO: `Rxn`s which "become" read-only)?
 
-private[mcas] final class LogMap2[A] private[mcas] (
+private[mcas] final class LogMap[A] private[mcas] (
   _sizeAndBlue: Int,
   _bitmap: Long,
   _contents: Array[AnyRef],
-) extends Hamt[MemoryLocation[A], LogEntry[A], WdLike[A], emcas.EmcasDescriptor, Mcas.ThreadContext, LogMap2[A]](
+) extends Hamt[MemoryLocation[A], LogEntry[A], WdLike[A], emcas.EmcasDescriptor, Mcas.ThreadContext, LogMap[A]](
   _sizeAndBlue,
   _bitmap,
   _contents,
@@ -43,8 +43,8 @@ private[mcas] final class LogMap2[A] private[mcas] (
   protected final override def isBlue(a: LogEntry[A]): Boolean =
     a.readOnly
 
-  protected final override def newNode(sizeAndBlue: Int, bitmap: Long, contents: Array[AnyRef]): LogMap2[A] =
-    new LogMap2(sizeAndBlue, bitmap, contents)
+  protected final override def newNode(sizeAndBlue: Int, bitmap: Long, contents: Array[AnyRef]): LogMap[A] =
+    new LogMap(sizeAndBlue, bitmap, contents)
 
   protected final override def newArray(size: Int): Array[WdLike[A]] =
     new Array[WdLike[A]](size)
@@ -58,11 +58,11 @@ private[mcas] final class LogMap2[A] private[mcas] (
     a.revalidate(tok)
 }
 
-private[mcas] object LogMap2 {
+private[mcas] object LogMap {
 
-  private[this] val _empty: LogMap2[Any] =
-    new LogMap2(_sizeAndBlue = 0, _bitmap = 0L, _contents = new Array[AnyRef](0))
+  private[this] val _empty: LogMap[Any] =
+    new LogMap(_sizeAndBlue = 0, _bitmap = 0L, _contents = new Array[AnyRef](0))
 
-  final def empty[A]: LogMap2[A] =
-    _empty.asInstanceOf[LogMap2[A]]
+  final def empty[A]: LogMap[A] =
+    _empty.asInstanceOf[LogMap[A]]
 }

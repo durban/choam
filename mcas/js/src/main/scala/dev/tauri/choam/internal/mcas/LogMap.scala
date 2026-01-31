@@ -19,11 +19,11 @@ package dev.tauri.choam
 package internal
 package mcas
 
-private[mcas] final class LogMap2[A] private (
+private[mcas] final class LogMap[A] private (
   _sizeAndBlue: Int,
   _bitmap: Long,
   _contents: Array[AnyRef],
-) extends Hamt[MemoryLocation[A], LogEntry[A], LogEntry[A], Unit, Mcas.ThreadContext, LogMap2[A]](_sizeAndBlue, _bitmap, _contents) {
+) extends Hamt[MemoryLocation[A], LogEntry[A], LogEntry[A], Unit, Mcas.ThreadContext, LogMap[A]](_sizeAndBlue, _bitmap, _contents) {
 
   final def revalidate(ctx: Mcas.ThreadContext): Boolean = {
     this.forAll(ctx)
@@ -35,8 +35,8 @@ private[mcas] final class LogMap2[A] private (
   protected final override def isBlue(a: LogEntry[A]): Boolean =
     a.readOnly
 
-  protected final override def newNode(sizeAndBlue: Int, bitmap: Long, contents: Array[AnyRef]): LogMap2[A] =
-    new LogMap2(sizeAndBlue, bitmap, contents)
+  protected final override def newNode(sizeAndBlue: Int, bitmap: Long, contents: Array[AnyRef]): LogMap[A] =
+    new LogMap(sizeAndBlue, bitmap, contents)
 
   protected final override def newArray(size: Int): Array[LogEntry[A]] =
     new Array[LogEntry[A]](size)
@@ -48,11 +48,11 @@ private[mcas] final class LogMap2[A] private (
     a.revalidate(tok)
 }
 
-private[mcas] object LogMap2 {
+private[mcas] object LogMap {
 
-  private[this] val _empty: LogMap2[Any] =
-    new LogMap2(0, 0L, new Array[AnyRef](0))
+  private[this] val _empty: LogMap[Any] =
+    new LogMap(0, 0L, new Array[AnyRef](0))
 
-  final def empty[A]: LogMap2[A] =
-    _empty.asInstanceOf[LogMap2[A]]
+  final def empty[A]: LogMap[A] =
+    _empty.asInstanceOf[LogMap[A]]
 }
