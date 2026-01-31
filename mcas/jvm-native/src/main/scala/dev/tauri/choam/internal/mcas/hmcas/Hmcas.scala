@@ -63,11 +63,28 @@ private[mcas] final class Hmcas(
   }
 
   /**
+    * Algorithm 1 `invokeMCAS` in the paper
+    *
+    * @return `true` iff the op completed successfully
+    */
+  private[hmcas] final def invokeMcas(desc: HmcasDescriptor): Boolean = {
+    val lastIdx = desc.lastIdx
+    var idx = 0
+    while ((idx <= lastIdx) && (desc.mchs.get(lastIdx) eq null)) { // not yet done
+      placeMcasHelper(desc, idx, firstTime = (idx == 0))
+      idx += 1
+    }
+    val res = desc.mchs.get(lastIdx) ne McasHelper.FAILED
+    removeMcasHelper(passed = res, desc = desc)
+    res
+  }
+
+  /**
    * Algorithm 2 `placeMCasHelper` in the paper
    *
    * TODO: we're using *release* CASes; is this okay?
    */
-  private[hmcas] final def placeMcasHelper(desc: HmcasDescriptor, idx: Int, firstTime: Boolean): Unit = {
+  private[this] final def placeMcasHelper(desc: HmcasDescriptor, idx: Int, firstTime: Boolean): Unit = {
     val address = desc.addresses(idx).cast[AnyRef] // 1
     val eValue = desc.ovs(idx)
     val mch = new McasHelper(desc, idx)
@@ -182,8 +199,39 @@ private[mcas] final class Hmcas(
     }
   }
 
-  /** Algorithm 5 `helpComplete` in the paper */
+  /**
+   * Algorithm 5 `helpComplete` in the paper
+   *
+   * @return `true` iff the operation we're helping completed successfully
+   */
   private[this] final def helpComplete(mch: McasHelper): Boolean = {
+    // TODO: is circular helping possible?
+    // TODO: (in the paper this method checks `recurDepth`)
+    val desc = mch.desc
+    val lastIdx = desc.lastIdx
+
+    def go(idx: Int): Unit = {
+      if ((idx <= lastIdx) && (desc.mchs.get(lastIdx) eq null)) { // 12 and 20
+        // the op is not yet done, let's help:
+        placeMcasHelper(desc, idx, firstTime = false)
+        if (desc.mchs.get(idx) ne McasHelper.FAILED) {
+          // success, let's continue:
+          go(idx + 1)
+        } // else: the op we're helping failed // 15
+      }
+    }
+
+    go(mch.idx + 1) // 5
+    desc.mchs.get(lastIdx) ne McasHelper.FAILED
+  }
+
+  /**
+   * Algorithm 6 `removeMCasHelper` in the paper
+   *
+   * @param passed Whether the op was successful
+   * @param desc The descriptor of the op
+   */
+  private[this] final def removeMcasHelper(passed: Boolean, desc: HmcasDescriptor): Unit = {
     sys.error("TODO")
   }
 }
