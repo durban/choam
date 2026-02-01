@@ -264,7 +264,7 @@ object Txn extends TxnInstances0 {
 
 private[stm] sealed abstract class TxnInstances0 extends TxnInstances1 { self: Txn.type =>
 
-  implicit final def monadInstance: StackSafeMonad[Txn] =
+  implicit final def monadForDevTauriChoamStmTxn: StackSafeMonad[Txn] =
     _monadInstance
 
   private[this] val _monadInstance: StackSafeMonad[Txn] = new StackSafeMonad[Txn] {
@@ -292,7 +292,7 @@ private[stm] sealed abstract class TxnInstances0 extends TxnInstances1 { self: T
       Txn.tailRecM[A, B](a)(f)
   }
 
-  implicit final def deferInstance: Defer[Txn] =
+  implicit final def deferForDevTauriChoamStmTxn: Defer[Txn] =
     _deferInstance
 
   private[this] val _deferInstance: Defer[Txn] = new Defer[Txn] {
@@ -311,17 +311,17 @@ private[stm] sealed abstract class TxnInstances0 extends TxnInstances1 { self: T
     }
   }
 
-  implicit final def uniqueInstance: Unique[Txn] =
+  implicit final def uniqueForDevTauriChoamStmTxn: Unique[Txn] =
     _uniqueInstance
 
   private[this] val _uniqueInstance: Unique[Txn] = new Unique[Txn] {
     final override def applicative: Applicative[Txn] =
-      self.monadInstance
+      self.monadForDevTauriChoamStmTxn
     final override def unique: Txn[Unique.Token] =
       Txn.unique
   }
 
-  implicit final def uuidGenInstance: UUIDGen[Txn] =
+  implicit final def uuidGenForDevTauriChoamStmTxn: UUIDGen[Txn] =
     _uuidGenInstance
 
   private[this] val _uuidGenInstance: UUIDGen[Txn] = new UUIDGen[Txn] {
@@ -332,7 +332,7 @@ private[stm] sealed abstract class TxnInstances0 extends TxnInstances1 { self: T
 
 private[stm] sealed abstract class TxnInstances1 extends TxnSyntax0 { self: Txn.type =>
 
-  implicit final def monoidInstance[B](implicit B: Monoid[B]): Monoid[Txn[B]] = new Monoid[Txn[B]] {
+  implicit final def monoidForDevTauriChoamStmTxn[B](implicit B: Monoid[B]): Monoid[Txn[B]] = new Monoid[Txn[B]] {
     final override def combine(x: Txn[B], y: Txn[B]): Txn[B] =
       x.map2(y) { (b1, b2) => B.combine(b1, b2) }
     final override def empty: Txn[B] =
@@ -344,6 +344,6 @@ private[stm] sealed abstract class TxnSyntax0 extends TxnCompanionPlatform { sel
 
   import scala.language.implicitConversions
 
-  implicit final def invariantSyntax[A](self: Txn[A]): Txn.InvariantSyntax[A] =
+  implicit final def invariantSyntaxForDevTauriChoamStmTxn[A](self: Txn[A]): Txn.InvariantSyntax[A] =
     new Txn.InvariantSyntax(self)
 }
