@@ -52,7 +52,7 @@ For more modules, see [below](#modules).
 The complete version of the example [above](#overview), (which increments the value of
 two `Ref`s) is as follows:
 
-<!-- Note: this needs to be kept in sync with `ReadmeSpec`! -->
+<!-- Note: ⇩ this needs to be kept in sync with `ReadmeSpec`! -->
 ```scala
 import dev.tauri.choam.core.{ Rxn, Ref }
 
@@ -60,11 +60,12 @@ def incrBoth(x: Ref[Int], y: Ref[Int]): Rxn[Unit] = {
   x.update(_ + 1) *> y.update(_ + 1)
 }
 ```
+<!-- Note: ⇧ this needs to be kept in sync with `ReadmeSpec`! -->
 
 As an example, we can execute it with `cats.effect.IO` like this
 (the `choam-ce` module is also needed):
 
-<!-- Note: this needs to be kept in sync with `ReadmeSpec`! -->
+<!-- Note: ⇩ this needs to be kept in sync with `ReadmeSpec`! -->
 ```scala
 import cats.effect.{ IO, IOApp }
 import dev.tauri.choam.ce.RxnAppMixin
@@ -86,6 +87,7 @@ object MyMain extends IOApp.Simple with RxnAppMixin {
   } yield ()
 }
 ```
+<!-- Note: ⇧ this needs to be kept in sync with `ReadmeSpec`! -->
 
 ## Software Transactional Memory (STM) [_work in progress_]
 
@@ -244,11 +246,12 @@ JARs are on Maven Central. Browsable Scaladoc is available [here](https://tauri.
 
 ### General assumptions
 
-Throughout the library, we're assuming the following:
+Throughout the library, we are assuming the following:
 
 - Instances of the `scala.FunctionN` traits passed to the library are pure and total
+- APIs in `*.internal.*` packages are not used directly
 - Cats Effect type classes and data types are used as intended
-  - e.g., no `cats.effect.kernel.Resource`s are leaked
+  - e.g., all uses of `cats.effect.kernel.Resource`s are finished before closing them
 - No dynamic type tests are performed by user code on objects provided by the library
   - i.e., the dynamic type of these objects is not part of their public API
   - e.g., don't do this:
