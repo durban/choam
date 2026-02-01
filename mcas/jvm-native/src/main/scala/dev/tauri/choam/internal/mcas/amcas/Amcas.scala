@@ -35,6 +35,13 @@ package amcas
  * commented to refer to specific lines of the specific
  * algorithm (e.g., `// X` to refer to line X).
  *
+ * A later implementation of essentially the same algorithm
+ * (but with full source available) can be found in [Tervel](
+ * https://github.com/ucf-cs/Tervel). The relevant paper is
+ * "Tervel: A Unification of Descriptor-based Techniques for
+ * Non-blocking Programming" by the same authors
+ * (DOI: 10.1109/SAMOS.2015.7363668).
+ *
  * Naming: the papers about this algorithm either don't
  * name it beyond "MCAS", or call it "WFMCAS", the "WF"
  * meaning "wait-free". As noted above, our variant of the
@@ -137,8 +144,8 @@ private[mcas] final class Amcas(
                 // NB: a failed CAS above to cValue. In all other cases it
                 // NB: does though, and logically it should in this case too.
                 // NB: (We should retry starting with the latest contents of
-                // NB: `address`.) The implementation in Tervel also seems to
-                // NB: retry with a fresh value.
+                // NB: `address`.) The implementation in Tervel also retries
+                // NB: with a fresh value.
               }
             } else {
               // `eValue` is certainly not the same as `other`'s observed logical value:
