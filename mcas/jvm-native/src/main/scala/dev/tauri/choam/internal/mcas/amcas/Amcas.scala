@@ -131,7 +131,14 @@ private[mcas] final class Amcas(
                 }
                 RETURN // we're done (either associated, or our op is done) // 59
               } else {
-                wit // retry // 62 // TODO: FIXME: the paper doesn't assign it to cValue; why?
+                wit // retry // 62
+                // NB: There is likely a bug in line 62 of the pseudocode in
+                // NB: the paper: it doesn't assign the witness acquired from
+                // NB: a failed CAS above to cValue. In all other cases it
+                // NB: does though, and logically it should in this case too.
+                // NB: (We should retry starting with the latest contents of
+                // NB: `address`.) The implementation in Tervel also seems to
+                // NB: retry with a fresh value.
               }
             } else {
               // `eValue` is certainly not the same as `other`'s observed logical value:
@@ -151,7 +158,13 @@ private[mcas] final class Amcas(
               } // else: already associated (because firstTime)
               RETURN // we're done // 32
             } else {
-              wit // 34 // TODO: why are we retrying? the content of `address` was different from `eValue`!
+              FAIL // 34
+              // NB: There is likely a bug in line 34 of the pseudocode in
+              // NB: the paper: it retries (`continue`) in this case. But
+              // NB: as we've observed a regular (non-descriptor) value in
+              // NB: `address` being non-equal to `eValue`, we should fail
+              // NB: the whole MCAS operation here. The implementation in
+              // NB: Tervel also fails the op in this case.
             }
         }
         if (cValue2 eq RETURN) {
