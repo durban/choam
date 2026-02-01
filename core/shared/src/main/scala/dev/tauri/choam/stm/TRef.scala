@@ -32,6 +32,8 @@ sealed trait TRef[A] {
 
   final def flatModify[B](f: A => (A, Txn[B])): Txn[B] =
     modify(f).flatten
+
+  private[choam] def refImpl: core.Ref[A]
 }
 
 object TRef {

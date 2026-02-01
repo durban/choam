@@ -250,6 +250,10 @@ object Txn extends TxnInstances0 {
     private[choam] final def plus[A](t1: Txn[A], t2: Txn[A]): Txn[A] = {
       t1.asInstanceOf[RxnImpl[A]] + t2.asInstanceOf[RxnImpl[A]]
     }
+
+    private[choam] final def embedUnsafe[A](unsafeBlock: unsafe2.InRxn2 => A): Txn[A] = {
+      Rxn.unsafe.embedUnsafeImpl(unsafeBlock)
+    }
   }
 
   final class InvariantSyntax[A](private val self: Txn[A]) extends AnyVal {

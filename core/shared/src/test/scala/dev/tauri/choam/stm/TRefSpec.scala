@@ -20,6 +20,8 @@ package stm
 
 import java.util.concurrent.atomic.AtomicInteger
 
+import scala.concurrent.duration._
+
 import cats.effect.IO
 
 import internal.mcas.{ Consts, MemoryLocation }
@@ -142,6 +144,21 @@ trait TRefSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     for {
       r <- newTRef(42)
       _ <- check(r)
+    } yield ()
+  }
+
+  test("internal: refImpl") {
+    for {
+      r <- newTRef(42)
+      rr = r.refImpl
+      _ = (rr : core.Ref[Int])
+      fib <- r.get.flatMap { v =>
+        if (v > 0) Txn.retry
+        else Txn.pure(v)
+      }.commit.start
+      _ <- F.sleep(0.01.second)
+      _ <- rr.set(0).run[F]
+      _ <- assertResultF(fib.joinWithNever, 0)
     } yield ()
   }
 }

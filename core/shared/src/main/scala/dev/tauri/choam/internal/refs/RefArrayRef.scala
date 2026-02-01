@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 import scala.collection.immutable.LongMap
 
-import core.UnsealedRef
+import core.{ Ref, UnsealedRef }
 import mcas.{ Mcas, MemoryLocation, RefIdGen, Consts }
 
 private final class RefArrayTRef[A](
@@ -60,6 +60,9 @@ private final class RefArrayTRef[A](
 
   private[choam] final override def unsafeNumberOfListeners(): Int =
     this.unsafeNumberOfListenersImpl(this.listeners)
+
+  private[choam] final override def refImpl: Ref[A] =
+    this
 
   final override def toString: String =
     refs.refArrayRefToString("ATRef", array.idBase, this.logicalIdx)

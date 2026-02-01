@@ -259,6 +259,19 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     }.commit.flatMap(ok => assertF(ok))
   }
 
+  test("Txn.unsafe.embedUnsafe") {
+    for {
+      r <- TRef(0).commit
+      x <- Txn.unsafe.embedUnsafe { implicit u =>
+        import unsafe.RefSyntax
+        r.refImpl.value = 42
+        99
+      }.commit
+      _ <- assertEqualsF(x, 99)
+      _ <- assertResultF(r.get.commit, 42)
+    } yield ()
+  }
+
   test("TxnLocal (simple)") {
     for {
       ref <- TRef[Int](0).commit

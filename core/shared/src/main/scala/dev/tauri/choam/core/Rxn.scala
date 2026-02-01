@@ -741,7 +741,11 @@ object Rxn extends RxnInstances0 {
     // TODO: a read-only version of `embedUnsafe`
 
     /** Embeds a block of code, which uses the unsafe/imperative API, into a `Rxn`. */
-    final def embedUnsafe[A](unsafeBlock: unsafePackage.InRxn2 => A): Rxn[A] = {
+    @inline
+    final def embedUnsafe[A](unsafeBlock: unsafePackage.InRxn2 => A): Rxn[A] =
+      embedUnsafeImpl(unsafeBlock)
+
+    final def embedUnsafeImpl[A](unsafeBlock: unsafePackage.InRxn2 => A): RxnImpl[A] = {
       new Rxn.Ctx3[Rxn[A]]({ (state: unsafePackage.InRxn2) =>
         try {
           pure[A](unsafeBlock(state))

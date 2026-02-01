@@ -90,6 +90,9 @@ private final class TRefImpl[A](
   final override def unsafeCmpxchgMarkerR(ov: WeakReference[AnyRef], nv: WeakReference[AnyRef]): WeakReference[AnyRef] =
     marker.compareAndExchangeRelease(ov, nv)
 
+  private[choam] final override def refImpl: core.Ref[A] =
+    this
+
   final override def hashCode: Int = {
     // `RefIdGen` generates IDs with
     // Fibonacci hashing, so no need
