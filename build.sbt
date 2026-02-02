@@ -1095,7 +1095,7 @@ lazy val dependencies = new {
       catsLaws.value,
       "org.typelevel" %%% "cats-effect-kernel-testkit" % catsEffectVersion,
       "org.typelevel" %%% "cats-effect-testkit" % catsEffectVersion,
-      "org.scalameta" %%% "munit" % "1.2.1", // https://github.com/scalameta/munit
+      "org.scalameta" %%% "munit" % "1.2.2", // https://github.com/scalameta/munit
       "org.typelevel" %%% "munit-cats-effect" % "2.2.0-RC1", // https://github.com/typelevel/munit-cats-effect
       "org.typelevel" %%% "scalacheck-effect" % scalacheckEffectVersion,
       "org.typelevel" %%% "scalacheck-effect-munit" % scalacheckEffectVersion,
