@@ -2850,12 +2850,6 @@ object Rxn extends RxnInstances0 {
 }
 
 private[core] sealed abstract class RxnInstances0 extends RxnInstances1 { this: Rxn.type =>
-}
-
-private sealed abstract class RxnInstances1 extends RxnInstances2 { self: Rxn.type =>
-}
-
-private sealed abstract class RxnInstances2 extends RxnInstances3 { this: Rxn.type =>
 
   // Even though we override `tailRecM`, we still
   // inherit `StackSafeMonad`, in case someone
@@ -2890,7 +2884,7 @@ private sealed abstract class RxnInstances2 extends RxnInstances3 { this: Rxn.ty
   }
 }
 
-private sealed abstract class RxnInstances3 extends RxnInstances4 { self: Rxn.type =>
+private sealed abstract class RxnInstances1 extends RxnInstances2 { self: Rxn.type =>
 
   implicit final def uniqueForRxn: Unique[Rxn] =
     _uniqueInstance
@@ -2903,10 +2897,7 @@ private sealed abstract class RxnInstances3 extends RxnInstances4 { self: Rxn.ty
   }
 }
 
-private sealed abstract class RxnInstances4 extends RxnInstances5 { this: Rxn.type =>
-}
-
-private sealed abstract class RxnInstances5 extends RxnInstances6 { this: Rxn.type =>
+private sealed abstract class RxnInstances2 extends RxnInstances3 { this: Rxn.type =>
 
   /** Not implicit, because it would conflict with [[monoidForRxn]]. */
   final def choiceSemigroup[B]: Semigroup[Rxn[B]] =
@@ -2925,7 +2916,7 @@ private sealed abstract class RxnInstances5 extends RxnInstances6 { this: Rxn.ty
   }
 }
 
-private sealed abstract class RxnInstances6 extends RxnInstances7 { self: Rxn.type =>
+private sealed abstract class RxnInstances3 extends RxnInstances4 { self: Rxn.type =>
 
   implicit final def deferForRxn: Defer[Rxn] =
     _deferInstance
@@ -2988,7 +2979,7 @@ private sealed abstract class RxnInstances6 extends RxnInstances7 { self: Rxn.ty
   }
 }
 
-private sealed abstract class RxnInstances7 extends RxnInstances8 { self: Rxn.type =>
+private sealed abstract class RxnInstances4 extends RxnInstances5 { this: Rxn.type =>
 
   implicit final def showForRxn[B]: Show[Rxn[B]] =
     _showInstance.asInstanceOf[Show[Rxn[B]]]
@@ -3005,7 +2996,7 @@ private sealed abstract class RxnInstances7 extends RxnInstances8 { self: Rxn.ty
   }
 }
 
-private sealed abstract class RxnInstances8 extends RxnInstances9 { self: Rxn.type =>
+private sealed abstract class RxnInstances5 extends RxnInstances6 { self: Rxn.type =>
 
   implicit final def alignForRxn: Align[Rxn] =
     _alignInstance
@@ -3024,10 +3015,10 @@ private sealed abstract class RxnInstances8 extends RxnInstances9 { self: Rxn.ty
   }
 }
 
-private sealed abstract class RxnInstances9 extends RxnInstances10 { self: Rxn.type =>
+private sealed abstract class RxnInstances6 extends RxnInstances7 { this: Rxn.type =>
 
   implicit final def uuidGenForRxn: UUIDGen[Rxn] =
-    self._uuidGen
+    _uuidGen
 
   private[this] val _uuidGen: UUIDGen[Rxn] = new UUIDGen[Rxn] {
     final override def randomUUID: Rxn[UUID] =
@@ -3035,7 +3026,7 @@ private sealed abstract class RxnInstances9 extends RxnInstances10 { self: Rxn.t
   }
 }
 
-private sealed abstract class RxnInstances10 extends RxnInstances11 { self: Rxn.type =>
+private sealed abstract class RxnInstances7 extends RxnInstances8 { this: Rxn.type =>
 
   import scala.concurrent.duration.{ FiniteDuration, NANOSECONDS, MILLISECONDS }
 
@@ -3052,7 +3043,7 @@ private sealed abstract class RxnInstances10 extends RxnInstances11 { self: Rxn.
   }
 }
 
-private sealed abstract class RxnInstances11 extends RxnSyntax0 { self: Rxn.type =>
+private sealed abstract class RxnInstances8 extends RxnSyntax0 { this: Rxn.type =>
 
   implicit final def catsRefForRxn: CatsRef.Make[Rxn] =
     _catsRefMakeInstance
@@ -3092,16 +3083,10 @@ private sealed abstract class RxnInstances11 extends RxnSyntax0 { self: Rxn.type
   }
 }
 
-private sealed abstract class RxnSyntax0 extends RxnSyntax1 { this: Rxn.type =>
+private sealed abstract class RxnSyntax0 extends RxnCompanionPlatform { this: Rxn.type =>
 
   import scala.language.implicitConversions
 
   implicit final def rxnInvariantSyntax[A](self: Rxn[A]): Rxn.InvariantSyntax[A] =
     new Rxn.InvariantSyntax(self)
-}
-
-private sealed abstract class RxnSyntax1 extends RxnSyntax2 { this: Rxn.type =>
-}
-
-private sealed abstract class RxnSyntax2 extends RxnCompanionPlatform { this: Rxn.type =>
 }
