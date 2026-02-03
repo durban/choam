@@ -155,7 +155,9 @@ private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K]
           ()
         case node: AbstractHamt[_, _, _, _, _, _] =>
           val arrIdxAndBlue = node.asInstanceOf[H].copyIntoArray(arr, arrIdx, tok, flag = flag)
-          arrIdx = unpackSize(arrIdxAndBlue)
+          val newArrIdx = unpackSize(arrIdxAndBlue)
+          _assert(newArrIdx >= arrIdx)
+          arrIdx = newArrIdx
           isBlueSt &= unpackBlue(arrIdxAndBlue)
         case a =>
           val av = a.asInstanceOf[V]
@@ -170,6 +172,7 @@ private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K]
             }
             // end of temporary assertion
             val converted = convertForArray(av, tok, flag = flag)
+            _assert(arr(arrIdx) eq null)
             arr(arrIdx) = converted
             // another temporary check:
             if (arrIdx > 0) {
@@ -319,8 +322,10 @@ private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K]
 
   // TODO: this is duplicated with `Hamt`
   protected[this] final def packSizeAndBlue(size: Int, isBlue: Boolean): Int = {
-    if (isBlue) size
-    else -size
+    _assert(size >= 0)
+    val r = if (isBlue) size else -size
+    _assert((unpackSize(r) == size) && ((unpackBlue(r) == isBlue) || (size == 0)))
+    r
   }
 
   @inline

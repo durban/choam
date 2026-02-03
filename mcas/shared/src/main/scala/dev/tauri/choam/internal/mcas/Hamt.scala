@@ -445,8 +445,10 @@ private[mcas] abstract class Hamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <: A
 
   // TODO: this is duplicated with `AbstractHamt`
   private[this] final def packSizeAndBlueInternal(size: Int, isBlue: Boolean): Int = {
-    if (isBlue) size
-    else -size
+    _assert(size >= 0)
+    val r = if (isBlue) size else -size
+    _assert((unpackSize(r) == size) && ((unpackBlue(r) == isBlue) || (size == 0)))
+    r
   }
 }
 

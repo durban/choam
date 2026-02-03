@@ -492,12 +492,13 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
           bitmap |= (1L << logicalIdx(v.key.hash, shift = shift))
           size += (if (v.isTomb) 0 else 1)
           isBlueSubtree &= isBlueOrTomb(v)
+          _assert(arr(arity) eq null)
           arr(arity) = value
           arity += 1
       }
       i += 1
     }
-
+    _assert((arity == arr.length) && ((arity == 0) || (arr(arity - 1) ne null)))
     this.newImmutableNode(sizeAndBlue = packSizeAndBlue(size, isBlueSubtree), bitmap = bitmap, contents = arr)
   }
 
@@ -552,7 +553,9 @@ private[mcas] abstract class MutHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K], E <
     _assert((sizeDiff == 0) || (sizeDiff == 1) || (sizeDiff == -1))
     val sd = sizeDiff + 1
     val bl = if (isBlue) 4 else 0
-    bl | sd
+    val r = bl | sd
+    _assert((unpackSizeDiff(r) == sizeDiff) && (unpackIsBlue(r) == isBlue))
+    r
   }
 
   private[mcas] final def packSizeDiffAndBlue_public(sizeDiff: Int, isBlue: Boolean): Int = {
