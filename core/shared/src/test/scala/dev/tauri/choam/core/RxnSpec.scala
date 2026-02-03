@@ -1662,6 +1662,11 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for {
       t1t2 <- (inst.monotonic * inst.monotonic).run[F]
       _ <- assertF(t1t2._1 <= t1t2._2)
+      mr1 <- (inst.monotonic * inst.realTime).run[F]
+      _ <- F.sleep(0.1.seconds)
+      mr2 <- (inst.monotonic * inst.realTime).run[F]
+      _ <- assertF(mr1._1 < mr2._1)
+      _ <- assertF(mr1._2 < mr2._2)
     } yield ()
   }
 

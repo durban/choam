@@ -36,7 +36,7 @@ import internal.random
 import internal.refs.CompatPlatform
 
 /**
- * A effect with result type `B`; when executed, it
+ * An effect with result type `B`; when executed, it
  * may update any number of [[Ref]]s atomically. (It
  * may also create new [[Ref]]s.)
  *
@@ -2900,20 +2900,19 @@ private sealed abstract class RxnInstances1 extends RxnInstances2 { self: Rxn.ty
 private sealed abstract class RxnInstances2 extends RxnInstances3 { this: Rxn.type =>
 
   /** Not implicit, because it would conflict with [[monoidForDevTauriChoamCoreRxn]]. */
-  final def choiceSemigroup[B]: Semigroup[Rxn[B]] =
-    _choiceSemigroup.asInstanceOf[Semigroup[Rxn[B]]]
+  final def choiceSemigroup[A]: Semigroup[Rxn[A]] =
+    _choiceSemigroup.asInstanceOf[Semigroup[Rxn[A]]]
 
   private[this] val _choiceSemigroup: Semigroup[Rxn[Any]] = new Semigroup[Rxn[Any]] {
     final override def combine(x: Rxn[Any], y: Rxn[Any]): Rxn[Any] =
       x + y
   }
 
-  // TODO: _monoidInstance
-  implicit final def monoidForDevTauriChoamCoreRxn[B](implicit B: Monoid[B]): Monoid[Rxn[B]] = new Monoid[Rxn[B]] {
-    final override def combine(x: Rxn[B], y: Rxn[B]): Rxn[B] =
-      x.map2(y) { (b1, b2) => B.combine(b1, b2) }
-    final override def empty: Rxn[B] =
-      Rxn.pure(B.empty)
+  implicit final def monoidForDevTauriChoamCoreRxn[A](implicit A: Monoid[A]): Monoid[Rxn[A]] = new Monoid[Rxn[A]] {
+    final override def combine(x: Rxn[A], y: Rxn[A]): Rxn[A] =
+      x.map2(y) { (a1, a2) => A.combine(a1, a2) }
+    final override def empty: Rxn[A] =
+      Rxn.pure(A.empty)
   }
 }
 
@@ -2982,8 +2981,8 @@ private sealed abstract class RxnInstances3 extends RxnInstances4 { self: Rxn.ty
 
 private sealed abstract class RxnInstances4 extends RxnInstances5 { this: Rxn.type =>
 
-  implicit final def showForDevTauriChoamCoreRxn[B]: Show[Rxn[B]] =
-    _showInstance.asInstanceOf[Show[Rxn[B]]]
+  implicit final def showForDevTauriChoamCoreRxn[A]: Show[Rxn[A]] =
+    _showInstance.asInstanceOf[Show[Rxn[A]]]
 
   private[this] val _showInstance: Show[Rxn[Any]] = new Show[Rxn[Any]] {
     final override def show(rxn: Rxn[Any]): String = rxn match {
@@ -3037,9 +3036,9 @@ private sealed abstract class RxnInstances7 extends RxnInstances8 { this: Rxn.ty
   private[this] val _clockInstance: Clock[Rxn] = new Clock[Rxn] {
     final override def applicative: Applicative[Rxn] =
       Rxn.monadForDevTauriChoamCoreRxn
-    final override def monotonic: Rxn[FiniteDuration] = // TODO: val
+    final override val monotonic: Rxn[FiniteDuration] =
       Rxn.unsafe.delay { FiniteDuration(System.nanoTime(), NANOSECONDS) }
-    final override def realTime: Rxn[FiniteDuration] = // TODO: val
+    final override val realTime: Rxn[FiniteDuration] =
       Rxn.unsafe.delay { FiniteDuration(System.currentTimeMillis(), MILLISECONDS) }
   }
 }
