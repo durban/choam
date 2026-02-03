@@ -596,7 +596,7 @@ object Rxn extends RxnInstances0 {
       // unobservable lazy idempotent initialization, so
       // we don't suspend the effect here (for performance).
       arr.getOrCreateRefOrNull(idx) match {
-        case null => throw new ArrayIndexOutOfBoundsException
+        case null => throw new IndexOutOfBoundsException
         case ref => ticketRead(ref)
       }
     }
@@ -616,7 +616,7 @@ object Rxn extends RxnInstances0 {
       // unobservable lazy idempotent initialization, so
       // we don't suspend the effect here (for performance).
       arr.getOrCreateRefOrNull(idx) match {
-        case null => throw new ArrayIndexOutOfBoundsException
+        case null => throw new IndexOutOfBoundsException
         case ref => tentativeRead(ref)
       }
     }
@@ -2727,7 +2727,7 @@ object Rxn extends RxnInstances0 {
 
     final override def readRefArray[A](arr: Ref.Array[A], idx: Int): A = {
       arr.getOrCreateRefOrNull(idx) match {
-        case null => Rxn.unsafe.imperativePanicImpl(new ArrayIndexOutOfBoundsException)
+        case null => Rxn.unsafe.imperativePanicImpl(new IndexOutOfBoundsException)
         case ref => readRef(ref.loc)
       }
     }
@@ -2745,7 +2745,7 @@ object Rxn extends RxnInstances0 {
 
     final override def writeRefArray[A](arr: Ref.Array[A], idx: Int, nv: A): Unit = {
       arr.getOrCreateRefOrNull(idx) match {
-        case null => Rxn.unsafe.imperativePanicImpl(new ArrayIndexOutOfBoundsException)
+        case null => Rxn.unsafe.imperativePanicImpl(new IndexOutOfBoundsException)
         case ref => writeRef(ref.loc, nv)
       }
     }
@@ -2763,7 +2763,7 @@ object Rxn extends RxnInstances0 {
 
     final override def updateRefArray[A](arr: Ref.Array[A], idx: Int, f: A => A): Unit = {
       arr.getOrCreateRefOrNull(idx) match {
-        case null => Rxn.unsafe.imperativePanicImpl(new ArrayIndexOutOfBoundsException)
+        case null => Rxn.unsafe.imperativePanicImpl(new IndexOutOfBoundsException)
         case ref => updateRef(ref.loc, f)
       }
     }
@@ -2795,7 +2795,7 @@ object Rxn extends RxnInstances0 {
 
     final override def imperativeTentativeReadArray[A](arr: Ref.Array[A], idx: Int): A = {
       arr.getOrCreateRefOrNull(idx) match {
-        case null => Rxn.unsafe.imperativePanicImpl(new ArrayIndexOutOfBoundsException)
+        case null => Rxn.unsafe.imperativePanicImpl(new IndexOutOfBoundsException)
         case ref => imperativeTentativeRead(ref.loc)
       }
     }
@@ -2811,7 +2811,7 @@ object Rxn extends RxnInstances0 {
 
     final override def imperativeTicketReadArray[A](arr: Ref.Array[A], idx: Int): unsafePackage.Ticket[A] = {
       arr.getOrCreateRefOrNull(idx) match {
-        case null => Rxn.unsafe.imperativePanicImpl(new ArrayIndexOutOfBoundsException)
+        case null => Rxn.unsafe.imperativePanicImpl(new IndexOutOfBoundsException)
         case ref => imperativeTicketRead(ref.loc)
       }
     }

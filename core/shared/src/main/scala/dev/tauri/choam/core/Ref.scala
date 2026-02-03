@@ -77,14 +77,14 @@ object Ref extends RefInstances0 {
 
     private[choam] final def unsafeGetAndSet(idx: Int, nv: A): Rxn[A] = {
       this.getOrCreateRefOrNull(idx) match {
-        case null => throw new ArrayIndexOutOfBoundsException
+        case null => throw new IndexOutOfBoundsException
         case ref => ref.getAndSet(nv)
       }
     }
 
     private[choam] final def unsafeGetAndUpdate(idx: Int)(f: A => A): Rxn[A] = {
       this.getOrCreateRefOrNull(idx) match {
-        case null => throw new ArrayIndexOutOfBoundsException
+        case null => throw new IndexOutOfBoundsException
         case ref => ref.getAndUpdate(f)
       }
     }

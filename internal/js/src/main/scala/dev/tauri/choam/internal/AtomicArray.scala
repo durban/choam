@@ -24,7 +24,7 @@ private[choam] object AtomicArray {
     // Out-of-bounds array indexing is undefined behavior(??) on scala-js,
     // so we need this extra check here (on the JVM, we rely on arrays working):
     if ((idx < 0) || (idx >= arr.length)) {
-      throw new ArrayIndexOutOfBoundsException(s"Index ${idx} out of bounds for length ${arr.length}")
+      throw new IndexOutOfBoundsException(s"Index ${idx} out of bounds for length ${arr.length}")
     }
   }
 
