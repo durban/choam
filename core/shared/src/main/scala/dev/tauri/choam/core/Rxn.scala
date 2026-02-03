@@ -263,13 +263,13 @@ private[choam] sealed abstract class RxnImpl[+A]
   final override def * [B](that: Rxn[B]): RxnImpl[(A, B)] =
     new Rxn.AndAlso[A, B](this, that)
 
-  final override def product[B](that: Rxn[B]): Rxn[(A, B)] =
+  final override def product[B](that: Rxn[B]): RxnImpl[(A, B)] =
     this * that
 
-  final override def ? : Rxn[Option[A]] =
+  final override def ? : RxnImpl[Option[A]] =
     this.attempt
 
-  final override def attempt: Rxn[Option[A]] =
+  final override def attempt: RxnImpl[Option[A]] =
     this.map(Some(_)) + Rxn.none
 
   final override def maybe: RxnImpl[Boolean] =
@@ -287,25 +287,25 @@ private[choam] sealed abstract class RxnImpl[+A]
   final override def map2[B, C](that: Rxn[B])(f: (A, B) => C): RxnImpl[C] =
     new Rxn.Map2(this, that, f)
 
-  final override def <* [B](that: Rxn[B]): Rxn[A] =
+  final override def <* [B](that: Rxn[B]): RxnImpl[A] =
     this.productL(that)
 
   final override def productL[B](that: Rxn[B]): RxnImpl[A] =
     (this * that).map(_._1)
 
-  final override def *> [B](that: Rxn[B]): Rxn[B] =
+  final override def *> [B](that: Rxn[B]): RxnImpl[B] =
     this.productR(that)
 
   final override def productR[B](that: Rxn[B]): RxnImpl[B] =
     new Rxn.ProductR[A, B](this, that)
 
-  final override def flatMap[B](f: A => Rxn[B]): Rxn[B] =
+  final override def flatMap[B](f: A => Rxn[B]): RxnImpl[B] =
     new Rxn.FlatMap(this, f)
 
-  final override def >> [B](that: => Rxn[B]): Rxn[B] =
+  final override def >> [B](that: => Rxn[B]): RxnImpl[B] =
     this.flatMap { _ => that }
 
-  final override def flatTap(f: A => Rxn[Unit]): Rxn[A] = {
+  final override def flatTap(f: A => Rxn[Unit]): RxnImpl[A] = {
     // Note: possible exceptions when calling `f`
     // are handled when handling `flatMap`.
     this.flatMap { a => f(a).as(a) }
@@ -314,8 +314,8 @@ private[choam] sealed abstract class RxnImpl[+A]
   final override def flatten[B](implicit ev: A <:< Rxn[B]): RxnImpl[B] =
     new Rxn.Flatten[B](this.asInstanceOf[Rxn[Rxn[B]]])
 
-  final override def postCommit(pc: A => Rxn[Unit]): Rxn[A] =
-    Rxn.postCommit(this, pc)
+  final override def postCommit(pc: A => Rxn[Unit]): RxnImpl[A] =
+    Rxn.postCommitImpl(this, pc)
 
   // STM:
 
@@ -483,7 +483,11 @@ object Rxn extends RxnInstances0 {
   final def postCommit(pc: Rxn[Unit]): Rxn[Unit] =
     new Rxn.PostCommit[Unit](unit, _ => pc) // TODO: create a variant without the lambda allocation
 
+  @inline
   private[core] final def postCommit[A](rxn: Rxn[A], pc: A => Rxn[Unit]): Rxn[A] =
+    postCommitImpl(rxn, pc)
+
+  private[core] final def postCommitImpl[A](rxn: Rxn[A], pc: A => Rxn[Unit]): RxnImpl[A] =
     new Rxn.PostCommit(rxn, pc)
 
   @inline
