@@ -176,7 +176,12 @@ private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K]
               val prevIdx = arrIdx - 1
               val prevItem = arr(prevIdx)
               if (prevItem eq converted) {
-                throw new AssertionError(s"wrote the same item '${converted}' into the array twice: indices ${prevIdx} and ${arrIdx}")
+                throw new AssertionError(
+                  s"wrote the same item '${converted}' into the array twice: " +
+                  s"indices ${prevIdx} and ${arrIdx} (" +
+                  s"arr = ${arr.mkString("[", ", ", "]")};" +
+                  s"contents = ${contents.mkString("[", ", ", "]")})"
+                )
               }
             }
             // end of temporary check
