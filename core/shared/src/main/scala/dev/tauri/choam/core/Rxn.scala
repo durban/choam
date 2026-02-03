@@ -36,7 +36,7 @@ import internal.random
 import internal.refs.CompatPlatform
 
 /**
- * An effect with result type `B`; when executed, it
+ * An effect with result type `A`; when executed, it
  * may update any number of [[Ref]]s atomically. (It
  * may also create new [[Ref]]s.)
  *
@@ -47,7 +47,7 @@ import internal.refs.CompatPlatform
  * A [[Rxn]] forms a [[cats.Monad Monad]], so the usual
  * monadic combinators can be used to compose `Rxn`s.
  */
-sealed abstract class Rxn[+B] { // short for 'reaction'
+sealed abstract class Rxn[+A] { // short for 'reaction'
 
   /*
    * An implementation inspired by reagents, described in [Reagents: Expressing and
@@ -83,48 +83,48 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
    * reads and writes to the same `Ref` in one `Rxn`.
    */
 
-  def + [Y >: B](that: Rxn[Y]): Rxn[Y]
+  def + [X >: A](that: Rxn[X]): Rxn[X]
 
-  def * [C](that: Rxn[C]): Rxn[(B, C)]
+  def * [B](that: Rxn[B]): Rxn[(A, B)]
 
-  def product[C](that: Rxn[C]): Rxn[(B, C)]
+  def product[B](that: Rxn[B]): Rxn[(A, B)]
 
-  def ? : Rxn[Option[B]]
+  def ? : Rxn[Option[A]]
 
-  def attempt: Rxn[Option[B]]
+  def attempt: Rxn[Option[A]]
 
   def maybe: Rxn[Boolean]
 
-  def map[C](f: B => C): Rxn[C]
+  def map[B](f: A => B): Rxn[B]
 
-  def as[C](c: C): Rxn[C]
+  def as[B](c: B): Rxn[B]
 
   def void: Rxn[Unit]
 
-  def map2[C, D](that: Rxn[C])(f: (B, C) => D): Rxn[D]
+  def map2[B, C](that: Rxn[B])(f: (A, B) => C): Rxn[C]
 
-  def <* [C](that: Rxn[C]): Rxn[B]
+  def <* [B](that: Rxn[B]): Rxn[A]
 
-  def productL [C](that: Rxn[C]): Rxn[B]
+  def productL [B](that: Rxn[B]): Rxn[A]
 
-  def *> [C](that: Rxn[C]): Rxn[C]
+  def *> [B](that: Rxn[B]): Rxn[B]
 
-  def productR[C](that: Rxn[C]): Rxn[C]
+  def productR[B](that: Rxn[B]): Rxn[B]
 
-  def flatMap[C](f: B => Rxn[C]): Rxn[C]
+  def flatMap[B](f: A => Rxn[B]): Rxn[B]
 
-  def >> [C](that: => Rxn[C]): Rxn[C]
+  def >> [B](that: => Rxn[B]): Rxn[B]
 
-  def flatTap(f: B => Rxn[Unit]): Rxn[B]
+  def flatTap(f: A => Rxn[Unit]): Rxn[A]
 
-  def flatten[C](implicit ev: B <:< Rxn[C]): Rxn[C]
+  def flatten[B](implicit ev: A <:< Rxn[B]): Rxn[B]
 
-  def postCommit(pc: B => Rxn[Unit]): Rxn[B]
+  def postCommit(pc: A => Rxn[Unit]): Rxn[A]
 
-  final def postCommit(pc: Rxn[Unit]): Rxn[B] =
+  final def postCommit(pc: Rxn[Unit]): Rxn[A] =
     this.postCommit { _ => pc }
 
-  private[choam] def impl: RxnImpl[B]
+  private[choam] def impl: RxnImpl[A]
 
   /**
    * Execute the [[Rxn]].
@@ -136,7 +136,7 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
    */
   final def unsafePerform(
     rt: ChoamRuntime,
-  ): B = this.unsafePerform(rt.mcasImpl, RetryStrategy.Default)
+  ): A = this.unsafePerform(rt.mcasImpl, RetryStrategy.Default)
 
   /**
    * Execute the [[Rxn]].
@@ -150,13 +150,13 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
   final def unsafePerform(
     rt: ChoamRuntime,
     strategy: RetryStrategy.CanSuspend[false],
-  ): B = this.unsafePerform(rt.mcasImpl, strategy)
+  ): A = this.unsafePerform(rt.mcasImpl, strategy)
 
   private[choam] final def unsafePerform(
     mcas: Mcas,
     strategy: RetryStrategy.CanSuspend[false] = RetryStrategy.Default,
-  ): B = {
-    new Rxn.InterpreterState[B](
+  ): A = {
+    new Rxn.InterpreterState[A](
       rxn = this,
       mcas = mcas,
       strategy = strategy,
@@ -164,12 +164,12 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
     ).interpretSync()
   }
 
-  private[choam] final def perform[F[_], X >: B](
+  private[choam] final def perform[F[_], X >: A](
     rt: ChoamRuntime,
     strategy: RetryStrategy = RetryStrategy.Default,
   )(implicit F: Async[F]): F[X] = this.performInternal(rt.mcasImpl, strategy)
 
-  private[choam] final def performInternal[F[_], X >: B](
+  private[choam] final def performInternal[F[_], X >: A](
     mcas: Mcas,
     strategy: RetryStrategy = RetryStrategy.Default,
   )(implicit F: Async[F]): F[X] = {
@@ -180,14 +180,14 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
     performInternal0[F, X](mcas = mcas, strategy = strategy)
   }
 
-  private[choam] final def performWithStepper[F[_], X >: B](
+  private[choam] final def performWithStepper[F[_], X >: A](
     mcas: Mcas,
     stepper: RetryStrategy.Internal.Stepper[F],
   )(implicit F: Async[F]): F[X] = {
     performInternal0[F, X](mcas = mcas, strategy = stepper)
   }
 
-  private[this] final def performInternal0[F[_], X >: B](
+  private[this] final def performInternal0[F[_], X >: A](
     mcas: Mcas,
     strategy: RetryStrategy,
   )(implicit F: Async[F]): F[X] = {
@@ -207,8 +207,8 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
   private[choam] final def unsafePerformInternal(
     ctx: Mcas.ThreadContext,
     str: RetryStrategy.CanSuspend[false] = RetryStrategy.Default,
-  ): B = {
-    new Rxn.InterpreterState[B](
+  ): A = {
+    new Rxn.InterpreterState[A](
       this,
       ctx.impl,
       strategy = str,
@@ -216,7 +216,7 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
     ).interpretSyncWithContext(ctx)
   }
 
-  private[choam] final def performStm[F[_], X >: B](
+  private[choam] final def performStm[F[_], X >: A](
     mcas: Mcas,
     strategy: RetryStrategy.CanSuspend[true],
   )(implicit F: Async[F]): F[X] = {
@@ -227,14 +227,14 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
     this.performStmInternal[F, X](mcas, strategy)
   }
 
-  private[choam] final def performStmWithStepper[F[_], X >: B](
+  private[choam] final def performStmWithStepper[F[_], X >: A](
     mcas: Mcas,
     stepper: RetryStrategy.Internal.Stepper[F],
   )(implicit F: Async[F]): F[X] = {
     this.performStmInternal[F, X](mcas, stepper)
   }
 
-  private[this] final def performStmInternal[F[_], X >: B](
+  private[this] final def performStmInternal[F[_], X >: A](
     mcas: Mcas,
     strategy: RetryStrategy.CanSuspend[true],
   )(implicit F: Async[F]): F[X] = {
@@ -254,166 +254,166 @@ sealed abstract class Rxn[+B] { // short for 'reaction'
   override def toString: String
 }
 
-private[choam] sealed abstract class RxnImpl[+B]
-  extends Rxn[B] with Txn.UnsealedTxn[B] {
+private[choam] sealed abstract class RxnImpl[+A]
+  extends Rxn[A] with Txn.UnsealedTxn[A] {
 
-  final override def + [Y >: B](that: Rxn[Y]): RxnImpl[Y] =
-    new Rxn.Choice[Y](this, that)
+  final override def + [X >: A](that: Rxn[X]): RxnImpl[X] =
+    new Rxn.Choice[X](this, that)
 
-  final override def * [C](that: Rxn[C]): RxnImpl[(B, C)] =
-    new Rxn.AndAlso[B, C](this, that)
+  final override def * [B](that: Rxn[B]): RxnImpl[(A, B)] =
+    new Rxn.AndAlso[A, B](this, that)
 
-  final override def product[C](that: Rxn[C]): Rxn[(B, C)] =
+  final override def product[B](that: Rxn[B]): Rxn[(A, B)] =
     this * that
 
-  final override def ? : Rxn[Option[B]] =
+  final override def ? : Rxn[Option[A]] =
     this.attempt
 
-  final override def attempt: Rxn[Option[B]] =
+  final override def attempt: Rxn[Option[A]] =
     this.map(Some(_)) + Rxn.none
 
   final override def maybe: RxnImpl[Boolean] =
     this.as(true) + Rxn.false_
 
-  final override def map[C](f: B => C): RxnImpl[C] =
+  final override def map[B](f: A => B): RxnImpl[B] =
     new Rxn.Map_(this, f)
 
-  final override def as[C](c: C): RxnImpl[C] =
+  final override def as[B](c: B): RxnImpl[B] =
     new Rxn.As(this, c)
 
   final override def void: RxnImpl[Unit] =
     this.as(())
 
-  final override def map2[C, D](that: Rxn[C])(f: (B, C) => D): RxnImpl[D] =
+  final override def map2[B, C](that: Rxn[B])(f: (A, B) => C): RxnImpl[C] =
     new Rxn.Map2(this, that, f)
 
-  final override def <* [C](that: Rxn[C]): Rxn[B] =
+  final override def <* [B](that: Rxn[B]): Rxn[A] =
     this.productL(that)
 
-  final override def productL [C](that: Rxn[C]): RxnImpl[B] =
+  final override def productL[B](that: Rxn[B]): RxnImpl[A] =
     (this * that).map(_._1)
 
-  final override def *> [C](that: Rxn[C]): Rxn[C] =
+  final override def *> [B](that: Rxn[B]): Rxn[B] =
     this.productR(that)
 
-  final override def productR[C](that: Rxn[C]): RxnImpl[C] =
-    new Rxn.ProductR[B, C](this, that)
+  final override def productR[B](that: Rxn[B]): RxnImpl[B] =
+    new Rxn.ProductR[A, B](this, that)
 
-  final override def flatMap[C](f: B => Rxn[C]): Rxn[C] =
+  final override def flatMap[B](f: A => Rxn[B]): Rxn[B] =
     new Rxn.FlatMap(this, f)
 
-  final override def >> [C](that: => Rxn[C]): Rxn[C] =
+  final override def >> [B](that: => Rxn[B]): Rxn[B] =
     this.flatMap { _ => that }
 
-  final override def flatTap(f: B => Rxn[Unit]): Rxn[B] = {
+  final override def flatTap(f: A => Rxn[Unit]): Rxn[A] = {
     // Note: possible exceptions when calling `f`
     // are handled when handling `flatMap`.
-    this.flatMap { b => f(b).as(b) }
+    this.flatMap { a => f(a).as(a) }
   }
 
-  final override def flatten[C](implicit ev: B <:< Rxn[C]): RxnImpl[C] =
-    new Rxn.Flatten[C](this.asInstanceOf[Rxn[Rxn[C]]])
+  final override def flatten[B](implicit ev: A <:< Rxn[B]): RxnImpl[B] =
+    new Rxn.Flatten[B](this.asInstanceOf[Rxn[Rxn[B]]])
 
-  final override def postCommit(pc: B => Rxn[Unit]): Rxn[B] =
+  final override def postCommit(pc: A => Rxn[Unit]): Rxn[A] =
     Rxn.postCommit(this, pc)
 
   // STM:
 
-  final override def flatMap[C](f: B => Txn[C]): Txn[C] = {
-    new Rxn.FlatMap(this, f.asInstanceOf[Function1[B, Rxn[C]]])
+  final override def flatMap[B](f: A => Txn[B]): Txn[B] = {
+    new Rxn.FlatMap(this, f.asInstanceOf[Function1[A, Rxn[B]]])
   }
 
-  final override def flatten[C](implicit ev: B <:< Txn[C]): Txn[C] = {
-    new Rxn.Flatten[C](this.asInstanceOf[Rxn[Rxn[C]]])
+  final override def flatten[B](implicit ev: A <:< Txn[B]): Txn[B] = {
+    new Rxn.Flatten[B](this.asInstanceOf[Rxn[Rxn[B]]])
   }
 
-  final override def map2[C, D](that: Txn[C])(f: (B, C) => D): Txn[D] = {
-    this.map2[C, D](that.impl : Rxn[C])(f)
+  final override def map2[B, C](that: Txn[B])(f: (A, B) => C): Txn[C] = {
+    this.map2[B, C](that.impl : Rxn[B])(f)
   }
 
-  final override def productR[C](that: Txn[C]): Txn[C] = {
-    this.productR[C](that.impl : Rxn[C])
+  final override def productR[B](that: Txn[B]): Txn[B] = {
+    this.productR[B](that.impl : Rxn[B])
   }
 
-  final override def *> [C](that: Txn[C]): Txn[C] = {
-    this.productR[C](that.impl : Rxn[C])
+  final override def *> [B](that: Txn[B]): Txn[B] = {
+    this.productR[B](that.impl : Rxn[B])
   }
 
-  final override def productL[C](that: Txn[C]): Txn[B] = {
-    this.productL[C](that.impl : Rxn[C])
+  final override def productL[B](that: Txn[B]): Txn[A] = {
+    this.productL[B](that.impl : Rxn[B])
   }
 
-  final override def <* [C](that: Txn[C]): Txn[B] = {
-    this.productL[C](that.impl : Rxn[C])
+  final override def <* [B](that: Txn[B]): Txn[A] = {
+    this.productL[B](that.impl : Rxn[B])
   }
 
-  final override def product[C](that: Txn[C]): Txn[(B, C)] = {
+  final override def product[B](that: Txn[B]): Txn[(A, B)] = {
     this * that.impl
   }
 
-  final override def orElse[Y >: B](that: Txn[Y]): Txn[Y] = {
+  final override def orElse[X >: A](that: Txn[X]): Txn[X] = {
     new Rxn.OrElse(this, that.impl)
   }
 
-  private[choam] final override def impl: RxnImpl[B] =
+  private[choam] final override def impl: RxnImpl[A] =
     this
 
   // /STM
 }
 
 /** This is specifically only for `Ref` to use! */
-private[choam] abstract class RefGetAxn[B] extends RxnImpl[B] with MemoryLocation[B] {
+private[choam] abstract class RefGetAxn[A] extends RxnImpl[A] with MemoryLocation[A] {
 
-  final def get: RxnImpl[B] =
+  final def get: RxnImpl[A] =
     getImpl
 
-  final def getImpl: RxnImpl[B] =
+  final def getImpl: RxnImpl[A] =
     this
 
-  final def set(a: B): RxnImpl[Unit] =
+  final def set(a: A): RxnImpl[Unit] =
     setImpl(a)
 
-  final def setImpl(a: B): RxnImpl[Unit] =
+  final def setImpl(a: A): RxnImpl[Unit] =
     Rxn.loc.set(this, a)
 
-  final def update(f: B => B): RxnImpl[Unit] =
+  final def update(f: A => A): RxnImpl[Unit] =
     updateImpl(f)
 
-  final def updateImpl(f: B => B): RxnImpl[Unit] =
+  final def updateImpl(f: A => A): RxnImpl[Unit] =
     Rxn.loc.update(this, f)
 
-  final def modify[C](f: B => (B, C)): RxnImpl[C] =
+  final def modify[B](f: A => (A, B)): RxnImpl[B] =
     modifyImpl(f)
 
-  final def modifyImpl[C](f: B => (B, C)): RxnImpl[C] =
+  final def modifyImpl[B](f: A => (A, B)): RxnImpl[B] =
     Rxn.loc.modify(this, f)
 
-  final def flatModifyImpl[C](f: B => (B, Rxn[C])): RxnImpl[C] =
+  final def flatModifyImpl[B](f: A => (A, Rxn[B])): RxnImpl[B] =
     this.modifyImpl(f).flatten
 
-  final def getAndSet(nv: B): RxnImpl[B] =
+  final def getAndSet(nv: A): RxnImpl[A] =
     getAndUpdate { _ => nv }
 
   /** Returns `false` iff the update failed */
-  final def tryUpdate(f: B => B): RxnImpl[Boolean] =
+  final def tryUpdate(f: A => A): RxnImpl[Boolean] =
     update(f).maybe
 
   /** Returns previous value */
-  final def getAndUpdate(f: B => B): RxnImpl[B] =
+  final def getAndUpdate(f: A => A): RxnImpl[A] =
     modify { oa => (f(oa), oa) }
 
   /** Returns new value */
-  final def updateAndGet(f: B => B): RxnImpl[B] = {
+  final def updateAndGet(f: A => A): RxnImpl[A] = {
     modify { oa =>
       val na = f(oa)
       (na, na)
     }
   }
 
-  final def tryModify[C](f: B => (B, C)): Rxn[Option[C]] =
+  final def tryModify[B](f: A => (A, B)): Rxn[Option[B]] =
     modify(f).?
 
-  final def flatModify[C](f: B => (B, Rxn[C])): Rxn[C] =
+  final def flatModify[B](f: A => (A, Rxn[B])): Rxn[B] =
     modify(f).flatten
 }
 
@@ -490,7 +490,7 @@ object Rxn extends RxnInstances0 {
   final def tailRecM[A, B](a: A)(f: A => Rxn[Either[A, B]]): Rxn[B] =
     tailRecMImpl(a)(f)
 
-  private[choam] final def tailRecMImpl[X, A, B](a: A)(f: A => Rxn[Either[A, B]]): RxnImpl[B] =
+  private[choam] final def tailRecMImpl[A, B](a: A)(f: A => Rxn[Either[A, B]]): RxnImpl[B] =
     new Rxn.TailRecM[A, B](a, f)
 
   // Utilities:
@@ -660,26 +660,26 @@ object Rxn extends RxnInstances0 {
       new OrElse(left, right)
 
     @inline
-    final def delay[B](uf: => B): Rxn[B] =
+    final def delay[A](uf: => A): Rxn[A] =
       delayImpl(uf)
 
     @inline
-    private[choam] final def delayImpl[B](uf: => B): RxnImpl[B] =
-      new Rxn.Lift[B](() => { uf })
+    private[choam] final def delayImpl[A](uf: => A): RxnImpl[A] =
+      new Rxn.Lift[A](() => { uf })
 
-    private[choam] final def suspend[B](uf: => Rxn[B]): Rxn[B] =
+    private[choam] final def suspend[A](uf: => Rxn[A]): Rxn[A] =
       suspendImpl(uf)
 
     private[choam] final def suspendImpl[A](uf: => Rxn[A]): RxnImpl[A] =
       delayImpl(uf).flatten // TODO: optimize
 
-    private[choam] final def delayContext[B](uf: Mcas.ThreadContext => B): Rxn[B] =
+    private[choam] final def delayContext[A](uf: Mcas.ThreadContext => A): Rxn[A] =
       delayContextImpl(uf)
 
-    private[choam] final def suspendContext[B](uf: Mcas.ThreadContext => Rxn[B]): Rxn[B] =
+    private[choam] final def suspendContext[A](uf: Mcas.ThreadContext => Rxn[A]): Rxn[A] =
       suspendContextImpl(uf)
 
-    private[choam] final def suspendContextImpl[B](uf: Mcas.ThreadContext => Rxn[B]): RxnImpl[B] =
+    private[choam] final def suspendContextImpl[A](uf: Mcas.ThreadContext => Rxn[A]): RxnImpl[A] =
       delayContextImpl(uf).flatten
 
     /**
@@ -799,7 +799,7 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = "Commit()"
   }
 
-  private final class AlwaysRetry[B]() extends RxnImpl[B] {
+  private final class AlwaysRetry[A]() extends RxnImpl[A] {
     final override def toString: String = "AlwaysRetry()"
   }
 
@@ -810,7 +810,7 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"PostCommit(${rxn}, <function>)"
   }
 
-  private final class Lift[B](val func: Function0[B]) extends RxnImpl[B] {
+  private final class Lift[A](val func: Function0[A]) extends RxnImpl[A] {
     final override def toString: String = "Lift(<function>)"
   }
 
@@ -821,15 +821,15 @@ object Rxn extends RxnInstances0 {
   private[this] val _RetryWhenChanged: RxnImpl[Any] =
     new RetryWhenChanged[Any]
 
-  private[core] final class Choice[B](val left: Rxn[B], val right: Rxn[B]) extends RxnImpl[B] {
+  private[core] final class Choice[A](val left: Rxn[A], val right: Rxn[A]) extends RxnImpl[A] {
     final override def toString: String = s"Choice(${left}, ${right})"
   }
 
-  private[core] final class Map2[B, C, D](val left: Rxn[B], val right: Rxn[C], val f: (B, C) => D) extends RxnImpl[D] {
+  private[core] final class Map2[A, B, C](val left: Rxn[A], val right: Rxn[B], val f: (A, B) => C) extends RxnImpl[C] {
     final override def toString: String = s"Map2(${left}, ${right}, <function>)"
   }
 
-  private sealed abstract class UpdBase[B, X](val ref: MemoryLocation[X]) extends RxnImpl[B] {
+  private sealed abstract class UpdBase[A, X](val ref: MemoryLocation[X]) extends RxnImpl[A] {
     final override def toString: String = s"Upd(${ref}, <function>)"
   }
 
@@ -837,13 +837,13 @@ object Rxn extends RxnInstances0 {
     def f(ov: X): X
   }
 
-  private sealed abstract class UpdTuple[B, X](ref0: MemoryLocation[X]) extends UpdBase[B, X](ref0) {
-    def f(ov: X): (X, B)
+  private sealed abstract class UpdTuple[A, X](ref0: MemoryLocation[X]) extends UpdBase[A, X](ref0) {
+    def f(ov: X): (X, A)
   }
 
-  private final class UpdFull[B, X](ref0: MemoryLocation[X], f0: X => (X, B))
-    extends UpdTuple[B, X](ref0) {
-    final override def f(ov: X): (X, B) = f0(ov)
+  private final class UpdFull[A, X](ref0: MemoryLocation[X], f0: X => (X, A))
+    extends UpdTuple[A, X](ref0) {
+    final override def f(ov: X): (X, A) = f0(ov)
   }
 
   private final class UpdSet1[X](ref0: MemoryLocation[X], nv: X)
@@ -868,7 +868,7 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"Exchange(${exchanger}, ${a})"
   }
 
-  private[core] final class AndAlso[B, D](val left: Rxn[B], val right: Rxn[D]) extends RxnImpl[(B, D)] {
+  private[core] final class AndAlso[A, B](val left: Rxn[A], val right: Rxn[B]) extends RxnImpl[(A, B)] {
     final override def toString: String = s"AndAlso(${left}, ${right})"
   }
 
@@ -877,25 +877,25 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"Done(${result})"
   }
 
-  private sealed abstract class Ctx[B] extends RxnImpl[B] {
+  private sealed abstract class Ctx[A] extends RxnImpl[A] {
     final override def toString: String = s"Ctx(<block>)"
-    def uf(ctx: Mcas.ThreadContext, ir: InRxn.InterpState): B
+    def uf(ctx: Mcas.ThreadContext, ir: InRxn.InterpState): A
   }
 
-  private final class Ctx1[B](_uf: Mcas.ThreadContext => B) extends Ctx[B] {
-    final override def uf(ctx: Mcas.ThreadContext, ir: InRxn.InterpState): B = _uf(ctx)
+  private final class Ctx1[A](_uf: Mcas.ThreadContext => A) extends Ctx[A] {
+    final override def uf(ctx: Mcas.ThreadContext, ir: InRxn.InterpState): A = _uf(ctx)
   }
 
-  private final class Ctx2[B](_uf: (Mcas.ThreadContext, InRxn.InterpState) => B) extends Ctx[B] {
-    final override def uf(ctx: Mcas.ThreadContext, ir: InRxn.InterpState): B = _uf(ctx, ir)
+  private final class Ctx2[A](_uf: (Mcas.ThreadContext, InRxn.InterpState) => A) extends Ctx[A] {
+    final override def uf(ctx: Mcas.ThreadContext, ir: InRxn.InterpState): A = _uf(ctx, ir)
   }
 
-  private final class Ctx3[B](_uf: InRxn.InterpState => B) extends Ctx[B] {
-    final override def uf(ctx: Mcas.ThreadContext, ir: InRxn.InterpState): B = _uf(ir)
+  private final class Ctx3[A](_uf: InRxn.InterpState => A) extends Ctx[A] {
+    final override def uf(ctx: Mcas.ThreadContext, ir: InRxn.InterpState): A = _uf(ir)
   }
 
-  private[core] final class As[A, B, C](val rxn: Rxn[B], val c: C) extends RxnImpl[C] {
-    final override def toString: String = s"As(${rxn}, ${c})"
+  private[core] final class As[A, B](val rxn: Rxn[A], val res: B) extends RxnImpl[B] {
+    final override def toString: String = s"As(${rxn}, ${res})"
   }
 
   /** Only the interpreter/exchanger can use this! */
@@ -936,15 +936,15 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"Pure(${a})"
   }
 
-  private[core] final class ProductR[B, C](val left: Rxn[B], val right: Rxn[C]) extends RxnImpl[C] {
+  private[core] final class ProductR[A, B](val left: Rxn[A], val right: Rxn[B]) extends RxnImpl[B] {
     final override def toString: String = s"ProductR(${left}, ${right})"
   }
 
-  private[core] final class FlatMap[A, B, C](val rxn: Rxn[B], val f: B => Rxn[C]) extends RxnImpl[C] {
+  private[core] final class FlatMap[A, B](val rxn: Rxn[A], val f: A => Rxn[B]) extends RxnImpl[B] {
     final override def toString: String = s"FlatMap(${rxn}, <function>)"
   }
 
-  private[core] final class Flatten[B](val rxn: Rxn[Rxn[B]]) extends RxnImpl[B] {
+  private[core] final class Flatten[A](val rxn: Rxn[Rxn[A]]) extends RxnImpl[A] {
     final override def toString: String = s"Flatten(${rxn})"
   }
 
@@ -1125,11 +1125,11 @@ object Rxn extends RxnInstances0 {
     final override def toString: String = s"TailRecM(${a}, <function>)"
   }
 
-  private[core] final class Map_[B, C](val rxn: Rxn[B], val f: B => C) extends RxnImpl[C] {
+  private[core] final class Map_[A, B](val rxn: Rxn[A], val f: A => B) extends RxnImpl[B] {
     final override def toString: String = s"Map_(${rxn}, <function>)"
   }
 
-  private[core] final class OrElse[B](val left: Rxn[B], val right: Rxn[B]) extends RxnImpl[B] { // STM
+  private[core] final class OrElse[A](val left: Rxn[A], val right: Rxn[A]) extends RxnImpl[A] { // STM
     final override def toString: String = s"OrElse(${left}, ${right})"
   }
 
@@ -2321,9 +2321,9 @@ object Rxn extends RxnInstances0 {
               nextOnPanic(ex)
           }
           loop(nxt)
-        case c: As[_, _, _] => // As
+        case c: As[_, _] => // As
           contT.push(RxnConsts.ContAs)
-          contK.push(c.c)
+          contK.push(c.res)
           loop(c.rxn)
         case c: FinishExchange[d] =>
           val currentContT = contT.takeSnapshot()
@@ -2431,7 +2431,7 @@ object Rxn extends RxnInstances0 {
           contT.push(RxnConsts.ContProductR)
           contK.push2(c.right, a)
           loop(c.left)
-        case c: FlatMap[_, _, _] => // FlatMap
+        case c: FlatMap[_, _] => // FlatMap
           contT.push(RxnConsts.ContFlatMap)
           contK.push2(a, c.f) // TODO: do we still need to push `a` here?
           loop(c.rxn)
