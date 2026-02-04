@@ -17,10 +17,17 @@
 
 package dev.tauri.choam
 package internal
-package refs
 
-private[choam] object CompatPlatform {
+import scala.annotation.elidable
 
-  private[choam] final type AtomicReferenceArray[A] =
-    _root_.dev.tauri.choam.internal.refs.AtomicReferenceArray[A]
+@nowarn("msg=elidable")
+private[choam] abstract class ChoamUtilsBasePlatform {
+
+  @elidable(1000) // don't need this on JVM/Native
+  private[choam] final def jsAssert(cond: Boolean): Unit =
+    throw new NotImplementedError("jsAssert: this method should've been elided")
+
+  @elidable(1000) // don't need this on JVM/Native
+  private[choam] final def jsCheckIdx(idx: Int, length: Int): Unit =
+    throw new NotImplementedError("jsCheckIdx: this method should've been elided")
 }

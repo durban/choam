@@ -33,7 +33,6 @@ import stm.Txn
 import internal.mcas.{ MemoryLocation, Mcas, LogEntry, McasStatus, Descriptor, AbstractDescriptor, Consts, Hamt, Version }
 import internal.mcas.Hamt.IllegalInsertException
 import internal.random
-import internal.refs.CompatPlatform
 
 /**
  * An effect with result type `A`; when executed, it
@@ -2593,7 +2592,7 @@ object Rxn extends RxnInstances0 {
               initial
             case arr: Array[AnyRef] =>
               _assert(arr.length == local.size)
-              CompatPlatform.checkArrayIndexIfScalaJs(idx, arr.length)
+              jsCheckIdx(idx, arr.length)
               arr(idx)
             case _ =>
               impossible(s"unexpected value for ${local}")
@@ -2619,7 +2618,7 @@ object Rxn extends RxnInstances0 {
         case _ =>
           impossible(s"unexpected value for ${local}")
       }
-      CompatPlatform.checkArrayIndexIfScalaJs(idx, arr.length)
+      jsCheckIdx(idx, arr.length)
       arr(idx) = nv
     }
 
@@ -2655,8 +2654,8 @@ object Rxn extends RxnInstances0 {
               val len = local.size
               _assert(snapArr.length == len)
               val arr = new Array[AnyRef](len)
-              CompatPlatform.checkArrayIndexIfScalaJs(len - 1, snapArr.length)
-              CompatPlatform.checkArrayIndexIfScalaJs(len - 1, arr.length)
+              jsCheckIdx(len - 1, snapArr.length)
+              jsCheckIdx(len - 1, arr.length)
               System.arraycopy(snapArr, 0, arr, 0, len)
               locals.put(local, arr) : Unit
             case _ =>
@@ -2666,8 +2665,8 @@ object Rxn extends RxnInstances0 {
           val snapArr = snap.asInstanceOf[Array[AnyRef]]
           val len = arr.length
           _assert(snapArr.length == len)
-          CompatPlatform.checkArrayIndexIfScalaJs(len - 1, snapArr.length)
-          CompatPlatform.checkArrayIndexIfScalaJs(len - 1, arr.length)
+          jsCheckIdx(len - 1, snapArr.length)
+          jsCheckIdx(len - 1, arr.length)
           System.arraycopy(snapArr, 0, arr, 0, len)
         case _ =>
           impossible(s"unexpected value for ${local}")

@@ -20,10 +20,9 @@ package internal
 
 private[choam] abstract class ChoamUtilsBasePlatform {
 
-  @inline
-  private[choam] final def jsAssert(cond: Boolean): Unit = {
-    if (!cond) {
-      throw new AssertionError
-    }
-  }
+  private[choam] inline final def jsAssert(inline cond: Boolean): Unit =
+    ()
+
+  private[choam] inline final def jsCheckIdx(inline idx: Int, inline length: Int): Unit =
+    ()
 }

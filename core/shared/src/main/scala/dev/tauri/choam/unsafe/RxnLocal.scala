@@ -162,7 +162,7 @@ object RxnLocal {
       val arr = this.arr
       Rxn.unsafe.delayContext2Impl { (_, interpState) =>
         if (interpState.localOrigin eq origin) {
-          internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx = idx, length = arr.length)
+          jsCheckIdx(idx = idx, length = arr.length)
           arr(idx).asInstanceOf[A]
         } else {
           interpState.localGetArrSlowPath(this, idx).asInstanceOf[A]
@@ -174,7 +174,7 @@ object RxnLocal {
       val arr = this.arr
       Rxn.unsafe.delayContext2Impl { (_, interpState) =>
         if (interpState.localOrigin eq origin) {
-          internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx = idx, length = arr.length)
+          jsCheckIdx(idx = idx, length = arr.length)
           arr(idx) = box(nv)
         } else {
           interpState.localSetArrSlowPath(this, idx, box(nv))

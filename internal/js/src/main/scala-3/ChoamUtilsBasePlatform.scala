@@ -20,7 +20,17 @@ package internal
 
 private[choam] abstract class ChoamUtilsBasePlatform {
 
-  @inline
-  private[choam] final def jsAssert(cond: Boolean): Unit =
-    ()
+  private[choam] inline final def jsAssert(inline cond: Boolean): Unit = {
+    if (!cond) {
+      throw new AssertionError
+    }
+  }
+
+  private[choam] inline final def jsCheckIdx(inline idx: Int, inline length: Int): Unit = {
+    // Out-of-bounds array indexing is undefined behavior(??) on scala-js,
+    // so we need this extra check here (on the JVM, we rely on arrays working):
+    if ((idx < 0) || (idx >= length)) {
+      throw new IndexOutOfBoundsException(s"Index ${idx} out of bounds for length ${length}")
+    }
+  }
 }

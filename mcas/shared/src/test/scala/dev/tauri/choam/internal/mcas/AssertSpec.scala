@@ -19,9 +19,48 @@ package dev.tauri.choam
 package internal
 package mcas
 
+import cats.syntax.all._
+
 final class AssertSpec extends BaseSpec {
 
   test("_assert should be enabled during tests (for now)".fail) {
     _assert(false)
+  }
+
+  private final def useJsAssert(): Unit = {
+    jsAssert(false)
+  }
+
+  test("jsAssert should work on JS, but should be a NOP otherwise") {
+    jsAssert(true) // always NOP
+    val ei = Either.catchOnly[AssertionError] { useJsAssert() }
+    if (this.isJs()) {
+      assert(ei.isLeft)
+    } else {
+      assert(ei.isRight)
+    }
+  }
+
+  private final def useJsCheckIdx1(): Unit = {
+    jsCheckIdx(-1, 3)
+  }
+
+  private final def useJsCheckIdx2(): Unit = {
+    jsCheckIdx(3, 3)
+  }
+
+  test("jsCheckIdx should work on JS, but should be a NOP otherwise") {
+    jsCheckIdx(2, 3) // always NOP
+    val eis = List(
+      Either.catchOnly[IndexOutOfBoundsException] { useJsCheckIdx1() },
+      Either.catchOnly[IndexOutOfBoundsException] { useJsCheckIdx2() },
+    )
+    for (ei <- eis) {
+      if (this.isJs()) {
+        assert(ei.isLeft)
+      } else {
+        assert(ei.isRight)
+      }
+    }
   }
 }

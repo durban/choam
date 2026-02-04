@@ -50,27 +50,27 @@ sealed abstract class DenseArrayOfXRefs[A](
   }
 
   final override def unsafeGet(idx: Int): RxnImpl[A] = {
-    internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, length)
+    jsCheckIdx(idx, length)
     this.arr(idx).getImpl
   }
 
   final override def unsafeSet(idx: Int, nv: A): RxnImpl[Unit] = {
-    internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, length)
+    jsCheckIdx(idx, length)
     this.arr(idx).setImpl(nv)
   }
 
   final override def unsafeUpdate(idx: Int)(f: A => A): RxnImpl[Unit] = {
-    internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, length)
+    jsCheckIdx(idx, length)
     this.arr(idx).updateImpl(f)
   }
 
   final override def unsafeModify[B](idx: Int)(f: A => (A, B)): RxnImpl[B] = {
-    internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, length)
+    jsCheckIdx(idx, length)
     this.arr(idx).modifyImpl(f)
   }
 
   private[choam] final override def unsafeFlatModify[B](idx: Int)(f: A => (A, Rxn[B])): RxnImpl[B] = {
-    internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, length)
+    jsCheckIdx(idx, length)
     this.arr(idx).flatModifyImpl(f)
   }
 
@@ -113,7 +113,7 @@ sealed abstract class DenseArrayOfXRefs[A](
   final override def refs: IndexedSeq[Ref[A]] = {
     new IndexedSeq[Ref[A]] {
       final override def apply(idx: Int): Ref[A] = {
-        internal.refs.CompatPlatform.checkArrayIndexIfScalaJs(idx, length)
+        jsCheckIdx(idx, length)
         self.arr(idx)
       }
       final override def length: Int = {

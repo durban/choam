@@ -877,7 +877,14 @@ lazy val commonSettings = Seq[Setting[_]](
         "-Wnonunit-statement",
         "-Wvalue-discard",
         "-Xlint:_,-infer-any", // TODO: workaround to avoid https://github.com/scala/bug/issues/13128
-      ) ++ (if (assertionsEnabled.value) Nil else List("-Xelide-below", "1501"))
+      ) ++ (if (assertionsEnabled.value) {
+        // _assert is enabled, but we still
+        // need to elide jsAssert on JVM/Native:
+        List("-Xelide-below", "1001")
+      } else {
+        // we also elide _assert:
+        List("-Xelide-below", "1501")
+      })
     } else {
       // 3.x:
       List(

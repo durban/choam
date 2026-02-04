@@ -17,10 +17,22 @@
 
 package dev.tauri.choam
 package internal
-package refs
 
-private[choam] object CompatPlatform {
+private[choam] abstract class ChoamUtilsBasePlatform {
 
-  private[choam] final type AtomicReferenceArray[A] =
-    _root_.dev.tauri.choam.internal.refs.AtomicReferenceArray[A]
+  @inline
+  private[choam] final def jsAssert(cond: Boolean): Unit = {
+    if (!cond) {
+      throw new AssertionError
+    }
+  }
+
+  @inline
+  private[choam] final def jsCheckIdx(idx: Int, length: Int): Unit = {
+    // Out-of-bounds array indexing is undefined behavior(??) on scala-js,
+    // so we need this extra check here (on the JVM, we rely on arrays working):
+    if ((idx < 0) || (idx >= length)) {
+      throw new IndexOutOfBoundsException(s"Index ${idx} out of bounds for length ${length}")
+    }
+  }
 }
