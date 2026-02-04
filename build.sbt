@@ -400,12 +400,6 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     ),
     mimaBinaryIssueFilters ++= Seq(
     ),
-  ).jvmSettings(
-    mimaBinaryIssueFilters ++= Seq(
-    ),
-  ).jsSettings(
-    mimaBinaryIssueFilters ++= Seq(
-    ),
   )
 
 lazy val mcas = crossProject(JVMPlatform, JSPlatform, NativePlatform)
@@ -572,9 +566,6 @@ lazy val laws = crossProject(JVMPlatform, JSPlatform, NativePlatform)
       dependencies.catsEffectLaws.value,
       dependencies.catsEffectTestkit.value % TestInternal,
     ),
-    mimaBinaryIssueFilters ++= Seq(
-      // there is no backward compat for `choam-laws`:
-    )
   )
 
 lazy val unidocs = project
