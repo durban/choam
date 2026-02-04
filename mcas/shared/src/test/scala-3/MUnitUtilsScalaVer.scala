@@ -17,21 +17,6 @@
 
 package dev.tauri.choam
 
-trait MUnitUtilsPlatform extends MUnitUtilsScalaVer {
-
-  final def platform: MUnitUtils.Platform =
-    MUnitUtils.Native
-
-  final def isVmSupportsLongCas(): Boolean = {
-    true // probably...
-  }
-
-  final def getJvmVersion(): Int = {
-    // scala-native has no `Runtime.version()`
-    System.getProperty("java.version").split('.')(0).toInt
-  }
-
-  final def isGraal(): Boolean = {
-    false // this is SN!
-  }
+trait MUnitUtilsScalaVer {
+  final def isDotty(): Boolean = true
 }

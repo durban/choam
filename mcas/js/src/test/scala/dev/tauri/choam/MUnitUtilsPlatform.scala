@@ -17,7 +17,7 @@
 
 package dev.tauri.choam
 
-trait MUnitUtilsPlatform {
+trait MUnitUtilsPlatform extends MUnitUtilsScalaVer {
 
   final def platform: MUnitUtils.Platform =
     MUnitUtils.Js

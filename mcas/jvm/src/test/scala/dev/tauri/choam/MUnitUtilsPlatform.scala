@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater
 
 import scala.util.control.NonFatal
 
-trait MUnitUtilsPlatform {
+trait MUnitUtilsPlatform extends MUnitUtilsScalaVer {
 
   private[this] lazy val _isGraal: Boolean = {
     try {
