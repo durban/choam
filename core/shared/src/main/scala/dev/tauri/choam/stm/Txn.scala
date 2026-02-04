@@ -29,7 +29,17 @@ import core.{ Rxn, RxnImpl }
 import dev.tauri.choam.{ unsafe => unsafe2 }
 import internal.mcas.Mcas
 
-sealed trait Txn[+A] {
+/**
+ * An [[https://en.wikipedia.org/wiki/Software_transactional_memory STM]]
+ * transaction with result type `A`, which (when executed) may update any
+ * number of [[TRef]]s atomically. Condition synchronization on [[TRef]]s
+ * is also possible, with the [[Txn.retry]] method.
+ *
+ * @see The [[Txn.InvariantSyntax.commit commit]] extension method to execute
+ *      a [[Txn]].
+ * @see [[TRef]] for working with transactional references
+ */
+sealed trait Txn[+A] { // short for 'transaction'
 
   /**
    * Performs `this`, then applies
@@ -203,11 +213,22 @@ object Txn extends TxnInstances0 {
   private[choam] final def merge[A](txns: List[Txn[A]]): Txn[A] = // TODO: should this be public?
     txns.reduceLeftOption(_ orElse _).getOrElse(throw new IllegalArgumentException)
 
-  /** Generates a unique token */
+  /**
+   * Generates a unique token
+   *
+   * Each time the `Txn` is executed (or when it retries),
+   * the generated token will be fresh.
+   */
   final def unique: Txn[Unique.Token] =
     Rxn.uniqueImpl
 
-  /** Generates a random [[java.util.UUID]] */
+  /**
+   * Generates a random [[java.util.UUID]]
+   *
+   * Each time the `Txn` is executed (or when it retries),
+   * the generated token will be fresh (with very high
+   * probability).
+   */
   final def newUuid: Txn[UUID] =
     Rxn.newUuidImpl
 
@@ -256,7 +277,13 @@ object Txn extends TxnInstances0 {
     }
   }
 
+  /** Provides the [[commit]] extension method for [[Txn]] */
   final class InvariantSyntax[A](private val self: Txn[A]) extends AnyVal {
+    /**
+     * @return Another effect (in `F`), which (when executed)
+     *         will execute this [[Txn]] atomically (automatically
+     *         retrying if and when necessary).
+     */
     final def commit[F[_]](implicit F: Transactive[F]): F[A] =
       F.commit(self)
   }

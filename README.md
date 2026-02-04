@@ -111,7 +111,7 @@ synchronization (see `Txn.retry` and `Txn#orElse`).
   concurrent data structures built on `Rxn`
   - Examples: queues, stacks, hash- and ordered maps and sets
 - [`choam-async`](async/shared/src/main/scala/dev/tauri/choam/async/):
-  - Asynchronous data structures; some of their operations are
+  - Asynchronous data structures; some of their operations are possibly
     *semantically* blocking (i.e., [fiber blocking
     ](https://typelevel.org/cats-effect/docs/thread-model#fiber-blocking-previously-semantic-blocking)),
     and so are in an `F[_] : Async` (note, that these `F[A]` operations are – obviously – *not* lock-free)
@@ -250,6 +250,7 @@ Throughout the library, we are assuming the following:
 
 - Instances of the `scala.FunctionN` traits passed to the library are pure and total
 - APIs in `*.internal.*` packages are not used directly
+- The library is used from Scala (and not, e.g., Java)
 - Cats Effect type classes and data types are used as intended
   - e.g., all uses of `cats.effect.kernel.Resource`s are finished before closing them
 - No dynamic type tests are performed by user code on objects provided by the library
@@ -261,6 +262,8 @@ Throughout the library, we are assuming the following:
         ... // use `ar`
     }
     ```
+- As a special case of the previous point: no object identity tests (`eq`) are performed
+  to recover static type information of objects provided by the library
 - References passed to the library are non-`null`:
   - The library usually dereferences the references passed to it without defensive `null` checks.
   - On the JVM (and Scala Native), this works as expected: if something is `null`,
@@ -287,7 +290,7 @@ Throughout the library, we are assuming the following:
     ```
 - There is no backwards compatibility when:
   - using APIs which are non-public in Scala (even though some of these are public in the bytecode);
-  - inheriting `sealed` classes/traits (even though this may not be enforced by the bytecode);
+  - inheriting/`match`ing `sealed` classes/traits (even though this may not be enforced by the bytecode);
   - using `*.internal.*` packages (e.g., `dev.tauri.choam.internal.mcas`);
   - using `unsafe` APIs (e.g., `Rxn.unsafe.retry` or the contents of the `dev.tauri.choam.unsafe` package).
   - using the contents of the `dev.tauri.choam.stm` package (our STM is experimental for now)
@@ -327,7 +330,8 @@ Throughout the library, we are assuming the following:
 
 ### Lock-freedom
 
-`Rxn`s are lock-free by construction, if the following assumptions hold:
+`Rxn`s are lock-free by construction, if the following assumptions hold
+(in addition to the [general assumptions above](#general-assumptions)):
 
 - No "infinite loops" are created (e.g., by infinitely recursive `flatMap`s)
 - No `unsafe` operations are used (e.g., `Rxn.unsafe.retry` is obviously not lock-free)
@@ -350,4 +354,6 @@ Throughout the library, we are assuming the following:
 
 Also note, that while `Rxn` operations are lock-free (if these assumptions hold),
 operations in an async `F[_]` effect might not be lock-free (an obvious example is
-`Promise#get`, which is an async `F[A]`, *not* a `Rxn`).
+`Promise#get`, which is a possibly [fiber blocking
+](https://typelevel.org/cats-effect/docs/thread-model#fiber-blocking-previously-semantic-blocking)
+async `F[A]`, and *not* a `Rxn`).

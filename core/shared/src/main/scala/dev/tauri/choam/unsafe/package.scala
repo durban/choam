@@ -19,12 +19,25 @@ package dev.tauri.choam
 
 import core.{ Ref, Rxn }
 
+/**
+ * The [[dev.tauri.choam.unsafe]] package provides
+ * a more imperative style API for `Rxn`s.
+ *
+ * The imperative methods take an implicit [[InRxn]]
+ * parameter, thus they can only be used in the context
+ * of a running `Rxn`. (This is similar to the ScalaSTM
+ * API.)
+ *
+ * @see [[UnsafeApi]] for imperatively executing a `Rxn`.
+ * @see [[core.Rxn.unsafe.embedUnsafe]] for using these
+ *      imperative methods "inside" a `Rxn` created with
+ *      the default (functional) API.
+ */
 package object unsafe {
 
   /**
-   * Extension methods for more convenient
-   * handling of `Ref`s in an `atomically`
-   * block.
+   * Extension methods for more convenient handling of `Ref`s
+   * in an [[UnsafeApi.atomically atomically]] block.
    */
   implicit final class RefSyntax[A](private val self: Ref[A]) extends AnyVal {
 

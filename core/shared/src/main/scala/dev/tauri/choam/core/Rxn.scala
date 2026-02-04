@@ -39,12 +39,12 @@ import internal.random
  * may update any number of [[Ref]]s atomically. (It
  * may also create new [[Ref]]s.)
  *
- * These functions are composable (see below), and composition
+ * [[Rxn]]s are composable (see below), and composition
  * preserves their atomicity. That is, all affected [[Ref]]s
  * will be updated atomically.
  *
  * A [[Rxn]] forms a [[cats.Monad Monad]], so the usual
- * monadic combinators can be used to compose `Rxn`s.
+ * monadic combinators can be used to compose [[Rxn]]s.
  */
 sealed abstract class Rxn[+A] { // short for 'reaction'
 
