@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import scala.collection.immutable.{ Map => ScalaMap }
+import scala.collection.immutable.{ Map => ScalaMap, ArraySeq }
 
 import cats.kernel.Hash
 import cats.data.Chain
@@ -91,19 +91,43 @@ private final class SimpleMap[K, V] private (
 
   final override def keys: Rxn[Chain[K]] = {
     repr.get.map { hm =>
-      Chain.fromIterableOnce(hm.keysIterator)
+      val itr = hm.iterator
+      val arr = new Array[AnyRef](hm.size)
+      var idx = 0
+      while (itr.hasNext) {
+        arr(idx) = box(itr.next()._1)
+        idx += 1
+      }
+      _assert(idx == arr.length)
+      Chain.fromSeq(ArraySeq.unsafeWrapArray(arr).asInstanceOf[ArraySeq[K]])
     }
   }
 
   final override def values: Rxn[Chain[V]] = {
     repr.get.map { hm =>
-      Chain.fromIterableOnce(hm.valuesIterator)
+      val itr = hm.iterator
+      val arr = new Array[AnyRef](hm.size)
+      var idx = 0
+      while (itr.hasNext) {
+        arr(idx) = box(itr.next()._2)
+        idx += 1
+      }
+      _assert(idx == arr.length)
+      Chain.fromSeq(ArraySeq.unsafeWrapArray(arr).asInstanceOf[ArraySeq[V]])
     }
   }
 
   final override def items: Rxn[Chain[(K, V)]] = {
     repr.get.map { hm =>
-      Chain.fromIterableOnce(hm.iterator)
+      val itr = hm.iterator
+      val arr = new Array[(K, V)](hm.size)
+      var idx = 0
+      while (itr.hasNext) {
+        arr(idx) = itr.next()
+        idx += 1
+      }
+      _assert(idx == arr.length)
+      Chain.fromSeq(ArraySeq.unsafeWrapArray(arr))
     }
   }
 

@@ -105,6 +105,8 @@ private final class ByteStack(initSize: Int) {
 
   private[this] def growIfNecessary(sizeNeeded: Int): Unit = {
     if (this.arr.length < sizeNeeded) {
+      // TODO: On JS, we should check for newSize overflowing,
+      // TODO: because NegativeArraySizeException is UB there.
       this.grow(newSize = Consts.nextPowerOf2(sizeNeeded))
     }
   }

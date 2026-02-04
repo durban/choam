@@ -80,6 +80,8 @@ private final class ArrayObjStack[A](initSize: Int) extends ObjStack[A] {
         throw new AssertionError
       }
       val newLength = Consts.nextPowerOf2(s)
+      // TODO: On JS, we should check for newLength overflowing,
+      // TODO: because NegativeArraySizeException is UB there.
       val newArr = Arrays.copyOf(arr, newLength)
       this.arr = newArr
     }

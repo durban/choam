@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import scala.collection.immutable.{ Map => ScalaMap }
+import scala.collection.immutable.{ Map => ScalaMap, ArraySeq }
 
 import cats.kernel.Order
 import cats.data.Chain
@@ -92,31 +92,37 @@ private final class SimpleOrderedMap[K, V] private (
 
   final override def keys: Rxn[Chain[K]] = {
     repr.get.map { m =>
-      Chain.fromSeq(
-        m.foldLeft(Vector.newBuilder[K]) { (vb, kv) =>
-          vb.addOne(kv._1)
-        }.result()
-      )
+      val arr = new Array[AnyRef](m.set.size)
+      val len = m.foldLeft(0) { case (idx, (k, _)) =>
+        arr(idx) = box(k)
+        idx + 1
+      }
+      _assert(len == arr.length)
+      Chain.fromSeq(ArraySeq.unsafeWrapArray(arr).asInstanceOf[ArraySeq[K]])
     }
   }
 
   final override def values: Rxn[Chain[V]] = {
     repr.get.map { m =>
-      Chain.fromSeq(
-        m.foldLeft(Vector.newBuilder[V]) { (vb, kv) =>
-          vb.addOne(kv._2)
-        }.result()
-      )
+      val arr = new Array[AnyRef](m.set.size)
+      val len = m.foldLeft(0) { case (idx, (_, v)) =>
+        arr(idx) = box(v)
+        idx + 1
+      }
+      _assert(len == arr.length)
+      Chain.fromSeq(ArraySeq.unsafeWrapArray(arr).asInstanceOf[ArraySeq[V]])
     }
   }
 
   final override def items: Rxn[Chain[(K, V)]] = {
     repr.get.map { m =>
-      Chain.fromSeq(
-        m.foldLeft(Vector.newBuilder[(K, V)]) { (vb, kv) =>
-          vb.addOne(kv)
-        }.result()
-      )
+      val arr = new Array[(K, V)](m.set.size)
+      val len = m.foldLeft(0) { case (idx, kv) =>
+        arr(idx) = kv
+        idx + 1
+      }
+      _assert(len == arr.length)
+      Chain.fromSeq(ArraySeq.unsafeWrapArray(arr))
     }
   }
 
