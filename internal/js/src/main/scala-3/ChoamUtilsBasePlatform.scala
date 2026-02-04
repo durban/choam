@@ -29,7 +29,8 @@ private[choam] abstract class ChoamUtilsBasePlatform {
   private[choam] inline final def jsCheckIdx(inline idx: Int, inline length: Int): Unit = {
     // Out-of-bounds array indexing is undefined behavior(??) on scala-js,
     // so we need this extra check here (on the JVM, we rely on arrays working):
-    if ((idx < 0) || (idx >= length)) {
+    val i = idx // to make sure `idx` (inline) is only evaluated once
+    if ((i < 0) || (i >= length)) {
       throw new IndexOutOfBoundsException(s"Index ${idx} out of bounds for length ${length}")
     }
   }

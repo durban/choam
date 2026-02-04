@@ -79,15 +79,7 @@ final class AssertSpec extends BaseSpec {
     var ctr2 = 0
     jsCheckIdx({ ctr1 += 1; 5 }, { ctr2 += 1; 6 })
     if (this.isJs()) {
-      if (this.isDotty()) {
-        // On dotty, first arg will be evaulated twice
-        // (due to inline arguments of an inline method):
-        assertEquals(ctr1, 2)
-      } else {
-        // Otherwise it's a simple method with
-        // regular arguments:
-        assertEquals(ctr1, 1)
-      }
+      assertEquals(ctr1, 1)
       assertEquals(ctr2, 1)
     } else {
       assertEquals(ctr1, 0)

@@ -40,6 +40,16 @@ final class AssertSpec extends BaseSpec {
     }
   }
 
+  test("jsAssert's *argument* should also disappear on JVM/Native") {
+    var ctr = 0
+    jsAssert({ ctr += 1; true })
+    if (this.isJs()) {
+      assertEquals(ctr, 1)
+    } else {
+      assertEquals(ctr, 0)
+    }
+  }
+
   private final def useJsCheckIdx1(): Unit = {
     jsCheckIdx(-1, 3)
   }
@@ -60,6 +70,19 @@ final class AssertSpec extends BaseSpec {
       } else {
         assert(ei.isRight)
       }
+    }
+  }
+
+  test("jsCheckIdx's *argument* should also disappear on JVM/Native") {
+    var ctr1 = 0
+    var ctr2 = 0
+    jsCheckIdx({ ctr1 += 1; 5 }, { ctr2 += 1; 6 })
+    if (this.isJs()) {
+      assertEquals(ctr1, 1)
+      assertEquals(ctr2, 1)
+    } else {
+      assertEquals(ctr1, 0)
+      assertEquals(ctr2, 0)
     }
   }
 }
