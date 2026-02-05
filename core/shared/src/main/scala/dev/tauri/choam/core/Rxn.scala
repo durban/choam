@@ -32,7 +32,7 @@ import unsafePackage.InRxn
 import stm.Txn
 import internal.mcas.{ MemoryLocation, Mcas, LogEntry, McasStatus, Descriptor, AbstractDescriptor, Consts, Hamt, Version }
 import internal.mcas.Hamt.IllegalInsertException
-import internal.random
+import internal.{ random, ClockImpl }
 
 /**
  * An effect with result type `A`; when executed, it
@@ -3031,18 +3031,12 @@ private sealed abstract class RxnInstances6 extends RxnInstances7 { this: Rxn.ty
 
 private sealed abstract class RxnInstances7 extends RxnInstances8 { this: Rxn.type =>
 
-  import scala.concurrent.duration.{ FiniteDuration, NANOSECONDS, MILLISECONDS }
-
   implicit final def clockForDevTauriChoamCoreRxn: Clock[Rxn] =
     _clockInstance
 
-  private[this] val _clockInstance: Clock[Rxn] = new Clock[Rxn] {
+  private[this] val _clockInstance: Clock[Rxn] = new ClockImpl[Rxn] {
     final override def applicative: Applicative[Rxn] =
       Rxn.monadForDevTauriChoamCoreRxn
-    final override val monotonic: Rxn[FiniteDuration] =
-      Rxn.unsafe.delay { FiniteDuration(System.nanoTime(), NANOSECONDS) }
-    final override val realTime: Rxn[FiniteDuration] =
-      Rxn.unsafe.delay { FiniteDuration(System.currentTimeMillis(), MILLISECONDS) }
   }
 }
 

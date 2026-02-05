@@ -592,14 +592,14 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("Monad[Txn[F, *]] instance") {
+  test("Monad[Txn] instance") {
     def generic[G[_]](gi1: G[Int], gi2: G[Int])(implicit G: StackSafeMonad[G]): G[Int] = {
       G.map2(gi1, gi2) { _ + _ }
     }
     for {
       r1 <- TRef[Int](42).commit
       r2 <- TRef[Int](99).commit
-      _ <- assertResultF(generic(r1.get, r2.get).commit, 42 + 99)
+      _ <- assertResultF(generic[Txn](r1.get, r2.get).commit, 42 + 99)
     } yield ()
   }
 
@@ -610,7 +610,7 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     assertResultF(generic[Txn[String]](Txn.pure("a"), Txn.pure("b")).commit, "ab")
   }
 
-  test("Defer[Txn[F, *]] instance") {
+  test("Defer[Txn] instance") {
     def generic[G[_]](getAndIncrement: G[Int])(implicit G: Defer[G], GM: Monad[G]): G[Int] = {
       G.fix[Int] { rec =>
         getAndIncrement.flatMap { i =>
@@ -648,6 +648,19 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       t12 <- generic[Txn].commit
       (t1, t2) = t12
       _ <- assertNotEqualsF(t1, t2)
+    } yield ()
+  }
+
+  test("Clock[Txn] instance") {
+    val inst = cats.effect.kernel.Clock[Txn]
+    for {
+      t1t2 <- (inst.monotonic product inst.monotonic).commit[F]
+      _ <- assertF(t1t2._1 <= t1t2._2)
+      mr1 <- (inst.monotonic product inst.realTime).commit
+      _ <- F.sleep(0.1.seconds)
+      mr2 <- (inst.monotonic product inst.realTime).commit
+      _ <- assertF(mr1._1 < mr2._1)
+      _ <- assertF(mr1._2 < mr2._2)
     } yield ()
   }
 }

@@ -22,12 +22,13 @@ import java.util.UUID
 
 import cats.kernel.Monoid
 import cats.{ Applicative, Defer, StackSafeMonad }
-import cats.effect.kernel.Unique
+import cats.effect.kernel.{ Clock, Unique }
 import cats.effect.std.UUIDGen
 
 import core.{ Rxn, RxnImpl }
 import dev.tauri.choam.{ unsafe => unsafe2 }
 import internal.mcas.Mcas
+import internal.ClockImpl
 
 /**
  * An [[https://en.wikipedia.org/wiki/Software_transactional_memory STM]]
@@ -357,7 +358,18 @@ private[stm] sealed abstract class TxnInstances0 extends TxnInstances1 { self: T
   }
 }
 
-private[stm] sealed abstract class TxnInstances1 extends TxnSyntax0 { self: Txn.type =>
+private[stm] sealed abstract class TxnInstances1 extends TxnInstances2 { self: Txn.type =>
+
+  implicit final def clockForDevTauriChoamStmTxn: Clock[Txn] =
+    _clockInstance
+
+  private[this] val _clockInstance: Clock[Txn] = new ClockImpl[Txn] {
+    final override def applicative: Applicative[Txn] =
+      Txn.monadForDevTauriChoamStmTxn
+  }
+}
+
+private[stm] sealed abstract class TxnInstances2 extends TxnSyntax0 { self: Txn.type =>
 
   implicit final def monoidForDevTauriChoamStmTxn[B](implicit B: Monoid[B]): Monoid[Txn[B]] = new Monoid[Txn[B]] {
     final override def combine(x: Txn[B], y: Txn[B]): Txn[B] =
