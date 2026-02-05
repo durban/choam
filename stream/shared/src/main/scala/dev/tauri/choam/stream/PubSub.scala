@@ -628,7 +628,7 @@ object PubSub {
       })
     }
 
-    final def asyncEmitChunkImpl[F[_]](
+    private[this] final def asyncEmitChunkImpl[F[_]](
       ch: Chunk[A],
       wasSuspendedWith: Subscription[A, _],
       poll: F ~> F,
