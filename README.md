@@ -164,10 +164,10 @@ JARs are on Maven Central. Browsable Scaladoc is available [here](https://tauri.
 [^1]: Turon, Aaron. "Reagents: expressing and composing fine-grained concurrency." In Proceedings of the 33rd ACM SIGPLAN Conference on Programming Language Design and Implementation, pp. 157-168. 2012.
 
 - Multi-word compare-and-swap (MCAS/*k*-CAS) implementations:
-  - In an earlier version we used [CASN by Harris et al.][2][^2]
-  - The current version uses [EMCAS by Guerraoui et al.][3][^3];
-    `Mcas.Emcas` implements a variant of this algorithm, this is the default algorithm we use on the JVM;
-    on JS we use a trivial single-threaded algorithm.
+  - In an earlier version we used [CASN by Harris et al.][2][^2], also known as the HFP algorithm.
+  - The current version uses [EMCAS by Guerraoui et al.][3][^3] (also known as the GKMZ algorithm);
+    `Mcas.Emcas` implements a variant of this algorithm, this is the default algorithm we use on the JVM
+    (and Scala Native); on JS we use a trivial single-threaded algorithm.
   - A simple, non-lock-free algorithm from [the Reagents paper][1][^1] is implemented as
     `Mcas.SpinLockMcas` (we use it for testing).
 
@@ -178,8 +178,8 @@ JARs are on Maven Central. Browsable Scaladoc is available [here](https://tauri.
 [^3]: Guerraoui, Rachid, Alex Kogan, Virendra J. Marathe, and Igor Zablotchi. "Efficient Multi-Word Compare and Swap." In 34th International Symposium on Distributed Computing. 2020.
 
 - Software transactional memory (STM)
-  - A `Rxn` is somewhat similar to a memory transaction, but it has
-    some differences to typical STMs:
+  - A `Rxn` is somewhat similar to an STM transaction. (In fact, `Rxn` could be seen as a lock-free STM; but without
+    condition synchronization, exceptions, and other fancy things.) The differences between `Rxn` and typical STMs are:
     - A `Rxn` is lock-free by construction (but see [below](#lock-freedom)); STM transactions are not (necessarily)
       lock-free (see, e.g., the "retry" STM operation, called ["modular blocking" in Haskell][4][^4]).
     - As a consequence of the previous point, `Rxn` cannot be used to implement
@@ -193,8 +193,8 @@ JARs are on Maven Central. Browsable Scaladoc is available [here](https://tauri.
     - The implementation (the `Rxn` interpreter) is also lock-free; STM implementations
       usually use fine-grained locking (although there are exceptions).
     - STM transactions usually have a way of raising/handling errors
-      (e.g., `MonadError`); `Rxn` has no such feature (but of course return
-      values can encode errors with `Option`, `Either`, or similar).
+      (e.g., `MonadError`); `Rxn` has no such feature (beyond an uncatchable `panic`),
+      but of course return values can encode errors with `Option`, `Either`, or similar.
     - Some STM systems allow access to transactional memory from
       non-transactional code; `Rxn` doesn't support this, the contents of a
       `Ref[A]` can only be accessed from inside a `Rxn`.
