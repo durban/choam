@@ -171,8 +171,8 @@ JARs are on Maven Central. Browsable Scaladoc is available [here](https://tauri.
   - A simple, non-lock-free algorithm from [the Reagents paper][1][^1] is implemented as
     `Mcas.SpinLockMcas` (we use it for testing).
   - Our optimization for read-only entries (i.e., entries *only* in the read-set) is similar to the one used
-    by [PathCAS by Brown et al.][10][^10]. The proof of correctness and lock-freedom is also very similar (although
-    we use an algorithm to detect cyclic helping similar to [Dreadlocks by Koskinen et al.][11][^11]).
+    by [PathCAS by Brown et al.][4][^4]. The proof of correctness and lock-freedom is also very similar (although
+    we use an algorithm to detect cyclic helping similar to [Dreadlocks by Koskinen et al.][5][^5]).
 
 [2]: https://www.cl.cam.ac.uk/research/srg/netos/papers/2002-casn.pdf
 [^2]: Harris, Timothy L., Keir Fraser, and Ian A. Pratt. "A practical multi-word compare-and-swap operation." In Distributed Computing: 16th International Conference, DISC 2002 Toulouse, France, October 28–30, 2002 Proceedings 16, pp. 265-279. Springer Berlin Heidelberg, 2002.
@@ -180,17 +180,17 @@ JARs are on Maven Central. Browsable Scaladoc is available [here](https://tauri.
 [3]: https://arxiv.org/pdf/2008.02527.pdf
 [^3]: Guerraoui, Rachid, Alex Kogan, Virendra J. Marathe, and Igor Zablotchi. "Efficient Multi-Word Compare and Swap." In 34th International Symposium on Distributed Computing. 2020.
 
-[10] https://dl.acm.org/doi/pdf/10.1145/3503221.3508410
-[^10]: Brown, Trevor, William Sigouin, and Dan Alistarh. "PathCAS: an efficient middle ground for concurrent search data structures." Proceedings of the 27th ACM SIGPLAN Symposium on Principles and Practice of Parallel Programming. 2022.
+[4] https://dl.acm.org/doi/pdf/10.1145/3503221.3508410
+[^4]: Brown, Trevor, William Sigouin, and Dan Alistarh. "PathCAS: an efficient middle ground for concurrent search data structures." Proceedings of the 27th ACM SIGPLAN Symposium on Principles and Practice of Parallel Programming. 2022.
 
-[11] https://dl.acm.org/doi/pdf/10.1145/1378533.1378585
-[^11]: Koskinen, Eric, and Maurice Herlihy. "Dreadlocks: efficient deadlock detection." Proceedings of the twentieth annual symposium on Parallelism in algorithms and architectures. 2008.
+[5] https://dl.acm.org/doi/pdf/10.1145/1378533.1378585
+[^5]: Koskinen, Eric, and Maurice Herlihy. "Dreadlocks: efficient deadlock detection." Proceedings of the twentieth annual symposium on Parallelism in algorithms and architectures. 2008.
 
 - Software transactional memory (STM)
   - A `Rxn` is somewhat similar to an STM transaction. (In fact, `Rxn` could be seen as a lock-free STM; but without
     condition synchronization, exceptions, and other fancy things.) The differences between `Rxn` and typical STMs are:
     - A `Rxn` is lock-free by construction (but see [below](#lock-freedom)); STM transactions are not (necessarily)
-      lock-free (see, e.g., the "retry" STM operation, called ["modular blocking" in Haskell][4][^4]).
+      lock-free (see, e.g., the "retry" STM operation, called ["modular blocking" in Haskell][6][^6]).
     - As a consequence of the previous point, `Rxn` cannot be used to implement
       "inherently non-lock-free" logic (e.g., asynchronously waiting on a
       condition set by another thread/fiber/similar, i.e., condition synchronization).
@@ -210,12 +210,12 @@ JARs are on Maven Central. Browsable Scaladoc is available [here](https://tauri.
   - Similarities between `Rxn`s and STM transactions include the following:
     - Atomicity, consistency and isolation.
     - `Rxn` also provides a correctness property called
-      [*opacity*][5][^5]; see a short introduction [here][opacity_intro].
+      [*opacity*][7][^7]; see a short introduction [here][opacity_intro].
       A lot of STM implementations also guarantee this property (e.g., ScalaSTM),
       but not all of them. Opacity basically guarantees that all observed values
       are consistent with each other, even in running `Rxn`s (some STM systems only
       guarantee such consistency for transactions which actually commit).
-    - (We might technically weaken the *opacity* property in the future to TMS1[^9];
+    - (We might technically weaken the *opacity* property in the future to TMS1[8][^8];
       this should be unobservable to code not using `unsafe` APIs.)
   - Some STM implementations:
     - Haskell: [`Control.Concurrent.STM`](https://hackage.haskell.org/package/stm).
@@ -226,30 +226,31 @@ JARs are on Maven Central. Browsable Scaladoc is available [here](https://tauri.
       [ZSTM](https://github.com/zio/zio/tree/series/2.x/core/shared/src/main/scala/zio/stm).
     - Kotlin: [`arrow-fx-stm`](https://arrow-kt.io/learn/coroutines/stm).
     - OCaml: [Kcas](https://github.com/ocaml-multicore/kcas).
-    - [TL2][6][^6] and [SwissTM][7][^7]:
+    - [TL2][9][^9] and [SwissTM][10][^10]:
       the system which guarantees *opacity* (see above) for `Rxn`s is based on
       the one in SwissTM (which is itself based on the one in TL2). However, TL2 and SwissTM
       are lock-based STM implementations; our implementation is lock-free.
-    - We also use some ideas from the [Commit Phase Variations paper][8][^8].
+    - We also use some ideas from the [Commit Phase Variations paper][11][^11].
 
-[4]: https://dl.acm.org/doi/pdf/10.1145/1378704.1378725
-[^4]: Harris, Tim, Simon Marlow, Simon Peyton-Jones, and Maurice Herlihy. "Composable memory transactions." In Proceedings of the tenth ACM SIGPLAN symposium on Principles and practice of parallel programming, pp. 48-60. 2005.
+[6]: https://dl.acm.org/doi/pdf/10.1145/1378704.1378725
+[^6]: Harris, Tim, Simon Marlow, Simon Peyton-Jones, and Maurice Herlihy. "Composable memory transactions." In Proceedings of the tenth ACM SIGPLAN symposium on Principles and practice of parallel programming, pp. 48-60. 2005.
 
-[5]: https://infoscience.epfl.ch/record/114303/files/opacity-ppopp08.pdf
-[^5]: Guerraoui, Rachid, and Michal Kapalka. "On the correctness of transactional memory." In Proceedings of the 13th ACM SIGPLAN Symposium on Principles and practice of parallel programming, pp. 175-184. 2008.
+[7]: https://infoscience.epfl.ch/record/114303/files/opacity-ppopp08.pdf
+[^7]: Guerraoui, Rachid, and Michal Kapalka. "On the correctness of transactional memory." In Proceedings of the 13th ACM SIGPLAN Symposium on Principles and practice of parallel programming, pp. 175-184. 2008.
 
 [opacity_intro]: https://nbronson.github.io/scala-stm/semantics.html#opacity
 
-[6]: https://disco.ethz.ch/courses/fs11/seminar/paper/johannes-2-1.pdf
-[^6]: Dice, Dave, Ori Shalev, and Nir Shavit. "Transactional locking II." In International Symposium on Distributed Computing, pp. 194-208. Berlin, Heidelberg: Springer Berlin Heidelberg, 2006.
+[8]: https://dl.acm.org/doi/pdf/10.1007/s00165-012-0225-8
+[^8]: Doherty, S., Groves, L., Luchangco, V. et al. Towards formally specifying and verifying transactional memory. Form Asp Comp 25, 769–799 (2013).
 
-[7]: https://infoscience.epfl.ch/server/api/core/bitstreams/6b454d6b-0ae9-4b37-b341-6e2d092aef8e/content
-[^7]: Dragojević, Aleksandar, Rachid Guerraoui, and Michal Kapalka. "Stretching transactional memory." ACM sigplan notices 44, no. 6 (2009): 155-165.
+[9]: https://disco.ethz.ch/courses/fs11/seminar/paper/johannes-2-1.pdf
+[^9]: Dice, Dave, Ori Shalev, and Nir Shavit. "Transactional locking II." In International Symposium on Distributed Computing, pp. 194-208. Berlin, Heidelberg: Springer Berlin Heidelberg, 2006.
 
-[8]: https://repository.rice.edu/server/api/core/bitstreams/ec929767-5e4b-4c8e-9704-c649bf6328c9/content
-[^8]: Zhang, Rui, Zoran Budimlic, and William N. Scherer III. Commit phase variations in timestamp-based software transactional memory. Technical Report TR08-03, Rice University, 2008.
+[10]: https://infoscience.epfl.ch/server/api/core/bitstreams/6b454d6b-0ae9-4b37-b341-6e2d092aef8e/content
+[^10]: Dragojević, Aleksandar, Rachid Guerraoui, and Michal Kapalka. "Stretching transactional memory." ACM sigplan notices 44, no. 6 (2009): 155-165.
 
-[^9]: Doherty, S., Groves, L., Luchangco, V. et al. Towards formally specifying and verifying transactional memory. Form Asp Comp 25, 769–799 (2013). https://doi.org/10.1007/s00165-012-0225-8
+[11]: https://repository.rice.edu/server/api/core/bitstreams/ec929767-5e4b-4c8e-9704-c649bf6328c9/content
+[^11]: Zhang, Rui, Zoran Budimlic, and William N. Scherer III. Commit phase variations in timestamp-based software transactional memory. Technical Report TR08-03, Rice University, 2008.
 
 ## Compatibility and assumptions
 
