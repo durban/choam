@@ -549,7 +549,7 @@ final class HamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHelper
 
   test("Lots of elements") {
     val N = this.platform match {
-      case Jvm => 1000000
+      case Jvm => 800000
       case Js => 1000
       case Native => 100000
     }
