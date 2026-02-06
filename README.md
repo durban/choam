@@ -170,12 +170,21 @@ JARs are on Maven Central. Browsable Scaladoc is available [here](https://tauri.
     (and Scala Native); on JS we use a trivial single-threaded algorithm.
   - A simple, non-lock-free algorithm from [the Reagents paper][1][^1] is implemented as
     `Mcas.SpinLockMcas` (we use it for testing).
+  - Our optimization for read-only entries (i.e., entries *only* in the read-set) is similar to the one used
+    by [PathCAS by Brown et al.][10][^10]. The proof of correctness and lock-freedom is also very similar (although
+    we use an algorithm to detect cyclic helping similar to [Dreadlocks by Koskinen et al.][11][^11]).
 
 [2]: https://www.cl.cam.ac.uk/research/srg/netos/papers/2002-casn.pdf
 [^2]: Harris, Timothy L., Keir Fraser, and Ian A. Pratt. "A practical multi-word compare-and-swap operation." In Distributed Computing: 16th International Conference, DISC 2002 Toulouse, France, October 28–30, 2002 Proceedings 16, pp. 265-279. Springer Berlin Heidelberg, 2002.
 
 [3]: https://arxiv.org/pdf/2008.02527.pdf
 [^3]: Guerraoui, Rachid, Alex Kogan, Virendra J. Marathe, and Igor Zablotchi. "Efficient Multi-Word Compare and Swap." In 34th International Symposium on Distributed Computing. 2020.
+
+[10] https://dl.acm.org/doi/pdf/10.1145/3503221.3508410
+[^10]: Brown, Trevor, William Sigouin, and Dan Alistarh. "PathCAS: an efficient middle ground for concurrent search data structures." Proceedings of the 27th ACM SIGPLAN Symposium on Principles and Practice of Parallel Programming. 2022.
+
+[11] https://dl.acm.org/doi/pdf/10.1145/1378533.1378585
+[^11]: Koskinen, Eric, and Maurice Herlihy. "Dreadlocks: efficient deadlock detection." Proceedings of the twentieth annual symposium on Parallelism in algorithms and architectures. 2008.
 
 - Software transactional memory (STM)
   - A `Rxn` is somewhat similar to an STM transaction. (In fact, `Rxn` could be seen as a lock-free STM; but without
