@@ -180,10 +180,10 @@ JARs are on Maven Central. Browsable Scaladoc is available [here](https://tauri.
 [3]: https://arxiv.org/pdf/2008.02527.pdf
 [^3]: Guerraoui, Rachid, Alex Kogan, Virendra J. Marathe, and Igor Zablotchi. "Efficient Multi-Word Compare and Swap." In 34th International Symposium on Distributed Computing. 2020.
 
-[4] https://dl.acm.org/doi/pdf/10.1145/3503221.3508410
+[4]: https://dl.acm.org/doi/pdf/10.1145/3503221.3508410
 [^4]: Brown, Trevor, William Sigouin, and Dan Alistarh. "PathCAS: an efficient middle ground for concurrent search data structures." Proceedings of the 27th ACM SIGPLAN Symposium on Principles and Practice of Parallel Programming. 2022.
 
-[5] https://dl.acm.org/doi/pdf/10.1145/1378533.1378585
+[5]: https://dl.acm.org/doi/pdf/10.1145/1378533.1378585
 [^5]: Koskinen, Eric, and Maurice Herlihy. "Dreadlocks: efficient deadlock detection." Proceedings of the twentieth annual symposium on Parallelism in algorithms and architectures. 2008.
 
 - Software transactional memory (STM)
@@ -215,7 +215,7 @@ JARs are on Maven Central. Browsable Scaladoc is available [here](https://tauri.
       but not all of them. Opacity basically guarantees that all observed values
       are consistent with each other, even in running `Rxn`s (some STM systems only
       guarantee such consistency for transactions which actually commit).
-    - (We might technically weaken the *opacity* property in the future to TMS1[8][^8];
+    - (We might technically weaken the *opacity* property in the future to [TMS1][8][^8];
       this should be unobservable to code not using `unsafe` APIs.)
   - Some STM implementations:
     - Haskell: [`Control.Concurrent.STM`](https://hackage.haskell.org/package/stm).
