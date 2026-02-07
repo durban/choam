@@ -16,7 +16,8 @@
  */
 
 package dev.tauri.choam
-package core
+
+import core.{ Rxn, Ref }
 
 sealed abstract class Memo[F[_], A] {
   def getOrInit: F[A]
