@@ -18,20 +18,20 @@
 package dev.tauri.choam
 package core
 
-sealed abstract class Memo[A] {
-  def getOrInit: Rxn[A]
+sealed abstract class Memo[F[_], A] {
+  def getOrInit: F[A]
 }
 
 private object Memo {
 
-  final def apply[A](axn: Rxn[A], str: AllocationStrategy = AllocationStrategy.Default): Rxn[Memo[A]] = {
+  final def rxn[A](axn: Rxn[A], str: AllocationStrategy): Rxn[Memo[Rxn, A]] = {
     val init = newInitializer[A](axn)
     Ref[A](init, str).map { st => new MemoImpl(st) }
   }
 
   private[this] final class MemoImpl[A](
     state: Ref[A],
-  ) extends Memo[A] {
+  ) extends Memo[Rxn, A] {
 
     final override def getOrInit: Rxn[A] = {
       state.get.flatMap { ov =>

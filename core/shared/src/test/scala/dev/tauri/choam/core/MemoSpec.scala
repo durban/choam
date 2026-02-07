@@ -29,7 +29,7 @@ trait MemoSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   private final class Token
 
-  private final class GetCtr[A] private (memo: Memo[(A, Ref[Int])]) {
+  private final class GetCtr[A] private (memo: Memo[Rxn, (A, Ref[Int])]) {
 
     def get: Rxn[A] = memo.getOrInit.flatMap {
       case (a, ctr) =>

@@ -537,8 +537,11 @@ object Rxn extends RxnInstances0 {
     random.deterministicRandom(initialSeed, str)
   }
 
-  final def memoize[A](rxn: Rxn[A], str: AllocationStrategy = AllocationStrategy.Default): Rxn[Memo[A]] =
-    Memo(rxn, str)
+  final def memoize[A](rxn: Rxn[A]): Rxn[Memo[Rxn, A]] =
+    memoize(rxn, AllocationStrategy.Default)
+
+  final def memoize[A](rxn: Rxn[A], str: AllocationStrategy): Rxn[Memo[Rxn, A]] =
+    Memo.rxn(rxn, str)
 
   private[choam] final object loc {
 
