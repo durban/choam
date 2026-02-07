@@ -21,7 +21,7 @@ package random
 
 import scala.collection.mutable.ArrayBuffer
 
-import core.{ Rxn, RxnImpl, Ref, SplittableRandom }
+import core.{ Rxn, RxnImpl, Ref }
 import RandomBase._
 
 // TODO: everything could be optimized to a single `seed.modify { ... }`
