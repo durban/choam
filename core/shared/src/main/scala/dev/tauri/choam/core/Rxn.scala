@@ -409,6 +409,9 @@ private[choam] abstract class RefGetAxn[A] extends RxnImpl[A] with MemoryLocatio
     }
   }
 
+  private[choam] def updateAndGetImpl(f: A => A): RxnImpl[A] =
+    updateAndGet(f)
+
   final def tryModify[B](f: A => (A, B)): Rxn[Option[B]] =
     modify(f).?
 

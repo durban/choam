@@ -22,7 +22,7 @@ package random
 import java.util.{ Arrays, UUID }
 import java.nio.{ ByteBuffer, ByteOrder }
 
-import core.Rxn
+import core.{ Rxn, RxnImpl }
 import internal.mcas.Mcas
 
 abstract class RandomBaseSpec extends BaseSpec {
@@ -31,10 +31,10 @@ abstract class RandomBaseSpec extends BaseSpec {
     this.defaultMcasInstance
 
   test("byteArrayViewVarHandle") {
-    final class DummyRng(const: Array[Byte]) extends RandomBase {
-      final override def nextBytes(n: Int): Rxn[Array[Byte]] = {
+    final class DummyRng(const: Array[Byte]) extends RandomBase[Rxn] {
+      final override def nextBytes(n: Int): RxnImpl[Array[Byte]] = {
         require(n == 8)
-        Rxn.unsafe.delay {
+        Rxn.unsafe.delayImpl {
           Arrays.copyOf(const, const.length)
         }
       }

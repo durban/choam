@@ -21,7 +21,7 @@ package random
 
 import cats.effect.std.Random
 
-import core.{ Rxn, Ref }
+import core.{ Rxn, RxnImpl, Ref }
 import mcas.RefIdGen
 
 /**
@@ -43,10 +43,10 @@ private object MinimalRandom {
 private abstract class MinimalRandom protected (
   seed: Ref[Long],
   gamma: Long,
-) extends RandomBase {
+) extends RandomBase[Rxn] {
 
-  protected[this] val nextSeed: Rxn[Long] =
-    seed.updateAndGet(_ + gamma)
+  protected[this] val nextSeed: RxnImpl[Long] =
+    seed.updateAndGetImpl(_ + gamma)
 
   private[this] final def mix64(s: Long): Long =
     staffordMix13(s)
@@ -54,10 +54,10 @@ private abstract class MinimalRandom protected (
   private[this] final def mix32(s: Long): Int =
     (staffordMix04(s) >>> 32).toInt
 
-  protected[this] final def nextLongInternal: Rxn[Long] =
+  protected[this] final def nextLongInternal: RxnImpl[Long] =
     nextSeed.map(mix64)
 
-  final override def nextInt: Rxn[Int] =
+  final override def nextInt: RxnImpl[Int] =
     nextSeed.map(mix32)
 }
 
@@ -67,7 +67,7 @@ private final class MinimalRandom1(
   gamma: Long,
 ) extends MinimalRandom(seed, gamma) {
 
-  final override def nextLong: Rxn[Long] =
+  final override def nextLong: RxnImpl[Long] =
     nextLongInternal
 }
 
@@ -77,6 +77,6 @@ private final class MinimalRandom2(
   gamma: Long,
 ) extends MinimalRandom(seed, gamma) {
 
-  final override def nextBytes(n: Int): Rxn[Array[Byte]] =
+  final override def nextBytes(n: Int): RxnImpl[Array[Byte]] =
     nextBytesInternal(n, nextLongInternal)
 }

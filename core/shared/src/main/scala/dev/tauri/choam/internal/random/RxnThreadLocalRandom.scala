@@ -21,36 +21,36 @@ package random
 
 import java.util.concurrent.ThreadLocalRandom
 
-import core.Rxn
+import core.{ Rxn, RxnImpl }
 
-private final class RxnThreadLocalRandom
-  extends RandomBase {
+private final class RxnThreadLocalRandom[R[a] >: RxnImpl[a]]
+  extends RandomBase[R] {
 
-  import Rxn.unsafe.delayContext
+  import Rxn.unsafe.delayContextImpl
 
   // override these, because TLR is faster:
 
-  final override def nextLong: Rxn[Long] =
-    delayContext { ctx => (ctx.random : ThreadLocalRandom).nextLong() }
+  final override def nextLong: RxnImpl[Long] =
+    delayContextImpl { ctx => (ctx.random : ThreadLocalRandom).nextLong() }
 
-  final override def nextInt: Rxn[Int] =
-    delayContext { ctx => ctx.random.nextInt() }
+  final override def nextInt: RxnImpl[Int] =
+    delayContextImpl { ctx => ctx.random.nextInt() }
 
-  final override def nextLongBounded(n: Long): Rxn[Long] =
-    delayContext { ctx => ctx.random.nextLong(n) }
+  final override def nextLongBounded(n: Long): RxnImpl[Long] =
+    delayContextImpl { ctx => ctx.random.nextLong(n) }
 
-  final override def nextIntBounded(n: Int): Rxn[Int] =
-    delayContext { ctx => ctx.random.nextInt(n) }
+  final override def nextIntBounded(n: Int): RxnImpl[Int] =
+    delayContextImpl { ctx => ctx.random.nextInt(n) }
 
-  final override def nextDouble: Rxn[Double] =
-    delayContext { ctx => ctx.random.nextDouble() }
+  final override def nextDouble: RxnImpl[Double] =
+    delayContextImpl { ctx => ctx.random.nextDouble() }
 
-  final override def nextGaussian: Rxn[Double] =
-    delayContext { ctx => ctx.random.nextGaussian() }
+  final override def nextGaussian: RxnImpl[Double] =
+    delayContextImpl { ctx => ctx.random.nextGaussian() }
 
-  final override def nextFloat: Rxn[Float] =
-    delayContext { ctx => ctx.random.nextFloat() }
+  final override def nextFloat: RxnImpl[Float] =
+    delayContextImpl { ctx => ctx.random.nextFloat() }
 
-  final override def nextBoolean: Rxn[Boolean] =
-    delayContext { ctx => ctx.random.nextBoolean() }
+  final override def nextBoolean: RxnImpl[Boolean] =
+    delayContextImpl { ctx => ctx.random.nextBoolean() }
 }

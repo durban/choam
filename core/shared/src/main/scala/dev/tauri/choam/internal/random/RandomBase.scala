@@ -25,7 +25,7 @@ import scala.collection.mutable.ArrayBuffer
 
 import cats.effect.std.Random
 
-import core.Rxn
+import core.{ Rxn, RxnImpl }
 
 /**
  * Common implementations of derived RNG methods.
@@ -38,19 +38,19 @@ import core.Rxn
  * each other, so subclasses *must* override either
  * `nextBytes` OR (`nextLong` AND `nextInt`).
  */
-private abstract class RandomBase
+private abstract class RandomBase[R[a] >: RxnImpl[a]]
   extends RandomBasePlatform
-  with Random[Rxn] {
+  with Random[R] {
 
   import RandomBase._
 
-  def nextLong: Rxn[Long] = {
+  def nextLong: RxnImpl[Long] = {
     this.nextBytes(8).map { (arr: Array[Byte]) =>
       this.getLongAt0P(arr)
     }
   }
 
-  def nextInt: Rxn[Int] = {
+  def nextInt: RxnImpl[Int] = {
     this.nextLong.map { (r: Long) =>
       r.toInt
     }
@@ -59,10 +59,10 @@ private abstract class RandomBase
   // TODO: there should be a (protected) allocation-less
   // TODO: version of `nextBytes` (for performance)
 
-  def nextBytes(n: Int): Rxn[Array[Byte]] =
+  def nextBytes(n: Int): RxnImpl[Array[Byte]] =
     nextBytesInternal(n, this.nextLong)
 
-  protected[this] def nextBytesInternal(n: Int, nextLong: Rxn[Long]): Rxn[Array[Byte]] = {
+  protected[this] def nextBytesInternal(n: Int, nextLong: RxnImpl[Long]): RxnImpl[Array[Byte]] = {
     require(n >= 0)
 
     /* Puts the last (at most 7) bytes into buf */
@@ -74,7 +74,7 @@ private abstract class RandomBase
       }
     }
 
-    def go(arr: Array[Byte], idx: Int): Rxn[Unit] = {
+    def go(arr: Array[Byte], idx: Int): RxnImpl[Unit] = {
       if (idx < n) {
         val remaining = n - idx
         nextLong.flatMap { (r: Long) =>
@@ -85,24 +85,24 @@ private abstract class RandomBase
           }
         }
       } else {
-        Rxn.unit
+        Rxn.unitImpl
       }
     }
 
-    Rxn.unsafe.suspend {
+    Rxn.unsafe.suspendImpl {
       val arr = new Array[Byte](n)
       go(arr, 0).as(arr)
     }
   }
 
-  def nextLongBounded(bound: Long): Rxn[Long] = {
+  def nextLongBounded(bound: Long): RxnImpl[Long] = {
     // TODO: take a look at https://arxiv.org/abs/1805.10941
     require(bound > 0L)
     val m: Long = bound - 1L
     if ((bound & m) == 0L) { // power of 2
       this.nextLong.map { (r: Long) => r & m }
     } else {
-      def go: Rxn[Long] = this.nextLong.flatMap { (next: Long) =>
+      def go: RxnImpl[Long] = this.nextLong.flatMap { (next: Long) =>
         val u: Long = next >>> 1
         val r: Long = u % bound
         if ((u + m - r) < 0L) go
@@ -112,7 +112,7 @@ private abstract class RandomBase
     }
   }
 
-  def betweenLong(minInclusive: Long, maxExclusive: Long): Rxn[Long] = {
+  def betweenLong(minInclusive: Long, maxExclusive: Long): RxnImpl[Long] = {
     require(minInclusive < maxExclusive)
     val n: Long = maxExclusive - minInclusive
     val m: Long = n - 1L
@@ -121,7 +121,7 @@ private abstract class RandomBase
     } else if (n > 0L) { // no underflow
       this.nextLongBounded(n).map { (r: Long) => r + minInclusive }
     } else { // range not representable as Long
-      def go: Rxn[Long] = this.nextLong.flatMap { (r: Long) =>
+      def go: RxnImpl[Long] = this.nextLong.flatMap { (r: Long) =>
         if ((r < minInclusive) || (r >= maxExclusive)) go
         else Rxn.pure(r)
       }
@@ -129,13 +129,13 @@ private abstract class RandomBase
     }
   }
 
-  def nextIntBounded(bound: Int): Rxn[Int] = {
+  def nextIntBounded(bound: Int): RxnImpl[Int] = {
     require(bound > 0)
     val m: Int = bound - 1
     if ((bound & m) == 0) { // power of 2
       this.nextInt.map { (r: Int) => r & m }
     } else {
-      def go: Rxn[Int] = this.nextInt.flatMap { (next: Int) =>
+      def go: RxnImpl[Int] = this.nextInt.flatMap { (next: Int) =>
         val u: Int = next >>> 1
         val r: Int = u % bound
         if ((u + m - r) < 0) go
@@ -145,7 +145,7 @@ private abstract class RandomBase
     }
   }
 
-  def betweenInt(minInclusive: Int, maxExclusive: Int): Rxn[Int] = {
+  def betweenInt(minInclusive: Int, maxExclusive: Int): RxnImpl[Int] = {
     require(minInclusive < maxExclusive)
     val n: Int = maxExclusive - minInclusive
     val m: Int = n - 1
@@ -154,7 +154,7 @@ private abstract class RandomBase
     } else if (n > 0) { // no underflow
       this.nextIntBounded(n).map { (r: Int) => r + minInclusive }
     } else { // range not representable as Int
-      def go: Rxn[Int] = this.nextInt.flatMap { (r: Int) =>
+      def go: RxnImpl[Int] = this.nextInt.flatMap { (r: Int) =>
         if ((r < minInclusive) || (r >= maxExclusive)) go
         else Rxn.pure(r)
       }
@@ -162,13 +162,13 @@ private abstract class RandomBase
     }
   }
 
-  def nextDouble: Rxn[Double] =
+  def nextDouble: RxnImpl[Double] =
     this.nextLong.map(doubleFromLong)
 
   protected[this] final def doubleFromLong(n: Long): Double =
     (n >>> 11) * DoubleUlp
 
-  final def betweenDouble(minInclusive: Double, maxExclusive: Double): Rxn[Double] = {
+  final def betweenDouble(minInclusive: Double, maxExclusive: Double): RxnImpl[Double] = {
     require(minInclusive < maxExclusive)
     this.nextDouble.map { (d: Double) =>
       val diff: Double = maxExclusive - minInclusive
@@ -191,7 +191,7 @@ private abstract class RandomBase
   }
 
   /** Box-Muller transform / Marsaglia polar method */
-  def nextGaussian: Rxn[Double] = {
+  def nextGaussian: RxnImpl[Double] = {
     (this.nextDouble * this.nextDouble).flatMap { dd =>
       val (d1, d2) = dd
       val v1: Double = (2 * d1) - 1
@@ -212,10 +212,10 @@ private abstract class RandomBase
     }
   }
 
-  def nextFloat: Rxn[Float] =
+  def nextFloat: RxnImpl[Float] =
     nextInt.map { n => (n >>> 8) * FloatUlp }
 
-  final def betweenFloat(minInclusive: Float, maxExclusive: Float): Rxn[Float] = {
+  final def betweenFloat(minInclusive: Float, maxExclusive: Float): RxnImpl[Float] = {
     require(minInclusive < maxExclusive)
     nextFloat.map { (f: Float) =>
       val diff: Float = maxExclusive - minInclusive
@@ -237,14 +237,14 @@ private abstract class RandomBase
     }
   }
 
-  def nextBoolean: Rxn[Boolean] =
+  def nextBoolean: RxnImpl[Boolean] =
     this.nextInt.map { r => r < 0 }
 
-  final def nextAlphaNumeric: Rxn[Char] = {
+  final def nextAlphaNumeric: RxnImpl[Char] = {
     RandomBase.nextAlphaNumeric(this.nextIntBounded)
   }
 
-  final def nextPrintableChar: Rxn[Char] = {
+  final def nextPrintableChar: RxnImpl[Char] = {
     this.betweenInt(MinPrintableIncl, MaxPrintableExcl).map { (i: Int) =>
       i.toChar
     }
@@ -254,12 +254,12 @@ private abstract class RandomBase
    * We also generate surrogates, unless they
    * would be illegal at that position.
    */
-  def nextString(length: Int): Rxn[String] = {
+  def nextString(length: Int): RxnImpl[String] = {
     require(length >= 0)
     if (length == 0) {
-      Rxn.pure("")
+      Rxn.pureImpl("")
     } else {
-      Rxn.unsafe.suspend {
+      Rxn.unsafe.suspendImpl {
         val arr = new Array[Char](length)
         def write(idx: Int, value: Char): Rxn[Unit] =
           Rxn.unsafe.delay { arr(idx) = value }
@@ -327,25 +327,25 @@ private abstract class RandomBase
     }
   }
 
-  def shuffleList[A](l: List[A]): Rxn[List[A]] = {
+  def shuffleList[A](l: List[A]): RxnImpl[List[A]] = {
     if (l.length > 1) {
-      Rxn.unsafe.suspend {
+      Rxn.unsafe.suspendImpl {
         val arr = ArrayBuffer.from(l)
         shuffleArray(arr) *> Rxn.unsafe.delay(arr.toList)
       }
     } else {
-      Rxn.pure(l)
+      Rxn.pureImpl(l)
     }
   }
 
-  def shuffleVector[A](v: Vector[A]): Rxn[Vector[A]] = {
+  def shuffleVector[A](v: Vector[A]): RxnImpl[Vector[A]] = {
     if (v.length > 1) {
-      Rxn.unsafe.suspend {
+      Rxn.unsafe.suspendImpl {
         val arr = ArrayBuffer.from(v)
         shuffleArray(arr) *> Rxn.unsafe.delay(arr.toVector)
       }
     } else {
-      Rxn.pure(v)
+      Rxn.pureImpl(v)
     }
   }
 
@@ -386,7 +386,7 @@ private abstract class RandomBase
 
 private object RandomBase {
 
-  private[choam] def nextAlphaNumeric(nextIntBounded: Int => Rxn[Int]): Rxn[Char] = {
+  private[choam] def nextAlphaNumeric(nextIntBounded: Int => RxnImpl[Int]): RxnImpl[Char] = {
     nextIntBounded(LenAlphanumeric).map { (i: Int) =>
       Alphanumeric.charAt(i)
     }

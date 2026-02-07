@@ -35,10 +35,10 @@ package object random {
   }
 
   private[choam] final def newFastRandom: Random[Rxn] =
-    new RxnThreadLocalRandom
+    new RxnThreadLocalRandom[Rxn]
 
   private[choam] final def newSecureRandom: SecureRandom[Rxn] =
-    new SecureRandomRxn
+    new SecureRandomRxn[Rxn]
 
   private[choam] final def deterministicRandom(initialSeed: Long, str: AllocationStrategy): Rxn[SplittableRandom[Rxn]] =
     DeterministicRandom(initialSeed, str)

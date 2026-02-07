@@ -217,7 +217,7 @@ object Txn extends TxnInstances0 {
   /**
    * Generates a unique token
    *
-   * Each time the `Txn` is executed (or when it retries),
+   * Each time the `Txn` is executed,
    * the generated token will be fresh.
    */
   final def unique: Txn[Unique.Token] =
@@ -226,9 +226,8 @@ object Txn extends TxnInstances0 {
   /**
    * Generates a random [[java.util.UUID]]
    *
-   * Each time the `Txn` is executed (or when it retries),
-   * the generated token will be fresh (with very high
-   * probability).
+   * Each time the `Txn` is executed, the generated
+   * token will be fresh (with very high probability).
    */
   final def newUuid: Txn[UUID] =
     Rxn.newUuidImpl

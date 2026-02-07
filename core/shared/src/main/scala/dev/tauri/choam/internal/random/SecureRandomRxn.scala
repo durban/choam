@@ -21,17 +21,17 @@ package random
 
 import cats.effect.std.SecureRandom
 
-import core.Rxn
+import core.{ Rxn, RxnImpl }
 
 /**
  * Implements [[cats.effect.std.SecureRandom]] by using
  * the OS CSPRNG (through `OsRng`). This is as nonblocking
  * as possible on each platform (see `OsRng`).
  */
-private final class SecureRandomRxn
-  extends RandomBase with SecureRandom[Rxn] {
+private final class SecureRandomRxn[R[a] >: RxnImpl[a]]
+  extends RandomBase[R] with SecureRandom[R] {
 
-  final override def nextBytes(n: Int): Rxn[Array[Byte]] = Rxn.unsafe.delayContext { ctx =>
+  final override def nextBytes(n: Int): RxnImpl[Array[Byte]] = Rxn.unsafe.delayContextImpl { ctx =>
     ctx.impl.osRng.nextBytes(n)
   }
 }

@@ -21,7 +21,7 @@ package random
 
 import scala.collection.mutable.ArrayBuffer
 
-import core.{ Rxn, Ref, SplittableRandom }
+import core.{ Rxn, RxnImpl, Ref, SplittableRandom }
 import RandomBase._
 
 // TODO: everything could be optimized to a single `seed.modify { ... }`
@@ -47,20 +47,20 @@ private object DeterministicRandom {
  * https://zimbry.blogspot.com/2011/09/better-bit-mixing-improving-on.html.
  *
  * The mutable state of the RNG is held by a `Ref[Long]`,
- * so rollbacks also affect the state. Thus, the RNG can
+ * so rollbacks also affect the state. Thus, this RNG can
  * be used if reproducible random numbers are needed.
  * (However, nondeterministic multi-threaded access can of
  * course cause non-reproducibility.)
  */
-private final class DeterministicRandom(
+private final class DeterministicRandom[R[a] >: RxnImpl[a]](
   seed: Ref[Long],
   gamma: Long,
   str: AllocationStrategy,
-) extends RandomBase
-  with SplittableRandom.UnsealedSplittableRandom[Rxn] {
+) extends RandomBase[R]
+  with SplittableRandom.UnsealedSplittableRandom[R] {
 
-  private[this] val nextSeed: Rxn[Long] =
-    seed.updateAndGet(_ + gamma)
+  private[this] val nextSeed: RxnImpl[Long] =
+    seed.updateAndGetImpl(_ + gamma)
 
   private[this] final def mix64(s: Long): Long =
     staffordMix13(s)
@@ -104,8 +104,8 @@ private final class DeterministicRandom(
     n
   }
 
-  final def split: Rxn[SplittableRandom[Rxn]] = {
-    seed.modify { (sd: Long) =>
+  final def split: RxnImpl[SplittableRandom[R]] = {
+    seed.modifyImpl { (sd: Long) =>
       val s1: Long = sd + gamma
       val otherSeed: Long = mix64(s1)
       val s2 = s1 + gamma
@@ -114,15 +114,15 @@ private final class DeterministicRandom(
     }.flatMap {
       case (otherSeed, otherGamma) =>
         Ref[Long](otherSeed, str).map { otherSeedRef =>
-          new DeterministicRandom(otherSeedRef, otherGamma, str)
+          new DeterministicRandom[R](otherSeedRef, otherGamma, str)
         }
     }
   }
 
   // This should be faster than the one in `RandomBase`
-  final override def nextBytes(n: Int): Rxn[Array[Byte]] = {
+  final override def nextBytes(n: Int): RxnImpl[Array[Byte]] = {
     require(n >= 0)
-    seed.modify[Array[Byte]] { (sd: Long) =>
+    seed.modifyImpl[Array[Byte]] { (sd: Long) =>
       // TODO: We're cheating here, and allocating
       // TODO: the array in a "pure" function.
       val arr = new Array[Byte](n)
@@ -160,8 +160,8 @@ private final class DeterministicRandom(
   }
 
   /** Box-Muller transform / Marsaglia polar method */
-  final override def nextGaussian: Rxn[Double] = {
-    seed.modify[Double] { (sd: Long) =>
+  final override def nextGaussian: RxnImpl[Double] = {
+    seed.modifyImpl[Double] { (sd: Long) =>
       var n: Long = sd
       var v1: Double = Double.NaN // unused value
       var s: Double = Double.NaN // unused value
@@ -188,17 +188,17 @@ private final class DeterministicRandom(
     }
   }
 
-  final override def nextInt: Rxn[Int] =
+  final override def nextInt: RxnImpl[Int] =
     nextSeed.map(mix32)
 
   // This should be faster than the one in `RandomBase`
-  final override def nextIntBounded(bound: Int): Rxn[Int] = {
+  final override def nextIntBounded(bound: Int): RxnImpl[Int] = {
     require(bound > 0)
     val m: Int = bound - 1
     if ((bound & m) == 0) { // power of 2
       nextInt.map { r => r & m }
     } else {
-      seed.modify[Int] { (sd: Long) =>
+      seed.modifyImpl[Int] { (sd: Long) =>
         var s: Long = sd
         var r: Int = -1 // unused value
         while ({
@@ -214,11 +214,11 @@ private final class DeterministicRandom(
   }
 
   // This should be faster than the one in `RandomBase`
-  final override def betweenInt(minInclusive: Int, maxExclusive: Int): Rxn[Int] = {
+  final override def betweenInt(minInclusive: Int, maxExclusive: Int): RxnImpl[Int] = {
     require(minInclusive < maxExclusive)
     val n: Int = maxExclusive - minInclusive
     val m: Int = n - 1
-    seed.modify[Int] { (sd: Long) =>
+    seed.modifyImpl[Int] { (sd: Long) =>
       if ((n & m) == 0) { // power of 2
         val s: Long = sd + gamma
         (s, (mix32(s) & m) + minInclusive)
@@ -244,17 +244,17 @@ private final class DeterministicRandom(
     }
   }
 
-  final override def nextLong: Rxn[Long] =
+  final override def nextLong: RxnImpl[Long] =
     nextSeed.map(mix64)
 
   // This should be faster than the one in `RandomBase`
-  final override def nextLongBounded(bound: Long): Rxn[Long] = {
+  final override def nextLongBounded(bound: Long): RxnImpl[Long] = {
     require(bound > 0L)
     val m: Long = bound - 1
     if ((bound & m) == 0L) { // power of 2
       nextLong.map { r => r & m }
     } else {
-      seed.modify[Long] { (sd: Long) =>
+      seed.modifyImpl[Long] { (sd: Long) =>
         var s: Long = sd
         var r: Long = -1L // unused value
         while ({
@@ -270,11 +270,11 @@ private final class DeterministicRandom(
   }
 
   // This should be faster than the one in `RandomBase`
-  final override def betweenLong(minInclusive: Long, maxExclusive: Long): Rxn[Long] = {
+  final override def betweenLong(minInclusive: Long, maxExclusive: Long): RxnImpl[Long] = {
     require(minInclusive < maxExclusive)
     val n: Long = maxExclusive - minInclusive
     val m: Long = n - 1
-    seed.modify[Long] { (sd: Long) =>
+    seed.modifyImpl[Long] { (sd: Long) =>
       if ((n & m) == 0L) { // power of 2
         val s: Long = sd + gamma
         (s, (mix64(s) & m) + minInclusive)
@@ -300,27 +300,27 @@ private final class DeterministicRandom(
     }
   }
 
-  final override def shuffleList[A](l: List[A]): Rxn[List[A]] = {
+  final override def shuffleList[A](l: List[A]): RxnImpl[List[A]] = {
     if (l.length > 1) {
-      seed.modify[List[A]] { (sd: Long) =>
+      seed.modifyImpl[List[A]] { (sd: Long) =>
         val arr = ArrayBuffer.from(l)
         val newSeed = shuffleArray(arr, sd)
         (newSeed, arr.toList)
       }
     } else {
-      Rxn.pure(l)
+      Rxn.pureImpl(l)
     }
   }
 
-  final override def shuffleVector[A](v: Vector[A]): Rxn[Vector[A]] = {
+  final override def shuffleVector[A](v: Vector[A]): RxnImpl[Vector[A]] = {
     if (v.length > 1) {
-      seed.modify[Vector[A]] { (sd: Long) =>
+      seed.modifyImpl[Vector[A]] { (sd: Long) =>
         val arr = ArrayBuffer.from(v)
         val newSeed = shuffleArray(arr, sd)
         (newSeed, arr.toVector)
       }
     } else {
-      Rxn.pure(v)
+      Rxn.pureImpl(v)
     }
   }
 

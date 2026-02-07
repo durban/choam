@@ -47,6 +47,7 @@ sealed trait Ref[A] extends RefLike.UnsealedRefLike[A] { this: MemoryLocation[A]
   private[choam] def getImpl: RxnImpl[A]
   private[choam] def setImpl(a: A): RxnImpl[Unit]
   private[choam] def updateImpl(f: A => A): RxnImpl[Unit]
+  private[choam] def updateAndGetImpl(f: A => A): RxnImpl[A]
   private[choam] def modifyImpl[C](f: A => (A, C)): RxnImpl[C]
   private[choam] def flatModifyImpl[C](f: A => (A, Rxn[C])): RxnImpl[C]
 }
