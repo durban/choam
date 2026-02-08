@@ -24,7 +24,7 @@ import scala.reflect.ClassTag
 import core.{ Ref, Rxn, RxnImpl }
 import mcas.RefIdGen
 
-sealed abstract class DenseArrayOfXRefs[A](
+private[choam] sealed abstract class DenseArrayOfXRefs[A](
   final override val length: Int,
   initial: A,
   str: AllocationStrategy,

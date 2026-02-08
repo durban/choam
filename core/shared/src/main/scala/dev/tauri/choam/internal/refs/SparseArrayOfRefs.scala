@@ -25,7 +25,7 @@ import core.{ Ref, Rxn, RxnImpl }
 import mcas.RefIdGen
 import CompatPlatform.AtomicReferenceArray
 
-sealed abstract class SparseArrayOfXRefs[A](
+private[choam] sealed abstract class SparseArrayOfXRefs[A](
   final override val length: Int,
   initial: A,
   str: AllocationStrategy,

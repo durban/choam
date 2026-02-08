@@ -59,7 +59,7 @@ package object unsafe {
       ir.writeRefArray(self, idx, nv)
   }
 
-  /** @see [[dev.tauri.choam.core.Ref.apply]] */
+  /** @see [[dev.tauri.choam.core.Ref.apply[A](initial:A,str*]] */
   final def newRef[A](
     initial: A,
     strategy: AllocationStrategy = AllocationStrategy.Default,
