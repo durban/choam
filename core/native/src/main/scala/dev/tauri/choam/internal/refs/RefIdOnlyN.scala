@@ -19,7 +19,7 @@ package dev.tauri.choam
 package internal
 package refs
 
-abstract class RefIdOnlyN(private[this] val _id: Long) extends RefToStringN {
+private[choam] abstract class RefIdOnlyN(private[this] val _id: Long) extends RefToStringN {
 
   final def id: Long =
     _id

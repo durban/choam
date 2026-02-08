@@ -106,13 +106,7 @@ object Ref extends RefInstances0 {
 
   private[choam] trait UnsealedArray0[A] extends Array[A] // TODO: better name
 
-  private[choam] trait UnsealedArray[A] extends UnsealedArray0[A] { this: internal.refs.RefIdOnlyN =>
-
-    protected[choam] final override def refToString(): String = {
-      val idBase = this.id
-      s"Ref.Array[${length}]@${internal.mcas.refHashArrayIdBase(idBase)}"
-    }
-
+  private[choam] trait UnsealedArray[A] extends UnsealedArray0[A] {
     protected final def checkIndex(idx: Int): Unit = {
       if ((idx < 0) || (idx >= length)) {
         throw new IndexOutOfBoundsException(s"Index ${idx} out of bounds for length ${length}")

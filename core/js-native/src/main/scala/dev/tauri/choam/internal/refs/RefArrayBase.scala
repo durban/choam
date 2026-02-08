@@ -112,4 +112,9 @@ private abstract class RefArrayBase[A](
   protected[refs] final def cmpxchgO(idx: Int, ov: AnyRef, nv: AnyRef): AnyRef = {
     AtomicArray.compareAndExchangeOpaque(this.array, idx, ov, nv)
   }
+
+  protected[choam] final override def refToString(): String = {
+    val idBase = this.id
+    s"Ref.Array[${this._size}]@${internal.mcas.refHashArrayIdBase(idBase)}"
+  }
 }

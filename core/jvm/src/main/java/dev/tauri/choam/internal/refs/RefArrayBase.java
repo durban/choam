@@ -131,4 +131,8 @@ abstract class RefArrayBase<A> extends RefIdOnlyN {
     // so we approximate it with the release form:
     return ARRAY.compareAndExchangeRelease(this.array, idx, ov, nv);
   }
+
+  protected final String refToString() {
+    return "Ref.Array[" + this._size + "]@" + dev.tauri.choam.internal.mcas.package$.MODULE$.refHashArrayIdBase(this.idBase());
+  }
 }
