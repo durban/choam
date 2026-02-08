@@ -20,6 +20,8 @@ package stm
 
 import cats.effect.IO
 
+import internal.mcas.Consts
+
 final class MemoSpec_DefaultMcas_IO
   extends BaseSpecIO
   with SpecDefaultMcas
@@ -99,7 +101,7 @@ trait MemoSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
   test("Txn.memoize suspend") {
     val getTxnIdentity: Txn[Int] = Txn.unsafe.delayContext2[Int] { (_, interpSt) =>
       assert(interpSt ne null)
-      System.identityHashCode(interpSt)
+      (Consts.staffordMix04(System.identityHashCode(interpSt).toLong) >>> 32).toInt
     }
     val N = 20
     val t = for {
@@ -122,10 +124,6 @@ trait MemoSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       _ <- assertF(i2 != i) // with high probability
       _ <- assertResultF(ctr.get.commit, 2)
     } yield ()
-    t.replicateA_(this.platform match {
-      case Jvm => 1000
-      case Js => 10
-      case Native => 500
-    })
+    t.replicateA_(1000)
   }
 }

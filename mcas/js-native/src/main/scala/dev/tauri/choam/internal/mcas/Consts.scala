@@ -70,4 +70,15 @@ object Consts {
     n ^= (n >>> 31)
     n
   }
+
+  /** https://zimbry.blogspot.com/2011/09/better-bit-mixing-improving-on.html */
+  final def staffordMix04(s: Long): Long = {
+    var n: Long = s
+    n ^= (n >>> 33)
+    n *= 0x62a9d9ed799705f5L
+    n ^= (n >>> 28)
+    n *= 0xcb24d0a5c88c35b3L
+    n ^= (n >>> 32)
+    n
+  }
 }

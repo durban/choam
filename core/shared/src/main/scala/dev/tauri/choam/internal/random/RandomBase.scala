@@ -369,18 +369,14 @@ private abstract class RandomBase[R[a] >: RxnImpl[a]]
     go(arr.length - 1)
   }
 
+  @inline
   protected[this] final def staffordMix13(s: Long): Long = {
     internal.mcas.Consts.staffordMix13(s)
   }
 
+  @inline
   protected[this] final def staffordMix04(s: Long): Long = {
-    var n: Long = s
-    n ^= (n >>> 33)
-    n *= 0x62a9d9ed799705f5L
-    n ^= (n >>> 28)
-    n *= 0xcb24d0a5c88c35b3L
-    n ^= (n >>> 32)
-    n
+    internal.mcas.Consts.staffordMix04(s)
   }
 }
 
