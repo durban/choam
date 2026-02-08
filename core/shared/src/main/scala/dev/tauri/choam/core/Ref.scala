@@ -120,7 +120,11 @@ object Ref extends RefInstances0 {
     }
   }
 
-  final def apply[A](initial: A, str: AllocationStrategy = AllocationStrategy.Default): Rxn[Ref[A]] = { // TODO:0.5: no default arg
+  final def apply[A](initial: A): Rxn[Ref[A]] = {
+    apply(initial, AllocationStrategy.Default)
+  }
+
+  final def apply[A](initial: A, str: AllocationStrategy): Rxn[Ref[A]] = {
     Rxn.unsafe.delayContext { ctx =>
       Ref.unsafe(initial, str, ctx.refIdGen)
     }
