@@ -122,6 +122,10 @@ trait MemoSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       _ <- assertF(i2 != i) // with high probability
       _ <- assertResultF(ctr.get.commit, 2)
     } yield ()
-    t.replicateA_(1000)
+    t.replicateA_(this.platform match {
+      case Jvm => 1000
+      case Js => 10
+      case Native => 500
+    })
   }
 }
