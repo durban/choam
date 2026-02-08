@@ -17,7 +17,7 @@
 
 package dev.tauri.choam
 
-import core.{ Rxn, Ref }
+import core.{ Rxn, RxnImpl, Ref }
 
 sealed abstract class Memo[F[_], A] {
   def getOrInit: F[A]
@@ -26,16 +26,21 @@ sealed abstract class Memo[F[_], A] {
 private object Memo {
 
   final def rxn[A](axn: Rxn[A], str: AllocationStrategy): Rxn[Memo[Rxn, A]] = {
-    val init = newInitializer[A](axn)
-    Ref[A](init, str).map { st => new MemoImpl(st) }
+    val init = newInitializer[A](axn.impl)
+    Ref[A](init, str).map { st => new MemoImpl[Rxn, A](st) }
   }
 
-  private[this] final class MemoImpl[A](
-    state: Ref[A],
-  ) extends Memo[Rxn, A] {
+  final def txn[A](txn: stm.Txn[A], str: AllocationStrategy): stm.Txn[Memo[stm.Txn, A]] = {
+    val init = newInitializer[A](txn.impl)
+    Ref.tRef[A](init, str.withStm(true)).map { st => new MemoImpl[stm.Txn, A](st) }
+  }
 
-    final override def getOrInit: Rxn[A] = {
-      state.get.flatMap { ov =>
+  private[this] final class MemoImpl[R[a] >: RxnImpl[a], A](
+    state: Ref[A],
+  ) extends Memo[R, A] {
+
+    final override def getOrInit: R[A] = {
+      state.getImpl.flatMap { ov =>
         if (ov.isInstanceOf[Initializer[?]]) {
           ov.asInstanceOf[Initializer[A]].act.flatTap(state.set)
         } else {
@@ -50,9 +55,9 @@ private object Memo {
    * so that we can reliably distinguish the `Rxn` to memoize
    * from its result.
    */
-  private[this] final class Initializer[A](val act: Rxn[A])
+  private[this] final class Initializer[A](val act: RxnImpl[A])
 
-  private[this] final def newInitializer[A](act: Rxn[A]): A = {
+  private[this] final def newInitializer[A](act: RxnImpl[A]): A = {
     (new Initializer(act)).asInstanceOf[A]
   }
 }

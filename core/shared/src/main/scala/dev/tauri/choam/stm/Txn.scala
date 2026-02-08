@@ -232,6 +232,12 @@ object Txn extends TxnInstances0 {
   final def newUuid: Txn[UUID] =
     Rxn.newUuidImpl
 
+  final def memoize[A](txn: Txn[A]): Txn[Memo[Txn, A]] =
+    memoize(txn, AllocationStrategy.Default)
+
+  final def memoize[A](txn: Txn[A], str: AllocationStrategy): Txn[Memo[Txn, A]] =
+    Memo.txn(txn, str)
+
   final object unsafe {
 
     final def newLocal[A](initial: A): Txn[TxnLocal[A]] = {
