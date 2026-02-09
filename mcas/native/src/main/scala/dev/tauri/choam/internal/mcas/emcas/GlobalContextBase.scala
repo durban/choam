@@ -22,7 +22,7 @@ package emcas
 
 import scala.scalanative.annotation.alwaysinline
 
-private[emcas] abstract class GlobalContextBase(startCommitTs: Long) { // TODO: padding!
+private[emcas] abstract class GlobalContextBase(startCommitTs: Long) extends Padding {
 
   @volatile
   @nowarn("cat=unused-privates")

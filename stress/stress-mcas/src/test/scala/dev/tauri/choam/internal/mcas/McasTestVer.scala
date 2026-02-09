@@ -24,6 +24,8 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.ZZL_Result
 
+import core.Ref
+
 @JCStressTest
 @State
 @Description("k-CAS should be atomic (with versions, after another op)")
@@ -34,13 +36,13 @@ import org.openjdk.jcstress.infra.results.ZZL_Result
 class McasTestVer extends StressTestBase {
 
   private[this] val refs: Array[MemoryLocation[String]] = Array(
-    MemoryLocation.unsafePadded("ov", impl.currentContext().refIdGen),
-    MemoryLocation.unsafePadded("ov", impl.currentContext().refIdGen),
-    MemoryLocation.unsafePadded("-", impl.currentContext().refIdGen),
-    MemoryLocation.unsafePadded("-", impl.currentContext().refIdGen),
-    MemoryLocation.unsafePadded("-", impl.currentContext().refIdGen),
-    MemoryLocation.unsafePadded("-", impl.currentContext().refIdGen),
-    MemoryLocation.unsafePadded("-", impl.currentContext().refIdGen),
+    Ref.unsafe("ov", AllocationStrategy.Padded, impl.currentContext().refIdGen).loc,
+    Ref.unsafe("ov", AllocationStrategy.Padded, impl.currentContext().refIdGen).loc,
+    Ref.unsafe("-", AllocationStrategy.Padded, impl.currentContext().refIdGen).loc,
+    Ref.unsafe("-", AllocationStrategy.Padded, impl.currentContext().refIdGen).loc,
+    Ref.unsafe("-", AllocationStrategy.Padded, impl.currentContext().refIdGen).loc,
+    Ref.unsafe("-", AllocationStrategy.Padded, impl.currentContext().refIdGen).loc,
+    Ref.unsafe("-", AllocationStrategy.Padded, impl.currentContext().refIdGen).loc,
   )
 
   this.init()

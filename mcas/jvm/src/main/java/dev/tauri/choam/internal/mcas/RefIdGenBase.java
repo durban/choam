@@ -22,7 +22,7 @@ import java.lang.invoke.VarHandle;
 
 import dev.tauri.choam.internal.VarHandleHelper;
 
-public abstract class RefIdGenBase extends PaddedMemoryLocationPadding {
+public abstract class RefIdGenBase extends Padding {
 
   /**
    * Constant for Fibonacci hashing

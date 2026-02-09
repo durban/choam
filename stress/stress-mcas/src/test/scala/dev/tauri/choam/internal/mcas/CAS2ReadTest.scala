@@ -24,6 +24,8 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLZ_Result
 
+import core.Ref
+
 @JCStressTest
 @State
 @Description("CAS2 should be atomic to readers")
@@ -36,10 +38,10 @@ import org.openjdk.jcstress.infra.results.LLZ_Result
 class CAS2ReadTest extends StressTestBase {
 
   private[this] val ref1: MemoryLocation[String] =
-    MemoryLocation.unsafePadded("ov1", impl.currentContext().refIdGen)
+    Ref.unsafe("ov1", AllocationStrategy.Padded, impl.currentContext().refIdGen).loc
 
   private[this] val ref2: MemoryLocation[String] =
-    MemoryLocation.unsafePadded("ov2", impl.currentContext().refIdGen)
+    Ref.unsafe("ov2", AllocationStrategy.Padded, impl.currentContext().refIdGen).loc
 
   @Actor
   def writer(r: LLZ_Result): Unit = {

@@ -141,19 +141,11 @@ object MemoryLocation extends MemoryLocationInstances0 {
     unsafeUnpaddedWithId(initial)(rig.nextId())
   }
 
-  final def unsafePadded[A](initial: A, rig: RefIdGen): MemoryLocation[A] = {
-    unsafePaddedWithId(initial)(rig.nextId())
-  }
-
   private[mcas] final def unsafeWithId[A](initial: A)(i0: Long): MemoryLocation[A] =
     unsafeUnpaddedWithId(initial)(i0)
 
   private[mcas] final def unsafeUnpaddedWithId[A](initial: A)(i0: Long): MemoryLocation[A] = {
     new SimpleMemoryLocation[A](initial)(i0)
-  }
-
-  private[this] final def unsafePaddedWithId[A](initial: A)(id: Long): MemoryLocation[A] = {
-    new PaddedMemoryLocation[A](initial, id)
   }
 
   final def globalCompare(a: MemoryLocation[?], b: MemoryLocation[?]): Int = {

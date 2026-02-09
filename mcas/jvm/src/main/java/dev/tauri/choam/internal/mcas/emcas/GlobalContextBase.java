@@ -26,9 +26,9 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import dev.tauri.choam.internal.VarHandleHelper;
 import dev.tauri.choam.internal.mcas.VersionJ;
-import dev.tauri.choam.internal.mcas.PaddedMemoryLocationPadding;
+import dev.tauri.choam.internal.mcas.Padding;
 
-abstract class GlobalContextBase extends PaddedMemoryLocationPadding {
+abstract class GlobalContextBase extends Padding {
 
   private static final VarHandle COMMIT_TS;
   private static final VarHandle THREAD_CTX_COUNT;

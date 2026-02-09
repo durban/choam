@@ -88,9 +88,8 @@ final class JolSpec extends BaseSpec with SpecDefaultMcas {
   test("Ref should be padded to avoid false sharing") {
     assumeOpenJdk()
     assumeNotMac()
-    val refs = List[MemoryLocation[String]](
+    val refs = List[AnyRef](
       Ref.unsafe("foo", AllocationStrategy.Padded, this.rigInstance).loc,
-      MemoryLocation.unsafePadded("foo", this.rigInstance),
     )
     for (ref <- refs) {
       val (left, right) = getLeftRightPaddedSize(ref)

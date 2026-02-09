@@ -25,6 +25,8 @@ import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLLLLL_Result
 
+import core.Ref
+
 @JCStressTest
 @State
 @Description("EmcasZombieTest")
@@ -39,10 +41,10 @@ class EmcasZombieTest {
     StressTestBase.emcasInst
 
   private[this] val ref1 =
-    MemoryLocation.unsafePadded("a", inst.currentContext().refIdGen) // -> x
+    Ref.unsafe("a", AllocationStrategy.Padded, inst.currentContext().refIdGen).loc // -> x
 
   private[this] val ref2 =
-    MemoryLocation.unsafePadded("b", inst.currentContext().refIdGen) // -> y
+    Ref.unsafe("b", AllocationStrategy.Padded, inst.currentContext().refIdGen).loc // -> y
 
   @Actor
   def write(r: LLLLLL_Result): Unit = {

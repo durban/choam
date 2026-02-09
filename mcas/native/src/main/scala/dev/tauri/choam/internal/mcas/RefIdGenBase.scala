@@ -21,7 +21,7 @@ package mcas
 
 import scala.scalanative.annotation.alwaysinline
 
-private[mcas] abstract class RefIdGenBase(startCtr: Long) extends PaddedMemoryLocationPadding {
+private[mcas] abstract class RefIdGenBase(startCtr: Long) extends Padding {
 
   @nowarn("cat=unused-privates")
   private[this] var ctr: Long =

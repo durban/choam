@@ -597,20 +597,19 @@ final class EmcasSpec extends BaseSpec {
   }
 
   test("Descriptor toString") {
-    for (r1 <- List(MemoryLocation.unsafeUnpadded("r1", this.rigInstance), MemoryLocation.unsafePadded("r1", this.rigInstance))) {
-      val ctx = inst.currentContext()
-      val d0 = ctx.start()
-      val d1 = ctx.addCasFromInitial(d0, r1, "r1", "A")
-      val ed = new EmcasDescriptor(d1, instRo = false)
-      val wd = ed.getWordIterator().next()
-      assert(wd.toString().startsWith("EmcasWordDesc("))
-      assert(ctx.tryPerformOk(d1))
-      (r1.unsafeGetV() : Any) match {
-        case wd: EmcasWordDesc[_] =>
-          assert(wd.toString().startsWith("EmcasWordDesc("))
-        case x =>
-          fail(s"unexpected contents: ${x}")
-      }
+    val r1 = MemoryLocation.unsafeUnpadded("r1", this.rigInstance)
+    val ctx = inst.currentContext()
+    val d0 = ctx.start()
+    val d1 = ctx.addCasFromInitial(d0, r1, "r1", "A")
+    val ed = new EmcasDescriptor(d1, instRo = false)
+    val wd = ed.getWordIterator().next()
+    assert(wd.toString().startsWith("EmcasWordDesc("))
+    assert(ctx.tryPerformOk(d1))
+    (r1.unsafeGetV() : Any) match {
+      case wd2: EmcasWordDesc[_] =>
+        assert(wd2.toString().startsWith("EmcasWordDesc("))
+      case x =>
+        fail(s"unexpected contents: ${x}")
     }
   }
 
