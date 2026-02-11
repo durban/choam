@@ -20,14 +20,16 @@ package internal
 package mcas
 package emcas
 
-import scala.scalanative.annotation.alwaysinline
+import scala.scalanative.annotation.{ align, alwaysinline }
 
 private[emcas] abstract class GlobalContextBase(startCommitTs: Long) extends Padding {
 
+  @align("commitTs") // padding separately for the 2 vars
   @volatile
   @nowarn("cat=unused-privates")
   private[this] var commitTs: Long = startCommitTs
-  // TODO: add padding between commitTs and threadCtxCount
+
+  @align("threadCtxCount")
   @volatile
   @nowarn("cat=unused-privates")
   private[this] var threadCtxCount: Long = _

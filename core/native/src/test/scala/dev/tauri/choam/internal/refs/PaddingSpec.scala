@@ -108,4 +108,8 @@ final class PaddingSpec extends BaseSpec {
     val ctrOffset: Long = (ctrStart - start).toLong
     assertEquals(ctrOffset, expOff)
   }
+
+  test("Padding: GlobalContext (SN)".ignore) {
+    // TODO: we can't test this now due to https://github.com/scala-native/scala-native/issues/4777
+  }
 }
