@@ -20,7 +20,7 @@ package stm
 
 import cats.effect.IO
 
-import internal.mcas.Consts
+import unsafe.InRxn.InterpState
 
 final class MemoSpec_DefaultMcas_IO
   extends BaseSpecIO
@@ -99,9 +99,9 @@ trait MemoSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
   }
 
   test("Txn.memoize suspend") {
-    val getTxnIdentity: Txn[Int] = Txn.unsafe.delayContext2[Int] { (_, interpSt) =>
+    val getTxnIdentity: Txn[InterpState] = Txn.unsafe.delayContext2 { (_, interpSt) =>
       assert(interpSt ne null)
-      (Consts.staffordMix04(System.identityHashCode(interpSt).toLong) >>> 32).toInt
+      interpSt
     }
     val N = 20
     val t = for {
@@ -109,19 +109,27 @@ trait MemoSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       act = ctr.update(_ + 1) *> getTxnIdentity
       m1 <- Txn.memoize(act).commit
       m2 <- Txn.memoize(act).commit
-      fibs <- m1.getOrInit.flatMap { i =>
-        if ((i % 2) == 0) Txn.retry
-        else getTxnIdentity.map(j => (i, j))
+      fibs <- m1.getOrInit.flatMap { is =>
+        getTxnIdentity.flatMap { js =>
+          if (is ne js) { // someone else already initialized, we can commit:
+            Txn.pure((is, js))
+          } else { // we initialized, but let's roll back with 1/2 chance:
+            Txn.newUuid.flatMap { uuid =>
+              if ((uuid.getLeastSignificantBits() % 2L) == 0L) Txn.retry
+              else Txn.pure((is, js))
+            }
+          }
+        }
       }.commit.start.parReplicateA(N)
-      results <- fibs.traverse(_.joinWithNever)
+      results <- fibs.traverse[F, (InterpState, InterpState)](_.joinWithNever)
       _ <- assertResultF(ctr.get.commit, 1)
-      winner = results.collect { case (i, j) if i == j => i }
+      winner = results.collect[InterpState] { case (i, j) if i eq j => i }
       _ <- assertEqualsF(winner.size, 1)
       i = winner.head
-      _ <- assertF(results.forall { case (ii, _) => ii == i })
-      _ <- assertEqualsF(results.map(_._2).toSet.size, N) // with high probability
+      _ <- assertF(results.forall { case (ii, _) => ii eq i })
+      _ <- assertEqualsF(results.map(_._2).toSet.size, N)
       i2 <- m2.getOrInit.commit
-      _ <- assertF(i2 != i) // with high probability
+      _ <- assertF(i2 ne i)
       _ <- assertResultF(ctr.get.commit, 2)
     } yield ()
     t.replicateA_(1000)
