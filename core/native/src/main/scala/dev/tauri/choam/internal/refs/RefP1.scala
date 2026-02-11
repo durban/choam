@@ -27,13 +27,19 @@ import core.UnsealedRef
 import mcas.{ Version, MemoryLocation }
 
 private final class RefP1[A](
-  @align("p1") // common padding for all fields
-  @volatile
-  private[this] var value: A,
+  a: A,
   i: Long,
 ) extends RefIdAndPadding[A](i)
   with UnsealedRef[A]
   with MemoryLocation[A] {
+
+  // TODO: this field is defined separately from
+  // TODO: the ctor param `a` as a workaround for
+  // TODO: https://github.com/scala-native/scala-native/issues/4778
+  @align("p1") // common padding for all var fields
+  @volatile
+  private[this] var value: A =
+    a
 
   @align("p1")
   @volatile
