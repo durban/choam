@@ -22,5 +22,10 @@ package refs
 private abstract class PaddingForP1P1[A, B](
   a: A,
   i0: Long,
-) extends RefP1P1Base[A, B](a, i0) { // TODO: padding on SN
+) extends RefP1P1Base[A, B](a, i0) {
+
+  // NB: On SN we implement padding differently: we use
+  // NB: the `scala.scalanative.annotation.align` annotation
+  // NB: on the field definitions themselves. This class
+  // NB: only exists to mirror the hierarchy used on the JVM.
 }

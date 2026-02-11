@@ -21,7 +21,7 @@ package refs
 
 import java.lang.ref.WeakReference
 
-import scala.scalanative.annotation.alwaysinline
+import scala.scalanative.annotation.{ align, alwaysinline }
 
 import core.{ Ref, UnsealedRef2 }
 import mcas.Version
@@ -31,15 +31,18 @@ private abstract class RefP1P1Base[A, B](a: A, i0: Long)
   with UnsealedRef2[A, B]
   with Ref2ImplBase[A, B] {
 
+  @align("A") // padding in 2 groups: A and B
   @volatile
   private[this] var valueA: A =
     a
 
+  @align("A")
   @volatile
   @nowarn("cat=unused-privates")
   private[this] var versionA: Long =
     Version.Start
 
+  @align("A")
   @volatile
   @nowarn("cat=unused-privates")
   private[this] var markerA: WeakReference[AnyRef] =
