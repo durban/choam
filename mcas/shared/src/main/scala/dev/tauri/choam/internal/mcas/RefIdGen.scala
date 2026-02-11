@@ -142,9 +142,12 @@ private[choam] final class GlobalRefIdGen private[mcas] (
   }
 }
 
-private[mcas] object GlobalRefIdGen {
+private[choam] object GlobalRefIdGen {
 
-  final class ThreadLocalRefIdGen private[GlobalRefIdGen] (
+  private[choam] final def newGlobalRefIdGenForTesting(): GlobalRefIdGen =
+    new GlobalRefIdGen(0L)
+
+  private[mcas] final class ThreadLocalRefIdGen private[GlobalRefIdGen] (
     private[this] val parent: GlobalRefIdGen,
     private[this] var next: Long,
     private[this] var remaining: Int,

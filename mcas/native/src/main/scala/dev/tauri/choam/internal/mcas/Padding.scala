@@ -19,5 +19,10 @@ package dev.tauri.choam
 package internal
 package mcas
 
-private[mcas] abstract class Padding { // TODO: figure out padding in SN
+private[mcas] abstract class Padding {
+
+  // NB: On SN we implement padding differently: we use
+  // NB: the `scala.scalanative.annotation.align` annotation
+  // NB: on the field definitions themselves. This class
+  // NB: only exists to mirror the hierarchy used on the JVM.
 }

@@ -22,6 +22,8 @@ package refs
 import scala.scalanative.runtime.{ Intrinsics, fromRawPtr }
 import scala.scalanative.unsafe.Ptr
 
+import mcas.GlobalRefIdGen
+
 final class PaddingSpec extends BaseSpec {
 
   test("Padding: RefP1 (SN)") {
@@ -94,5 +96,16 @@ final class PaddingSpec extends BaseSpec {
     val marker2Start: Ptr[Byte] = fromRawPtr[Byte](Intrinsics.classFieldRawPtr(ref, "markerB"))
     val marker2Offset = (marker2Start - start).toLong
     assert((clue(marker2Offset) >= minOff) && (marker2Offset < maxOff))
+  }
+
+  test("Padding: GlobalRefIdGen (SN)") {
+    // there must be padding at the start,
+    // and there is a single field:
+    val expOff = 64L
+    val rig: GlobalRefIdGen = GlobalRefIdGen.newGlobalRefIdGenForTesting()
+    val start: Ptr[Byte] = fromRawPtr[Byte](Intrinsics.castObjectToRawPtr(rig))
+    val ctrStart: Ptr[Byte] = fromRawPtr[Byte](Intrinsics.classFieldRawPtr(rig, "ctr"))
+    val ctrOffset: Long = (ctrStart - start).toLong
+    assertEquals(ctrOffset, expOff)
   }
 }

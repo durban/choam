@@ -19,10 +19,11 @@ package dev.tauri.choam
 package internal
 package mcas
 
-import scala.scalanative.annotation.alwaysinline
+import scala.scalanative.annotation.{ align, alwaysinline }
 
 private[mcas] abstract class RefIdGenBase(startCtr: Long) extends Padding {
 
+  @align("rig") // this is the only var which needs padding
   @nowarn("cat=unused-privates")
   private[this] var ctr: Long =
     startCtr
