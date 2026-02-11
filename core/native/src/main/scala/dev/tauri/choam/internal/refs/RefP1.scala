@@ -21,23 +21,27 @@ package refs
 
 import java.lang.ref.WeakReference
 
-import scala.scalanative.annotation.alwaysinline
+import scala.scalanative.annotation.{ align, alwaysinline }
 
 import core.UnsealedRef
 import mcas.{ Version, MemoryLocation }
 
 private final class RefP1[A](
-  @volatile private[this] var value: A,
+  @align("p1") // common padding for all fields
+  @volatile
+  private[this] var value: A,
   i: Long,
 ) extends RefIdAndPadding[A](i)
   with UnsealedRef[A]
   with MemoryLocation[A] {
 
+  @align("p1")
   @volatile
   @nowarn("cat=unused-privates")
   private[this] var version: Long =
     Version.Start
 
+  @align("p1")
   @volatile
   @nowarn("cat=unused-privates")
   private[this] var marker: WeakReference[AnyRef] =
