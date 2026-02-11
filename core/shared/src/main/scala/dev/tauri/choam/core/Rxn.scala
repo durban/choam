@@ -518,7 +518,7 @@ object Rxn extends RxnInstances0 {
     _unique
 
   @inline
-  final def newUuid: Rxn[UUID] =
+  final def randomUuid: Rxn[UUID] =
     newUuidImpl
 
   private[choam] final val newUuidImpl: RxnImpl[UUID] =
@@ -530,9 +530,12 @@ object Rxn extends RxnInstances0 {
   final def slowRandom: SecureRandom[Rxn] =
     _secureRandom
 
+  final def deterministicRandom(initialSeed: Long): Rxn[SplittableRandom[Rxn]] =
+    deterministicRandom(initialSeed, AllocationStrategy.Default)
+
   final def deterministicRandom(
     initialSeed: Long,
-    str: AllocationStrategy = AllocationStrategy.Default
+    str: AllocationStrategy,
   ): Rxn[SplittableRandom[Rxn]] = {
     random.deterministicRandom(initialSeed, str)
   }

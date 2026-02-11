@@ -226,8 +226,8 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
 
   test("Txn.newUuid") {
     for {
-      t1 <- Txn.newUuid.commit
-      t23 <- (Txn.newUuid, Txn.newUuid).tupled.commit
+      t1 <- Txn.randomUuid.commit
+      t23 <- (Txn.randomUuid, Txn.randomUuid).tupled.commit
       (t2, t3) = t23
       _ <- assertEqualsF(Set(t1, t2, t3).size, 3)
       _ <- F.delay {

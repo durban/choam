@@ -66,7 +66,7 @@ final class ChoamRuntimeImplSpec extends ChoamRuntimeImplSpecPlatform {
           _ <- IO(assertEquals(v2, 2 * N))
           _ <- IO(assertEquals(v3, 2 * N))
           _ <- IO(assertEquals(v4, 2 * N))
-          uuid <- ar1.run(Rxn.newUuid)
+          uuid <- ar1.run(Rxn.randomUuid)
         } yield (r1, r2, uuid)
     }.flatMap {
       case (r1, r2, uuid1) =>
@@ -80,7 +80,7 @@ final class ChoamRuntimeImplSpec extends ChoamRuntimeImplSpecPlatform {
             v2 <- ar.run(r1.update(_ + 1) *> r2.get)
             _ <- IO(assertEquals(v2, 2 * N))
             _ <- assertIO(ar.run(r1.get), (2 * N) + 1)
-            uuid2 <- ar.run(Rxn.newUuid)
+            uuid2 <- ar.run(Rxn.randomUuid)
             _ <- IO(assertNotEquals(uuid1, uuid2))
           } yield ()
         }

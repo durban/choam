@@ -114,7 +114,7 @@ trait MemoSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
           if (is ne js) { // someone else already initialized, we can commit:
             Txn.pure((is, js))
           } else { // we initialized, but let's roll back with 1/2 chance:
-            Txn.newUuid.flatMap { uuid =>
+            Txn.randomUuid.flatMap { uuid =>
               if ((uuid.getLeastSignificantBits() % 2L) == 0L) Txn.retry
               else Txn.pure((is, js))
             }

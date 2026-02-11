@@ -229,7 +229,7 @@ object Txn extends TxnInstances0 {
    * Each time the `Txn` is executed, the generated
    * token will be fresh (with very high probability).
    */
-  final def newUuid: Txn[UUID] =
+  final def randomUuid: Txn[UUID] =
     Rxn.newUuidImpl
 
   final def memoize[A](txn: Txn[A]): Txn[Memo[Txn, A]] =
@@ -359,7 +359,7 @@ private[stm] sealed abstract class TxnInstances0 extends TxnInstances1 { self: T
 
   private[this] val _uuidGenInstance: UUIDGen[Txn] = new UUIDGen[Txn] {
     final override def randomUUID: Txn[UUID] =
-      self.newUuid
+      self.randomUuid
   }
 }
 

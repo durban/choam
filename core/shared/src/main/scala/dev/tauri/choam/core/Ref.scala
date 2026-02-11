@@ -137,10 +137,13 @@ object Ref extends RefInstances0 {
   // TODO: (Refined? But can we avoid boxing?)
   // TODO: Would implementing Traverse help? Probably not.
 
+  final def array[A](size: Int, initial: A): Rxn[Ref.Array[A]] =
+    array(size, initial, AllocationStrategy.Default)
+
   final def array[A](
     size: Int,
     initial: A,
-    strategy: AllocationStrategy = AllocationStrategy.Default,
+    strategy: AllocationStrategy,
   ): Rxn[Ref.Array[A]] = {
     safeArray(size = size, initial = initial, str = strategy)
   }
