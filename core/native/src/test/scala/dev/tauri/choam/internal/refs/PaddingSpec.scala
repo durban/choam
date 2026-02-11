@@ -61,7 +61,7 @@ final class PaddingSpec extends BaseSpec {
     val value2Offset: Long = (value2Start - start).toLong
     assert(
       (clue(value2Offset) >= 128L) && // the 2nd field-group is in the derived class,
-      (value2Offset < 192L)          // so we assume it'll be second in the layout
+      (value2Offset < 192L)           // so we assume it'll be second in the layout
     )
     val version2Start: Ptr[Byte] = fromRawPtr[Byte](Intrinsics.classFieldRawPtr(ref, "versionB"))
     val version2Offset: Long = (version2Start - start).toLong
@@ -69,5 +69,30 @@ final class PaddingSpec extends BaseSpec {
     val marker2Start: Ptr[Byte] = fromRawPtr[Byte](Intrinsics.classFieldRawPtr(ref, "markerB"))
     val marker2Offset = (marker2Start - start).toLong
     assert((clue(marker2Offset) >= 128L) && (marker2Offset < 192L))
+  }
+
+  test("Padding: RefP2 (SN)") {
+    val minOff = 64L  // there must be padding at the start,
+    val maxOff = 128L // but all the fields are in a single group
+    val ref: RefP2[AnyRef, String] = new RefP2[AnyRef, String]("foo", "bar", 42L, 43L)
+    val start: Ptr[Byte] = fromRawPtr[Byte](Intrinsics.castObjectToRawPtr(ref))
+    val value1Start: Ptr[Byte] = fromRawPtr[Byte](Intrinsics.classFieldRawPtr(ref, "valueA"))
+    val value1Offset: Long = (value1Start - start).toLong
+    assert((clue(value1Offset) >= minOff) && (value1Offset < maxOff))
+    val version1Start: Ptr[Byte] = fromRawPtr[Byte](Intrinsics.classFieldRawPtr(ref, "versionA"))
+    val version1Offset: Long = (version1Start - start).toLong
+    assert((clue(version1Offset) >= minOff) && (version1Offset < maxOff))
+    val marker1Start: Ptr[Byte] = fromRawPtr[Byte](Intrinsics.classFieldRawPtr(ref, "markerA"))
+    val marker1Offset = (marker1Start - start).toLong
+    assert((clue(marker1Offset) >= minOff) && (marker1Offset < maxOff))
+    val value2Start: Ptr[Byte] = fromRawPtr[Byte](Intrinsics.classFieldRawPtr(ref, "valueB"))
+    val value2Offset: Long = (value2Start - start).toLong
+    assert((clue(value2Offset) >= minOff) && (value2Offset < maxOff))
+    val version2Start: Ptr[Byte] = fromRawPtr[Byte](Intrinsics.classFieldRawPtr(ref, "versionB"))
+    val version2Offset: Long = (version2Start - start).toLong
+    assert((clue(version2Offset) >= minOff) && (version2Offset < maxOff))
+    val marker2Start: Ptr[Byte] = fromRawPtr[Byte](Intrinsics.classFieldRawPtr(ref, "markerB"))
+    val marker2Offset = (marker2Start - start).toLong
+    assert((clue(marker2Offset) >= minOff) && (marker2Offset < maxOff))
   }
 }

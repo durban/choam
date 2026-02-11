@@ -19,7 +19,12 @@ package dev.tauri.choam
 package internal
 package refs
 
-private abstract class PaddingN extends RefToStringN { // TODO: padding on SN
+private abstract class PaddingN extends RefToStringN {
+
+  // NB: On SN we implement padding differently: we use
+  // NB: the `scala.scalanative.annotation.align` annotation
+  // NB: on the field definitions themselves. This class
+  // NB: only exists to mirror the hierarchy used on the JVM.
 
   final def dummyImpl(n: Long): Long =
     n
