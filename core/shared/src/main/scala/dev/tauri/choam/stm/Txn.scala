@@ -23,12 +23,12 @@ import java.util.UUID
 import cats.kernel.Monoid
 import cats.{ Applicative, Defer, StackSafeMonad }
 import cats.effect.kernel.{ Clock, Unique }
-import cats.effect.std.UUIDGen
+import cats.effect.std.{ UUIDGen, Random, SecureRandom }
 
 import core.{ Rxn, RxnImpl }
 import dev.tauri.choam.{ unsafe => unsafe2 }
 import internal.mcas.Mcas
-import internal.ClockImpl
+import internal.{ ClockImpl, random }
 
 /**
  * An [[https://en.wikipedia.org/wiki/Software_transactional_memory STM]]
@@ -214,6 +214,12 @@ object Txn extends TxnInstances0 {
   private[choam] final def merge[A](txns: List[Txn[A]]): Txn[A] = // TODO: should this be public?
     txns.reduceLeftOption(_ orElse _).getOrElse(throw new IllegalArgumentException)
 
+  private[this] val _fastRandom: Random[Txn] =
+    random.newFastRandomTxn
+
+  private[this] val _slowRandom: SecureRandom[Txn] =
+    random.newSecureRandomTxn
+
   /**
    * Generates a unique token
    *
@@ -231,6 +237,15 @@ object Txn extends TxnInstances0 {
    */
   final def randomUuid: Txn[UUID] =
     Rxn.newUuidImpl
+
+  final def fastRandom: Random[Txn] =
+    _fastRandom
+
+  final def slowRandom: SecureRandom[Txn] =
+    _slowRandom
+
+  final def deterministicRandom(initialSeed: Long): Txn[SplittableRandom[Txn]] =
+    random.deterministicRandomTxn(initialSeed)
 
   final def memoize[A](txn: Txn[A]): Txn[Memo[Txn, A]] =
     memoize(txn, AllocationStrategy.Default)

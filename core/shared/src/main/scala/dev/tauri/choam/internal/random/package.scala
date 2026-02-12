@@ -37,11 +37,20 @@ package object random {
   private[choam] final def newFastRandom: Random[Rxn] =
     new RxnThreadLocalRandom[Rxn]
 
+  private[choam] final def newFastRandomTxn: Random[stm.Txn] =
+    new RxnThreadLocalRandom[stm.Txn]
+
   private[choam] final def newSecureRandom: SecureRandom[Rxn] =
     new SecureRandomRxn[Rxn]
 
+  private[choam] final def newSecureRandomTxn: SecureRandom[stm.Txn] =
+    new SecureRandomRxn[stm.Txn]
+
   private[choam] final def deterministicRandom(initialSeed: Long, str: AllocationStrategy): Rxn[SplittableRandom[Rxn]] =
     DeterministicRandom(initialSeed, str)
+
+  private[choam] final def deterministicRandomTxn(initialSeed: Long): stm.Txn[SplittableRandom[stm.Txn]] =
+    DeterministicRandom.forTxn(initialSeed)
 
   // TODO: do we need this?
   private[choam] def minimalRandom1(initialSeed: Long): Rxn[Random[Rxn]] =

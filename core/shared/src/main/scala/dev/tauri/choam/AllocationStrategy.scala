@@ -41,6 +41,9 @@ object AllocationStrategy {
     stm = false,
   )
 
+  private[choam] val DefaultStm: AllocationStrategy =
+    Default.withStm(true)
+
   val Padded: AllocationStrategy = // TODO: remove `withFlat(false)` when it's working with padded
     Default.withFlat(false).withPadded(true)
 

@@ -27,7 +27,7 @@ import scala.concurrent.duration._
 import cats.kernel.Monoid
 import cats.{ Defer, Monad, StackSafeMonad, Applicative }
 import cats.effect.kernel.Unique
-import cats.effect.std.UUIDGen
+import cats.effect.std.{ UUIDGen, SecureRandom }
 import cats.effect.IO
 
 final class TxnSpec_DefaultMcas_IO
@@ -213,6 +213,41 @@ trait TxnSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     txns.traverse_ { throwingTxn =>
       assertResultF(throwingTxn.commit.attempt, Left(exc))
     }
+  }
+
+  test("Txn.fastRandom") {
+    for {
+      ij <- (Txn.fastRandom.nextLong product Txn.fastRandom.nextLong).commit
+      _ <- assertNotEqualsF(ij._1, ij._2)
+      i <- Txn.fastRandom.nextLong.commit
+      j <- Txn.fastRandom.nextLong.commit
+      _ <- assertNotEqualsF(i, j)
+    } yield ()
+  }
+
+  test("Txn.slowRandom") {
+    val rng: SecureRandom[Txn] = Txn.slowRandom
+    for {
+      ij <- (rng.nextLong product rng.nextLong).commit
+      _ <- assertNotEqualsF(ij._1, ij._2)
+      i <- rng.nextLong.commit
+      j <- rng.nextLong.commit
+      _ <- assertNotEqualsF(i, j)
+    } yield ()
+  }
+
+  test("Txn.deterministicRandom") {
+    for {
+      seed <- F.delay(ThreadLocalRandom.current().nextLong())
+      rng1 <- Txn.deterministicRandom(seed).commit
+      rng2 <- Txn.deterministicRandom(seed).commit
+      rng3 <- Txn.deterministicRandom(seed + 1L).commit
+      x1 <- rng1.nextLong.commit
+      x2 <- rng2.nextLong.commit
+      xx <- rng3.nextLong.commit
+      _ <- assertEqualsF(x1, x2)
+      _ <- assertNotEqualsF(xx, x1)
+    } yield ()
   }
 
   test("Txn.unique") {

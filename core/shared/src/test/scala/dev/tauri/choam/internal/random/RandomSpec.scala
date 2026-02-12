@@ -74,6 +74,7 @@ trait RandomSpec[F[_]]
   }
 
   // TODO: more tests for Rxn.*Random
+  // TODO: also test Txn.*Random
 
   checkRandom("Rxn.fastRandom", _ => F.pure(Rxn.fastRandom))
   checkRandom("Rxn.slowRandom", _ => F.pure(Rxn.slowRandom))

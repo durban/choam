@@ -27,9 +27,16 @@ import RandomBase._
 // TODO: everything could be optimized to a single `seed.modify { ... }`
 
 private object DeterministicRandom {
-  def apply(initialSeed: Long, str: AllocationStrategy): Rxn[SplittableRandom[Rxn]] = {
+
+  final def apply(initialSeed: Long, str: AllocationStrategy): Rxn[SplittableRandom[Rxn]] = {
     Ref(initialSeed, str).map { (seed: Ref[Long]) =>
       new DeterministicRandom(seed, GoldenGamma, str)
+    }
+  }
+
+  final def forTxn(initialSeed: Long): stm.Txn[SplittableRandom[stm.Txn]] = {
+    Ref.tRef[Long](initialSeed, AllocationStrategy.DefaultStm).map { seed =>
+      new DeterministicRandom(seed, GoldenGamma, AllocationStrategy.DefaultStm)
     }
   }
 }
