@@ -24,7 +24,7 @@ package amcas
  * A not-wait-free (but lock-free) variant of the MCAS
  * algorithm described in "A Wait-Free Multi-Word
  * Compare-and-Swap Operation" by Steven Feldman, Pierre
- * LaBorde and Damian Dechev (DOI 10.1007/s10766-014-0308-7).
+ * LaBorde and Damian Dechev (doi:10.1007/s10766-014-0308-7).
  *
  * The main difference from the paper is that we omit the
  * wait-free announcement scheme. This makes our algorithm
@@ -40,7 +40,7 @@ package amcas
  * https://github.com/ucf-cs/Tervel). The relevant paper is
  * "Tervel: A Unification of Descriptor-based Techniques for
  * Non-blocking Programming" by the same authors
- * (DOI: 10.1109/SAMOS.2015.7363668).
+ * (doi:10.1109/SAMOS.2015.7363668).
  *
  * Naming: the papers about this algorithm either don't
  * name it beyond "MCAS", or call it "WFMCAS", the "WF"
