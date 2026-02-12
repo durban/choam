@@ -416,7 +416,10 @@ private[choam] abstract class RefGetAxn[A] extends RxnImpl[A] with MemoryLocatio
     modify(f).?
 
   final def flatModify[B](f: A => (A, Rxn[B])): Rxn[B] =
-    modify(f).flatten
+    flatModifyImpl(f)
+
+  final def flatModify[B](f: A => (A, Txn[B])): Txn[B] =
+    flatModifyImpl(f.asInstanceOf[Function1[A, (A, Rxn[B])]])
 }
 
 object Rxn extends RxnInstances0 {

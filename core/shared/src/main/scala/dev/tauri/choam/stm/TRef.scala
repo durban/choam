@@ -29,9 +29,7 @@ sealed trait TRef[A] {
   def getAndSet(a: A): Txn[A]
   def getAndUpdate(f: A => A): Txn[A]
   def updateAndGet(f: A => A): Txn[A]
-
-  final def flatModify[B](f: A => (A, Txn[B])): Txn[B] =
-    modify(f).flatten
+  def flatModify[B](f: A => (A, Txn[B])): Txn[B]
 
   private[choam] def refImpl: core.Ref[A]
 }
