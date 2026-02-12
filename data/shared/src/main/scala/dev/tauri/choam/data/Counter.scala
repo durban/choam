@@ -49,8 +49,7 @@ object Counter {
   }
 
   final def striped(str: AllocationStrategy): Rxn[Counter] = {
-    Rxn.unsafe.delayContext { ctx =>
-      val sref = StripedRef.unsafe(0L, str, ctx)
+    StripedRef(0L, str).map { sref =>
       new StripedCounter(sref)
     }
   }
