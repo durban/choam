@@ -19,6 +19,8 @@ package dev.tauri.choam
 package internal
 package mcas
 
+import java.lang.StringBuilder
+
 import scala.util.hashing.MurmurHash3
 import scala.collection.AbstractIterator
 
@@ -125,7 +127,7 @@ private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K]
   }
 
   final def toString(pre: String, post: String): String = {
-    val sb = new java.lang.StringBuilder(pre)
+    val sb = new StringBuilder(pre)
     val _ = this.toStringInternal(sb, first = true)
     sb.append(post)
     sb.toString()
@@ -294,7 +296,7 @@ private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K]
     curr
   }
 
-  private final def toStringInternal(sb: java.lang.StringBuilder, first: Boolean): Boolean = {
+  private final def toStringInternal(sb: StringBuilder, first: Boolean): Boolean = {
     val contents = this.contentsArr
     var i = 0
     val len = contents.length

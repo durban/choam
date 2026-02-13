@@ -18,6 +18,7 @@
 package dev.tauri.choam
 package profiler
 
+import java.lang.StringBuilder
 import java.{ util => ju }
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.LongAdder
@@ -409,13 +410,13 @@ private final class StatsResult(
   }
 
   override def extendedInfo(): String = {
-    val sb = new StringBuilder
-    sb ++= "StatsResult(\n"
+    val sb = new StringBuilder()
+    sb.append("StatsResult(\n")
     this.stats.foreach { s =>
-      sb ++= s"  ${s},\n"
+      sb.append(s"  ${s},\n")
     }
-    sb ++= s")"
-    sb.result()
+    sb.append(")")
+    sb.toString()
   }
 }
 

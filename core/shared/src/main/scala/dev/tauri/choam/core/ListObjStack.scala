@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package core
 
+import java.lang.StringBuilder
+
 private final class ListObjStack[A]() extends ObjStack[A] {
 
   import ListObjStack.Lst
@@ -104,7 +106,7 @@ private object ListObjStack {
         sb.append(curr.head.toString)
         curr = curr.tail
       }
-      sb.toString
+      sb.toString()
     }
   }
 
