@@ -98,6 +98,7 @@ private final class ByteStack(initSize: Int) {
       this.clear()
     } else {
       val newLength = Consts.nextPowerOf2(snapLength)
+      jsAssert(newLength >= 0)
       this.arr = Arrays.copyOf(snapshot, newLength)
       this.size = snapLength
     }
@@ -105,9 +106,9 @@ private final class ByteStack(initSize: Int) {
 
   private[this] def growIfNecessary(sizeNeeded: Int): Unit = {
     if (this.arr.length < sizeNeeded) {
-      // TODO: On JS, we should check for newSize overflowing,
-      // TODO: because NegativeArraySizeException is UB there.
-      this.grow(newSize = Consts.nextPowerOf2(sizeNeeded))
+      val newSize = Consts.nextPowerOf2(sizeNeeded)
+      jsAssert(newSize >= 0)
+      this.grow(newSize)
     }
   }
 
