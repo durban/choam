@@ -20,8 +20,6 @@ package core
 
 import java.util.Arrays
 
-import scala.collection.immutable.ArraySeq
-
 import internal.mcas.Consts
 
 private final class ByteStack(initSize: Int) {
@@ -35,7 +33,8 @@ private final class ByteStack(initSize: Int) {
     new Array[Byte](initSize)
 
   final override def toString: String = {
-    s"ByteStack(${List(ArraySeq.unsafeWrapArray(Arrays.copyOf(this.arr, this.size))*).reverse.mkString(", ")})"
+    val items = this.arr.take(this.size).reverse.mkString(", ")
+    s"ByteStack(${items})"
   }
 
   def push(b: Byte): Unit = {

@@ -116,6 +116,7 @@ final class InternalStackSpec extends BaseSpec {
     s.push(2.toByte)
     s.push(3.toByte)
     s.push(4.toByte)
+    assertEquals(s.toString, "ByteStack(4, 3, 2, 1)")
     val s2 = s.takeSnapshot()
     s.loadSnapshot(s1)
     assertEquals(s.pop(), 1.toByte)
