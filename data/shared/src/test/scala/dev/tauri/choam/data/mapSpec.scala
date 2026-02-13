@@ -79,6 +79,10 @@ trait MapSpecSimple[F[_]] extends MapSpec[F] { this: McasImplSpec =>
       _ <- (m.put(99, "bar")).run[F]
       v1 <- m.keys.run[F]
       _ <- assertEqualsF(v1.iterator.toSet, ScalaSet(42, 99))
+      _ <- {
+        val k: Int = v1.get(0).getOrElse(fail("missing"))
+        assertF((clue(k) == 42) || (k == 99))
+      }
       _ <- (m.put(99, "xyz")).run[F]
       _ <- (m.put(128, "abc")).run[F]
       _ <- m.del(42).run[F]
