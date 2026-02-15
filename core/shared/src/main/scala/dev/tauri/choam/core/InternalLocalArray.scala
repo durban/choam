@@ -20,7 +20,7 @@ package core
 
 private[choam] trait InternalLocalArray extends InternalLocal {
 
-  def size: Int
+  def length: Int
 
   @throws[IndexOutOfBoundsException]
   def checkIdx(idx: Int): Unit

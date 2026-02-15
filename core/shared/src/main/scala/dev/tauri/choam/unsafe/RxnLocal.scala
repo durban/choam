@@ -40,7 +40,7 @@ object RxnLocal {
 
   sealed abstract class Array[A] {
 
-    def size: Int
+    def length: Int
     // TODO: def get(idx: Int): G[Any, Option[A]]
     // TODO: def set(idx: Int, nv: A): G[Any, Boolean]
     def unsafeGet(idx: Int): Rxn[A]
@@ -187,13 +187,13 @@ object RxnLocal {
     final override def initial: AnyRef =
       box(_initial)
 
-    final override def size: Int =
+    final override def length: Int =
       arr.length
 
     @throws[IndexOutOfBoundsException]
     final override def checkIdx(idx: Int): Unit = {
-      if ((idx < 0) || (idx >= this.size)) {
-        throw new IndexOutOfBoundsException(s"Index ${idx} out of bounds for length ${this.size}")
+      if ((idx < 0) || (idx >= this.length)) {
+        throw new IndexOutOfBoundsException(s"Index ${idx} out of bounds for length ${this.length}")
       }
     }
 

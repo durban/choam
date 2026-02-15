@@ -2605,7 +2605,7 @@ object Rxn extends RxnInstances0 {
               local.checkIdx(idx)
               initial
             case arr: Array[AnyRef] =>
-              _assert(arr.length == local.size)
+              _assert(arr.length == local.length)
               jsCheckIdx(idx, arr.length)
               arr(idx)
             case _ =>
@@ -2622,12 +2622,12 @@ object Rxn extends RxnInstances0 {
       val locals = this.getOrInitLocals()
       val arr = locals.get(local) match {
         case null =>
-          val arr = new Array[AnyRef](local.size)
+          val arr = new Array[AnyRef](local.length)
           Arrays.fill(arr, local.initial)
           locals.put(local, arr)
           arr
         case arr: Array[AnyRef] =>
-          _assert(arr.length == local.size)
+          _assert(arr.length == local.length)
           arr
         case _ =>
           impossible(s"unexpected value for ${local}")
@@ -2665,7 +2665,7 @@ object Rxn extends RxnInstances0 {
             case null =>
               () // we're done
             case snapArr: Array[AnyRef] =>
-              val len = local.size
+              val len = local.length
               _assert(snapArr.length == len)
               val arr = new Array[AnyRef](len)
               jsCheckIdx(len - 1, snapArr.length)
