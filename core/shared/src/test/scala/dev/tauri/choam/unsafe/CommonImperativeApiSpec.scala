@@ -398,4 +398,36 @@ trait CommonImperativeApiSpec[F[_]]
       _ <- assertResultF(runBlock { implicit ir => loc.value }, "foo")
     } yield ()
   }
+
+  test("RxnLocal.Array in imperative API") {
+    for {
+      arr <- runBlock { implicit ir =>
+        val arr = newLocalArray(3, "foo")
+        val arr2 = newLocalArray(3, 42)
+        assertEquals(arr(0), "foo")
+        assertEquals(arr2(0), 42)
+        arr(0) = "bar"
+        assertEquals(arr(0), "bar")
+        assertEquals(arr(1), "foo")
+        assertEquals(arr(2), "foo")
+        assertEquals(arr2(0), 42)
+        arr2(0) = 99
+        assertEquals(arr(0), "bar")
+        assertEquals(arr(1), "foo")
+        assertEquals(arr(2), "foo")
+        assertEquals(arr2(0), 99)
+        assertEquals(arr2(1), 42)
+        assertEquals(arr2(2), 42)
+        assert(Either.catchOnly[IndexOutOfBoundsException] { arr(3) }.isLeft)
+        assert(Either.catchOnly[IndexOutOfBoundsException] { arr(-1) }.isLeft)
+        arr
+      }
+      _ <- runBlock { implicit ir =>
+        assertEquals(arr(0), "foo")
+        assertEquals(arr(1), "foo")
+        assertEquals(arr(2), "foo")
+        // TODO: assert(Either.catchOnly[IndexOutOfBoundsException] { arr(3) }.isLeft)
+      }
+    } yield ()
+  }
 }

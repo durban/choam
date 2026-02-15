@@ -68,6 +68,15 @@ package object unsafe {
       self.setImpl(nv, ir.interpState)
   }
 
+  implicit final class RxnLocalArraySyntax[A](private val self: RxnLocal.Array[A]) extends AnyVal {
+
+    final def apply(idx: Int)(implicit ir: InRxn): A =
+      self.unsafeGetImpl(idx, ir.interpState)
+
+    final def update(idx: Int, nv: A)(implicit ir: InRxn): Unit =
+      self.unsafeSetImpl(idx, nv, ir.interpState)
+  }
+
   /** @see [[dev.tauri.choam.core.Ref.apply[A](initial:A,str*]] */
   final def newRef[A](
     initial: A,
@@ -87,6 +96,10 @@ package object unsafe {
 
   final def newLocal[A](initial: A)(implicit ir: InRxn): RxnLocal[A] = {
     RxnLocal.unsafeNewLocal(initial, ir.interpState)
+  }
+
+  final def newLocalArray[A](size: Int, initial: A)(implicit ir: InRxn): RxnLocal.Array[A] = {
+    RxnLocal.unsafeNewLocalArray(size, initial, ir.interpState)
   }
 
   /**

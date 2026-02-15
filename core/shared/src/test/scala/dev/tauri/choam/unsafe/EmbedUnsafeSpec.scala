@@ -60,7 +60,7 @@ trait EmbedUnsafeSpec[F[_]]
     } yield ()
   }
 
-  test("retryNow in embedUsafe") {
+  test("retryNow in embedUnsafe") {
     for {
       ctr <- F.delay(new AtomicInteger)
       ref <- Ref(0).run[F]

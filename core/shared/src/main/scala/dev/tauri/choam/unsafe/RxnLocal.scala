@@ -39,11 +39,15 @@ object RxnLocal {
   private[choam] final class Origin
 
   sealed abstract class Array[A] {
+
     def size: Int
     // TODO: def get(idx: Int): G[Any, Option[A]]
     // TODO: def set(idx: Int, nv: A): G[Any, Boolean]
     def unsafeGet(idx: Int): Rxn[A]
     def unsafeSet(idx: Int, nv: A): Rxn[Unit]
+
+    private[choam] def unsafeGetImpl(idx: Int, interpState: InterpState): A
+    private[choam] def unsafeSetImpl(idx: Int, a: A, interpState: InterpState): Unit
   }
 
   private[choam] final def newLocal[A](initial: A): Rxn[RxnLocal[A]] = {
@@ -74,18 +78,26 @@ object RxnLocal {
     newLocalArrayImpl(size, initial)
   }
 
+  private[choam] final def unsafeNewLocalArray[A](size: Int, initial: A, interpState: InterpState): RxnLocal.Array[A] = {
+    unsafeNewLocalArrayImpl(size, initial, interpState)
+  }
+
   private[choam] final def newTxnLocalArray[A](size: Int, initial: A): stm.Txn[stm.TxnLocal.Array[A]] = {
     newLocalArrayImpl(size, initial)
   }
 
   private[this] final def newLocalArrayImpl[A](size: Int, initial: A): RxnImpl[RxnLocalArrayImpl[A]] = {
     Rxn.unsafe.delayContext2Impl { (_, interpState) =>
-      val arr = new scala.Array[AnyRef](size)
-      Arrays.fill(arr, box(initial))
-      val locArr = new RxnLocalArrayImpl[A](arr, initial, interpState.localOrigin)
-      interpState.registerLocal(locArr)
-      locArr
+      unsafeNewLocalArrayImpl(size, initial, interpState)
     }
+  }
+
+  private[this] final def unsafeNewLocalArrayImpl[A](size: Int, initial: A, interpState: InterpState): RxnLocalArrayImpl[A] = {
+    val arr = new scala.Array[AnyRef](size)
+    Arrays.fill(arr, box(initial))
+    val locArr = new RxnLocalArrayImpl[A](arr, initial, interpState.localOrigin)
+    interpState.registerLocal(locArr)
+    locArr
   }
 
   private[this] final class RxnLocalImpl[A](_initial: A, origin: RxnLocal.Origin)
@@ -179,26 +191,34 @@ object RxnLocal {
       arr.length
 
     final override def unsafeGet(idx: Int): RxnImpl[A] = {
-      val arr = this.arr
       Rxn.unsafe.delayContext2Impl { (_, interpState) =>
-        if (interpState.localOrigin eq origin) {
-          jsCheckIdx(idx = idx, length = arr.length)
-          arr(idx).asInstanceOf[A]
-        } else {
-          interpState.localGetArrSlowPath(this, idx).asInstanceOf[A]
-        }
+        unsafeGetImpl(idx, interpState)
+      }
+    }
+
+    private[choam] final override def unsafeGetImpl(idx: Int, interpState: InterpState): A = {
+      if (interpState.localOrigin eq origin) {
+        val arr = this.arr
+        jsCheckIdx(idx = idx, length = arr.length)
+        arr(idx).asInstanceOf[A]
+      } else {
+        interpState.localGetArrSlowPath(this, idx).asInstanceOf[A]
       }
     }
 
     final override def unsafeSet(idx: Int, nv: A): RxnImpl[Unit] = {
-      val arr = this.arr
       Rxn.unsafe.delayContext2Impl { (_, interpState) =>
-        if (interpState.localOrigin eq origin) {
-          jsCheckIdx(idx = idx, length = arr.length)
-          arr(idx) = box(nv)
-        } else {
-          interpState.localSetArrSlowPath(this, idx, box(nv))
-        }
+        unsafeSetImpl(idx, nv, interpState)
+      }
+    }
+
+    private[choam] final override def unsafeSetImpl(idx: Int, nv: A, interpState: InterpState): Unit = {
+      if (interpState.localOrigin eq origin) {
+        val arr = this.arr
+        jsCheckIdx(idx = idx, length = arr.length)
+        arr(idx) = box(nv)
+      } else {
+        interpState.localSetArrSlowPath(this, idx, box(nv))
       }
     }
 
