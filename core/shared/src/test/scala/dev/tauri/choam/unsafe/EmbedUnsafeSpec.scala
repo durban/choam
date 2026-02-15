@@ -79,25 +79,4 @@ trait EmbedUnsafeSpec[F[_]]
       _ <- assertResultF(F.delay(ctr.get()), 5)
     } yield ()
   }
-
-  test("Post-commit actions in embedUnsafe") {
-    for {
-      ref1 <- Ref(0).run[F]
-      ref2 <- Ref(0).run[F]
-      ref3 <- Ref(0).run[F]
-      rxn = Rxn.unsafe.embedUnsafe { implicit ir =>
-        updateRef(ref1)(_ + 1)
-        addPostCommit(Rxn.unsafe.embedUnsafe { implicit ir =>
-          writeRef(ref3, ref1.value + ref2.value)
-        })
-        updateRef(ref2)(_ + 1)
-        42
-      }
-      res <- rxn.run
-      _ <- assertEqualsF(res, 42)
-      _ <- assertResultF(ref1.get.run, 1)
-      _ <- assertResultF(ref2.get.run, 1)
-      _ <- assertResultF(ref3.get.run, 2)
-    } yield ()
-  }
 }

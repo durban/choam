@@ -2176,7 +2176,7 @@ object Rxn extends RxnInstances0 {
         // final result, Done will need it:
         contK.push(res)
       }
-      while (pc.nonEmpty()) {
+      while (pc.nonEmpty()) { // TODO: instead of the while loop, push these all at once
         contT.push2(
           RxnConsts.ContCommitPostCommit, // commits the post-commit action
           RxnConsts.ContPostCommit, // the post-commit action itself
@@ -2848,7 +2848,21 @@ object Rxn extends RxnInstances0 {
 
     final override def imperativeCommit(): Boolean = {
       val ok = handleCommit()
-      _assert(pc.isEmpty()) // imperative API has no post-commit actions (for now)
+      if (ok && pc.nonEmpty()) {
+        // post-commit actions are "proper" `Rxn`s, so they
+        // need to use the interpreter even in imperative mode;
+        // first we pop the AndThen-Commit (the intepreter
+        // would've done that already in normal mode):
+        val poppedT = contT.pop()
+        _assert(poppedT == RxnConsts.ContAndThen)
+        val poppedK = contK.pop()
+        _assert(equ(poppedK, commitSingleton))
+        // then we push the PCs:
+        preparePcActions()
+        // and execute them:
+        val pcResult = loop(next())
+        _assert(pcResult == ())
+      }
       ok
     }
 

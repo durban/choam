@@ -45,10 +45,10 @@ sealed trait InRxn extends InRoRxn {
   private[choam] def imperativeCommit(): Boolean
   private[choam] def beforeSuspend(): Unit
   private[choam] def beforeResult(): Unit
+  private[choam] def imperativePostCommit(pc: Rxn[Unit]): Unit
 }
 
-sealed trait InRxn2 extends InRxn { // TODO: this only exists because only embedUnsafe supports post-commit actions
-  private[choam] def imperativePostCommit(pc: Rxn[Unit]): Unit
+sealed trait InRxn2 extends InRxn { // TODO: remove this
 }
 
 private[choam] object InRxn {

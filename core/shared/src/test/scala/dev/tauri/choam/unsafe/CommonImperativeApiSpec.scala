@@ -20,7 +20,7 @@ package unsafe
 
 import java.util.concurrent.atomic.{ AtomicInteger, AtomicBoolean }
 
-import core.Ref
+import core.{ Rxn, Ref }
 
 object CommonImperativeApiSpec {
 
@@ -321,6 +321,26 @@ trait CommonImperativeApiSpec[F[_]]
       _ <- assertEqualsF(r, 42)
       _ <- assertResultF(ref.get.run[F], 43)
       _ <- assertResultF(runBlock(readRef(ref)(using _)), 43)
+    } yield ()
+  }
+
+  test("Post-commit actions in imperative API") {
+    for {
+      ref1 <- Ref(0).run[F]
+      ref2 <- Ref(0).run[F]
+      ref3 <- Ref(0).run[F]
+      res <- runBlock { implicit ir =>
+        updateRef(ref1)(_ + 1)
+        addPostCommit(Rxn.unsafe.embedUnsafe { implicit ir =>
+          writeRef(ref3, ref1.value + ref2.value)
+        })
+        updateRef(ref2)(_ + 1)
+        42
+      }
+      _ <- assertEqualsF(res, 42)
+      _ <- assertResultF(ref1.get.run, 1)
+      _ <- assertResultF(ref2.get.run, 1)
+      _ <- assertResultF(ref3.get.run, 2)
     } yield ()
   }
 

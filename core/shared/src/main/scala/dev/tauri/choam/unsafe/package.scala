@@ -114,7 +114,7 @@ package object unsafe {
   }
 
   /** @see [[dev.tauri.choam.core.Rxn.postCommit]] */
-  final def addPostCommit[A](pc: Rxn[Unit])(implicit ir: InRxn2): Unit = {
+  final def addPostCommit[A](pc: Rxn[Unit])(implicit ir: InRxn): Unit = {
     ir.imperativePostCommit(pc)
   }
 
