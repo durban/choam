@@ -293,7 +293,7 @@ object Txn extends TxnInstances0 {
       t1.asInstanceOf[RxnImpl[A]] + t2.asInstanceOf[RxnImpl[A]]
     }
 
-    private[choam] final def embedUnsafe[A](unsafeBlock: unsafe2.InRxn2 => A): Txn[A] = {
+    private[choam] final def embedUnsafe[A](unsafeBlock: unsafe2.InRxn => A): Txn[A] = {
       Rxn.unsafe.embedUnsafeImpl(unsafeBlock)
     }
   }

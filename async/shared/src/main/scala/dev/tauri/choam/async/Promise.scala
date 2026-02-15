@@ -71,7 +71,7 @@ object Promise {
 
     def complete(a: A): Rxn[Boolean]
 
-    private[choam] def unsafeComplete(a: A)(implicit ir: unsafe.InRxn2): Boolean
+    private[choam] def unsafeComplete(a: A)(implicit ir: unsafe.InRxn): Boolean
 
     def contramap[B](f: B => A): Promise.Complete[B]
 
@@ -167,7 +167,7 @@ object Promise {
     final override def contramap[B](f: B => A): Promise.Complete[B] = new PromiseWriteImpl[B] {
       final override def complete(b: B): Rxn[Boolean] =
         self.complete(f(b))
-      final override def unsafeComplete(b: B)(implicit ir: unsafe.InRxn2): Boolean =
+      final override def unsafeComplete(b: B)(implicit ir: unsafe.InRxn): Boolean =
         self.unsafeComplete(f(b))
     }
 
@@ -185,7 +185,7 @@ object Promise {
     final def imap[B](f: A => B)(g: B => A): Promise[B] = new PromiseImplBase[B] {
       final override def complete(b: B): Rxn[Boolean] =
         self.complete(g(b))
-      final override def unsafeComplete(b: B)(implicit ir: unsafe.InRxn2): Boolean =
+      final override def unsafeComplete(b: B)(implicit ir: unsafe.InRxn): Boolean =
         self.unsafeComplete(g(b))
       final override def tryGet: Rxn[Option[B]] =
         self.tryGet.map(_.map(f))
@@ -234,7 +234,7 @@ object Promise {
       }
     }
 
-    private[choam] final override def unsafeComplete(a: A)(implicit ir: unsafe.InRxn2): Boolean = {
+    private[choam] final override def unsafeComplete(a: A)(implicit ir: unsafe.InRxn): Boolean = {
       import unsafe.{ readRef, writeRef, addPostCommit }
       val state = readRef(ref)
       state match {

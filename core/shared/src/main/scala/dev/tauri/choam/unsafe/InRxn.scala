@@ -48,11 +48,8 @@ sealed trait InRxn extends InRoRxn {
   private[choam] def imperativePostCommit(pc: Rxn[Unit]): Unit
 }
 
-sealed trait InRxn2 extends InRxn { // TODO: remove this
-}
-
 private[choam] object InRxn {
-  private[choam] trait InterpState extends InRxn2 { // TODO: this is not really related to the imperative API
+  private[choam] trait InterpState extends InRxn { // TODO: this is not really related to the imperative API
     private[choam] def localOrigin: RxnLocal.Origin
     private[choam] def registerLocal(local: InternalLocal): Unit
     private[choam] def removeLocal(local: InternalLocal): Unit
