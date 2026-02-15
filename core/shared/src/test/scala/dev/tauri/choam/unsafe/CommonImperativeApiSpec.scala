@@ -328,19 +328,28 @@ trait CommonImperativeApiSpec[F[_]]
     for {
       ref1 <- Ref(0).run[F]
       ref2 <- Ref(0).run[F]
-      ref3 <- Ref(0).run[F]
+      ref3 <- Ref(List.empty[(Int, Int)]).run[F]
       res <- runBlock { implicit ir =>
-        updateRef(ref1)(_ + 1)
+        val t1 = (ref1.value, ref2.value)
         addPostCommit(Rxn.unsafe.embedUnsafe { implicit ir =>
-          writeRef(ref3, ref1.value + ref2.value)
+          updateRef(ref3)(lst => t1 :: lst)
+        })
+        updateRef(ref1)(_ + 1)
+        val t2 = (ref1.value, ref2.value)
+        addPostCommit(Rxn.unsafe.embedUnsafe { implicit ir =>
+          updateRef(ref3)(lst => t2 :: lst)
         })
         updateRef(ref2)(_ + 1)
+        val t3 = (ref1.value, ref2.value)
+        addPostCommit(Rxn.unsafe.embedUnsafe { implicit ir =>
+          updateRef(ref3)(lst => t3 :: lst)
+        })
         42
       }
       _ <- assertEqualsF(res, 42)
       _ <- assertResultF(ref1.get.run, 1)
       _ <- assertResultF(ref2.get.run, 1)
-      _ <- assertResultF(ref3.get.run, 2)
+      _ <- assertResultF(ref3.get.run.map(_.reverse), List(0 -> 0, 1 -> 0, 1 -> 1))
     } yield ()
   }
 

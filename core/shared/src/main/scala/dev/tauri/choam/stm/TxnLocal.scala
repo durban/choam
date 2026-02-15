@@ -20,7 +20,7 @@ package stm
 
 import unsafe.RxnLocal
 
-sealed trait TxnLocal[A] {
+sealed trait TxnLocal[A] { // TODO: move to an .unsafe subpackage when STM is stabilized
   def get: Txn[A]
   def set(a: A): Txn[Unit]
   def update(f: A => A): Txn[Unit]
