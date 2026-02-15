@@ -379,4 +379,23 @@ trait CommonImperativeApiSpec[F[_]]
       _ <- assertEqualsF(v2a, "foo")
     } yield  ()
   }
+
+  test("RxnLocal in imperative API") {
+    for {
+      loc <- runBlock { implicit ir =>
+        val loc = newLocal("foo")
+        val loc2 = newLocal(42)
+        assertEquals(loc.value, "foo")
+        assertEquals(loc2.value, 42)
+        loc.value = "bar"
+        assertEquals(loc.value, "bar")
+        assertEquals(loc2.value, 42)
+        loc2.value = 99
+        assertEquals(loc.value, "bar")
+        assertEquals(loc2.value, 99)
+        loc
+      }
+      _ <- assertResultF(runBlock { implicit ir => loc.value }, "foo")
+    } yield ()
+  }
 }

@@ -24,10 +24,14 @@ import core.{ Rxn, RxnImpl }
 import InRxn.InterpState
 
 sealed abstract class RxnLocal[A] private () {
+
   def get: Rxn[A]
   def set(a: A): Rxn[Unit]
   def update(f: A => A): Rxn[Unit]
   def getAndUpdate(f: A => A): Rxn[A]
+
+  private[choam] def getImpl(interpState: InterpState): A
+  private[choam] def setImpl(a: A, interpState: InterpState): Unit
 }
 
 object RxnLocal {
@@ -46,16 +50,24 @@ object RxnLocal {
     newLocalImpl(initial)
   }
 
+  private[choam] final def unsafeNewLocal[A](initial: A, interpState: InterpState): RxnLocal[A] = {
+    unsafeNewLocalImpl(initial, interpState)
+  }
+
   private[choam] final def newTxnLocal[A](initial: A): stm.Txn[stm.TxnLocal[A]] = {
     newLocalImpl(initial)
   }
 
   private[this] final def newLocalImpl[A](initial: A): RxnImpl[RxnLocalImpl[A]] = {
     Rxn.unsafe.delayContext2Impl { (_, interpState) =>
-      val local = new RxnLocalImpl[A](initial, interpState.localOrigin)
-      interpState.registerLocal(local)
-      local
+      unsafeNewLocalImpl(initial, interpState)
     }
+  }
+
+  private[this] final def unsafeNewLocalImpl[A](initial: A, interpState: InterpState): RxnLocalImpl[A] = {
+    val local = new RxnLocalImpl[A](initial, interpState.localOrigin)
+    interpState.registerLocal(local)
+    local
   }
 
   private[choam] final def newLocalArray[A](size: Int, initial: A): Rxn[RxnLocal.Array[A]] = {
@@ -88,7 +100,11 @@ object RxnLocal {
       box(_initial)
 
     final override def get: RxnImpl[A] = Rxn.unsafe.delayContext2Impl { (_, interpState) =>
-      if (interpState.localOrigin eq origin) {
+      getImpl(interpState)
+    }
+
+    private[choam] final override def getImpl(interpState: InterpState): A = {
+      if (interpState.localOrigin eq this.origin) {
         this.value
       } else {
         interpState.localGetSlowPath(this).asInstanceOf[A]
@@ -96,6 +112,10 @@ object RxnLocal {
     }
 
     final override def set(a: A): RxnImpl[Unit] = Rxn.unsafe.delayContext2Impl { (_, interpState) =>
+      setImpl(a, interpState)
+    }
+
+    private[choam] final override def setImpl(a: A, interpState: InterpState): Unit = {
       if (interpState.localOrigin eq origin) {
         this.value = a
       } else {

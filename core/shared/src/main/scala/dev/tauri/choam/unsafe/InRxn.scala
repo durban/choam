@@ -46,6 +46,7 @@ sealed trait InRxn extends InRoRxn {
   private[choam] def beforeSuspend(): Unit
   private[choam] def beforeResult(): Unit
   private[choam] def imperativePostCommit(pc: Rxn[Unit]): Unit
+  private[choam] def interpState: InRxn.InterpState
 }
 
 private[choam] object InRxn {

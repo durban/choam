@@ -2875,6 +2875,10 @@ object Rxn extends RxnInstances0 {
     private[choam] final override def beforeResult(): Unit = {
       _assert(this._entryHolder eq null)
     }
+
+    private[choam] final override def interpState: InRxn.InterpState = {
+      this
+    }
   }
 }
 
