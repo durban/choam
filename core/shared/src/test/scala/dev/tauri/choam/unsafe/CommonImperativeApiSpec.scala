@@ -406,6 +406,8 @@ trait CommonImperativeApiSpec[F[_]]
         val arr2 = newLocalArray(3, 42)
         assertEquals(arr(0), "foo")
         assertEquals(arr2(0), 42)
+        assertEquals(arr.size, 3)
+        assertEquals(arr2.size, 3)
         arr(0) = "bar"
         assertEquals(arr(0), "bar")
         assertEquals(arr(1), "foo")
@@ -432,6 +434,7 @@ trait CommonImperativeApiSpec[F[_]]
         assert(Either.catchOnly[IndexOutOfBoundsException] { arr(-1) }.isLeft)
         assert(Either.catchOnly[IndexOutOfBoundsException] { arr(3) = "" }.isLeft)
         assert(Either.catchOnly[IndexOutOfBoundsException] { arr(-1) = "" }.isLeft)
+        assertEquals(arr.size, 3)
       }
     } yield ()
   }
