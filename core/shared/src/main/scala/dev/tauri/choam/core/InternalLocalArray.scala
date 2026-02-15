@@ -19,5 +19,9 @@ package dev.tauri.choam
 package core
 
 private[choam] trait InternalLocalArray extends InternalLocal {
+
   def size: Int
+
+  @throws[IndexOutOfBoundsException]
+  def checkIdx(idx: Int): Unit
 }

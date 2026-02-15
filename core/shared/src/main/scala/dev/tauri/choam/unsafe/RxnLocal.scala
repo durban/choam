@@ -190,6 +190,13 @@ object RxnLocal {
     final override def size: Int =
       arr.length
 
+    @throws[IndexOutOfBoundsException]
+    final override def checkIdx(idx: Int): Unit = {
+      if ((idx < 0) || (idx >= this.size)) {
+        throw new IndexOutOfBoundsException(s"Index ${idx} out of bounds for length ${this.size}")
+      }
+    }
+
     final override def unsafeGet(idx: Int): RxnImpl[A] = {
       Rxn.unsafe.delayContext2Impl { (_, interpState) =>
         unsafeGetImpl(idx, interpState)

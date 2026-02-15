@@ -420,13 +420,18 @@ trait CommonImperativeApiSpec[F[_]]
         assertEquals(arr2(2), 42)
         assert(Either.catchOnly[IndexOutOfBoundsException] { arr(3) }.isLeft)
         assert(Either.catchOnly[IndexOutOfBoundsException] { arr(-1) }.isLeft)
+        assert(Either.catchOnly[IndexOutOfBoundsException] { arr(3) = "" }.isLeft)
+        assert(Either.catchOnly[IndexOutOfBoundsException] { arr(-1) = "" }.isLeft)
         arr
       }
       _ <- runBlock { implicit ir =>
         assertEquals(arr(0), "foo")
         assertEquals(arr(1), "foo")
         assertEquals(arr(2), "foo")
-        // TODO: assert(Either.catchOnly[IndexOutOfBoundsException] { arr(3) }.isLeft)
+        assert(Either.catchOnly[IndexOutOfBoundsException] { arr(3) }.isLeft)
+        assert(Either.catchOnly[IndexOutOfBoundsException] { arr(-1) }.isLeft)
+        assert(Either.catchOnly[IndexOutOfBoundsException] { arr(3) = "" }.isLeft)
+        assert(Either.catchOnly[IndexOutOfBoundsException] { arr(-1) = "" }.isLeft)
       }
     } yield ()
   }

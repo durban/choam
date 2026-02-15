@@ -99,6 +99,36 @@ trait RxnLocalSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  private def assertIOOBE[A](rxn: Rxn[A]): F[Unit] = {
+    rxn.run[F].attempt.flatMap {
+      case Left(_: IndexOutOfBoundsException) => F.unit // ok
+      case x => failF(s"unexpected result: ${x}")
+    }
+  }
+
+  test("RxnLocal.Array (IOOBE)") {
+    for {
+      _ <- assertIOOBE(Rxn.unsafe.newLocalArray(3, "foo").flatMap(_.unsafeGet(-1)))
+      _ <- assertIOOBE(Rxn.unsafe.newLocalArray(3, "foo").flatMap(_.unsafeGet(3)))
+      _ <- assertIOOBE(Rxn.unsafe.newLocalArray(3, "foo").flatMap(_.unsafeGet(999)))
+      _ <- assertIOOBE(Rxn.unsafe.newLocalArray(3, "foo").flatMap(_.unsafeSet(-1, "bar")))
+      _ <- assertIOOBE(Rxn.unsafe.newLocalArray(3, "foo").flatMap(_.unsafeSet(3, "bar")))
+      _ <- assertIOOBE(Rxn.unsafe.newLocalArray(3, "foo").flatMap(_.unsafeSet(999, "bar")))
+    } yield ()
+  }
+
+  test("RxnLocal.Array (IOOBE, leaked)") {
+    for {
+      arr <- Rxn.unsafe.newLocalArray(3, "foo").run
+      _ <- assertIOOBE(arr.unsafeGet(-1))
+      _ <- assertIOOBE(arr.unsafeGet(3))
+      _ <- assertIOOBE(arr.unsafeGet(999))
+      _ <- assertIOOBE(arr.unsafeSet(-1, "bar"))
+      _ <- assertIOOBE(arr.unsafeSet(3, "bar"))
+      _ <- assertIOOBE(arr.unsafeSet(999, "bar"))
+    } yield ()
+  }
+
   test("RxnLocal (compose with Rxn)") {
     val rxn: Rxn[Int] = for {
       ref <- Ref[Int](0)

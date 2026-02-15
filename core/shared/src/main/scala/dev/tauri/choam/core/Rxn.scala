@@ -2597,10 +2597,12 @@ object Rxn extends RxnInstances0 {
       val initial = local.initial
       this.locals match {
         case null =>
+          local.checkIdx(idx)
           initial
         case locals =>
           locals.get(local) match {
             case null =>
+              local.checkIdx(idx)
               initial
             case arr: Array[AnyRef] =>
               _assert(arr.length == local.size)
