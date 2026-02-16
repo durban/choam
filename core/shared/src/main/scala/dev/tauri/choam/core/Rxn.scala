@@ -1349,9 +1349,13 @@ object Rxn extends RxnInstances0 {
     contT.push2(RxnConsts.ContAfterPostCommit, RxnConsts.ContAndThen)
 
     private[this] var contTReset: Array[Byte] = contT.takeSnapshot()
-    private[this] var contKReset: ObjStack.Lst[Any] = objStackWithOneCommit
+    private[this] var contKReset: ObjStack.Snapshot[Any] = objStackWithOneCommit
 
     private[this] var a: Any = null
+
+    private[core] final def contKForTesting: ObjStack[Any] = {
+      this.contK
+    }
 
     @inline
     private[this] final def aCastTo[A]: A = {
@@ -1512,13 +1516,8 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def setContReset(): Unit = {
-      contTReset = contT.takeSnapshot()
-      // TODO: Due to the next line, if we have
-      // TODO: post-commit actions, we're always
-      // TODO: falling back to `ListObjStack`
-      // TODO: (even if we have no `+`). This
-      // TODO: probably could be avoided.
-      contKReset = contKList.takeSnapshot()
+      this.contTReset = contT.takeSnapshot()
+      this.contKReset = contK.takeAnySnapshot()
     }
 
     private[this] final def resetConts(): Unit = {
@@ -1527,7 +1526,7 @@ object Rxn extends RxnInstances0 {
       if (this.mutable && (ckr eq objStackWithOneCommit)) {
         this.contK = mkInitialContK()
       } else {
-        this.contKList.loadSnapshot(ckr)
+        this.contK.loadAnySnapshot(ckr)
       }
     }
 

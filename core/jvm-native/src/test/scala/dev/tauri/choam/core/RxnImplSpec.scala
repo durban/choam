@@ -127,4 +127,39 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(Rxn.unsafe.directRead(c).run, "cccc")
     } yield ()
   }
+
+  test("A Rxn without +/orElse must not fall back to ListObjStack (even if it has post-comit actions)") {
+    val assertArrayObjStack: Rxn[Unit] = Rxn.unsafe.delayContext2 { (_, interpState) =>
+      import scala.language.reflectiveCalls
+      interpState.asInstanceOf[{ def contKForTesting: ObjStack[Any] }].contKForTesting
+    }.flatMap { (contK: ObjStack[Any]) =>
+      Rxn.unsafe.assert(contK.isInstanceOf[ArrayObjStack[_]])
+    }
+    def rxn(r1: Ref[Int], r2: Ref[Int]): Rxn[Int] = Rxn
+      .fastRandom
+      .nextIntBounded(10)
+      .flatTap(_ => assertArrayObjStack)
+      .postCommit(Rxn.fastRandom.nextBoolean.flatTap(_ => assertArrayObjStack).flatMap { retry =>
+        if (retry) Rxn.unsafe.retry
+        else r1.update(_ + 1)
+      })
+      .flatMap { randInt =>
+        if ((randInt % 2) == 0) Rxn.unsafe.retry
+        else Rxn.pure(randInt)
+      }
+      .flatTap(_ => assertArrayObjStack)
+      .postCommit(Rxn.fastRandom.nextBoolean.flatMap { retry =>
+        if (retry) Rxn.unsafe.retry
+        else r2.update(_ + 1).flatTap(_ => assertArrayObjStack)
+      })
+    for {
+      r1 <- Ref(0).run[F]
+      r2 <- Ref(0).run[F]
+      x <- rxn(r1, r2).run
+      _ <- assertResultF(r1.get.run, 1)
+      _ <- assertResultF(r2.get.run, 1)
+      _ <- assertF((clue(x) % 2) != 0)
+      _ <- assertF((clue(x) < 10) && (x >= 0))
+    } yield ()
+  }
 }
