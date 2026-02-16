@@ -290,15 +290,27 @@ final class InternalStackSpec extends BaseSpec {
     assume(this.isJvm()) // unstable on JS and SN
     System.err.println("Starting ArrayObjStack nextPowerOf2 overflow test")
     try {
-      val bs = new ArrayObjStack[String](initSize = ArrayObjStack.maxSize)
+      val s = new ArrayObjStack[String](initSize = ArrayObjStack.maxSize)
       var idx = 0
       while (idx < ArrayObjStack.maxSize) {
-        bs.push("")
+        s.push("")
         idx += 1
       }
-      assert(Either.catchOnly[AssertionError] { bs.push("err") }.isLeft)
+      assert(Either.catchOnly[AssertionError] { s.push("err") }.isLeft)
     } finally {
       System.err.println("Finished ArrayObjStack nextPowerOf2 overflow test")
+    }
+  }
+
+  test("ArrayObjStack nextPowerOf2 overflow (loadArr)") {
+    assume(this.isJvm()) // unstable on JS and SN
+    System.err.println("Starting ArrayObjStack nextPowerOf2 overflow (loadArr) test")
+    try {
+      val s = new ArrayObjStack[String](initSize = 8)
+      val snap = new Arr[String](new Array[AnyRef](ArrayObjStack.maxSize + 1))
+      assert(Either.catchOnly[AssertionError] { s.loadAnySnapshot(snap) }.isLeft)
+    } finally {
+      System.err.println("Finished ArrayObjStack nextPowerOf2 overflow (loadArr) test")
     }
   }
 }

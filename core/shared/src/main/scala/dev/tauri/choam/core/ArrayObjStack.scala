@@ -71,20 +71,27 @@ private final class ArrayObjStack[A](initSize: Int) extends ObjStack[A] {
   private[this] final def ensureSize(s: Int): Unit = {
     val arr = this.arr
     if (s > arr.length) {
-      if (s > ArrayObjStack.maxSize) {
-        // we're trying to have more than 128M items
-        // on the stack, so something is seriously
-        // wrong; `nextPowerOf2` below would overflow
-        // after 3 more doubling, but we're giving
-        // up earlier (we already have a 128M-long
-        // array, that's 0.5 GiB even with CompressedOops,
-        // there is no way that's normal...)
-        throw new AssertionError
-      }
-      val newLength = Consts.nextPowerOf2(s)
-      jsAssert(newLength >= 0)
-      val newArr = Arrays.copyOf(arr, newLength)
-      this.arr = newArr
+      this.arr = newArray(s, copyFrom = arr)
+    }
+  }
+
+  private[this] final def newArray(minSize: Int, copyFrom: Array[AnyRef]): Array[AnyRef] = {
+    if (minSize > ArrayObjStack.maxSize) {
+      // we're trying to have more than 128M items
+      // on the stack, so something is seriously
+      // wrong; `nextPowerOf2` below would overflow
+      // after 3 more doubling, but we're giving
+      // up earlier (we already have a 128M-long
+      // array, that's 0.5 GiB even with CompressedOops,
+      // there is no way that's normal...)
+      throw new AssertionError
+    }
+    val newLength = Consts.nextPowerOf2(minSize)
+    jsAssert(newLength >= 0)
+    if (copyFrom ne null) {
+      Arrays.copyOf(copyFrom, newLength)
+    } else {
+      new Array[AnyRef](newLength)
     }
   }
 
@@ -147,13 +154,7 @@ private final class ArrayObjStack[A](initSize: Int) extends ObjStack[A] {
       System.arraycopy(snapArr, 0, thisArr, 0, snapLen)
       Arrays.fill(thisArr, snapLen, thisLen, null)
     } else {
-      val newLength = Consts.nextPowerOf2(snapLen)
-      jsAssert(newLength >= snapLen)
-      if (newLength > ArrayObjStack.maxSize) {
-        throw new AssertionError
-      } else {
-        this.arr = Arrays.copyOf(snapArr, snapLen)
-      }
+      this.arr = newArray(snapLen, copyFrom = snapArr)
     }
     this.size = snapLen
   }
@@ -166,15 +167,9 @@ private final class ArrayObjStack[A](initSize: Int) extends ObjStack[A] {
       if (thisLen >= snapLen) {
         copyIntoArr(thisArr, lst, snapLen)
       } else {
-        val newLength = Consts.nextPowerOf2(snapLen)
-        jsAssert(newLength >= snapLen)
-        if (newLength > ArrayObjStack.maxSize) {
-          throw new AssertionError
-        } else {
-          val newArr = new Array[AnyRef](newLength)
-          copyIntoArr(newArr, lst, snapLen)
-          this.arr = newArr
-        }
+        val newArr = newArray(snapLen, copyFrom = null)
+        copyIntoArr(newArr, lst, snapLen)
+        this.arr = newArr
       }
       this.size = snapLen
     } else {
@@ -195,7 +190,7 @@ private final class ArrayObjStack[A](initSize: Int) extends ObjStack[A] {
   }
 
   final def toListObjStack(): ListObjStack[A] = {
-    val lst = ObjStack.unsafeArrToLst(this.arr, this.size)
+    val lst: Lst[A] = ObjStack.unsafeArrToLst(this.arr, this.size)
     val r = new ListObjStack[A]
     r.loadSnapshot(lst)
     r
