@@ -1173,10 +1173,7 @@ object Rxn extends RxnInstances0 {
     new Commit[Any]
 
   private[this] final val objStackWithOneCommit: ObjStack.Lst[Any] = {
-    // TODO: create Lst directly here:
-    val stack = new ListObjStack[Any]
-    stack.push(commitSingleton)
-    stack.takeSnapshot()
+    ObjStack.Lst(commitSingleton, ObjStack.Lst.empty)
   }
 
   private[this] final def mkInitialContK(): ObjStack[Any] = {
