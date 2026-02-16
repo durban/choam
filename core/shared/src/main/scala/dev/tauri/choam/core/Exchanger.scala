@@ -116,10 +116,10 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform {
 
   private[core] final case class Msg private (
     value: Either[Throwable, Any], // TODO: avoid Either by using (Any | Rxn.ExchangePanic)
-    contK: ListObjStack.Lst[Any],
+    contK: ObjStack.Lst[Any],
     contT: Array[Byte],
     desc: Descriptor,
-    postCommit: ListObjStack.Lst[Rxn[Unit]],
+    postCommit: ObjStack.Lst[Rxn[Unit]],
     exchangerData: Rxn.ExStatMap,
     hasTentativeRead: Boolean,
     state: Msg.State,
@@ -134,10 +134,10 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform {
 
     final def newMsg(
       value: Any,
-      contK: ListObjStack.Lst[Any],
+      contK: ObjStack.Lst[Any],
       contT: Array[Byte],
       desc: Descriptor,
-      postCommit: ListObjStack.Lst[Rxn[Unit]],
+      postCommit: ObjStack.Lst[Rxn[Unit]],
       exchangerData: Rxn.ExStatMap,
       hasTentativeRead: Boolean,
     ): Msg = {
@@ -155,10 +155,10 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform {
 
     final def fromClaimedExchange(
       value: Any,
-      contK: ListObjStack.Lst[Any],
+      contK: ObjStack.Lst[Any],
       contT: Array[Byte],
       desc: Descriptor,
-      postCommit: ListObjStack.Lst[Rxn[Unit]],
+      postCommit: ObjStack.Lst[Rxn[Unit]],
       exchangerData: Rxn.ExStatMap,
       hasTentativeRead: Boolean,
     ): Msg = {
@@ -180,7 +180,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform {
         contK = fx.contK,
         contT = fx.contT,
         desc = ctx.start().toImmutable, // TODO: could we avoid the `toImmutable`?
-        postCommit = ListObjStack.Lst.empty[Rxn[Unit]],
+        postCommit = ObjStack.Lst.empty[Rxn[Unit]],
         exchangerData = newStats,
         hasTentativeRead = fx.hasTentativeRead,
         state = Finished,
@@ -192,7 +192,7 @@ private[choam] object Exchanger extends ExchangerCompanionPlatform {
 
   private[core] final class FinishedEx[C](
     val result: Either[Throwable, C],
-    val contK: ListObjStack.Lst[Any],
+    val contK: ObjStack.Lst[Any],
     val contT: Array[Byte],
     val hasTentativeRead: Boolean,
   ) extends NodeResult[C]

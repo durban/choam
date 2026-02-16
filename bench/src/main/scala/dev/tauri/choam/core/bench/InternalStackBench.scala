@@ -111,7 +111,7 @@ private[core] class InternalStackBench {
   // load/take snapshot:
 
   @Benchmark
-  def objStack_addAllSnapshot_list(s: ListObjSt, r: RandomArray): ListObjStack.Lst[String] = {
+  def objStack_addAllSnapshot_list(s: ListObjSt, r: RandomArray): ObjStack.Lst[String] = {
     s.listObjStack.loadSnapshot(r.randomList)
     s.listObjStack.takeSnapshot()
   }
@@ -230,7 +230,7 @@ private object InternalStackBench {
         ThreadLocalRandom.current().nextLong().toString()
       }
     }
-    val randomList: ListObjStack.Lst[String] = {
+    val randomList: ObjStack.Lst[String] = {
       val l = List.fill(8 + ThreadLocalRandom.current().nextInt(32)) {
         ThreadLocalRandom.current().nextLong().toString()
       }

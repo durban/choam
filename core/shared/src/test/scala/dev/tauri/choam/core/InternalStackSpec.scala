@@ -22,6 +22,8 @@ import scala.util.Try
 
 import cats.syntax.all._
 
+import ObjStack.{ Arr, Lst }
+
 final class InternalStackSpec extends BaseSpec {
 
   test("ArrayObjStack") {
@@ -60,6 +62,11 @@ final class InternalStackSpec extends BaseSpec {
     s.clear()
     assert(s.isEmpty())
     assert(Try { s.pop() }.isFailure)
+  }
+
+  test("ArrayObjStack.take/loadAnySnapshot") {
+    testTakeLoadAnySnapshot(new ArrayObjStack[Int](initSize = 2))
+    testTakeLoadAnySnapshot(new ArrayObjStack[Int](initSize = 32))
   }
 
   test("ListObjStack") {
@@ -104,6 +111,44 @@ final class InternalStackSpec extends BaseSpec {
     assert(Try { s.pop() }.isFailure)
   }
 
+  test("ListObjStack.take/loadAnySnapshot") {
+    testTakeLoadAnySnapshot(new ListObjStack[Int])
+  }
+
+  private def testTakeLoadAnySnapshot(s: ObjStack[Int]): Unit = {
+    assert(s.isEmpty())
+    s.push(1)
+    s.push(2)
+    s.push(3)
+    val s1 = s.takeAnySnapshot()
+    assertEquals(s1.toLst, Lst.build(3, 2, 1), clue = s"[${s1.toLst.mkString(", ")}]")
+    assertEquals(s.pop(), 3)
+    val s2 = s.takeAnySnapshot()
+    assertEquals(s2.toLst, Lst.build(2, 1))
+    s.loadAnySnapshot(s1)
+    assertEquals(s.pop(), 3)
+    assertEquals(s.pop(), 2)
+    assertEquals(s.pop(), 1)
+    assert(s.isEmpty())
+    s.loadAnySnapshot(s2.toLst)
+    assertEquals(s.pop(), 2)
+    assertEquals(s.pop(), 1)
+    assert(s.isEmpty())
+    s.loadAnySnapshot(new Arr(Array[AnyRef](box(1), box(2), box(3), box(4))))
+    assertEquals(s.takeAnySnapshot().toLst, Lst.build(4, 3, 2, 1))
+    s.loadAnySnapshot(new Arr(Array[AnyRef](box(10), box(20), box(30), box(40))))
+    assertEquals(s.takeAnySnapshot().toLst, Lst.build(40, 30, 20, 10))
+    s.loadAnySnapshot(new Arr(Array[AnyRef](box(100), box(200), box(300))))
+    assertEquals(s.takeAnySnapshot().toLst, Lst.build(300, 200, 100))
+    s.loadAnySnapshot(new Arr(Array[AnyRef](box(1), box(2), box(3), box(4), box(5), box(6))))
+    assertEquals(s.takeAnySnapshot().toLst, Lst.build(6, 5, 4, 3, 2, 1))
+    s.loadAnySnapshot(Lst.build(1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
+    assertEquals(s.takeAnySnapshot().toLst, Lst.build(1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
+    assertEquals(s.pop(), 1)
+    assertEquals(s.pop(), 2)
+    assertEquals(s.takeAnySnapshot().toLst, Lst.build(3, 4, 5, 6, 7, 8, 9, 10))
+  }
+
   test("ByteStack") {
     val s = new ByteStack(initSize = 2)
     assert(s.isEmpty())
@@ -135,7 +180,7 @@ final class InternalStackSpec extends BaseSpec {
   }
 
   test("ObjStack.Lst.length") {
-    import ListObjStack.Lst
+    import ObjStack.Lst
     assertEquals(Lst.length(null), 0)
     assertEquals(Lst.length(Lst(1, null)), 1)
     assertEquals(Lst.length(Lst(1, Lst(2, null))), 2)
@@ -144,7 +189,7 @@ final class InternalStackSpec extends BaseSpec {
   }
 
   test("ObjStack.Lst.reversed") {
-    import ListObjStack.Lst
+    import ObjStack.Lst
     assertEquals(Lst.reversed(null), null)
     assertEquals(Lst.reversed(Lst(1, null)).mkString(), "1")
     assertEquals(Lst.reversed(Lst(1, Lst(2, null))).mkString(), "2, 1")
@@ -153,7 +198,7 @@ final class InternalStackSpec extends BaseSpec {
   }
 
   test("ObjStack.Lst.concat") {
-    import ListObjStack.Lst
+    import ObjStack.Lst
     assertEquals(Lst.concat(null, null), null)
     assertEquals(Lst.concat(Lst(1, null), null).mkString(), "1")
     assertEquals(Lst.concat(null, Lst(1, null)).mkString(), "1")
@@ -166,7 +211,7 @@ final class InternalStackSpec extends BaseSpec {
   }
 
   test("ObjStack.Lst.splitBefore") {
-    import ListObjStack.Lst
+    import ObjStack.Lst
     assertEquals(Lst.splitBefore[String](null, "a"), null)
     assertEquals(Lst.splitBefore[String](Lst("x", null), "a"), null)
     assertEquals(Lst.splitBefore[String](Lst("x", Lst("y", null)), "a"), null)

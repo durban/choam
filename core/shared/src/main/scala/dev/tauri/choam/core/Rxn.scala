@@ -789,7 +789,7 @@ object Rxn extends RxnInstances0 {
 
     final def finishExchange[D](
       hole: Ref[Exchanger.NodeResult[D]],
-      restOtherContK: ListObjStack.Lst[Any],
+      restOtherContK: ObjStack.Lst[Any],
       lenSelfContT: Int,
       selfDesc: Descriptor,
       mergeDescs: Rxn[Any],
@@ -916,15 +916,15 @@ object Rxn extends RxnInstances0 {
   /** Only the interpreter/exchanger can use this! */
   private final class FinishExchange[D](
     val hole: Ref[Exchanger.NodeResult[D]],
-    val restOtherContK: ListObjStack.Lst[Any],
+    val restOtherContK: ObjStack.Lst[Any],
     val lenSelfContT: Int,
     val selfDesc: Descriptor,
     val mergeDescs: MergeDescs,
   ) extends RxnImpl[Unit] {
 
     final override def toString: String = {
-      val rockLen = ListObjStack.Lst.length(this.restOtherContK)
-      s"FinishExchange(${hole}, <ListObjStack.Lst of length ${rockLen}>, ${lenSelfContT})"
+      val rockLen = ObjStack.Lst.length(this.restOtherContK)
+      s"FinishExchange(${hole}, <ObjStack.Lst of length ${rockLen}>, ${lenSelfContT})"
     }
   }
 
@@ -1172,7 +1172,8 @@ object Rxn extends RxnInstances0 {
   private[core] final val commitSingleton: Rxn[Any] = // TODO: make this a java enum?
     new Commit[Any]
 
-  private[this] final val objStackWithOneCommit: ListObjStack.Lst[Any] = {
+  private[this] final val objStackWithOneCommit: ObjStack.Lst[Any] = {
+    // TODO: create Lst directly here:
     val stack = new ListObjStack[Any]
     stack.push(commitSingleton)
     stack.takeSnapshot()
@@ -1351,7 +1352,7 @@ object Rxn extends RxnInstances0 {
     contT.push2(RxnConsts.ContAfterPostCommit, RxnConsts.ContAndThen)
 
     private[this] var contTReset: Array[Byte] = contT.takeSnapshot()
-    private[this] var contKReset: ListObjStack.Lst[Any] = objStackWithOneCommit
+    private[this] var contKReset: ObjStack.Lst[Any] = objStackWithOneCommit
 
     private[this] var a: Any = null
 
@@ -1636,8 +1637,8 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def _loadRestOfAlt(alts: ArrayObjStack[Any], isPermanentFailure: Boolean): Unit = {
-      pc.loadSnapshot(alts.pop().asInstanceOf[ListObjStack.Lst[Rxn[Unit]]])
-      contKList.loadSnapshot(alts.pop().asInstanceOf[ListObjStack.Lst[Any]])
+      pc.loadSnapshot(alts.pop().asInstanceOf[ObjStack.Lst[Rxn[Unit]]])
+      contKList.loadSnapshot(alts.pop().asInstanceOf[ObjStack.Lst[Any]])
       contT.loadSnapshot(alts.pop().asInstanceOf[Array[Byte]])
       a = alts.pop()
       _desc = this.mergeDescForOrElse(alts.pop().asInstanceOf[Descriptor], isPermanentFailure = isPermanentFailure)

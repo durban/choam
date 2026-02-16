@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray
 
 import internal.mcas.{ Mcas, Descriptor }
 import Exchanger.{ Msg, NodeResult, Rescinded, FinishedEx, Params }
-import ListObjStack.Lst
+import ObjStack.Lst
 
 private sealed trait ExchangerImplJvm[A, B]
   extends Exchanger.UnsealedExchanger[A, B] {
@@ -221,24 +221,24 @@ private sealed trait ExchangerImplJvm[A, B]
       val (newContT, newContK) = mergeConts[D](
         selfContT = selfMsg.contT,
         // we put `b` on top of contK; `FinishExchange` will pop it:
-        selfContK = ListObjStack.Lst[Any](b, selfMsg.contK),
+        selfContK = ObjStack.Lst[Any](b, selfMsg.contK),
         otherContT = other.msg.contT,
         otherContK = other.msg.contK,
         hole = other.hole,
         selfDesc = selfMsg.desc,
       )
-      debugLog(s"merged conts: newContT = ${java.util.Arrays.toString(newContT)}; newContK = [${ListObjStack.Lst.mkString(newContK)}] - thread#${Thread.currentThread().getId()}")
+      debugLog(s"merged conts: newContT = ${java.util.Arrays.toString(newContT)}; newContK = [${ObjStack.Lst.mkString(newContK)}] - thread#${Thread.currentThread().getId()}")
       val resMsg = Msg.fromClaimedExchange(
         value = a,
         contK = newContK,
         contT = newContT,
         desc = otherDesc.toImmutable, // TODO: .toImmutable must be a NOP here
-        postCommit = ListObjStack.Lst.concat(other.msg.postCommit, selfMsg.postCommit), // TODO: why?
+        postCommit = ObjStack.Lst.concat(other.msg.postCommit, selfMsg.postCommit), // TODO: why?
         // this thread will continue, so we use (and update) our data:
         exchangerData = selfMsg.exchangerData.updated(this.key, Statistics.exchanged(stats, params)),
         hasTentativeRead = !canExtend,
       )
-      debugLog(s"merged postCommit: ${ListObjStack.Lst.mkString(resMsg.postCommit)} - thread#${Thread.currentThread().getId()}")
+      debugLog(s"merged postCommit: ${ObjStack.Lst.mkString(resMsg.postCommit)} - thread#${Thread.currentThread().getId()}")
       Right(resMsg)
     } else {
       successButFail(stats, params)
@@ -327,7 +327,7 @@ private sealed trait ExchangerImplJvm[A, B]
   private[this] final def splitBeforeCommit(lst: Lst[Any], name: String): (Lst[Any], Lst[Any]) = {
     val res = Lst.splitBefore[Any](lst, item = Rxn.commitSingleton)
     if (res eq null) {
-      val len = ListObjStack.Lst.length(lst)
+      val len = ObjStack.Lst.length(lst)
       if (len == 0) impossible(s"empty ${name}")
       else impossible(s"no commit in ${name}: ${lst.mkString()}")
     } else {
