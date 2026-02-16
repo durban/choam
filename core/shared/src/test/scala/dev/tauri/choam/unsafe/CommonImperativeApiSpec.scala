@@ -18,6 +18,7 @@
 package dev.tauri.choam
 package unsafe
 
+import java.util.concurrent.ThreadLocalRandom
 import java.util.concurrent.atomic.{ AtomicInteger, AtomicBoolean }
 
 import core.{ Rxn, Ref }
@@ -350,6 +351,36 @@ trait CommonImperativeApiSpec[F[_]]
       _ <- assertResultF(ref1.get.run, 1)
       _ <- assertResultF(ref2.get.run, 1)
       _ <- assertResultF(ref3.get.run.map(_.reverse), List(0 -> 0, 1 -> 0, 1 -> 1))
+    } yield ()
+  }
+
+  test("Post-commit actions with retry in imperative API") {
+    for {
+      ref1 <- Ref(0).run[F]
+      ref2 <- Ref(0).run[F]
+      ref3 <- Ref(List.empty[Int]).run[F]
+      res <- runBlock { implicit ir =>
+        updateRef(ref1)(_ + 1)
+        if (ThreadLocalRandom.current().nextBoolean()) {
+          alwaysRetry()
+        }
+        addPostCommit(Rxn.unsafe.embedUnsafe { implicit ir =>
+          updateRef(ref3)(lst => 1 :: lst)
+        })
+        addPostCommit(Rxn.unsafe.embedUnsafe { implicit ir =>
+          if (ThreadLocalRandom.current().nextBoolean()) alwaysRetry()
+          else updateRef(ref3)(lst => 2 :: lst)
+        })
+        addPostCommit(Rxn.unsafe.embedUnsafe { implicit ir =>
+          updateRef(ref3)(lst => 3 :: lst)
+        })
+        updateRef(ref2)(_ + 1)
+        42
+      }
+      _ <- assertEqualsF(res, 42)
+      _ <- assertResultF(ref1.get.run, 1)
+      _ <- assertResultF(ref2.get.run, 1)
+      _ <- assertResultF(ref3.get.run.map(_.reverse), List(1, 2, 3))
     } yield ()
   }
 
