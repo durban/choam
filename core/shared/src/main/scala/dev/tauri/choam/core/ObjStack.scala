@@ -77,10 +77,10 @@ private object ObjStack {
   }
 
   final def unsafeArrToLst[A](arr: Array[AnyRef], len: Int): Lst[A] = {
-    jsCheckIdx(len - 1, arr.length)
     var lst = Lst.empty[A]
     var idx = 0
     while (idx < len) {
+      jsCheckIdx(idx, arr.length)
       lst = Lst(head = arr(idx).asInstanceOf[A], tail = lst)
       idx += 1
     }
