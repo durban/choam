@@ -1323,9 +1323,8 @@ object Rxn extends RxnInstances0 {
       _desc = null
     }
 
-    private[this] val alts: ArrayObjStack[Any] = new ArrayObjStack[Any](initSize = 8)
-    private[this] val stmAlts: ArrayObjStack[Any] = new ArrayObjStack[Any](initSize = 2)
-
+    private[this] var alts: ArrayObjStack[Any] = null
+    private[this] var stmAlts: ArrayObjStack[Any] = null
     private[this] var locals: IdentityHashMap[InternalLocal, AnyRef] = null
     private[choam] final override val localOrigin: unsafePackage.RxnLocal.Origin = new unsafePackage.RxnLocal.Origin
 
@@ -1531,16 +1530,38 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def clearAlts(): Unit = {
-      alts.clear()
-      stmAlts.clear()
+      this.alts match {
+        case null => ()
+        case a => a.clear()
+      }
+      this.stmAlts match {
+        case null => ()
+        case s => s.clear()
+      }
     }
 
     private[this] final def saveAlt[A, B](k: Rxn[B]): Unit = {
-      _saveAlt(this.alts, k)
+      val a = this.alts match {
+        case null =>
+          val newStack = new ArrayObjStack[Any](initSize = 8)
+          this.alts = newStack
+          newStack
+        case a =>
+          a
+      }
+      _saveAlt(a, k)
     }
 
     private[this] final def saveStmAlt[A, B](k: Rxn[B]): Unit = {
-      _saveAlt(this.stmAlts, k)
+      val s = this.stmAlts match {
+        case null =>
+          val newStack = new ArrayObjStack[Any](initSize = 8)
+          this.stmAlts = newStack
+          newStack
+        case s =>
+          s
+      }
+      _saveAlt(s, k)
     }
 
     private[this] final def _saveAlt[A, B](alts: ArrayObjStack[Any], k: Rxn[B]): Unit = {
@@ -1606,11 +1627,13 @@ object Rxn extends RxnInstances0 {
     }
 
     private[this] final def discardStmAlt(): Unit = {
-      this.stmAlts.popAndDiscard(7)
+      val s = this.stmAlts
+      _assert(s ne null)
+      s.popAndDiscard(7)
     }
 
     private[this] final def _tryLoadAlt(alts: ArrayObjStack[Any], isPermanentFailure: Boolean): Rxn[R] = {
-      if (alts.nonEmpty()) {
+      if ((alts ne null) && alts.nonEmpty()) {
         val res = alts.pop().asInstanceOf[Rxn[R]]
         this._loadRestOfAlt(alts, isPermanentFailure = isPermanentFailure)
         res
