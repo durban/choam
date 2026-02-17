@@ -21,6 +21,7 @@ package core
 import scala.math.Ordering
 
 import cats.kernel.{ Hash, Order }
+import cats.data.State
 import cats.effect.kernel.{ Ref => CatsRef }
 
 import internal.mcas.{ MemoryLocation, RefIdGen }
@@ -34,7 +35,7 @@ import internal.refs.{ EmptyRefArray, DenseArrayOfRefs, DenseArrayOfTRefs, Spars
  * or [[cats.effect.kernel.Ref]], but its operations are [[Rxn]]s.
  * Thus, operations on a `Ref` are composable with other [[Rxn]]s.
  */
-sealed trait Ref[A] extends RefLike.UnsealedRefLike[A] { this: MemoryLocation[A] & core.RefGetAxn[A] =>
+sealed trait Ref[A] extends RefLike[A] { this: MemoryLocation[A] & core.RefGetAxn[A] =>
 
   override def asCats[F[_]](implicit F: core.Reactive[F]): CatsRef[F, A] =
     new Ref.CatsRefFromRef[F, A](this) {}
@@ -348,4 +349,87 @@ private sealed abstract class RefInstances2 { this: Ref.type =>
 
   implicit final def hashInstance[A]: Hash[Ref[A]] =
     _hashInstance.asInstanceOf[Hash[Ref[A]]]
+}
+
+sealed trait RefLike[A] {
+
+  // primitive:
+
+  def get: Rxn[A]
+
+  def modify[B](f: A => (A, B)): Rxn[B]
+
+  // primitive (for performance):
+
+  def set(a: A): Rxn[Unit]
+
+  def update(f: A => A): Rxn[Unit]
+
+  // derived (implemented in RefGetAxn):
+
+  def getAndSet(nv: A): Rxn[A]
+
+  def tryUpdate(f: A => A): Rxn[Boolean]
+
+  def getAndUpdate(f: A => A): Rxn[A]
+
+  def updateAndGet(f: A => A): Rxn[A]
+
+  def tryModify[B](f: A => (A, B)): Rxn[Option[B]]
+
+  def flatModify[B](f: A => (A, Rxn[B])): Rxn[B]
+
+  // interop:
+
+  def asCats[F[_]](implicit F: Reactive[F]): CatsRef[F, A] =
+    new RefLike.CatsRefFromRefLike[F, A](this) {}
+}
+
+private[choam] object RefLike {
+
+  private[choam] trait UnsealedRefLike[A]
+    extends RefLike[A]
+
+  private[choam] final def catsRefFromRefLike[F[_] : Reactive, A](ref: RefLike[A]): CatsRef[F, A] =
+    new CatsRefFromRefLike[F, A](ref) {}
+
+  private[core] abstract class CatsRefFromRefLike[F[_], A](self: RefLike[A])(implicit F: Reactive[F])
+    extends CatsRef[F, A] {
+
+    def get: F[A] =
+      self.get.run[F]
+
+    override def set(a: A): F[Unit] =
+      self.set(a).run[F]
+
+    override def access: F[(A, A => F[Boolean])] = {
+      F.monad.map(this.get) { ov =>
+        val setter = { (nv: A) =>
+          self.modify { currVal =>
+            if (equ(currVal, ov)) (nv, true)
+            else (currVal, false)
+          }.run[F]
+        }
+        (ov, setter)
+      }
+    }
+
+    override def tryUpdate(f: A => A): F[Boolean] =
+      self.tryUpdate(f).run[F]
+
+    override def tryModify[B](f: A => (A, B)): F[Option[B]] =
+      self.tryModify(f).run[F]
+
+    override def update(f: A => A): F[Unit] =
+      self.update(f).run[F]
+
+    override def modify[B](f: A => (A, B)): F[B] =
+      self.modify(f).run[F]
+
+    override def tryModifyState[B](state: State[A, B]): F[Option[B]] =
+      self.tryModify(a => state.runF.flatMap(_(a)).value).run[F]
+
+    override def modifyState[B](state: State[A,B]): F[B] =
+      self.modify(a => state.runF.flatMap(_(a)).value).run[F]
+  }
 }

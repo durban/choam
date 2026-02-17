@@ -49,7 +49,6 @@ private[choam] object StripedRef {
 
   private[this] final class StripedRefImpl[A](stripes: Ref.Array[A])
     extends StripedRef[A]
-    with RefLike.UnsealedRefLike[A]
     with RefLikeDefaults[A] {
 
     final override def current: RefLike[A] =
