@@ -1532,6 +1532,7 @@ object Rxn extends RxnInstances0 {
 
     private[this] final def clearAlts(): Unit = {
       alts.clear()
+      stmAlts.clear()
     }
 
     private[this] final def saveAlt[A, B](k: Rxn[B]): Unit = {
