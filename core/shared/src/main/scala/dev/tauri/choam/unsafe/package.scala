@@ -85,7 +85,7 @@ package object unsafe {
     Ref.unsafe(initial, strategy, ir.currentContext().refIdGen)
   }
 
-  /** @see [[dev.tauri.choam.core.Ref.array]] */
+  /** @see [[dev.tauri.choam.core.Ref.array[A](size:Int,initial:A,str*]] */
   final def newRefArray[A](
     size: Int,
     initial: A,
