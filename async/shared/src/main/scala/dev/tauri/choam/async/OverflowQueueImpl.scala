@@ -30,18 +30,17 @@ private object OverflowQueueImpl {
     }
   }
 
+  final def ringBuffer[A](capacity: Int, str: AllocationStrategy): Rxn[AsyncQueue.WithSize[A]] = {
+    data.Queue.ringBuffer[A](capacity, str).flatMap { rb =>
+      makeRingBuffer(rb)
+    }
+  }
+
   final def droppingQueue[A](capacity: Int): Rxn[AsyncQueue.WithSize[A]] = {
     data.Queue.dropping[A](capacity).flatMap { dq =>
       GenWaitList[A](dq.poll, dq.offer, dq.peek).map { gwl =>
         new DroppingQueue[A](dq, gwl)
       }
-    }
-  }
-
-  // TODO: do we need this?
-  private[choam] final def lazyRingBuffer[A](capacity: Int): Rxn[AsyncQueue.WithSize[A]] = {
-    data.Queue.lazyRingBuffer[A](capacity).flatMap { rb =>
-      makeRingBuffer(rb)
     }
   }
 

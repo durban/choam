@@ -88,6 +88,9 @@ object Queue {
   final def ringBuffer[A](capacity: Int): Rxn[Queue.WithSize[A]] =
     RingBuffer.apply[A](capacity)
 
+  final def ringBuffer[A](capacity: Int, str: AllocationStrategy): Rxn[Queue.WithSize[A]] =
+    RingBuffer.apply[A](capacity, str)
+
   final def unboundedWithSize[A]: Rxn[Queue.WithSize[A]] =
     MsQueue.withSize[A]
 
@@ -110,10 +113,6 @@ object Queue {
 
   private[choam] trait UnsealedQueueWithSize[A]
     extends WithSize[A]
-
-  // TODO: do we need this?
-  private[choam] def lazyRingBuffer[A](capacity: Int): Rxn[Queue.WithSize[A]] =
-    RingBuffer.lazyRingBuffer[A](capacity)
 
   private[data] final def fromList[F[_] : Reactive, Q[a] <: Queue[a], A](mkEmpty: Rxn[Q[A]])(as: List[A]): F[Q[A]] = {
     implicit val m: Monad[F] = Reactive[F].monad

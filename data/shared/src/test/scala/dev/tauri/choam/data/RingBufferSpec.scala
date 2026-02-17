@@ -43,7 +43,7 @@ trait StrictRingBufferSpec[F[_]] extends RingBufferSpec[F] { this: McasImplSpec 
 
 trait LazyRingBufferSpec[F[_]] extends RingBufferSpec[F] { this: McasImplSpec =>
   final override def newRingBuffer[A](capacity: Int): F[Queue.WithSize[A]] =
-    RingBuffer.lazyRingBuffer[A](capacity).run[F].widen
+    RingBuffer.apply[A](capacity, AllocationStrategy.SparseFlat).run[F].widen
 }
 
 trait RingBufferSpec[F[_]]

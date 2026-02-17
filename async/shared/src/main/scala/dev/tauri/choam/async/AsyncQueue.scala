@@ -23,7 +23,7 @@ import cats.effect.std.{ Queue => CatsQueue }
 import core.{ Rxn, AsyncReactive }
 
 sealed trait AsyncQueue[A]
-  extends data.Queue.UnsealedQueue[A]
+  extends data.Queue.UnsealedQueue[A] // TODO:0.5: this private type appears in scaladoc
   with AsyncQueue.SourceSink[A] {
 
   final override def put[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =

@@ -47,7 +47,7 @@ trait LazyOverflowQueueSpec[F[_]]
   extends OverflowQueueSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
 
   final override def newRingBuffer[A](capacity: Int): F[AsyncQueue.WithSize[A]] =
-    OverflowQueueImpl.lazyRingBuffer[A](capacity).run[F]
+    OverflowQueueImpl.ringBuffer[A](capacity, AllocationStrategy.SparseFlat).run[F]
 }
 
 trait OverflowQueueSpec[F[_]]

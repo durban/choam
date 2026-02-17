@@ -60,27 +60,18 @@ private final class RingBuffer[A](
 
 private object RingBuffer {
 
-  def apply[A](capacity: Int): Rxn[RingBuffer[A]] = {
-    require(capacity > 0)
-    Ref.array[A](size = capacity, initial = empty[A]).flatMap { arr =>
-      makeRingBuffer(capacity, arr, AllocationStrategy.Default)
-    }
+  final def apply[A](capacity: Int): Rxn[RingBuffer[A]] = {
+    apply(capacity, AllocationStrategy.Default)
   }
 
-  // TODO: do we need this?
-  private[data] def lazyRingBuffer[A](capacity: Int): Rxn[RingBuffer[A]] = {
+  final def apply[A](capacity: Int, str: AllocationStrategy): Rxn[RingBuffer[A]] = {
     require(capacity > 0)
-    val str = AllocationStrategy.Default.withSparse(true)
-    Ref.array[A](
-      size = capacity,
-      initial = empty[A],
-      strategy = str,
-    ).flatMap { arr =>
+    Ref.array[A](size = capacity, initial = empty[A], strategy = str).flatMap { arr =>
       makeRingBuffer(capacity, arr, str)
     }
   }
 
-  private[this] def makeRingBuffer[A](capacity: Int, underlying: Ref.Array[A], str: AllocationStrategy): Rxn[RingBuffer[A]] = {
+  private[this] final def makeRingBuffer[A](capacity: Int, underlying: Ref.Array[A], str: AllocationStrategy): Rxn[RingBuffer[A]] = {
     require(capacity > 0)
     require(underlying.length === capacity)
     val pStr = str
