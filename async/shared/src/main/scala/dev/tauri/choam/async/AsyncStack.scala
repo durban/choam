@@ -21,7 +21,9 @@ package async
 import core.{ Rxn, AsyncReactive }
 import data.Stack
 
-sealed trait AsyncStack[A] extends Stack.UnsealedStack[A] {
+sealed trait AsyncStack[A]
+  extends Stack.UnsealedStack[A] { // TODO:0.5: this private type appears in scaladoc
+
   def pop[F[_]](implicit F: AsyncReactive[F]): F[A]
 }
 

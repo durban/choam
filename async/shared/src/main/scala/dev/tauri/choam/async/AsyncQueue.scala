@@ -55,21 +55,25 @@ sealed trait AsyncQueue[A]
  */
 object AsyncQueue {
 
-  sealed trait Take[+A] extends data.Queue.UnsealedQueuePoll[A] {
+  sealed trait Take[+A]
+    extends data.Queue.UnsealedQueuePoll[A] { // TODO:0.5: this private type appears in scaladoc
+
     // TODO: add InvariantSyntax (to be able to call it like `.take[F]`)
     def take[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA]
     // TODO: asCats : QueueSource (but: needs size)
     // TODO: Functor instance
   }
 
-  sealed trait Put[-A] extends data.Queue.UnsealedQueueOffer[A] {
+  sealed trait Put[-A]
+    extends data.Queue.UnsealedQueueOffer[A] { // TODO:0.5: this private type appears in scaladoc
+
     def put[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit]
     // TODO: asCats : QueueSink
     // TODO: Covariant instance
   }
 
   sealed trait SourceSink[A]
-    extends data.Queue.UnsealedQueueSourceSink[A]
+    extends data.Queue.UnsealedQueueSourceSink[A] // TODO:0.5: this private type appears in scaladoc
     with AsyncQueue.Take[A]
     with AsyncQueue.Put[A]
 
@@ -139,9 +143,10 @@ object AsyncQueue {
   // TODO: that someone will definitely receive the item.
   // TODO: But, even if there is a waiting taker, we can't
   // TODO: be sure that's true. The taker can be cancelled,
-  // TODO: in which case, we don't know what to do with the
-  // TODO: item. (Bounded queues have the underlying queue,
+  // TODO: in which case we don't know what to do with the
+  // TODO: item. (Bounded queues have the underlying queue
   // TODO: which can store the item.)
+  // TODO:
   // TODO: What could work is this:
   // TODO: trait SynchronousQueue[A] {
   // TODO:   def take[F[_]]: F[A]
