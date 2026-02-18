@@ -66,6 +66,15 @@ trait UnboundedQueueImplWithSize[F[_]] extends UnboundedQueueSpec[F] { this: Mca
       _ <- assertResultF(cq.size, 0)
     } yield ()
   }
+
+  test("UnboundedQueue.WithSize invariant functor") {
+    for {
+      q <- newQueue[F, String]
+      q2 = (q: AsyncQueue.WithSize[String]).imap(_.toInt)(_.toString)
+      _ <- q2.put(42)
+      _ <- assertResultF(q2.take, 42)
+    } yield ()
+  }
 }
 
 trait UnboundedQueueSpec[F[_]]
@@ -147,6 +156,25 @@ trait UnboundedQueueSpec[F[_]]
       v1 <- f1.joinWithNever
       v2 <- f2.joinWithNever
       _ <- assertEqualsF(Set(v1, v2), Set("b", "c"))
+    } yield ()
+  }
+
+  test("AsyncQueue functor instances") {
+    for {
+      q <- newQueue[F, String]
+      q2 = (q: AsyncQueue.Take[String]).map(_.toInt)
+      fib2 <- q2.take.start
+      _ <- q.add("1").run
+      _ <- assertResultF(fib2.joinWithNever, 1)
+      q3 = (q: AsyncQueue.Put[String]).contramap[Int](_.toString)
+      _ <- q3.put(2)
+      _ <- assertResultF(q2.take, 2)
+      q4 = (q: AsyncQueue.SourceSink[String]).imap(_.toInt)(_.toString)
+      _ <- q4.put(3)
+      _ <- assertResultF(q4.take, 3)
+      q5 = (q: AsyncQueue[String]).imap(_.toInt)(_.toString)
+      _ <- q5.put(4)
+      _ <- assertResultF(q5.take, 4)
     } yield ()
   }
 }

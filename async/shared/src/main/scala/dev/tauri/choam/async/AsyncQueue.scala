@@ -18,6 +18,7 @@
 package dev.tauri.choam
 package async
 
+import cats.{ Functor, Contravariant, Invariant }
 import cats.effect.std.{ Queue => CatsQueue }
 
 import core.{ Rxn, AsyncReactive }
@@ -61,7 +62,20 @@ object AsyncQueue {
     // TODO: add InvariantSyntax (to be able to call it like `.take[F]`)
     def take[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA]
     // TODO: asCats : QueueSource (but: needs size)
-    // TODO: Functor instance
+  }
+
+  final object Take {
+
+    implicit final def functorForDevTauriChoamAsyncAsyncQueueTake: Functor[AsyncQueue.Take] =
+      _functorInstance
+
+    private[this] val _functorInstance: Functor[Take] = new Functor[Take] {
+      final override def map[A, B](fa: Take[A])(f: A => B): Take[B] = new Take[B] {
+        final override def poll: Rxn[Option[B]] = fa.poll.map(_.map(f))
+        final override def peek: Rxn[Option[B]] = fa.peek.map(_.map(f))
+        final override def take[F[_], BB >: B](implicit F: AsyncReactive[F]): F[BB] = F.monad.map(fa.take)(f)
+      }
+    }
   }
 
   sealed trait Put[-A]
@@ -69,7 +83,19 @@ object AsyncQueue {
 
     def put[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit]
     // TODO: asCats : QueueSink
-    // TODO: Covariant instance
+  }
+
+  final object Put {
+
+    implicit final def contravariantFunctorForDevTauriChoamAsyncAsyncQueuePut: Contravariant[AsyncQueue.Put] =
+      _contravariantFunctorInstance
+
+    private[this] val _contravariantFunctorInstance: Contravariant[Put] = new Contravariant[Put] {
+      final override def contramap[A, B](fa: Put[A])(f: B => A): Put[B] = new Put[B] {
+        final override def offer(b: B): Rxn[Boolean] = fa.offer(f(b))
+        final override def put[F[_]](b: B)(implicit F: AsyncReactive[F]): F[Unit] = fa.put(f(b))
+      }
+    }
   }
 
   sealed trait SourceSink[A]
@@ -77,12 +103,61 @@ object AsyncQueue {
     with AsyncQueue.Take[A]
     with AsyncQueue.Put[A]
 
+  final object SourceSink {
+
+    implicit final def invariantFunctorForDevTauriChoamAsyncAsyncQueueSourceSink: Invariant[AsyncQueue.SourceSink] =
+      _invariantFunctorInstance
+
+    private[this] val _invariantFunctorInstance: Invariant[SourceSink] = new Invariant[SourceSink] {
+      final override def imap[A, B](fa: SourceSink[A])(f: A => B)(g: B => A): SourceSink[B] = new SourceSink[B] {
+        final override def poll: Rxn[Option[B]] = fa.poll.map(_.map(f))
+        final override def peek: Rxn[Option[B]] = fa.peek.map(_.map(f))
+        final override def offer(b: B): Rxn[Boolean] = fa.offer(g(b))
+        final override def take[F[_], BB >: B](implicit F: AsyncReactive[F]): F[BB] = F.monad.map(fa.take)(f)
+        final override def put[F[_]](b: B)(implicit F: AsyncReactive[F]): F[Unit] = fa.put(g(b))
+      }
+    }
+  }
+
   sealed trait WithSize[A]
     extends AsyncQueue[A] {
 
     def size: Rxn[Int]
 
     def asCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A]
+  }
+
+  final object WithSize {
+
+    implicit final def invariantFunctorForDevTauriChoamAsyncAsyncQueueWithSize: Invariant[AsyncQueue.WithSize] =
+      _invariantFunctorInstance
+
+    private[this] val _invariantFunctorInstance: Invariant[WithSize] = new Invariant[WithSize] {
+      final override def imap[A, B](fa: WithSize[A])(f: A => B)(g: B => A): WithSize[B] = new WithSize[B] {
+        final override def poll: Rxn[Option[B]] = fa.poll.map(_.map(f))
+        final override def peek: Rxn[Option[B]] = fa.peek.map(_.map(f))
+        final override def offer(b: B): Rxn[Boolean] = fa.offer(g(b))
+        final override def add(b: B): Rxn[Unit] = fa.add(g(b))
+        final override def take[F[_], BB >: B](implicit F: AsyncReactive[F]): F[BB] = F.monad.map(fa.take)(f)
+        final override def size: Rxn[Int] = fa.size
+        final override def asCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, B] = {
+          CatsQueue.catsInvariantForQueue[F](F.monad).imap(fa.asCats)(f)(g)
+        }
+      }
+    }
+  }
+
+  implicit final def invariantFunctorForDevTauriChoamAsyncAsyncQueue: Invariant[AsyncQueue] =
+    _invariantFunctorInstance
+
+  private[this] val _invariantFunctorInstance: Invariant[AsyncQueue] = new Invariant[AsyncQueue] {
+    final override def imap[A, B](fa: AsyncQueue[A])(f: A => B)(g: B => A): AsyncQueue[B] = new AsyncQueue[B] {
+      final override def poll: Rxn[Option[B]] = fa.poll.map(_.map(f))
+      final override def peek: Rxn[Option[B]] = fa.peek.map(_.map(f))
+      final override def offer(b: B): Rxn[Boolean] = fa.offer(g(b))
+      final override def add(b: B): Rxn[Unit] = fa.add(g(b))
+      final override def take[F[_], BB >: B](implicit F: AsyncReactive[F]): F[BB] = F.monad.map(fa.take)(f)
+    }
   }
 
   final def unbounded[A]: Rxn[AsyncQueue[A]] =
