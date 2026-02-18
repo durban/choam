@@ -18,10 +18,12 @@
 package dev.tauri.choam
 package async
 
+import java.util.concurrent.ThreadLocalRandom
+
 import cats.effect.IO
 
 import core.Rxn
-import unsafe.{ InRxn, UnsafeApi }
+import unsafe.{ InRxn, UnsafeApi, alwaysRetry }
 
 final class PromiseSpecUnsafeApi_EmbedUnsafe_DefaultMcas_IO
   extends BaseSpecTickedIO
@@ -83,6 +85,28 @@ trait PromiseSpecUnsafeApi[F[_]]
       }, false)
       _ <- assertResultF(fib1.joinWithNever, 42)
       _ <- assertResultF(fib2.joinWithNever, 42)
+    } yield ()
+  }
+
+  test("Promise#unsafeComplete then rollback") {
+    for {
+      p <- runBlock(Promise.unsafeNew[String]()(using _))
+      d <- F.deferred[Unit]
+      fib <- p.get.guarantee(d.complete(()).void).start
+      _ <- this.tickAll
+      r <- runBlock { implicit ir =>
+        if (ThreadLocalRandom.current().nextBoolean()) {
+          p.unsafeComplete("foo")
+          alwaysRetry()
+        } else {
+          42
+        }
+      }
+      _ <- assertEqualsF(r, 42)
+      _ <- this.tickAll
+      _ <- assertResultF(d.tryGet, None)
+      _ <- fib.cancel
+      _ <- assertResultF(fib.join.map(_.isCanceled), true)
     } yield ()
   }
 
