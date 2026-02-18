@@ -21,7 +21,7 @@ package async
 import cats.effect.IO
 
 import core.Rxn
-import unsafe.InRxn
+import unsafe.{ InRxn, UnsafeApi }
 
 final class PromiseSpecUnsafeApi_EmbedUnsafe_DefaultMcas_IO
   extends BaseSpecTickedIO
@@ -29,7 +29,27 @@ final class PromiseSpecUnsafeApi_EmbedUnsafe_DefaultMcas_IO
   with PromiseSpecUnsafeApi[IO] {
 
   protected final override def runBlock[A](block: InRxn => A): IO[A] =
-    Rxn.unsafe.embedUnsafe(block(_)).run[IO] // TODO: also test with atomically/atomicallyAsync
+    Rxn.unsafe.embedUnsafe(block(_)).run[IO]
+}
+
+final class PromiseSpecUnsafeApi_Atomically_DefaultMcas_IO
+  extends BaseSpecTickedIO
+  with UnsafeApiMixin[IO]
+  with SpecDefaultMcas
+  with PromiseSpecUnsafeApi[IO] {
+
+  protected final override def runBlock[A](block: InRxn => A): IO[A] =
+    F.delay { this.api.atomically(block) }
+}
+
+final class PromiseSpecUnsafeApi_AtomicallyInAsync_DefaultMcas_IO
+  extends BaseSpecTickedIO
+  with UnsafeApiMixin[IO]
+  with SpecDefaultMcas
+  with PromiseSpecUnsafeApi[IO] {
+
+  protected final override def runBlock[A](block: InRxn => A): IO[A] =
+    this.api.atomicallyInAsync[IO, A](RetryStrategy.Default.withCede)(block)
 }
 
 trait PromiseSpecUnsafeApi[F[_]]
@@ -82,5 +102,23 @@ trait PromiseSpecUnsafeApi[F[_]]
       _ <- assertResultF(fib1.joinWithNever, 42)
       _ <- assertResultF(fib2.joinWithNever, "foo")
     } yield ()
+  }
+}
+
+sealed trait UnsafeApiMixin[F[_]] extends munit.FunSuite { this: McasImplSpec & BaseSpecF[F] =>
+
+  private[this] var _api: UnsafeApi =
+    null
+
+  protected[this] def api: UnsafeApi = {
+    this._api match {
+      case null => fail("this._api not initialized")
+      case api => api
+    }
+  }
+
+  final override def beforeAll(): Unit = {
+    super.beforeAll()
+    this._api = UnsafeApi(this.runtime)
   }
 }
