@@ -51,10 +51,10 @@ object Promise {
 
   object Get {
 
-    implicit final def covariantFunctorForPromiseGet: Functor[Promise.Get] =
-      _covariantFunctorForPromiseGet
+    implicit final def functorForDevTauriChoamAsyncPromiseGet: Functor[Promise.Get] =
+      _functorInstance
 
-    private[this] val _covariantFunctorForPromiseGet: Functor[Promise.Get] = {
+    private[this] val _functorInstance: Functor[Promise.Get] = {
       new Functor[Promise.Get] {
         final override def map[A, B](p: Promise.Get[A])(f: A => B): Promise.Get[B] =
           p.map(f)
@@ -80,10 +80,10 @@ object Promise {
 
   object Complete {
 
-    implicit final def contravariantFunctorForPromiseComplete: Contravariant[Promise.Complete] =
-      _contravariantFunctorForPromiseComplete
+    implicit final def contravariantFunctorForDevTauriChoamAsyncPromiseComplete: Contravariant[Promise.Complete] =
+      _contravariantFunctorInstance
 
-    private[this] val _contravariantFunctorForPromiseComplete: Contravariant[Promise.Complete] = {
+    private[this] val _contravariantFunctorInstance: Contravariant[Promise.Complete] = {
       new Contravariant[Promise.Complete] {
         final override def contramap[A, B](p: Promise.Complete[A])(f: B => A): Promise.Complete[B] =
           p.contramap(f)
@@ -105,10 +105,10 @@ object Promise {
     new PromiseImpl[A](Ref.unsafe[State[A]](Waiting.empty, str, ctx.refIdGen))
   }
 
-  implicit final def invariantFunctorForPromise: Invariant[Promise] =
-    _invariantFunctorForPromise
+  implicit final def invariantFunctorForDevTauriChoamAsyncPromise: Invariant[Promise] =
+    _invariantFunctorInstance
 
-  private[this] val _invariantFunctorForPromise = new Invariant[Promise] {
+  private[this] val _invariantFunctorInstance = new Invariant[Promise] {
     final override def imap[A, B](fa: Promise[A])(f: A => B)(g: B => A): Promise[B] =
       fa.imap(f)(g)
   }
