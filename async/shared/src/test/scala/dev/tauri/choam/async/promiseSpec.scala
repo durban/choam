@@ -25,8 +25,6 @@ import cats.effect.IO
 import cats.effect.std.CountDownLatch
 import cats.effect.kernel.{ Outcome, DeferredSource, DeferredSink }
 
-import core.Rxn
-
 final class PromiseSpec_ThreadConfinedMcas_IO_Real
   extends BaseSpecIO
   with SpecThreadConfinedMcas
@@ -75,53 +73,6 @@ trait PromiseSpecTicked[F[_]]
       _ <- assertResultF(f1.join, Outcome.canceled[F, Throwable, Int])
       _ <- assertResultF(F.delay { flag1 }, false)
       _ <- assertResultF(F.delay { flag2 }, true)
-    } yield ()
-  }
-
-  test("Promise#unsafeComplete") {
-    for {
-      // no subscribers:
-      p1 <- Promise[Int].run[F]
-      _ <- assertResultF(Rxn.unsafe.embedUnsafe { implicit ir =>
-        p1.unsafeComplete(42)
-      }.run[F], true)
-      _ <- assertResultF(p1.tryGet.run, Some(42))
-      _ <- assertResultF(Rxn.unsafe.embedUnsafe { implicit ir =>
-        p1.unsafeComplete(99)
-      }.run[F], false)
-      _ <- assertResultF(p1.tryGet.run, Some(42))
-      // has subscribers:
-      p2 <- Promise[Int].run[F]
-      fib1 <- p2.get[F].start
-      _ <- this.tickAll
-      fib2 <- p2.get[F].start
-      _ <- this.tickAll
-      _ <- assertResultF(Rxn.unsafe.embedUnsafe { implicit ir =>
-        p2.unsafeComplete(42)
-      }.run[F], true)
-      _ <- assertResultF(Rxn.unsafe.embedUnsafe { implicit ir =>
-        p2.unsafeComplete(99)
-      }.run[F], false)
-      _ <- assertResultF(fib1.joinWithNever, 42)
-      _ <- assertResultF(fib2.joinWithNever, 42)
-    } yield ()
-  }
-
-  test("Promise.unsafeNew") {
-    for {
-      pp <- Rxn.unsafe.embedUnsafe { implicit ir =>
-        (Promise.unsafeNew[Int](), Promise.unsafeNew[String](AllocationStrategy.Padded))
-      }.run[F]
-      (p1, p2) = pp
-      fib1 <- p1.get.start
-      fib2 <- p2.get.start
-      _ <- this.tickAll
-      _ <- p1.complete(42).run
-      _ <- Rxn.unsafe.embedUnsafe { implicit ir =>
-        p2.unsafeComplete("foo")
-      }.run
-      _ <- assertResultF(fib1.joinWithNever, 42)
-      _ <- assertResultF(fib2.joinWithNever, "foo")
     } yield ()
   }
 }
