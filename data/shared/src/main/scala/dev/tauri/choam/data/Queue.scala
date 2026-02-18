@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import cats.Monad
+import cats.{ Monad, Functor, Contravariant, Invariant }
 import cats.syntax.all._
 
 import core.{ Rxn, Reactive }
@@ -54,20 +54,100 @@ object Queue {
     def peek: Rxn[Option[A]]
   }
 
+  final object Poll {
+
+    implicit final def functorForDevTauriChoamDataQueuePoll: Functor[Queue.Poll] =
+      _functorInstance
+
+    private[this] val _functorInstance: Functor[Poll] = new Functor[Poll] {
+      final override def map[A, B](fa: Poll[A])(f: A => B): Poll[B] = new Poll[B] {
+        final override def poll: Rxn[Option[B]] = fa.poll.map(_.map(f))
+        final override def peek: Rxn[Option[B]] = fa.peek.map(_.map(f))
+      }
+    }
+  }
+
   sealed trait Offer[-A] {
     def offer(a: A): Rxn[Boolean]
+  }
+
+  final object Offer {
+
+    implicit final def contravariantFunctorForDevTauriChoamDataQueueOffer: Contravariant[Queue.Offer] =
+      _contravariantFunctorInstance
+
+    private[this] val _contravariantFunctorInstance: Contravariant[Queue.Offer] = new Contravariant[Queue.Offer] {
+      final override def contramap[A, B](fa: Offer[A])(f: B => A): Offer[B] = new Offer[B] {
+        final override def offer(b: B): Rxn[Boolean] = fa.offer(f(b))
+      }
+    }
   }
 
   sealed trait Add[-A] extends Queue.Offer[A] {
     def add(a: A): Rxn[Unit]
   }
 
+  final object Add {
+
+    implicit final def contravariantFunctorForDevTauriChoamDataQueueAdd: Contravariant[Queue.Add] =
+      _contravariantFunctorInstance
+
+    private[this] val _contravariantFunctorInstance: Contravariant[Queue.Add] = new Contravariant[Queue.Add] {
+      final override def contramap[A, B](fa: Add[A])(f: B => A): Add[B] = new Add[B] {
+        final override def offer(b: B): Rxn[Boolean] = fa.offer(f(b))
+        final override def add(b: B): Rxn[Unit] = fa.add(f(b))
+      }
+    }
+  }
+
   sealed trait SourceSink[A]
     extends Queue.Poll[A]
     with  Queue.Offer[A]
 
+  final object SourceSink {
+
+    implicit final def invariantFunctorForDevTauriChoamDataQueueSourceSink: Invariant[Queue.SourceSink] =
+      _invariantFunctorInstance
+
+    private[this] val _invariantFunctorInstance: Invariant[SourceSink] = new Invariant[SourceSink] {
+      final override def imap[A, B](fa: SourceSink[A])(f: A => B)(g: B => A): SourceSink[B] = new SourceSink[B] {
+        final override def poll: Rxn[Option[B]] = fa.poll.map(_.map(f))
+        final override def peek: Rxn[Option[B]] = fa.peek.map(_.map(f))
+        final override def offer(b: B): Rxn[Boolean] = fa.offer(g(b))
+      }
+    }
+  }
+
   sealed trait WithSize[A] extends Queue[A] {
     def size: Rxn[Int]
+  }
+
+  final object WithSize {
+
+    implicit final def invariantFunctorForDevTauriChoamDataQueueWithSize: Invariant[Queue.WithSize] =
+      _invariantFunctorInstance
+
+    private[this] val _invariantFunctorInstance: Invariant[WithSize] = new Invariant[WithSize] {
+      final override def imap[A, B](fa: WithSize[A])(f: A => B)(g: B => A): WithSize[B] = new WithSize[B] {
+        final override def poll: Rxn[Option[B]] = fa.poll.map(_.map(f))
+        final override def peek: Rxn[Option[B]] = fa.peek.map(_.map(f))
+        final override def offer(b: B): Rxn[Boolean] = fa.offer(g(b))
+        final override def add(b: B): Rxn[Unit] = fa.add(g(b))
+        final override def size: Rxn[Int] = fa.size
+      }
+    }
+  }
+
+  implicit final def invariantFunctorForDevTauriChoamDataQueue: Invariant[Queue] =
+    _invariantFunctorInstance
+
+  private[this] val _invariantFunctorInstance: Invariant[Queue] = new Invariant[Queue] {
+    final override def imap[A, B](fa: Queue[A])(f: A => B)(g: B => A): Queue[B] = new Queue[B] {
+      final override def poll: Rxn[Option[B]] = fa.poll.map(_.map(f))
+      final override def peek: Rxn[Option[B]] = fa.peek.map(_.map(f))
+      final override def offer(b: B): Rxn[Boolean] = fa.offer(g(b))
+      final override def add(b: B): Rxn[Unit] = fa.add(g(b))
+    }
   }
 
   final def unbounded[A]: Rxn[Queue[A]] =

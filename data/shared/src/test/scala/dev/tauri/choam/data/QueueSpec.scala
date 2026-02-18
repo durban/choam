@@ -72,6 +72,15 @@ trait QueueWithSizeSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
       _ <- assertResultF(q.size.run[F], 0)
     } yield ()
   }
+
+  test("Queue.WithSize invariant functor instance") {
+    for {
+      q <- newQueueFromList[String](Nil)
+      qq = (q: Queue.WithSize[String]).imap(_.toInt)(_.toString)
+      _ <- assertResultF(qq.offer(101).run, true)
+      _ <- assertResultF(qq.poll.run, Some(101))
+    } yield ()
+  }
 }
 
 trait QueueWithRemoveSpec[F[_]] extends BaseQueueSpec[F] { this: McasImplSpec =>
@@ -451,6 +460,27 @@ trait BaseQueueSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
         F.both(F.cede *> enqTask(q, idx), F.cede *> deqTask(q)).map(_._2)
       }
       _ <- assertEqualsF(results.sorted, indices)
+    } yield ()
+  }
+
+  test("Queue co/contra/in-variant functor instances") {
+    for {
+      q <- newQueueFromList[String](Nil)
+      q2 = (q: Queue.Offer[String]).contramap[Int](_.toString)
+      _ <- assertResultF(q2.offer(42).run, true)
+      _ <- assertResultF(q.poll.run, Some("42"))
+      q3 = (q: Queue.Add[String]).contramap[Int](_.toString)
+      _ <- assertResultF(q3.add(99).run, ())
+      _ <- assertResultF(q.poll.run, Some("99"))
+      q4 = (q: Queue.Poll[String]).map(_.toInt)
+      _ <- assertResultF(q2.offer(100).run, true)
+      _ <- assertResultF(q4.poll.run, Some(100))
+      q5 = (q: Queue.SourceSink[String]).imap(_.toInt)(_.toString)
+      _ <- assertResultF(q5.offer(101).run, true)
+      _ <- assertResultF(q5.poll.run, Some(101))
+      q6 = (q: Queue[String]).imap(_.toInt)(_.toString)
+      _ <- assertResultF(q6.offer(102).run, true)
+      _ <- assertResultF(q6.poll.run, Some(102))
     } yield ()
   }
 }
