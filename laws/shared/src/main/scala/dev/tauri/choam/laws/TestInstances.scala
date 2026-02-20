@@ -18,15 +18,18 @@
 package dev.tauri.choam
 package laws
 
+import cats.kernel.{ Hash, Order }
 import cats.Eq
 import cats.data.Ior
+import cats.syntax.all._
 
 import org.scalacheck.{ Gen, Arbitrary, Cogen }
+import org.scalacheck.rng.Seed
 
-import core.{ Rxn, Ref, Ref2 }
+import core.{ Rxn, Ref, Ref2, RefLike }
 import internal.mcas.{ Mcas, RefIdGen }
 
-trait TestInstances { self =>
+trait TestInstances extends TestInstances1 { self =>
 
   def mcasImpl: Mcas
 
@@ -101,7 +104,7 @@ trait TestInstances { self =>
     }
   }
 
-  private[choam] final def unsafePerformForTest[A, B](rxn: Rxn[B]): B = {
+  private[choam] final def unsafePerformForTest[B](rxn: Rxn[B]): B = {
     rxn.unsafePerform(self.mcasImpl)
   }
 
@@ -220,5 +223,77 @@ trait TestInstances { self =>
       val ry2 = self.unsafePerformForTest(y)
       equB.eqv(rx1, ry1) && equB.eqv(rx1, rx2) && equB.eqv(rx2, ry2)
     }
+  }
+
+  implicit def arbDataMap[K, V](
+    implicit
+    arbK: Arbitrary[K],
+    hashK: Hash[K],
+    ordK: Order[K],
+    arbV: Arbitrary[V],
+  ): Arbitrary[data.Map[K, V]] = Arbitrary {
+    implicitly[Arbitrary[List[(K, V)]]].arbitrary.flatMap { kvs =>
+      Gen.oneOf(
+        data.Map.simpleHashMap[K, V],
+        data.Map.simpleOrderedMap[K, V],
+        data.Map.hashMap[K, V],
+        data.Map.orderedMap[K, V],
+      ).flatMap { rxn =>
+        Gen.delay {
+          this.unsafePerformForTest(rxn.flatMap { m =>
+            kvs.traverse_ { case (k, v) =>
+              m.put(k, v)
+            }.as(m)
+          })
+        }
+      }
+    }
+  }
+
+  implicit def eqDataMap[K, V](
+    implicit
+    arbK: Arbitrary[K],
+    eqV: Eq[V],
+    arbV: Arbitrary[V],
+  ): Eq[data.Map[K, V]] = { (m1, m2) =>
+    val k = arbK.arbitrary.pureApply(Gen.Parameters.default, Seed(42L))
+    val v = arbV.arbitrary.pureApply(Gen.Parameters.default, Seed(42L))
+    this.unsafePerformForTest(m1.put(k, v)) : Unit
+    val v1 = this.unsafePerformForTest(m1.get(k)).getOrElse(throw new AssertionError)
+    val v2 = this.unsafePerformForTest(m2.get(k)).getOrElse(throw new AssertionError)
+    eqV.eqv(v1, v2)
+  }
+}
+
+trait TestInstances1 { this: TestInstances =>
+
+  implicit def arbRefLike[A](implicit arbA: Arbitrary[A]): Arbitrary[RefLike[A]] = Arbitrary {
+    this.arbRef[A].arbitrary.map(r => r)
+  }
+
+  implicit def eqRefLike[A](implicit arbFunc: Arbitrary[A => A], A: Eq[A]): Eq[RefLike[A]] = { (x: RefLike[A], y: RefLike[A]) =>
+    def go(seed: Long, triesLeft: Int): Boolean = {
+      if (triesLeft < 1) {
+        throw new AssertionError("arbFunc always returns its argument unchanged")
+      }
+      val f: A => A = arbFunc.arbitrary.pureApply(Gen.Parameters.default, Seed(seed))
+      val oldX = this.unsafePerformForTest(x.get)
+      val oldY = this.unsafePerformForTest(y.get)
+      if (A.eqv(oldX, oldY)) {
+        val fx = f(oldX)
+        if (A.eqv(oldX, fx)) {
+          go(seed + 1L, triesLeft - 1)
+        } else {
+          this.unsafePerformForTest(x.set(fx))
+          val newX = this.unsafePerformForTest(x.get)
+          val newY = this.unsafePerformForTest(y.get)
+          A.eqv(newY, newX)
+        }
+      } else {
+        false
+      }
+    }
+
+    go(seed = 42L, triesLeft = 1000)
   }
 }

@@ -21,7 +21,7 @@ package discipline
 
 import cats.implicits._
 import cats.kernel.laws.discipline.{ SemigroupTests, MonoidTests, OrderTests, HashTests }
-import cats.laws.discipline.{ DeferTests, MonadTests, AlignTests }
+import cats.laws.discipline.{ DeferTests, MonadTests, AlignTests, InvariantTests }
 import cats.effect.kernel.testkit.TestContext
 import cats.effect.laws.{ UniqueTests, ClockTests }
 import cats.effect.{ IO, SyncIO }
@@ -29,7 +29,7 @@ import cats.effect.{ IO, SyncIO }
 import org.scalacheck.Prop
 import munit.DisciplineSuite
 
-import core.{ Rxn, Ref, Reactive, AsyncReactive }
+import core.{ Rxn, Ref, RefLike, Reactive, AsyncReactive }
 import internal.mcas.Mcas
 
 final class LawsSpecThreadConfinedMcas
@@ -87,5 +87,8 @@ trait LawsSpec
 
     checkAll("Order[Ref[Int]]", OrderTests[Ref[Int]].order)
     checkAll("Hash[Ref[Int]]", HashTests[Ref[Int]].hash)
+
+    checkAll("Invariant[RefLike]", InvariantTests[RefLike].invariant[String, Int, Long])
+    checkAll("Invariant[Map]", InvariantTests[data.Map[String, *]].invariant[String, Int, Long])
   }
 }
