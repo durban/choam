@@ -273,7 +273,7 @@ trait TestInstances1 { this: TestInstances =>
       for {
         f1 <- arbAA.arbitrary
         f2 <- arbAA.arbitrary
-        ref <- this.arbRef[A].arbitrary,
+        ref <- this.arbRef[A].arbitrary
       } yield (ref: RefLike[A]).imap(f1)(f2),
       for {
         ref1 <- this.arbRef[A].arbitrary
