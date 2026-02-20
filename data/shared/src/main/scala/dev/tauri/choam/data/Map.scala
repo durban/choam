@@ -65,6 +65,23 @@ object Map extends MapPlatform {
     def items: Rxn[Chain[(K, V)]]
   }
 
+  final object Extra {
+
+    implicit final def invariantFunctorForDevTauriChoamDataMapExtra[K]: Invariant[Map.Extra[K, *]] =
+      _invariantFunctorInstance.asInstanceOf[Invariant[Extra[K, *]]]
+
+    private[this] val _invariantFunctorInstance: Invariant[Extra[Any, *]] = new Invariant[Extra[Any, *]] {
+      final override def imap[A, B](fa: Extra[Any, A])(f: A => B)(g: B => A): Extra[Any, B] = {
+        new ImappedMap[Any, A, B](fa, f, g) with Extra[Any, B] {
+          final override def clear: Rxn[Unit] = fa.clear
+          final override def keys: Rxn[Chain[Any]] = fa.keys
+          final override def values: Rxn[Chain[B]] = fa.values.map(_.map(f))
+          final override def items: Rxn[Chain[(Any, B)]] = fa.items.map(_.map { case (k, a) => (k, f(a)) })
+        }
+      }
+    }
+  }
+
   private[data] trait UnsealedMap[K, V] extends Map[K, V]
 
   private[data] trait UnsealedMapExtra[K, V] extends Map.Extra[K, V]
@@ -85,15 +102,18 @@ object Map extends MapPlatform {
     _invariantFunctorInstance.asInstanceOf[Invariant[Map[K, *]]]
 
   private[this] val _invariantFunctorInstance: Invariant[Map[Any, *]] = new Invariant[Map[Any, *]] {
-    final override def imap[A, B](fa: Map[Any, A])(f: A => B)(g: B => A): Map[Any, B] = new Map[Any, B] {
-      final override def put(k: Any, b: B): Rxn[Option[B]] = fa.put(k, g(b)).map(_.map(f))
-      final override def putIfAbsent(k: Any, b: B): Rxn[Option[B]] = fa.putIfAbsent(k, g(b)).map(_.map(f))
-      final override def replace(k: Any, ob: B, nb: B): Rxn[Boolean] = fa.replace(k, g(ob), g(nb))
-      final override def get(k: Any): Rxn[Option[B]] = fa.get(k).map(_.map(f))
-      final override def del(k: Any): Rxn[Boolean] = fa.del(k)
-      final override def remove(k: Any, b: B): Rxn[Boolean] = fa.remove(k, g(b))
-      final override def refLike(key: Any, b: B): RefLike[B] = fa.refLike(key, g(b)).imap(f)(g)
-    }
+    final override def imap[A, B](fa: Map[Any, A])(f: A => B)(g: B => A): Map[Any, B] =
+      new ImappedMap[Any, A, B](fa, f, g) {}
+  }
+
+  private abstract class ImappedMap[K, A, B](fa: Map[K, A], f: A => B, g: B => A) extends Map[K, B] {
+    final override def put(k: K, b: B): Rxn[Option[B]] = fa.put(k, g(b)).map(_.map(f))
+    final override def putIfAbsent(k: K, b: B): Rxn[Option[B]] = fa.putIfAbsent(k, g(b)).map(_.map(f))
+    final override def replace(k: K, ob: B, nb: B): Rxn[Boolean] = fa.replace(k, g(ob), g(nb))
+    final override def get(k: K): Rxn[Option[B]] = fa.get(k).map(_.map(f))
+    final override def del(k: K): Rxn[Boolean] = fa.del(k)
+    final override def remove(k: K, b: B): Rxn[Boolean] = fa.remove(k, g(b))
+    final override def refLike(key: K, b: B): RefLike[B] = fa.refLike(key, g(b)).imap(f)(g)
   }
 
   private[data] final override def unsafeSnapshot[F[_], K, V](m: Map[K, V])(implicit F: Reactive[F]) = {

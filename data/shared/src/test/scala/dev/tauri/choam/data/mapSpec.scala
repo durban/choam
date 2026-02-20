@@ -122,6 +122,19 @@ trait MapSpecSimple[F[_]] extends MapSpec[F] { this: McasImplSpec =>
       _ <- assertEqualsF(v2.iterator.toSet, ScalaSet(128 -> "abc", 99 -> "xyz"))
     } yield ()
   }
+
+  test("Map.Extra invariant functor instance") {
+    for {
+      m <- mkEmptyMap[String, String]
+      _ <- m.put("foo", "42").run
+      m2 = (m: Map.Extra[String, String]).imap(_.toInt)(_.toString)
+      _ <- assertResultF(m2.keys.run, Chain("foo"))
+      _ <- assertResultF(m2.items.run, Chain(("foo", 42)))
+      r = m2.refLike("foo", 0)
+      _ <- r.update(_ + 1).run
+      _ <- assertResultF(m.get("foo").run, Some("43"))
+    } yield ()
+  }
 }
 
 trait MapSpec[F[_]]
