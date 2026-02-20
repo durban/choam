@@ -446,6 +446,19 @@ trait MapSpec[F[_]]
     } yield ()
   }
 
+  test("Map invariant functor instance") {
+    for {
+      m <- mkEmptyMap[String, String]
+      _ <- m.put("foo", "42").run
+      m2 = (m: Map[String, String]).imap(_.toInt)(_.toString)
+      _ <- assertResultF(m2.get("foo").run, Some(42))
+      _ <- assertResultF(m2.get("bar").run, None)
+      r = m2.refLike("foo", 0)
+      _ <- r.update(_ + 1).run
+      _ <- assertResultF(m.get("foo").run, Some("43"))
+    } yield ()
+  }
+
   test("Map should support null keys/values") {
     val nullTolerantStringHash: Hash[String] = new Hash[String] {
       final override def eqv(x: String, y: String): Boolean = {

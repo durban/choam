@@ -21,6 +21,7 @@ package core
 import scala.math.Ordering
 
 import cats.kernel.{ Hash, Order }
+import cats.Invariant
 import cats.data.State
 import cats.effect.kernel.{ Ref => CatsRef }
 
@@ -385,7 +386,34 @@ sealed trait RefLike[A] {
     new RefLike.CatsRefFromRefLike[F, A](this) {}
 }
 
-private[choam] object RefLike {
+object RefLike {
+
+  implicit final def invariantFunctorForDevTauriChoamCoreRefLike: Invariant[RefLike] =
+    _invariantFunctorInstance
+
+  private[this] val _invariantFunctorInstance: Invariant[RefLike] = new Invariant[RefLike] {
+    final override def imap[A, B](fa: RefLike[A])(f: A => B)(g: B => A): RefLike[B] = new RefLike[B] {
+      final override def get: Rxn[B] = fa.get.map(f)
+      final override def modify[X](ff: B => (B, X)): Rxn[X] = fa.modify { a =>
+        val bx = ff(f(a))
+        (g(bx._1), bx._2)
+      }
+      final override def set(b: B): Rxn[Unit] = fa.set(g(b))
+      final override def update(ff: B => B): Rxn[Unit] = fa.update { a => g(ff(f(a))) }
+      final override def getAndSet(b: B): Rxn[B] = fa.getAndSet(g(b)).map(f)
+      final override def tryUpdate(ff: B => B): Rxn[Boolean] = fa.tryUpdate { a => g(ff(f(a))) }
+      final override def getAndUpdate(ff: B => B): Rxn[B] = fa.getAndUpdate { a => g(ff(f(a))) }.map(f)
+      final override def updateAndGet(ff: B => B): Rxn[B] = fa.updateAndGet { a => g(ff(f(a))) }.map(f)
+      final override def tryModify[X](ff: B => (B, X)): Rxn[Option[X]] = fa.tryModify { a =>
+        val bx = ff(f(a))
+        (g(bx._1), bx._2)
+      }
+      final override def flatModify[X](ff: B => (B, Rxn[X])): Rxn[X] = fa.flatModify { a =>
+        val bRxnX = ff(f(a))
+        (g(bRxnX._1), bRxnX._2)
+      }
+    }
+  }
 
   private[choam] trait UnsealedRefLike[A]
     extends RefLike[A]

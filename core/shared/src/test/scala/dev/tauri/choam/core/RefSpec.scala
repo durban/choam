@@ -45,6 +45,11 @@ final class RefSpec_Ref2_ThreadConfinedMcas_IO
   with SpecThreadConfinedMcas
   with RefSpec_Ref2[IO]
 
+final class RefSpec_Imapped_ThreadConfinedMcas_IO
+  extends BaseSpecIO
+  with SpecThreadConfinedMcas
+  with RefSpec_Imapped[IO]
+
 trait RefSpec_Arr[F[_]] extends RefSpec_Real[F] { this: McasImplSpec =>
   override def newRef[A](initial: A): F[RefType[A]] =
     Ref.array(1, initial).run[F].map(_.refs(0))
@@ -53,6 +58,19 @@ trait RefSpec_Arr[F[_]] extends RefSpec_Real[F] { this: McasImplSpec =>
 trait RefSpec_Ref2[F[_]] extends RefSpec_Real[F] { this: McasImplSpec =>
   override def newRef[A](initial: A): F[RefType[A]] =
     Ref.refP2[A, String](initial, "foo").map(_._1).run[F]
+}
+
+trait RefSpec_Imapped[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
+
+  import RefLikeSpec.Wrapper
+
+  final override type RefType[A] = RefLike[A]
+
+  override def newRef[A](initial: A): F[RefType[A]] = {
+    Ref[Wrapper[A]](new Wrapper(initial)).run[F].map { ref =>
+      RefLike.invariantFunctorForDevTauriChoamCoreRefLike.imap(ref)(_.value)(new Wrapper(_))
+    }
+  }
 }
 
 trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
@@ -374,4 +392,9 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertF(e.isLeft)
     } yield ()
   }
+}
+
+object RefLikeSpec {
+
+  final class Wrapper[A](val value: A)
 }

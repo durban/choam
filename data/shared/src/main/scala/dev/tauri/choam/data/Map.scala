@@ -19,7 +19,9 @@ package dev.tauri.choam
 package data
 
 import cats.kernel.{ Hash, Order }
+import cats.Invariant
 import cats.data.Chain
+import cats.syntax.all._
 import cats.effect.kernel.{ Ref => CatsRef }
 import cats.effect.std.MapRef
 
@@ -78,6 +80,21 @@ object Map extends MapPlatform {
 
   final override def simpleOrderedMap[K: Order, V](str: AllocationStrategy): Rxn[Extra[K, V]] =
     SimpleOrderedMap[K, V](str)
+
+  implicit final def invariantFunctorForDevTauriChoamDataMap[K]: Invariant[Map[K, *]] =
+    _invariantFunctorInstance.asInstanceOf[Invariant[Map[K, *]]]
+
+  private[this] val _invariantFunctorInstance: Invariant[Map[Any, *]] = new Invariant[Map[Any, *]] {
+    final override def imap[A, B](fa: Map[Any, A])(f: A => B)(g: B => A): Map[Any, B] = new Map[Any, B] {
+      final override def put(k: Any, b: B): Rxn[Option[B]] = fa.put(k, g(b)).map(_.map(f))
+      final override def putIfAbsent(k: Any, b: B): Rxn[Option[B]] = fa.putIfAbsent(k, g(b)).map(_.map(f))
+      final override def replace(k: Any, ob: B, nb: B): Rxn[Boolean] = fa.replace(k, g(ob), g(nb))
+      final override def get(k: Any): Rxn[Option[B]] = fa.get(k).map(_.map(f))
+      final override def del(k: Any): Rxn[Boolean] = fa.del(k)
+      final override def remove(k: Any, b: B): Rxn[Boolean] = fa.remove(k, g(b))
+      final override def refLike(key: Any, b: B): RefLike[B] = fa.refLike(key, g(b)).imap(f)(g)
+    }
+  }
 
   private[data] final override def unsafeSnapshot[F[_], K, V](m: Map[K, V])(implicit F: Reactive[F]) = {
     m match {

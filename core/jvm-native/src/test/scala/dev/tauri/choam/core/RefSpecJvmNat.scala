@@ -41,10 +41,18 @@ final class RefSpecJvm_Ref2_EMCAS_IO
   with SpecEmcas
   with RefSpecJvm_Ref2[IO]
 
+final class RefSpecJvm_Imapped_EMCAS_IO
+  extends BaseSpecIO
+  with SpecEmcas
+  with RefSpecJvm_Imapped[IO]
+
 trait RefSpecJvm_Arr[F[_]] extends RefLikeSpecJvm[F] with RefSpec_Arr[F] { this: McasImplSpec =>
 }
 
 trait RefSpecJvm_Ref2[F[_]] extends RefLikeSpecJvm[F] with RefSpec_Ref2[F] { this: McasImplSpec =>
+}
+
+trait RefSpecJvm_Imapped[F[_]] extends RefLikeSpecJvm[F] with RefSpec_Imapped[F] { this: McasImplSpec =>
 }
 
 trait RefSpecJvm_Real[F[_]] extends RefLikeSpecJvm[F] with RefSpec_Real[F] { this: McasImplSpec =>
