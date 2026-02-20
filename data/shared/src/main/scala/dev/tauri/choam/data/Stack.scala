@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import cats.Monad
+import cats.{ Monad, Invariant }
 import cats.syntax.all._
 
 import core.{ Rxn, Reactive }
@@ -63,6 +63,18 @@ object Stack {
   // TODO: on JS, we could just return a TreiberStack
   final def eliminationStack[A]: Rxn[Stack[A]] = {
     EliminationStack[A]
+  }
+
+  implicit final def invariantFunctorForDevTauriChoamDataStack: Invariant[Stack] =
+    _invariantFunctorInstance
+
+  private[this] val _invariantFunctorInstance: Invariant[Stack] = new Invariant[Stack] {
+    final override def imap[A, B](fa: Stack[A])(f: A => B)(g: B => A): Stack[B] = new Stack[B] {
+      final override def push(b: B): Rxn[Unit] = fa.push(g(b))
+      final override def poll: Rxn[Option[B]] = fa.poll.map(_.map(f))
+      final override def peek: Rxn[Option[B]] = fa.peek.map(_.map(f))
+      private[choam] final override def size: Rxn[Int] = fa.size
+    }
   }
 
   private[choam] def fromList[F[_], A](mkEmpty: Rxn[Stack[A]])(as: List[A])(implicit F: Reactive[F]): F[Stack[A]] = {

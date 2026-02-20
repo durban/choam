@@ -89,4 +89,13 @@ trait StackSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       _ <- assertResultF(Stack.popAll[F, Int](s2), List(3, 2, 1))
     } yield ()
   }
+
+  test("Stack invariant functor instance") {
+    for {
+      s <- newStack[String]()
+      s2 = s.imap(_.toInt)(_.toString)
+      _ <- s2.push(42).run
+      _ <- assertResultF(s.poll.run, Some("42"))
+    } yield ()
+  }
 }

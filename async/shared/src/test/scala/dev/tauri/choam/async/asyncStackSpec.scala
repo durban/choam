@@ -165,4 +165,15 @@ trait AsyncStackSpec[F[_]]
       _ <- assertEqualsF(Set(v1, v2), Set("b", "a"))
     } yield ()
   }
+
+  test("AsyncStack invariant functor instance") {
+    for {
+      s <- newStack[F, String]
+      s2 = s.imap(_.toInt)(_.toString)
+      fib <- s2.pop.start
+      _ <- this.tickAll
+      _ <- s.push("42").run
+      _ <- assertResultF(fib.joinWithNever, 42)
+    } yield ()
+  }
 }

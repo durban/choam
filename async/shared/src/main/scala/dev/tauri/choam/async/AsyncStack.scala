@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package async
 
+import cats.Invariant
+
 import core.{ Rxn, AsyncReactive }
 import data.Stack
 
@@ -60,6 +62,19 @@ object AsyncStack {
 
   final def eliminationStack[A]: Rxn[AsyncStack[A]] =
     Stack.eliminationStack[A].flatMap(fromSyncStack[A])
+
+  implicit final def invariantFunctorForDevTauriChoamAsyncAsyncStack: Invariant[AsyncStack] =
+    _invariantFunctorInstance
+
+  private[this] val _invariantFunctorInstance: Invariant[AsyncStack] = new Invariant[AsyncStack] {
+    final override def imap[A, B](fa: AsyncStack[A])(f: A => B)(g: B => A): AsyncStack[B] = new AsyncStack[B] {
+      final override def push(b: B): Rxn[Unit] = fa.push(g(b))
+      final override def poll: Rxn[Option[B]] = fa.poll.map(_.map(f))
+      final override def peek: Rxn[Option[B]] = fa.peek.map(_.map(f))
+      final override private[choam] def size: Rxn[Int] = fa.size
+      final override def pop[F[_]](implicit F: AsyncReactive[F]): F[B] = F.monad.map(fa.pop)(f)
+    }
+  }
 
   private[this] final def fromSyncStack[A](stack: Stack[A]): Rxn[AsyncStack[A]] = {
     WaitList(stack.poll, stack.push, stack.peek).map { wl =>
