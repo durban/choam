@@ -22,7 +22,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 import scala.math.Ordering
 
-import cats.{ Monad, ~> }
+import cats.{ Monad, Semigroupal, ~> }
 import cats.arrow.FunctionK
 import cats.kernel.{ Order, Hash }
 import cats.effect.IO
@@ -68,7 +68,7 @@ trait RefSpec_Imapped[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
 
   override def newRef[A](initial: A): F[RefType[A]] = {
     Ref[Wrapper[A]](new Wrapper(initial)).run[F].map { ref =>
-      RefLike.invariantFunctorForDevTauriChoamCoreRefLike.imap(ref)(_.value)(new Wrapper(_))
+      RefLike.invariantSemigroupalForDevTauriChoamCoreRefLike.imap(ref)(_.value)(new Wrapper(_))
     }
   }
 }
@@ -390,6 +390,18 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       loc <- F.delay(r.asInstanceOf[MemoryLocation[String]])
       e = Either.catchOnly[UnsupportedOperationException] { loc.withListeners }
       _ <- assertF(e.isLeft)
+    } yield ()
+  }
+
+  test("Semigroupal product") {
+    for {
+      r1 <- newRef("a")
+      r2 <- newRef(42)
+      r = Semigroupal[RefLike].product(r1, r2)
+      _ <- assertResultF(r.get.run, ("a", 42))
+      _ <- assertResultF(r.getAndSet(("b", 99)).run, ("a", 42))
+      _ <- assertResultF(r1.get.run, "b")
+      _ <- assertResultF(r2.get.run, 99)
     } yield ()
   }
 }

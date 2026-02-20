@@ -19,7 +19,7 @@ package dev.tauri.choam
 package laws
 
 import cats.kernel.{ Hash, Order }
-import cats.Eq
+import cats.{ Eq, Semigroupal }
 import cats.data.Ior
 import cats.syntax.all._
 
@@ -267,8 +267,19 @@ trait TestInstances extends TestInstances1 { self =>
 
 trait TestInstances1 { this: TestInstances =>
 
-  implicit def arbRefLike[A](implicit arbA: Arbitrary[A]): Arbitrary[RefLike[A]] = Arbitrary {
-    this.arbRef[A].arbitrary.map(r => r)
+  implicit def arbRefLike[A](implicit arbA: Arbitrary[A], arbAA: Arbitrary[A => A]): Arbitrary[RefLike[A]] = Arbitrary {
+    Gen.oneOf(
+      this.arbRef[A].arbitrary.map(r => r),
+      for {
+        f1 <- arbAA.arbitrary
+        f2 <- arbAA.arbitrary
+        ref <- this.arbRef[A].arbitrary,
+      } yield (ref: RefLike[A]).imap(f1)(f2),
+      for {
+        ref1 <- this.arbRef[A].arbitrary
+        ref2 <- this.arbRef[A].arbitrary
+      } yield Semigroupal[RefLike].product(ref1, ref2).imap(_._1)(a => (a, nullOf[A]))
+    )
   }
 
   implicit def eqRefLike[A](implicit arbFunc: Arbitrary[A => A], A: Eq[A]): Eq[RefLike[A]] = { (x: RefLike[A], y: RefLike[A]) =>

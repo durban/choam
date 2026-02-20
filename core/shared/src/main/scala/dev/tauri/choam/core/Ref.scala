@@ -21,7 +21,7 @@ package core
 import scala.math.Ordering
 
 import cats.kernel.{ Hash, Order }
-import cats.Invariant
+import cats.InvariantSemigroupal
 import cats.data.State
 import cats.effect.kernel.{ Ref => CatsRef }
 
@@ -388,10 +388,11 @@ sealed trait RefLike[A] {
 
 object RefLike {
 
-  implicit final def invariantFunctorForDevTauriChoamCoreRefLike: Invariant[RefLike] =
-    _invariantFunctorInstance
+  implicit final def invariantSemigroupalForDevTauriChoamCoreRefLike: InvariantSemigroupal[RefLike] =
+    _invariantSemigroupalInstance
 
-  private[this] val _invariantFunctorInstance: Invariant[RefLike] = new Invariant[RefLike] {
+  private[this] val _invariantSemigroupalInstance: InvariantSemigroupal[RefLike] = new InvariantSemigroupal[RefLike] {
+
     final override def imap[A, B](fa: RefLike[A])(f: A => B)(g: B => A): RefLike[B] = new RefLike[B] {
       final override def get: Rxn[B] = fa.get.map(f)
       final override def modify[X](ff: B => (B, X)): Rxn[X] = fa.modify { a =>
@@ -411,6 +412,23 @@ object RefLike {
       final override def flatModify[X](ff: B => (B, Rxn[X])): Rxn[X] = fa.flatModify { a =>
         val bRxnX = ff(f(a))
         (g(bRxnX._1), bRxnX._2)
+      }
+    }
+
+    final override def product[A, B](fa: RefLike[A], fb: RefLike[B]): RefLike[(A, B)] = new RefLikeDefaults[(A, B)]  {
+      final override def get: Rxn[(A, B)] = fa.get * fb.get
+      final override def modify[X](f: ((A, B)) => ((A, B), X)): Rxn[X] = fa.get.flatMap { a =>
+        fb.modify { b =>
+          val abx = f((a, b))
+          (abx._1._2, abx) // we don't actually need the `A` outside, be we avoid 1 extra allocation this way
+        }.flatMap { abx => fa.set(abx._1._1).as(abx._2) }
+      }
+      final override def set(ab: (A, B)): Rxn[Unit] = fa.set(ab._1) *> fb.set(ab._2)
+      final override def update(f: ((A, B)) => (A, B)): Rxn[Unit] = fa.get.flatMap { a =>
+        fb.modify { b =>
+          val ab = f((a, b))
+          (ab._2, ab._1)
+        }.flatMap(fa.set)
       }
     }
   }
