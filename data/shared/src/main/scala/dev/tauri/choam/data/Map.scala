@@ -19,7 +19,7 @@ package dev.tauri.choam
 package data
 
 import cats.kernel.{ Hash, Order }
-import cats.Invariant
+import cats.{ Invariant, InvariantSemigroupal }
 import cats.data.Chain
 import cats.syntax.all._
 import cats.effect.kernel.{ Ref => CatsRef }
@@ -35,10 +35,10 @@ sealed trait Map[K, V] { self =>
 
   def put(k: K, v: V): Rxn[Option[V]]
   def putIfAbsent(k: K, v: V): Rxn[Option[V]]
-  def replace(k: K, ov: V, nv: V): Rxn[Boolean]
+  def replace(k: K, ov: V, nv: V): Rxn[Boolean] // TODO:0.5: this works with reference eq
   def get(k: K): Rxn[Option[V]]
   def del(k: K): Rxn[Boolean]
-  def remove(k: K, v: V): Rxn[Boolean]
+  def remove(k: K, v: V): Rxn[Boolean] // TODO:0.5: this works with reference eq
   def refLike(key: K, default: V): RefLike[V]
 
   final def asCats[F[_]](default: V)(implicit F: Reactive[F]): MapRef[F, K, V] = {
@@ -98,12 +98,14 @@ object Map extends MapPlatform {
   final override def simpleOrderedMap[K: Order, V](str: AllocationStrategy): Rxn[Extra[K, V]] =
     SimpleOrderedMap[K, V](str)
 
-  implicit final def invariantFunctorForDevTauriChoamDataMap[K]: Invariant[Map[K, *]] =
-    _invariantFunctorInstance.asInstanceOf[Invariant[Map[K, *]]]
+  implicit final def invariantSemigroupalForDevTauriChoamDataMap[K]: InvariantSemigroupal[Map[K, *]] =
+    _invariantSemigroupalInstance.asInstanceOf[InvariantSemigroupal[Map[K, *]]]
 
-  private[this] val _invariantFunctorInstance: Invariant[Map[Any, *]] = new Invariant[Map[Any, *]] {
+  private[this] val _invariantSemigroupalInstance: InvariantSemigroupal[Map[Any, *]] = new InvariantSemigroupal[Map[Any, *]] {
     final override def imap[A, B](fa: Map[Any, A])(f: A => B)(g: B => A): Map[Any, B] =
       new ImappedMap[Any, A, B](fa, f, g) {}
+    final override def product[A, B](fa: Map[Any, A], fb: Map[Any, B]): Map[Any, (A, B)] =
+      new ProductMap[Any, A, B](fa, fb) {}
   }
 
   private abstract class ImappedMap[K, A, B](fa: Map[K, A], f: A => B, g: B => A) extends Map[K, B] {
@@ -114,6 +116,42 @@ object Map extends MapPlatform {
     final override def del(k: K): Rxn[Boolean] = fa.del(k)
     final override def remove(k: K, b: B): Rxn[Boolean] = fa.remove(k, g(b))
     final override def refLike(key: K, b: B): RefLike[B] = fa.refLike(key, g(b)).imap(f)(g)
+  }
+
+  private class ProductMap[K, A, B](fa: Map[K, A], fb: Map[K, B]) extends Map[K, (A, B)] {
+    private[this] final def mergeOptions(opts: (Option[A], Option[B])): Option[(A, B)] =
+      opts._1.flatMap { a => opts._2.map(b => (a, b)) }
+    private[this] final def mergeBooleans(bools: (Boolean, Boolean)): Boolean =
+      bools._1 && bools._2
+    final override def put(k: K, ab: (A, B)): Rxn[Option[(A, B)]] =
+      (fa.put(k, ab._1) * fb.put(k, ab._2)).map(mergeOptions)
+    final override def putIfAbsent(k: K, ab: (A, B)): Rxn[Option[(A, B)]] =
+      (fa.putIfAbsent(k, ab._1) * fb.putIfAbsent(k, ab._2)).map(mergeOptions)
+    final override def replace(k: K, ov: (A, B), nv: (A, B)): Rxn[Boolean] = {
+      fa.replace(k, ov._1, nv._1).flatMap { aWasReplaced =>
+        if (aWasReplaced) {
+          fb.replace(k, ov._2, nv._2).flatMap { bWasReplaced =>
+            if (bWasReplaced) {
+              Rxn.true_
+            } else { // we have to change back the `A`:
+              fa.replace(k, nv._1, ov._1).flatMap { ok =>
+                Rxn.unsafe.assert(ok).as(false)
+              }
+            }
+          }
+        } else {
+          Rxn.false_
+        }
+      }
+    }
+    final override def get(k: K): Rxn[Option[(A, B)]] =
+      (fa.get(k) * fb.get(k)).map(mergeOptions)
+    final override def del(k: K): Rxn[Boolean] =
+      (fa.del(k) * fb.del(k)).map(mergeBooleans)
+    final override def remove(k: K, ab: (A, B)): Rxn[Boolean] =
+      (fa.remove(k, ab._1) * fb.remove(k, ab._2)).map(mergeBooleans)
+    final override def refLike(k: K, ab: (A, B)): RefLike[(A, B)] =
+      RefLike.invariantSemigroupalForDevTauriChoamCoreRefLike.product(fa.refLike(k, ab._1), fb.refLike(k, ab._2))
   }
 
   private[data] final override def unsafeSnapshot[F[_], K, V](m: Map[K, V])(implicit F: Reactive[F]) = {

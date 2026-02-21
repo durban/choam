@@ -307,4 +307,59 @@ trait TestInstances1 { this: TestInstances =>
 
     go(seed = 42L, triesLeft = 1000)
   }
+
+  implicit def arbDataMapExtra[K, V](
+    implicit
+    arbK: Arbitrary[K],
+    hashK: Hash[K],
+    ordK: Order[K],
+    arbV: Arbitrary[V],
+  ): Arbitrary[data.Map.Extra[K, V]] = Arbitrary {
+    implicitly[Arbitrary[List[(K, V)]]].arbitrary.flatMap { kvs =>
+      Gen.oneOf(
+        data.Map.simpleHashMap[K, V],
+        data.Map.simpleOrderedMap[K, V],
+      ).flatMap { rxn =>
+        Gen.delay {
+          this.unsafePerformForTest(rxn.flatMap { m =>
+            kvs.traverse_ { case (k, v) =>
+              m.put(k, v)
+            }.as(m)
+          })
+        }
+      }
+    }
+  }
+
+  implicit def eqDataMapExtra[K, V](
+    implicit
+    arbK: Arbitrary[K],
+    eqV: Eq[V],
+    arbV: Arbitrary[V],
+  ): Eq[data.Map.Extra[K, V]] = { (a, b) =>
+    if (this.eqDataMap[K, V].eqv(a, b)) {
+      // we can do some extra checks on Extra:
+      val aKeys = this.unsafePerformForTest(a.keys)
+      val aOk = aKeys.forall { k =>
+        val aValue = this.unsafePerformForTest(a.get(k)).getOrElse(throw new AssertionError)
+        val bValue = this.unsafePerformForTest(b.get(k))
+        bValue match {
+          case Some(bValue) => eqV.eqv(aValue, bValue)
+          case None => false
+        }
+      }
+      val bKeys = this.unsafePerformForTest(b.keys)
+      val bOk = bKeys.forall { k =>
+        val bValue = this.unsafePerformForTest(b.get(k)).getOrElse(throw new AssertionError)
+        val aValue = this.unsafePerformForTest(a.get(k))
+        aValue match {
+          case Some(aValue) => eqV.eqv(aValue, bValue)
+          case None => false
+        }
+      }
+      aOk && bOk
+    } else {
+      false
+    }
+  }
 }

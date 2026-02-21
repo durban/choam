@@ -21,6 +21,7 @@ package data
 import scala.collection.immutable.{ Set => ScalaSet }
 
 import cats.kernel.{ Hash, Order }
+import cats.InvariantSemigroupal
 import cats.data.Chain
 import cats.effect.SyncIO
 
@@ -469,6 +470,26 @@ trait MapSpec[F[_]]
       r = m2.refLike("foo", 0)
       _ <- r.update(_ + 1).run
       _ <- assertResultF(m.get("foo").run, Some("43"))
+    } yield ()
+  }
+
+  test("Map semigroupal instance") {
+    for {
+      m1 <- mkEmptyMap[String, String]
+      _ <- m1.put("foo", "bar").run
+      _ <- m1.put("m1", "x").run
+      m2 <- mkEmptyMap[String, Long]
+      _ <- m2.put("foo", 42L).run
+      _ <- m2.put("m2", 99L).run
+      m = InvariantSemigroupal[Map[String, *]].product(m1, m2)
+      _ <- assertResultF(m.get("foo").run, Some(("bar", 42L)))
+      _ <- assertResultF(m.get("m1").run, None)
+      _ <- assertResultF(m.get("m2").run, None)
+      _ <- assertResultF(m.refLike("foo", ("", 0L)).getAndSet(("baz", 43L)).run, ("bar", 42L))
+      _ <- assertResultF(m1.get("foo").run, Some("baz"))
+      _ <- assertResultF(m2.get("foo").run, Some(43L))
+      _ <- assertResultF(m.replace("foo", ("baz", 43L), ("xyz", 99999L)).run, true)
+      // TODO: fails due to ref eq: _ <- assertResultF(m.replace("foo", ("xyz", 99999L), ("pqr", 56L)).run, true)
     } yield ()
   }
 

@@ -89,6 +89,7 @@ trait LawsSpec
     checkAll("Hash[Ref[Int]]", HashTests[Ref[Int]].hash)
 
     checkAll("InvariantSemigroupal[RefLike]", InvariantSemigroupalTests[RefLike].invariantSemigroupal[String, Int, Long])
-    checkAll("Invariant[Map]", InvariantTests[data.Map[String, *]].invariant[String, Int, Long])
+    checkAll("InvariantSemigroupal[Map]", InvariantSemigroupalTests[data.Map[String, *]].invariantSemigroupal[String, Int, Long])
+    checkAll("Invariant[Map.Extra]", InvariantTests[data.Map.Extra[String, *]].invariant[String, Int, Long])
   }
 }

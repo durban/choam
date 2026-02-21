@@ -199,7 +199,7 @@ private final class Ttrie[K, V] private (
     else Rxn.unit
   }
 
-  final def get(key: K): Rxn[Option[V]] = {
+  final override def get(key: K): Rxn[Option[V]] = {
     getRef(key).flatMap { ref =>
       ref.modify { v =>
         if (isInit(v) || isEnd(v)) {
@@ -214,7 +214,7 @@ private final class Ttrie[K, V] private (
     }
   }
 
-  final def put(k: K, v: V): Rxn[Option[V]] = {
+  final override def put(k: K, v: V): Rxn[Option[V]] = {
     getRef(k).flatMap { ref =>
       ref.modify { ov =>
         if (isInit(ov) || isEnd(ov)) {
@@ -226,7 +226,7 @@ private final class Ttrie[K, V] private (
     }
   }
 
-  final def putIfAbsent(k: K, v: V): Rxn[Option[V]] = {
+  final override def putIfAbsent(k: K, v: V): Rxn[Option[V]] = {
     getRef(k).flatMap { ref =>
       ref.modify { ov =>
         if (isInit(ov) || isEnd(ov)) {
@@ -238,7 +238,7 @@ private final class Ttrie[K, V] private (
     }
   }
 
-  final def replace(k: K, ov: V, nv: V): Rxn[Boolean] = {
+  final override def replace(k: K, ov: V, nv: V): Rxn[Boolean] = {
     getRef(k).flatMap { ref =>
       ref.modify[ReplaceResult] { cv =>
         if (isInit(cv) || isEnd(cv)) {
@@ -253,7 +253,7 @@ private final class Ttrie[K, V] private (
     }
   }
 
-  final def del(key: K): Rxn[Boolean] = {
+  final override def del(key: K): Rxn[Boolean] = {
     getRef(key).flatMap { ref =>
       ref.modify { ov =>
         if (isInit(ov) || isEnd(ov)) {
@@ -265,7 +265,7 @@ private final class Ttrie[K, V] private (
     }
   }
 
-  final def remove(k: K, v: V): Rxn[Boolean] = {
+  final override def remove(k: K, v: V): Rxn[Boolean] = {
     getRef(k).flatMap { ref =>
       ref.modify { ov =>
         if (isInit(ov) || isEnd(ov)) {
@@ -280,7 +280,7 @@ private final class Ttrie[K, V] private (
 
   final override def refLike(key: K, default: V): RefLike[V] = new RefLikeDefaults[V] {
 
-    final def get: Rxn[V] =
+    final override def get: Rxn[V] =
       self.get(key).map(_.getOrElse(default))
 
     final override def set(nv: V): Rxn[Unit] = {

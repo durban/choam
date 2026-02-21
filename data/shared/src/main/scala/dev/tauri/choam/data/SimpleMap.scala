@@ -30,13 +30,13 @@ private final class SimpleMap[K, V] private (
   repr: Ref[HashMap[K, V]],
 )(implicit K: Hash[K]) extends Map.UnsealedMapExtra[K, V] { self =>
 
-  override def put(k: K, v: V): Rxn[Option[V]] = {
+  final override def put(k: K, v: V): Rxn[Option[V]] = {
     repr.modify { m =>
       (m.updated(k, v), m.get(k))
     }
   }
 
-  override def putIfAbsent(k: K, v: V): Rxn[Option[V]] = {
+  final override def putIfAbsent(k: K, v: V): Rxn[Option[V]] = {
     repr.modify { m =>
       m.get(k) match {
         case None =>
@@ -47,7 +47,7 @@ private final class SimpleMap[K, V] private (
     }
   }
 
-  override def replace(k: K, ov: V, nv: V): Rxn[Boolean] = {
+  final override def replace(k: K, ov: V, nv: V): Rxn[Boolean] = {
     repr.modify { m =>
       m.get(k) match {
         case None =>
@@ -60,20 +60,20 @@ private final class SimpleMap[K, V] private (
     }
   }
 
-  override def get(k: K): Rxn[Option[V]] = {
+  final override def get(k: K): Rxn[Option[V]] = {
     repr.get.map { m =>
       m.get(k)
     }
   }
 
-  override def del(k: K): Rxn[Boolean] = {
+  final override def del(k: K): Rxn[Boolean] = {
     repr.modify { m =>
       val newM = m.removed(k)
       (newM, newM.size != m.size)
     }
   }
 
-  override def remove(k: K, v: V): Rxn[Boolean] = {
+  final override def remove(k: K, v: V): Rxn[Boolean] = {
     repr.modify { m =>
       m.get(k) match {
         case None =>
@@ -86,7 +86,7 @@ private final class SimpleMap[K, V] private (
     }
   }
 
-  override def clear: Rxn[Unit] =
+  final override def clear: Rxn[Unit] =
     repr.update(_ => HashMap.empty[K, V])
 
   final override def keys: Rxn[Chain[K]] = {
