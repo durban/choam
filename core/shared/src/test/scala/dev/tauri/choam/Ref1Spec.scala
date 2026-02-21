@@ -17,6 +17,8 @@
 
 package dev.tauri.choam
 
+import cats.{ Show, Hash }
+
 import core.Ref
 import internal.mcas.Mcas
 
@@ -41,7 +43,9 @@ abstract class Ref1Spec extends BaseSpec with SpecDefaultMcas {
 
   test("toString format") {
     val pat = "Ref\\@[\\da-f]{16}".r
-    assert(pat.matches(clue(mkRef1("a").toString)))
+    val r = mkRef1("a")
+    assert(pat.matches(clue(r.toString)))
+    assertEquals(Show[Ref[String]].show(r), r.toString)
   }
 
   test("equals/toString") {
@@ -50,6 +54,11 @@ abstract class Ref1Spec extends BaseSpec with SpecDefaultMcas {
     assert(r1 ne r2)
     assert(r1 != r2)
     assert(r1.toString != r2.toString)
+  }
+
+  test("hash") {
+    val r = mkRef1[String]("a")
+    assertEquals(Hash[Ref[String]].hash(r), r.##)
   }
 
   test("read/write/cas") {

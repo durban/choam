@@ -53,9 +53,9 @@ private object TreiberStack {
     Stack.fromList(this.apply[A](str))(as)
   }
 
-  private sealed trait Lst[+A] {
+  private sealed abstract class Lst[+A] {
 
-    def length: Int = {
+    final def length: Int = {
       @tailrec
       def go(l: Lst[A], acc: Int): Int = l match {
         case End => acc
@@ -64,7 +64,7 @@ private object TreiberStack {
       go(this, 0)
     }
 
-    def toList: List[A] = {
+    final def toList: List[A] = {
       val b = new scala.collection.mutable.ListBuffer[A]
       @tailrec
       def go(l: Lst[A]): Unit = l match {

@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package core
 
+import cats.Show
+
 sealed trait Ref2[A, B] {
 
   def _1: Ref[A]
@@ -41,4 +43,10 @@ object Ref2 {
 
   final def unapply[A, B](r: Ref2[A, B]): Some[(Ref[A], Ref[B])] =
     Some((r._1, r._2))
+
+  implicit final def showForDevTauriChoamCoreRef2[A, B]: Show[Ref2[A, B]] =
+    _showInstance.asInstanceOf[Show[Ref2[A, B]]]
+
+  private[this] val _showInstance: Show[Ref2[Any, Any]] =
+    Show.fromToString
 }

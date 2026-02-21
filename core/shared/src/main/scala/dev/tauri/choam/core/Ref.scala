@@ -21,7 +21,7 @@ package core
 import scala.math.Ordering
 
 import cats.kernel.{ Hash, Order }
-import cats.InvariantSemigroupal
+import cats.{ InvariantSemigroupal, Show }
 import cats.data.State
 import cats.effect.kernel.{ Ref => CatsRef }
 
@@ -328,7 +328,7 @@ private[core] sealed abstract class RefInstances0 extends RefInstances1 { this: 
       MemoryLocation.globalCompare(x.loc, y.loc)
   }
 
-  implicit final def orderingInstance[A]: Ordering[Ref[A]] =
+  implicit final def orderingForDevTauriChoamCoreRef[A]: Ordering[Ref[A]] =
     _orderingInstance.asInstanceOf[Ordering[Ref[A]]]
 }
 
@@ -339,17 +339,26 @@ private sealed abstract class RefInstances1 extends RefInstances2 { this: Ref.ty
       MemoryLocation.globalCompare(x.loc, y.loc)
   }
 
-  implicit final def orderInstance[A]: Order[Ref[A]] =
+  implicit final def orderForDevTauriChoamCoreRef[A]: Order[Ref[A]] =
     _orderInstance.asInstanceOf[Order[Ref[A]]]
 }
 
-private sealed abstract class RefInstances2 { this: Ref.type =>
+private sealed abstract class RefInstances2 extends RefInstances3 { this: Ref.type =>
 
   private[this] val _hashInstance: Hash[Ref[Any]] =
     Hash.fromUniversalHashCode[Ref[Any]]
 
-  implicit final def hashInstance[A]: Hash[Ref[A]] =
+  implicit final def hashForDevTauriChoamCoreRef[A]: Hash[Ref[A]] =
     _hashInstance.asInstanceOf[Hash[Ref[A]]]
+}
+
+private sealed abstract class RefInstances3 { this: Ref.type =>
+
+  private[this] val _showInstance: Show[Ref[Any]] =
+    Show.fromToString
+
+  implicit final def showForDevTauriChoamCoreRef[A]: Show[Ref[A]] =
+    _showInstance.asInstanceOf[Show[Ref[A]]]
 }
 
 sealed trait RefLike[A] {

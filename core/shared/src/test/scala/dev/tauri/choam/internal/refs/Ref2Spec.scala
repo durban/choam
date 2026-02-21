@@ -19,6 +19,8 @@ package dev.tauri.choam
 package internal
 package refs
 
+import cats.Show
+
 import core.Ref2
 
 final class Ref2SpecP1P1 extends Ref2Spec {
@@ -44,6 +46,7 @@ abstract class Ref2Spec extends BaseSpec with SpecDefaultMcas {
     val pat = "Ref@[\\da-f]{16}".r
     assert(pat.matches(clue(r2._1.toString)))
     assert(pat.matches(clue(r2._2.toString)))
+    assertEquals(Show[Ref2[String, String]].show(r2), r2.toString)
   }
 
   test("equals/toString") {
