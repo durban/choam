@@ -40,6 +40,41 @@ final class MapSpec_SimpleOrdered_ThreadConfinedMcas_SyncIO
   with SpecThreadConfinedMcas
   with MapSpecSimpleOrdered[SyncIO]
 
+final class MapSpec_Imapped_ThreadConfinedMcas_SyncIO
+  extends BaseSpecSyncIO
+  with SpecThreadConfinedMcas
+  with MapSpecImapped[SyncIO]
+
+final class MapSpec_Product_ThreadConfinedMcas_SyncIO
+  extends BaseSpecSyncIO
+  with SpecThreadConfinedMcas
+  with MapSpecProduct[SyncIO]
+
+trait MapSpecImapped[F[_]] extends MapSpec[F] { this: McasImplSpec =>
+
+  override type MyMap[K, V] = Map[K, V]
+
+  final override def mkEmptyMap[K : Hash : Order, V]: F[MyMap[K, V]] = {
+    Map.simpleHashMap[K, (V, Unit)].map { (m: Map[K, (V, Unit)]) => m.imap(_._1)(v => (v, ())) }.run
+  }
+}
+
+trait MapSpecProduct[F[_]] extends MapSpec[F] { this: McasImplSpec =>
+
+  override type MyMap[K, V] = Map[K, V]
+
+  final override def mkEmptyMap[K : Hash : Order, V]: F[MyMap[K, V]] = {
+    Map.simpleHashMap[K, V].flatMap { (m1: Map[K, V]) =>
+      Map.simpleHashMap[K, V].map { (m2: Map[K, V]) =>
+        Map.invariantSemigroupalForDevTauriChoamDataMap.product(m1, m2).imap { vv =>
+          assertEquals(vv._1, vv._2)
+          vv._1
+        }(v => (v, v))
+      }
+    }.run
+  }
+}
+
 trait MapSpecSimpleHash[F[_]] extends MapSpecSimple[F] { this: McasImplSpec =>
 
   def mkEmptyMap[K : Hash : Order, V]: F[Map.Extra[K, V]] =
@@ -204,6 +239,26 @@ trait MapSpec[F[_]]
       _ <- assertResultF(m.get(42).run[F], Some("bar"))
       _ <- assertResultF(m.replace(99, "foo", "bar").run[F], false)
       _ <- assertResultF(m.get(42).run[F], Some("bar"))
+      _ <- assertResultF(m.get(99).run[F], None)
+    } yield ()
+  }
+
+  test("Map should perform replace correctly with Eq#eqv") {
+    import RefSpecMap.Foo
+    val foo1 = Foo("foo")
+    val foo2 = Foo("foo")
+    assert(foo1 ne foo2)
+    for {
+      m <- mkEmptyMap[Int, Foo]
+      _ <- (m.put(42, foo1)).run[F]
+      _ <- assertResultF(m.get(42).run[F], Some(Foo("foo")))
+      _ <- assertResultF(m.replace(42, Foo("xyz"), Foo("bar")).run[F], false)
+      _ <- assertResultF(m.get(42).run[F], Some(Foo("foo")))
+      _ <- assertResultF(m.replace(42, foo2, Foo("bar")).run[F], true)
+      _ <- assertResultF(m.get(42).run[F], Some(Foo("bar")))
+      _ <- assertResultF(m.replace(99, foo2, Foo("bar")).run[F], false)
+      _ <- assertResultF(m.get(42).run[F], Some(Foo("bar")))
+      _ <- assertResultF(m.get(99).run[F], None)
     } yield ()
   }
 
@@ -226,6 +281,30 @@ trait MapSpec[F[_]]
     } yield ()
   }
 
+  test("Map should perform remove correctly with Eq#eqv") {
+    import RefSpecMap.Foo
+    val foo1 = Foo("foo")
+    val foo2 = Foo("foo")
+    assert(foo1 ne foo2)
+    for {
+      m <- mkEmptyMap[Int, Foo]
+      _ <- m.put(42, foo1).run[F]
+      _ <- m.put(99, Foo("bar")).run[F]
+      _ <- assertResultF(m.get(42).run[F], Some(foo2))
+      _ <- assertResultF(m.get(99).run[F], Some(Foo("bar")))
+      _ <- assertResultF(m.remove(42, Foo("x")).run[F], false)
+      _ <- assertResultF(m.get(42).run[F], Some(foo2))
+      _ <- assertResultF(m.get(99).run[F], Some(Foo("bar")))
+      _ <- assertResultF(m.remove(42, foo2).run[F], true)
+      _ <- assertResultF(m.get(42).run[F], None)
+      _ <- assertResultF(m.get(99).run[F], Some(Foo("bar")))
+      _ <- assertResultF(m.remove(42, foo2).run[F], false)
+      _ <- assertResultF(m.remove(42, foo1).run[F], false)
+      _ <- assertResultF(m.get(42).run[F], None)
+      _ <- assertResultF(m.get(99).run[F], Some(Foo("bar")))
+    } yield ()
+  }
+
   test("Map should perform putIfAbsent correctly") {
     for {
       m <- mkEmptyMap[Int, String]
@@ -240,6 +319,48 @@ trait MapSpec[F[_]]
       _ <- assertResultF(m.get(42).run[F], Some("foo"))
       _ <- assertResultF(m.get(99).run[F], Some("bar"))
       _ <- assertResultF(m.get(84).run[F], Some("xyz"))
+    } yield ()
+  }
+
+  test("Map#update") {
+    for {
+      m <- mkEmptyMap[Int, String]
+      _ <- m.update(42) {
+        case None => Some("foo")
+        case Some(v) => fail(s"unexpected value: ${v}")
+      }.run
+      _ <- assertResultF(m.get(42).run, Some("foo"))
+      _ <- m.update(42) {
+        case None => fail("missing value")
+        case Some(v) => assertEquals(v, "foo"); Some("bar")
+      }.run
+      _ <- assertResultF(m.get(42).run, Some("bar"))
+      _ <- m.update(42) {
+        case None => fail("missing value")
+        case Some(v) => assertEquals(v, "bar"); None
+      }.run
+      _ <- assertResultF(m.get(42).run, None)
+    } yield ()
+  }
+
+  test("Map#modify") {
+    for {
+      m <- mkEmptyMap[Int, String]
+      _ <- assertResultF(m.modify(42) {
+        case None => (Some("foo"), None)
+        case s @ Some(_) => (s, s)
+      }.run, None)
+      _ <- assertResultF(m.get(42).run, Some("foo"))
+      _ <- assertResultF(m.modify(42) {
+        case None => (None, None)
+        case s @ Some(_) => (Some("bar"), s)
+      }.run, Some("foo"))
+      _ <- assertResultF(m.get(42).run, Some("bar"))
+      _ <- assertResultF(m.modify(42) {
+        case None => (None, None)
+        case s @ Some(_) => (None, s)
+      }.run, Some("bar"))
+      _ <- assertResultF(m.get(42).run, None)
     } yield ()
   }
 
@@ -488,8 +609,8 @@ trait MapSpec[F[_]]
       _ <- assertResultF(m.refLike("foo", ("", 0L)).getAndSet(("baz", 43L)).run, ("bar", 42L))
       _ <- assertResultF(m1.get("foo").run, Some("baz"))
       _ <- assertResultF(m2.get("foo").run, Some(43L))
-      // TODO: fails on JS due to ref eq: _ <- assertResultF(m.replace("foo", ("baz", 43L), ("xyz", 99999L)).run, true)
-      // TODO: fails due to ref eq: _ <- assertResultF(m.replace("foo", ("xyz", 99999L), ("pqr", 56L)).run, true)
+      _ <- assertResultF(m.replace("foo", ("baz", 43L), ("xyz", 99999L)).run, true)
+      _ <- assertResultF(m.replace("foo", ("xyz", 99999L), ("pqr", 56L)).run, true)
     } yield ()
   }
 

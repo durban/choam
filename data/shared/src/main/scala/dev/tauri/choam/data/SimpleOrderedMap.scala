@@ -47,12 +47,12 @@ private final class SimpleOrderedMap[K, V] private (
     }
   }
 
-  final override def replace(k: K, ov: V, nv: V): Rxn[Boolean] = {
+  final override def replace(k: K, ov: V, nv: V)(implicit V: Eq[V]): Rxn[Boolean] = {
     repr.modify[Boolean] { m =>
       m.get(k) match {
         case None =>
           (m, false)
-        case Some(v) if equ(v, ov) =>
+        case Some(v) if V.eqv(v, ov) =>
           (m + ((k, nv)), true)
         case _ =>
           (m, false)
@@ -74,12 +74,12 @@ private final class SimpleOrderedMap[K, V] private (
     }
   }
 
-  final override def remove(k: K, v: V): Rxn[Boolean] =  {
+  final override def remove(k: K, v: V)(implicit V: Eq[V]): Rxn[Boolean] =  {
     repr.modify[Boolean] { m =>
       m.get(k) match {
         case None =>
           (m, false)
-        case Some(cv) if equ(cv, v) =>
+        case Some(cv) if V.eqv(cv, v) =>
           (m.remove(k), true)
         case _ =>
           (m, false)

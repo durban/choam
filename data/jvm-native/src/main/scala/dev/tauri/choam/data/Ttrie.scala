@@ -238,13 +238,13 @@ private final class Ttrie[K, V] private (
     }
   }
 
-  final override def replace(k: K, ov: V, nv: V): Rxn[Boolean] = {
+  final override def replace(k: K, ov: V, nv: V)(implicit V: Eq[V]): Rxn[Boolean] = {
     getRef(k).flatMap { ref =>
       ref.modify[ReplaceResult] { cv =>
         if (isInit(cv) || isEnd(cv)) {
           (End[V], FalseCleanup)
         } else {
-          if (equ(cv, ov)) (nv, TrueNoCleanup)
+          if (V.eqv(cv, ov)) (nv, TrueNoCleanup)
           else (cv, FalseNoCleanup)
         }
       }.postCommit(cleanupLaterIfNeededR(k, ref)).map { rr =>
@@ -265,13 +265,13 @@ private final class Ttrie[K, V] private (
     }
   }
 
-  final override def remove(k: K, v: V): Rxn[Boolean] = {
+  final override def remove(k: K, v: V)(implicit V: Eq[V]): Rxn[Boolean] = {
     getRef(k).flatMap { ref =>
       ref.modify { ov =>
         if (isInit(ov) || isEnd(ov)) {
           (End[V], false)
         } else {
-          if (equ(ov, v)) (End[V], true)
+          if (V.eqv(ov, v)) (End[V], true)
           else (ov, false)
         }
       }.postCommit(cleanupLater(k, ref))

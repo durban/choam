@@ -71,6 +71,26 @@ final class MapSpec_TtrieOrder_ThreadConfinedMcas_SyncIO
   with SpecThreadConfinedMcas
   with MapSpecTtrieOrder[SyncIO]
 
+final class MapSpec_Imapped_SpinLockMcas_SyncIO
+  extends BaseSpecSyncIO
+  with SpecSpinLockMcas
+  with MapSpecImapped[SyncIO]
+
+final class MapSpec_Imapped_Emcas_SyncIO
+  extends BaseSpecSyncIO
+  with SpecEmcas
+  with MapSpecImapped[SyncIO]
+
+final class MapSpec_Product_SpinLockMcas_SyncIO
+  extends BaseSpecSyncIO
+  with SpecSpinLockMcas
+  with MapSpecProduct[SyncIO]
+
+final class MapSpec_Product_Emcas_SyncIO
+  extends BaseSpecSyncIO
+  with SpecEmcas
+  with MapSpecProduct[SyncIO]
+
 trait MapSpecTtrieHash[F[_]] extends MapSpec[F] { this: McasImplSpec =>
 
   override type MyMap[K, V] = Map[K, V]

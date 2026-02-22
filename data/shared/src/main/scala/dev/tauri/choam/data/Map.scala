@@ -25,7 +25,7 @@ import cats.syntax.all._
 import cats.effect.kernel.{ Ref => CatsRef }
 import cats.effect.std.MapRef
 
-import core.{ Rxn, RefLike, Reactive }
+import core.{ Rxn, RefLike, RefLikeDefaults, Reactive }
 
 sealed trait Map[K, V] { self =>
 
@@ -40,10 +40,36 @@ sealed trait Map[K, V] { self =>
 
   def refLike(key: K, default: V)(implicit V: Eq[V]): RefLike[V]
 
-  def replace(k: K, ov: V, nv: V): Rxn[Boolean] // TODO:0.5: this works with reference eq
-  def remove(k: K, v: V): Rxn[Boolean] // TODO:0.5: this works with reference eq
+  final def update(k: K)(f: Option[V] => Option[V]): Rxn[Unit] = { // TODO: optimize
+    modify[Unit](k) { optV => (f(optV), ()) }
+  }
 
-  final def asCats[F[_]](default: V)(implicit F: Reactive[F], V: Eq[V]): MapRef[F, K, V] = { // TODO:0.5: default works with reference eq
+  final def modify[A](k: K)(f: Option[V] => (Option[V], A)): Rxn[A] = { // TODO: optimize
+    this.get(k).flatMap { optV =>
+      f(optV) match {
+        case (Some(nv), a) => this.put(k, nv).as(a)
+        case (None, a) => this.del(k).as(a)
+      }
+    }
+  }
+
+  def replace(k: K, ov: V, nv: V)(implicit V: Eq[V]): Rxn[Boolean] = {
+    this.modify(k) {
+      case None => (None, false)
+      case Some(v) if V.eqv(v, ov) => (Some(nv), true)
+      case s @ Some(_) => (s, false)
+    }
+  }
+
+  def remove(k: K, v: V)(implicit V: Eq[V]): Rxn[Boolean] = {
+    this.modify(k) {
+      case None => (None, false)
+      case Some(cv) if V.eqv(cv, v) => (None, true)
+      case s @ Some(_) => (s, false)
+    }
+  }
+
+  final def asCats[F[_]](default: V)(implicit F: Reactive[F], V: Eq[V]): MapRef[F, K, V] = {
     new MapRef[F, K, V] {
       final override def apply(k: K): CatsRef[F, V] =
         self.refLike(k, default).asCats
@@ -113,10 +139,8 @@ object Map extends MapPlatform {
   private abstract class ImappedMap[K, A, B](fa: Map[K, A], f: A => B, g: B => A) extends Map[K, B] {
     final override def put(k: K, b: B): Rxn[Option[B]] = fa.put(k, g(b)).map(_.map(f))
     final override def putIfAbsent(k: K, b: B): Rxn[Option[B]] = fa.putIfAbsent(k, g(b)).map(_.map(f))
-    final override def replace(k: K, ob: B, nb: B): Rxn[Boolean] = fa.replace(k, g(ob), g(nb))
     final override def get(k: K): Rxn[Option[B]] = fa.get(k).map(_.map(f))
     final override def del(k: K): Rxn[Boolean] = fa.del(k)
-    final override def remove(k: K, b: B): Rxn[Boolean] = fa.remove(k, g(b))
     final override def refLike(key: K, b: B)(implicit B: Eq[B]): RefLike[B] = {
       fa.refLike(key, g(b))(using Eq.by[A, B](f)).imap(f)(g)
     }
@@ -131,36 +155,28 @@ object Map extends MapPlatform {
       (fa.put(k, ab._1) * fb.put(k, ab._2)).map(mergeOptions)
     final override def putIfAbsent(k: K, ab: (A, B)): Rxn[Option[(A, B)]] =
       (fa.putIfAbsent(k, ab._1) * fb.putIfAbsent(k, ab._2)).map(mergeOptions)
-    final override def replace(k: K, ov: (A, B), nv: (A, B)): Rxn[Boolean] = {
-      fa.replace(k, ov._1, nv._1).flatMap { aWasReplaced =>
-        if (aWasReplaced) {
-          fb.replace(k, ov._2, nv._2).flatMap { bWasReplaced =>
-            if (bWasReplaced) {
-              Rxn.true_
-            } else { // we have to change back the `A`:
-              fa.replace(k, nv._1, ov._1).flatMap { ok =>
-                Rxn.unsafe.assert(ok).as(false)
-              }
-            }
-          }
-        } else {
-          Rxn.false_
-        }
-      }
-    }
     final override def get(k: K): Rxn[Option[(A, B)]] =
       (fa.get(k) * fb.get(k)).map(mergeOptions)
     final override def del(k: K): Rxn[Boolean] =
       (fa.del(k) * fb.del(k)).map(mergeBooleans)
-    final override def remove(k: K, ab: (A, B)): Rxn[Boolean] =
-      (fa.remove(k, ab._1) * fb.remove(k, ab._2)).map(mergeBooleans)
-    final override def refLike(k: K, ab: (A, B))(implicit AB: Eq[(A, B)]): RefLike[(A, B)] = {
-      val eqA = Eq.by[A, (A, B)](a => (a, nullOf[B])) // TODO
-      val eqB = Eq.by[B, (A, B)](b => (nullOf[A], b)) // TODO
-      RefLike.invariantSemigroupalForDevTauriChoamCoreRefLike.product(
-        fa.refLike(k, ab._1)(using eqA),
-        fb.refLike(k, ab._2)(using eqB),
-      )
+    final override def refLike(k: K, default: (A, B))(implicit AB: Eq[(A, B)]): RefLike[(A, B)] = {
+      new RefLikeDefaults[(A, B)] {
+        final override def get: Rxn[(A, B)] = fa.get(k).map2(fb.get(k)) { case (optA, optB) =>
+          (optA.getOrElse(default._1), optB.getOrElse(default._2))
+        }
+        final override def modify[X](f: ((A, B)) => ((A, B), X)): Rxn[X] = this.get.flatMap { ab =>
+          val abx = f(ab)
+          this.set(abx._1).as(abx._2)
+        }
+        final override def set(ab: (A, B)): Rxn[Unit] = if (AB.eqv(ab, default)) {
+          fa.del(k) *> fb.del(k).void
+        } else {
+          fa.put(k, ab._1) *> fb.put(k, ab._2).void
+        }
+        final override def update(f: ((A, B)) => (A, B)): Rxn[Unit] = this.modify[Unit] { ab =>
+          (f(ab), ())
+        }
+      }
     }
   }
 
