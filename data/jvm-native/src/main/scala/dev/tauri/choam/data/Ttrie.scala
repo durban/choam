@@ -22,7 +22,7 @@ import scala.collection.concurrent.{ TrieMap, Map => CMap }
 import scala.collection.immutable.{ Map => ScalaMap }
 import scala.util.hashing.byteswap32
 
-import cats.kernel.{ Hash, Order }
+import cats.kernel.{ Hash, Order, Eq }
 import cats.syntax.all._
 
 import core.{ Rxn, Ref, RefLike, RefLikeDefaults }
@@ -278,13 +278,13 @@ private final class Ttrie[K, V] private (
     }
   }
 
-  final override def refLike(key: K, default: V): RefLike[V] = new RefLikeDefaults[V] {
+  final override def refLike(key: K, default: V)(implicit V: Eq[V]): RefLike[V] = new RefLikeDefaults[V] {
 
     final override def get: Rxn[V] =
       self.get(key).map(_.getOrElse(default))
 
     final override def set(nv: V): Rxn[Unit] = {
-      if (equ(nv, default)) {
+      if (V.eqv(nv, default)) {
         self.del(key).void
       } else {
         self.put(key, nv).void
@@ -300,7 +300,7 @@ private final class Ttrie[K, V] private (
             oldVal
           }
           val newVal = f(currVal)
-          if (equ(newVal, default)) {
+          if (V.eqv(newVal, default)) {
             // it is possible, that we created
             // the ref with `Init`, so we must
             // write `End`, to not leak memory:
@@ -321,7 +321,7 @@ private final class Ttrie[K, V] private (
             oldVal
           }
           val (newVal, c) = f(currVal)
-          if (equ(newVal, default)) {
+          if (V.eqv(newVal, default)) {
             // it is possible, that we created
             // the ref with `Init`, so we must
             // write `End`, to not leak memory:

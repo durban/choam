@@ -24,7 +24,7 @@ import scala.math.Ordering
 
 import cats.{ Monad, Semigroupal, ~> }
 import cats.arrow.FunctionK
-import cats.kernel.{ Order, Hash }
+import cats.kernel.{ Order, Hash, Eq }
 import cats.effect.IO
 import cats.effect.kernel.{ Ref => CatsRef }
 
@@ -51,12 +51,12 @@ final class RefSpec_Imapped_ThreadConfinedMcas_IO
   with RefSpec_Imapped[IO]
 
 trait RefSpec_Arr[F[_]] extends RefSpec_Real[F] { this: McasImplSpec =>
-  override def newRef[A](initial: A): F[RefType[A]] =
+  override def newRef[A : Eq](initial: A): F[RefType[A]] =
     Ref.array(1, initial).run[F].map(_.refs(0))
 }
 
 trait RefSpec_Ref2[F[_]] extends RefSpec_Real[F] { this: McasImplSpec =>
-  override def newRef[A](initial: A): F[RefType[A]] =
+  override def newRef[A : Eq](initial: A): F[RefType[A]] =
     Ref.refP2[A, String](initial, "foo").map(_._1).run[F]
 }
 
@@ -66,7 +66,7 @@ trait RefSpec_Imapped[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
 
   final override type RefType[A] = RefLike[A]
 
-  override def newRef[A](initial: A): F[RefType[A]] = {
+  override def newRef[A : Eq](initial: A): F[RefType[A]] = {
     Ref[Wrapper[A]](new Wrapper(initial)).run[F].map { ref =>
       RefLike.invariantSemigroupalForDevTauriChoamCoreRefLike.imap(ref)(_.value)(new Wrapper(_))
     }
@@ -77,7 +77,7 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
 
   override type RefType[A] = Ref[A]
 
-  override def newRef[A](initial: A): F[RefType[A]] = {
+  override def newRef[A : Eq](initial: A): F[RefType[A]] = {
     F.delay(ThreadLocalRandom.current().nextBoolean()).flatMap { padded =>
       val str = if (padded) AllocationStrategy.Padded else AllocationStrategy.Unpadded
       Ref(initial, str).run[F]
@@ -218,7 +218,7 @@ trait RefLikeSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
   type RefType[A] <: RefLike[A]
 
-  def newRef[A](initial: A): F[RefType[A]]
+  def newRef[A : Eq](initial: A): F[RefType[A]]
 
   test("ifM instead of guard/guardNot") {
     for {

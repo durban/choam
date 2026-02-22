@@ -20,7 +20,7 @@ package data
 
 import scala.collection.immutable.{ Map => ScalaMap, ArraySeq }
 
-import cats.kernel.Order
+import cats.kernel.{ Order, Eq }
 import cats.data.Chain
 import cats.collections.AvlMap
 
@@ -126,13 +126,13 @@ private final class SimpleOrderedMap[K, V] private (
     }
   }
 
-  final override def refLike(key: K, default: V): RefLike[V] = new RefLikeDefaults[V] {
+  final override def refLike(key: K, default: V)(implicit V: Eq[V]): RefLike[V] = new RefLikeDefaults[V] {
 
     final def get: Rxn[V] =
       self.get(key).map(_.getOrElse(default))
 
     final override def set(nv: V): Rxn[Unit] = {
-      if (equ(nv, default)) {
+      if (V.eqv(nv, default)) {
         repr.update { am => am.remove(key) }
       } else {
         repr.update { am => am + (key, nv) }
@@ -143,7 +143,7 @@ private final class SimpleOrderedMap[K, V] private (
       repr.update { am =>
         val currVal = am.get(key).getOrElse(default)
         val newVal = f(currVal)
-        if (equ(newVal, default)) am.remove(key)
+        if (V.eqv(newVal, default)) am.remove(key)
         else am + (key, newVal)
       }
     }
@@ -152,7 +152,7 @@ private final class SimpleOrderedMap[K, V] private (
       repr.modify { am =>
         val currVal = am.get(key).getOrElse(default)
         val (newVal, c) = f(currVal)
-        if (equ(newVal, default)) (am.remove(key), c)
+        if (V.eqv(newVal, default)) (am.remove(key), c)
         else (am + ((key, newVal)), c)
       }
     }

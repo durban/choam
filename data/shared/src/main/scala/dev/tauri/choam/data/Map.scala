@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package data
 
-import cats.kernel.{ Hash, Order }
+import cats.kernel.{ Eq, Hash, Order }
 import cats.{ Invariant, InvariantSemigroupal }
 import cats.data.Chain
 import cats.syntax.all._
@@ -33,15 +33,17 @@ sealed trait Map[K, V] { self =>
   // TODO: a variant of `del` could return the old value (if any)
   // TODO: think about a `putIfPresent` (in CSLM this is another overload of `replace`)
 
+  def get(k: K): Rxn[Option[V]]
   def put(k: K, v: V): Rxn[Option[V]]
   def putIfAbsent(k: K, v: V): Rxn[Option[V]]
-  def replace(k: K, ov: V, nv: V): Rxn[Boolean] // TODO:0.5: this works with reference eq
-  def get(k: K): Rxn[Option[V]]
   def del(k: K): Rxn[Boolean]
-  def remove(k: K, v: V): Rxn[Boolean] // TODO:0.5: this works with reference eq
-  def refLike(key: K, default: V): RefLike[V]
 
-  final def asCats[F[_]](default: V)(implicit F: Reactive[F]): MapRef[F, K, V] = {
+  def refLike(key: K, default: V)(implicit V: Eq[V]): RefLike[V]
+
+  def replace(k: K, ov: V, nv: V): Rxn[Boolean] // TODO:0.5: this works with reference eq
+  def remove(k: K, v: V): Rxn[Boolean] // TODO:0.5: this works with reference eq
+
+  final def asCats[F[_]](default: V)(implicit F: Reactive[F], V: Eq[V]): MapRef[F, K, V] = { // TODO:0.5: default works with reference eq
     new MapRef[F, K, V] {
       final override def apply(k: K): CatsRef[F, V] =
         self.refLike(k, default).asCats
@@ -115,7 +117,9 @@ object Map extends MapPlatform {
     final override def get(k: K): Rxn[Option[B]] = fa.get(k).map(_.map(f))
     final override def del(k: K): Rxn[Boolean] = fa.del(k)
     final override def remove(k: K, b: B): Rxn[Boolean] = fa.remove(k, g(b))
-    final override def refLike(key: K, b: B): RefLike[B] = fa.refLike(key, g(b)).imap(f)(g)
+    final override def refLike(key: K, b: B)(implicit B: Eq[B]): RefLike[B] = {
+      fa.refLike(key, g(b))(using Eq.by[A, B](f)).imap(f)(g)
+    }
   }
 
   private class ProductMap[K, A, B](fa: Map[K, A], fb: Map[K, B]) extends Map[K, (A, B)] {
@@ -150,8 +154,14 @@ object Map extends MapPlatform {
       (fa.del(k) * fb.del(k)).map(mergeBooleans)
     final override def remove(k: K, ab: (A, B)): Rxn[Boolean] =
       (fa.remove(k, ab._1) * fb.remove(k, ab._2)).map(mergeBooleans)
-    final override def refLike(k: K, ab: (A, B)): RefLike[(A, B)] =
-      RefLike.invariantSemigroupalForDevTauriChoamCoreRefLike.product(fa.refLike(k, ab._1), fb.refLike(k, ab._2))
+    final override def refLike(k: K, ab: (A, B))(implicit AB: Eq[(A, B)]): RefLike[(A, B)] = {
+      val eqA = Eq.by[A, (A, B)](a => (a, nullOf[B])) // TODO
+      val eqB = Eq.by[B, (A, B)](b => (nullOf[A], b)) // TODO
+      RefLike.invariantSemigroupalForDevTauriChoamCoreRefLike.product(
+        fa.refLike(k, ab._1)(using eqA),
+        fb.refLike(k, ab._2)(using eqB),
+      )
+    }
   }
 
   private[data] final override def unsafeSnapshot[F[_], K, V](m: Map[K, V])(implicit F: Reactive[F]) = {

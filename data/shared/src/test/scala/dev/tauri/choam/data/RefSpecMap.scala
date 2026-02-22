@@ -20,7 +20,7 @@ package data
 
 import scala.collection.immutable.{ Map => ScalaMap, Set => ScalaSet }
 
-import cats.kernel.{ Hash, Order }
+import cats.kernel.{ Hash, Order, Eq }
 import cats.effect.IO
 
 import core.{ RefLike, RefLikeSpec }
@@ -57,7 +57,7 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
 
   final override type RefType[A] = RefLike[A]
 
-  final override def newRef[A](initial: A): F[RefType[A]] =
+  final override def newRef[A : Eq](initial: A): F[RefType[A]] =
     newMap[String, A].map(_.refLike("foo", default = initial))
 
   def newMap[K : Hash : Order, V]: F[MapType[K, V]]
@@ -176,8 +176,30 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
       _ <- assertResultF(Map.unsafeSnapshot(m), ScalaMap.empty[String, String])
       _ <- ref.set("abc").run[F]
       _ <- assertResultF(Map.unsafeSnapshot(m), ScalaMap("foo" -> "abc"))
-      _ <- ref.set("").run[F]
+      _ <- ref.update(_ => "").run[F]
       _ <- assertResultF(Map.unsafeSnapshot(m), ScalaMap.empty[String, String])
+    } yield ()
+  }
+
+  test("Setting ref to a value eqv to the default should remove from the map") {
+    import RefSpecMap.Foo
+    val default1 = Foo("")
+    val default2 = Foo("")
+    val default3 = Foo("")
+    assert(default1 ne default2)
+    assert(default1 ne default3)
+    assert(default2 ne default3)
+    for {
+      m <- newMap[String, Foo]
+      ref = m.refLike(key = "foo", default = default1)
+      _ <- ref.set(Foo("bar")).run[F]
+      _ <- assertResultF(ref.get.run[F], Foo("bar"))
+      _ <- ref.set(default2).run[F]
+      _ <- assertResultF(Map.unsafeSnapshot(m), ScalaMap.empty[String, Foo])
+      _ <- ref.set(Foo("abc")).run[F]
+      _ <- assertResultF(Map.unsafeSnapshot(m), ScalaMap("foo" -> Foo("abc")))
+      _ <- ref.update(_ => default3).run[F]
+      _ <- assertResultF(Map.unsafeSnapshot(m), ScalaMap.empty[String, Foo])
     } yield ()
   }
 
@@ -258,5 +280,15 @@ trait RefSpecMap[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
       // map must've halved in size:
       _ <- assertResultF(Map.unsafeGetSize(m), S / 2)
     } yield ()
+  }
+}
+
+object RefSpecMap {
+
+  final case class Foo(s: String)
+
+  final object Foo {
+    implicit final def eqInst: Eq[Foo] =
+      Eq.fromUniversalEquals
   }
 }

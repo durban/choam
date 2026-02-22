@@ -20,7 +20,7 @@ package data
 
 import scala.collection.immutable.{ Map => ScalaMap, ArraySeq }
 
-import cats.kernel.Hash
+import cats.kernel.{ Hash, Eq }
 import cats.data.Chain
 import cats.collections.HashMap
 
@@ -131,13 +131,13 @@ private final class SimpleMap[K, V] private (
     }
   }
 
-  final override def refLike(key: K, default: V): RefLike[V] = new RefLikeDefaults[V] {
+  final override def refLike(key: K, default: V)(implicit V: Eq[V]): RefLike[V] = new RefLikeDefaults[V] {
 
     final def get: Rxn[V] =
       self.get(key).map(_.getOrElse(default))
 
     final override def set(nv: V): Rxn[Unit] = {
-      if (equ(nv, default)) {
+      if (V.eqv(nv, default)) {
         repr.update { hm => hm.removed(key) }
       } else {
         repr.update { hm => hm.updated(key, nv) }
@@ -148,7 +148,7 @@ private final class SimpleMap[K, V] private (
       repr.update { hm =>
         val currVal = hm.getOrElse(key, default)
         val newVal = f(currVal)
-        if (equ(newVal, default)) hm.removed(key)
+        if (V.eqv(newVal, default)) hm.removed(key)
         else hm.updated(key, newVal)
       }
     }
@@ -157,7 +157,7 @@ private final class SimpleMap[K, V] private (
       repr.modify { hm =>
         val currVal = hm.getOrElse(key, default)
         val (newVal, c) = f(currVal)
-        if (equ(newVal, default)) (hm.removed(key), c)
+        if (V.eqv(newVal, default)) (hm.removed(key), c)
         else (hm.updated(key, newVal), c)
       }
     }
