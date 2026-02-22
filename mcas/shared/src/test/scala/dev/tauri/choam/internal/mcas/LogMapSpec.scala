@@ -29,7 +29,7 @@ import munit.ScalaCheckSuite
 import org.scalacheck.{ Arbitrary, Gen }
 import org.scalacheck.Prop.forAll
 
-final class LogMap2Spec extends ScalaCheckSuite with SpecDefaultMcas { self =>
+final class LogMapSpec extends ScalaCheckSuite with SpecDefaultMcas { self =>
 
   implicit def arbMemLoc[A](implicit arbA: Arbitrary[A]): Arbitrary[MemoryLocation[A]] = Arbitrary {
     arbA.arbitrary.flatMap { a =>
