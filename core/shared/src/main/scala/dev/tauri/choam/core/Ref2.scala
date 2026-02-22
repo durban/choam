@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package core
 
-import cats.Show
+import cats.{ Show, Hash }
 
 sealed trait Ref2[A, B] {
 
@@ -49,4 +49,10 @@ object Ref2 {
 
   private[this] val _showInstance: Show[Ref2[Any, Any]] =
     Show.fromToString
+
+  implicit final def hashForDevTauriChoamCoreRef2[A, B]: Hash[Ref2[A, B]] =
+    _hashInstance.asInstanceOf[Hash[Ref2[A, B]]]
+
+  private[this] val _hashInstance: Hash[Ref2[Any, Any]] =
+    Hash.fromUniversalHashCode
 }

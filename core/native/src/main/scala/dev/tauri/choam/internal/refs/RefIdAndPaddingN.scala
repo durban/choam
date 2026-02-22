@@ -23,4 +23,25 @@ private abstract class RefIdAndPaddingN(private[this] val _id: Long) extends Pad
 
   final def id: Long =
     _id
+
+  final override def hashCode: Int = {
+    // `RefIdGen` generates IDs with
+    // Fibonacci hashing, so no need
+    // to hash them here even further.
+    // However, we use the upper 32
+    // bits, because they're likely
+    // a better hash (due to
+    // multiplicative hashing).
+    // Using `_id` also means that
+    // `Ref2` hash will not consider
+    // the ID of the 2nd `Ref`. But
+    // that's fine, as the IDs of the
+    // 2 refs are very likely close to
+    // each other, and, e.g., XORing
+    // them would actually be worse.
+    (this.id >>> 32).toInt
+    // IDs are globally unique, so the
+    // default `equals` (based on object
+    // identity) is fine for us.
+  }
 }

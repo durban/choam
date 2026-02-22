@@ -53,6 +53,7 @@ sealed trait Map[K, V] { self =>
     }
   }
 
+  // Note: not final because most subclasses override for performance
   def replace(k: K, ov: V, nv: V)(implicit V: Eq[V]): Rxn[Boolean] = {
     this.modify(k) {
       case None => (None, false)
@@ -61,6 +62,7 @@ sealed trait Map[K, V] { self =>
     }
   }
 
+  // Note: not final because most subclasses override for performance
   def remove(k: K, v: V)(implicit V: Eq[V]): Rxn[Boolean] = {
     this.modify(k) {
       case None => (None, false)

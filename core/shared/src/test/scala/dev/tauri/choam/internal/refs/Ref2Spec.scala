@@ -19,7 +19,7 @@ package dev.tauri.choam
 package internal
 package refs
 
-import cats.Show
+import cats.{ Show, Hash }
 
 import core.Ref2
 
@@ -63,6 +63,14 @@ abstract class Ref2Spec extends BaseSpec with SpecDefaultMcas {
     assert(r2 eq rr._2)
     assert(r2 == rr._2)
     assert(r1.toString != r2.toString)
+  }
+
+  test("hash") {
+    val rr1 = mkRef2[String, Int]("a", 42)
+    val rr2 = mkRef2[String, Int]("a", 42)
+    assertNotEquals(rr1.##, rr2.##) // with high probability
+    assertEquals(rr1.##, Hash[Ref2[String, Int]].hash(rr1))
+    assertEquals(rr1.##, (rr1._1.loc.id >>> 32).toInt) // this is an impl detail, but we test if for now
   }
 
   test("consistentRead") {

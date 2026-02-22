@@ -244,7 +244,7 @@ object Ref extends RefInstances0 {
   private[choam] abstract class CatsRefFromRef[F[_], A](self: Ref[A])(implicit F: Reactive[F])
     extends RefLike.CatsRefFromRefLike[F, A](self)(using F) {
 
-    override def get: F[A] =
+    final override def get: F[A] =
       Rxn.unsafe.directRead(self).run[F]
   }
 
