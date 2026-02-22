@@ -231,22 +231,39 @@ trait TestInstances extends TestInstances1 { self =>
     hashK: Hash[K],
     ordK: Order[K],
     arbV: Arbitrary[V],
+    cogV: Cogen[V],
   ): Arbitrary[data.Map[K, V]] = Arbitrary {
     implicitly[Arbitrary[List[(K, V)]]].arbitrary.flatMap { kvs =>
       Gen.oneOf(
-        data.Map.simpleHashMap[K, V],
-        data.Map.simpleOrderedMap[K, V],
-        data.Map.hashMap[K, V],
-        data.Map.orderedMap[K, V],
-      ).flatMap { rxn =>
-        Gen.delay {
-          this.unsafePerformForTest(rxn.flatMap { m =>
-            kvs.traverse_ { case (k, v) =>
-              m.put(k, v)
-            }.as(m)
-          })
-        }
-      }
+        Gen.delay(this.unsafePerformForTest(data.Map.simpleHashMap[K, V])),
+        Gen.delay(this.unsafePerformForTest(data.Map.simpleOrderedMap[K, V])),
+        Gen.delay(this.unsafePerformForTest(data.Map.hashMap[K, V])),
+        Gen.delay(this.unsafePerformForTest(data.Map.orderedMap[K, V])),
+        Gen.lzy {
+          val genVV = implicitly[Arbitrary[V => V]].arbitrary
+          for {
+            vv1 <- genVV
+            vv2 <- genVV
+            m <- this.arbDataMap[K, V].arbitrary
+          } yield m.imap(vv1)(vv2)
+        },
+        Gen.lzy {
+          for {
+            f1 <- implicitly[Arbitrary[Tuple2[V, V] => V]].arbitrary
+            f2 <- implicitly[Arbitrary[V => (V, V)]].arbitrary
+            m1 <- this.arbDataMap[K, V].arbitrary
+            m2 <- this.arbDataMap[K, V].arbitrary
+          } yield data.Map.invariantSemigroupalForDevTauriChoamDataMap[K].product(m1, m2).imap(f1)(f2)
+        },
+      ).flatMap(insertIntoMap(_, kvs))
+    }
+  }
+
+  private[laws] final def insertIntoMap[M[k, v] <: data.Map[k, v], K, V](m: M[K, V], kvs: List[(K, V)]): Gen[M[K, V]] = {
+    Gen.delay {
+      this.unsafePerformForTest(kvs.traverse_ { case (k, v) =>
+        m.put(k, v)
+      }.as(m))
     }
   }
 
@@ -260,8 +277,10 @@ trait TestInstances extends TestInstances1 { self =>
     val v = arbV.arbitrary.pureApply(Gen.Parameters.default, Seed(42L))
     this.unsafePerformForTest(m1.put(k, v)) : Unit
     val v1 = this.unsafePerformForTest(m1.get(k)).getOrElse(throw new AssertionError)
-    val v2 = this.unsafePerformForTest(m2.get(k)).getOrElse(throw new AssertionError)
-    eqV.eqv(v1, v2)
+    this.unsafePerformForTest(m2.get(k)) match {
+      case Some(v2) => eqV.eqv(v1, v2)
+      case None => false
+    }
   }
 }
 
@@ -317,17 +336,9 @@ trait TestInstances1 { this: TestInstances =>
   ): Arbitrary[data.Map.Extra[K, V]] = Arbitrary {
     implicitly[Arbitrary[List[(K, V)]]].arbitrary.flatMap { kvs =>
       Gen.oneOf(
-        data.Map.simpleHashMap[K, V],
-        data.Map.simpleOrderedMap[K, V],
-      ).flatMap { rxn =>
-        Gen.delay {
-          this.unsafePerformForTest(rxn.flatMap { m =>
-            kvs.traverse_ { case (k, v) =>
-              m.put(k, v)
-            }.as(m)
-          })
-        }
-      }
+        Gen.delay(this.unsafePerformForTest(data.Map.simpleHashMap[K, V])),
+        Gen.delay(this.unsafePerformForTest(data.Map.simpleOrderedMap[K, V])),
+      ).flatMap(this.insertIntoMap(_, kvs))
     }
   }
 
