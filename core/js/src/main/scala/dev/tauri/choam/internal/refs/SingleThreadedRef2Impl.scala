@@ -34,4 +34,25 @@ private final class SingleThreadedRef2Impl[A, B](a: A, b: B)(
 
   final override def toString: String =
     refStringFrom2(i0, i1)
+
+  final override def hashCode: Int = {
+    // `RefIdGen` generates IDs with
+    // Fibonacci hashing, so no need
+    // to hash them here even further.
+    // However, we use the upper 32
+    // bits, because they're likely
+    // a better hash (due to
+    // multiplicative hashing).
+    // Using `i0` also means that
+    // the hash will not consider
+    // the ID of the 2nd `Ref`. But
+    // that's fine, as the IDs of the
+    // 2 refs are very likely close to
+    // each other, and, e.g., XORing
+    // them would actually be worse.
+    (this.i0 >>> 32).toInt
+    // IDs are globally unique, so the
+    // default `equals` (based on object
+    // identity) is fine for us.
+  }
 }
