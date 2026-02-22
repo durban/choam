@@ -35,26 +35,35 @@ trait TestInstances extends TestInstances1 { self =>
 
   protected def rigInstance: RefIdGen
 
+  /**
+   * A `Gen` utility which works kind of like `F.delay { ... }`
+   *
+   * We need this, because `Gen.delay` works differently (it
+   * works kind of like `F.defer`).
+   */
+  private[laws] final def genDelay[A](block: => A): Gen[A] =
+    Gen.delay { Gen.const(block) }
+
   implicit def arbRef[A](implicit arbA: Arbitrary[A]): Arbitrary[Ref[A]] = Arbitrary {
     arbA.arbitrary.flatMap { a =>
       Gen.oneOf(
         Gen.oneOf(
-          Gen.delay(Ref.unsafe(a, AllocationStrategy.Unpadded, this.rigInstance)),
-          Gen.delay(Ref.unsafe(a, AllocationStrategy.Padded, this.rigInstance)),
+          genDelay(Ref.unsafe(a, AllocationStrategy.Unpadded, this.rigInstance)),
+          genDelay(Ref.unsafe(a, AllocationStrategy.Padded, this.rigInstance)),
         ),
         Gen.oneOf(
-          Gen.delay(Ref2.p1p1[A, String](a, "foo").unsafePerform(this.mcasImpl)._1),
-          Gen.delay(Ref2.p1p1[String, A]("foo", a).unsafePerform(this.mcasImpl)._2),
-          Gen.delay(Ref2.p2[A, String](a, "foo").unsafePerform(this.mcasImpl)._1),
-          Gen.delay(Ref2.p2[String, A]("foo", a).unsafePerform(this.mcasImpl)._2),
+          genDelay(Ref2.p1p1[A, String](a, "foo").unsafePerform(this.mcasImpl)._1),
+          genDelay(Ref2.p1p1[String, A]("foo", a).unsafePerform(this.mcasImpl)._2),
+          genDelay(Ref2.p2[A, String](a, "foo").unsafePerform(this.mcasImpl)._1),
+          genDelay(Ref2.p2[String, A]("foo", a).unsafePerform(this.mcasImpl)._2),
         ),
         Gen.choose(1, 8).flatMap { s =>
           Arbitrary.arbBool.arbitrary.flatMap { sparse =>
             Arbitrary.arbBool.arbitrary.flatMap { flat =>
               val str = AllocationStrategy(sparse = sparse, flat = flat, padded = false)
-              Gen.delay { Ref.unsafeArray[A](size = s, initial = a, str = str, rig = this.rigInstance) }.flatMap { arr =>
+              genDelay { Ref.unsafeArray[A](size = s, initial = a, str = str, rig = this.rigInstance) }.flatMap { arr =>
                 Gen.oneOf(Gen.const(0), Gen.choose(0, s - 1)).flatMap { idx =>
-                  Gen.delay { arr.getOrCreateRefOrNull(idx) }
+                  genDelay { arr.getOrCreateRefOrNull(idx) }
                 }
               }
             }
@@ -160,13 +169,13 @@ trait TestInstances extends TestInstances1 { self =>
         } yield (one * two).map { bb => if (flag) bb._1 else bb._2 }
       },
       arbB.arbitrary.flatMap { b =>
-        Gen.delay {
+        genDelay {
           val ref = Ref.unsafe(b, AllocationStrategy.Padded, this.rigInstance)
           ResetRxn(ref.get, Set(ResetRef(ref, b)))
         }
       },
       arbB.arbitrary.flatMap { b =>
-        Gen.delay {
+        genDelay {
           val ref = Ref.unsafe(b, AllocationStrategy.Padded, this.rigInstance)
           ResetRxn(Rxn.unsafe.directRead(ref), Set(ResetRef(ref, b)))
         }
@@ -175,7 +184,7 @@ trait TestInstances extends TestInstances1 { self =>
         ab <- arbAB.arbitrary
         a0 <- arbA.arbitrary
         aa <- arbAA.arbitrary
-        ref <- Gen.delay { Ref.unsafe(a0, AllocationStrategy.Padded, this.rigInstance) }
+        ref <- genDelay { Ref.unsafe(a0, AllocationStrategy.Padded, this.rigInstance) }
       } yield {
         val rxn = ref.modify[B] { aOld => (aa(aOld), ab(aOld)) }
         ResetRxn(rxn, Set(ResetRef(ref, a0)))
@@ -185,7 +194,7 @@ trait TestInstances extends TestInstances1 { self =>
       //   aa <- arbAA.arbitrary
       //   ab <- arbAB.arbitrary
       //   a0 <- arbA.arbitrary
-      //   ref <- Gen.delay { Ref.unsafe(a0) }
+      //   ref <- genDelay { Ref.unsafe(a0) }
       // } yield {
       //   val rxn = ref.unsafeDirectRead.flatMap { oldA =>
       //     val newA = aa(oldA)
@@ -198,7 +207,7 @@ trait TestInstances extends TestInstances1 { self =>
           r <- arbResetRxn[A, B].arbitrary
           b <- arbB.arbitrary
           b2 <- arbB.arbitrary
-          ref <- Gen.delay { Ref.unsafe[B](b, AllocationStrategy.Padded, this.rigInstance) }
+          ref <- genDelay { Ref.unsafe[B](b, AllocationStrategy.Padded, this.rigInstance) }
         } yield {
           ResetRxn(
             r.rxn.postCommit(ref.set(b2)),
@@ -235,10 +244,10 @@ trait TestInstances extends TestInstances1 { self =>
   ): Arbitrary[data.Map[K, V]] = Arbitrary {
     implicitly[Arbitrary[List[(K, V)]]].arbitrary.flatMap { kvs =>
       Gen.oneOf(
-        Gen.delay(this.unsafePerformForTest(data.Map.simpleHashMap[K, V])),
-        Gen.delay(this.unsafePerformForTest(data.Map.simpleOrderedMap[K, V])),
-        Gen.delay(this.unsafePerformForTest(data.Map.hashMap[K, V])),
-        Gen.delay(this.unsafePerformForTest(data.Map.orderedMap[K, V])),
+        genDelay(this.unsafePerformForTest(data.Map.simpleHashMap[K, V])),
+        genDelay(this.unsafePerformForTest(data.Map.simpleOrderedMap[K, V])),
+        genDelay(this.unsafePerformForTest(data.Map.hashMap[K, V])),
+        genDelay(this.unsafePerformForTest(data.Map.orderedMap[K, V])),
         Gen.lzy {
           val genVV = implicitly[Arbitrary[V => V]].arbitrary
           for {
@@ -260,7 +269,7 @@ trait TestInstances extends TestInstances1 { self =>
   }
 
   private[laws] final def insertIntoMap[M[k, v] <: data.Map[k, v], K, V](m: M[K, V], kvs: List[(K, V)]): Gen[M[K, V]] = {
-    Gen.delay {
+    genDelay {
       this.unsafePerformForTest(kvs.traverse_ { case (k, v) =>
         m.put(k, v)
       }.as(m))
@@ -336,8 +345,8 @@ trait TestInstances1 { this: TestInstances =>
   ): Arbitrary[data.Map.Extra[K, V]] = Arbitrary {
     implicitly[Arbitrary[List[(K, V)]]].arbitrary.flatMap { kvs =>
       Gen.oneOf(
-        Gen.delay(this.unsafePerformForTest(data.Map.simpleHashMap[K, V])),
-        Gen.delay(this.unsafePerformForTest(data.Map.simpleOrderedMap[K, V])),
+        genDelay(this.unsafePerformForTest(data.Map.simpleHashMap[K, V])),
+        genDelay(this.unsafePerformForTest(data.Map.simpleOrderedMap[K, V])),
       ).flatMap(this.insertIntoMap(_, kvs))
     }
   }

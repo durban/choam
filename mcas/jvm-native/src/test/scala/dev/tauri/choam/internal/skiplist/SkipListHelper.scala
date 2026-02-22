@@ -30,12 +30,12 @@ trait SkipListHelper {
   implicit def arbSkipListMap[K, V](implicit ordK: Order[K], arbK: Arbitrary[K], arbV: Arbitrary[V]): Arbitrary[SkipListMap[K, V]] = {
     Arbitrary {
       for {
-        m <- Gen.delay { new SkipListMap[K, V] }
+        m <- Gen.delay { Gen.const(new SkipListMap[K, V]) }
         ks <- implicitly[Arbitrary[Set[K]]].arbitrary
         _ <- ks.toList.traverse_ { k =>
           arbV.arbitrary.flatMap { v =>
             Gen.delay {
-              m.put(k, v)
+              Gen.const[Unit](m.put(k, v) : Unit)
             }
           }
         }
