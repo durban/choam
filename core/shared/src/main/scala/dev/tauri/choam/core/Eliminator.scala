@@ -28,7 +28,7 @@ object Eliminator {
   private[core] abstract class UnsealedEliminator[-A, +B, -C, +D]
     extends Eliminator[A, B, C, D]
 
-  def apply[A, B, C, D](
+  final def apply[A, B, C, D](
     left: A => Rxn[B],
     tLeft: A => D,
     right: C => Rxn[D],
@@ -39,7 +39,7 @@ object Eliminator {
     }
   }
 
-  private[choam] def unsafe[A, B, C, D](
+  private[choam] final def unsafe[A, B, C, D](
     left: A => Rxn[B],
     tLeft: A => D,
     right: C => Rxn[D],

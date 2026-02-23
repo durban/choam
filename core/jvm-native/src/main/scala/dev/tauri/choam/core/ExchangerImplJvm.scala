@@ -408,14 +408,14 @@ private final class PrimaryExchangerImplJvm[A, B] private[core] ()
 
 private object ExchangerImplJvm {
 
-  private[core] def unsafe[A, B]: Exchanger[A, B] =
+  private[core] final def unsafe[A, B]: Exchanger[A, B] =
     new PrimaryExchangerImplJvm[A, B]
 
   private[core] type StatMap =
     Map[Exchanger.Key, Any]
 
   private[core] final object StatMap {
-    def empty: StatMap =
+    final def empty: StatMap =
       Map.empty
   }
 
@@ -448,8 +448,7 @@ private object ExchangerImplJvm {
       misses: Byte,
       spinShift: Byte,
       exchanges: Byte,
-    ): Int ={
-
+    ): Int = {
       var result: Int = toUnsignedInt(exchanges)
       result |= (toUnsignedInt(spinShift) << 8)
       result |= (toUnsignedInt(misses) << 16)
