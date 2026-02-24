@@ -30,6 +30,7 @@ import org.scalacheck.Prop
 import munit.DisciplineSuite
 
 import core.{ Rxn, Ref, RefLike, Reactive, AsyncReactive }
+import stm.{ TRef }
 import internal.mcas.Mcas
 
 final class LawsSpecThreadConfinedMcas
@@ -87,6 +88,7 @@ trait LawsSpec
 
     checkAll("Order[Ref[Int]]", OrderTests[Ref[Int]].order)
     checkAll("Hash[Ref[Int]]", HashTests[Ref[Int]].hash)
+    checkAll("Hash[TRef[Int]]", HashTests[TRef[Int]].hash)
 
     checkAll("InvariantSemigroupal[RefLike]", InvariantSemigroupalTests[RefLike].invariantSemigroupal[String, Int, Long])
     checkAll("InvariantSemigroupal[Map]", InvariantSemigroupalTests[data.Map[String, *]].invariantSemigroupal[String, Int, Long])

@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import scala.concurrent.duration._
 
+import cats.kernel.{ Eq, Hash }
 import cats.effect.IO
 
 import internal.mcas.{ Consts, MemoryLocation }
@@ -88,6 +89,17 @@ trait TRefSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
+  test("Hash[TRef] instance") {
+    for {
+      ref1 <- newTRef(42)
+      ref2 <- newTRef(42)
+      _ <- assertF(Eq[TRef[Int]].eqv(ref1, ref1))
+      _ <- assertF(Eq[TRef[Int]].neqv(ref1, ref2))
+      _ <- assertEqualsF(Hash[TRef[Int]].hash(ref1), ref1.##)
+      _ <- assertNotEqualsF(Hash[TRef[Int]].hash(ref1), Hash[TRef[Int]].hash(ref2)) // with high probability
+    } yield ()
+  }
+
   test("Internal: TRef should be a Ref") {
     for {
       tr <- newTRef(42)
@@ -147,7 +159,7 @@ trait TRefSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("internal: refImpl") {
+  test("Internal: refImpl") {
     for {
       r <- newTRef(42)
       rr = r.refImpl

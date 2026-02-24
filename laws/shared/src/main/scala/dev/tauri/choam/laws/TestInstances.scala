@@ -27,6 +27,7 @@ import org.scalacheck.{ Gen, Arbitrary, Cogen }
 import org.scalacheck.rng.Seed
 
 import core.{ Rxn, Ref, Ref2, RefLike }
+import stm.TRef
 import internal.mcas.{ Mcas, RefIdGen }
 
 trait TestInstances extends TestInstances1 { self =>
@@ -76,6 +77,18 @@ trait TestInstances extends TestInstances1 { self =>
   implicit def cogenRef[A]: Cogen[Ref[A]] = {
     Cogen.cogenLong.contramap[Ref[A]] { ref =>
       ref.loc.id
+    }
+  }
+
+  implicit def arbTRef[A](implicit arbA: Arbitrary[A]): Arbitrary[TRef[A]] = Arbitrary {
+    arbA.arbitrary.flatMap { a =>
+      genDelay(TRef.unsafeRefWithId(a, this.rigInstance.nextId()))
+    }
+  }
+
+  implicit def cogenTRef[A]: Cogen[TRef[A]] = {
+    Cogen.cogenLong.contramap[TRef[A]] { tref =>
+      tref.refImpl.loc.id
     }
   }
 

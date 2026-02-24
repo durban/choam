@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package stm
 
+import cats.kernel.Hash
+
 import internal.mcas.Mcas
 
 sealed trait TRef[A] {
@@ -34,7 +36,7 @@ sealed trait TRef[A] {
   private[choam] def refImpl: core.Ref[A]
 }
 
-object TRef {
+object TRef extends TRefInstances0 {
 
   private[choam] trait UnsealedTRef[A] extends TRef[A]
 
@@ -51,4 +53,13 @@ object TRef {
   private[this] final def impl[A](a: A, id: Long): TRefImpl[A] = {
     new TRefImpl[A](a, id)
   }
+}
+
+private[stm] sealed abstract class TRefInstances0 { this: TRef.type =>
+
+  implicit final def hashForDevTauriChoamStmTRef[A]: Hash[TRef[A]] =
+    _hashInstance.asInstanceOf[Hash[TRef[A]]]
+
+  private[this] val _hashInstance: Hash[TRef[Any]] =
+    Hash.fromUniversalHashCode
 }
