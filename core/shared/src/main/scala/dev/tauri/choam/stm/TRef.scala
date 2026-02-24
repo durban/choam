@@ -19,6 +19,7 @@ package dev.tauri.choam
 package stm
 
 import cats.kernel.{ Hash, Order }
+import cats.Show
 
 import internal.mcas.{ Mcas, MemoryLocation }
 
@@ -62,6 +63,12 @@ private[stm] sealed abstract class TRefInstances0 extends TRefInstances1 { this:
 
   private[this] val _hashInstance: Hash[TRef[Any]] =
     Hash.fromUniversalHashCode
+
+  implicit final def showForDevTauriChoamStmTRef[A]: Show[TRef[A]] =
+    _showInstance.asInstanceOf[Show[TRef[A]]]
+
+  private[this] val _showInstance: Show[TRef[Any]] =
+    Show.fromToString
 }
 
 private[stm] sealed abstract class TRefInstances1 { this: TRef.type =>

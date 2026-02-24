@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
 
 import cats.kernel.{ Eq, Hash, Order }
+import cats.Show
 import cats.effect.IO
 
 import internal.mcas.{ Consts, MemoryLocation }
@@ -98,6 +99,16 @@ trait TRefSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       _ <- assertEqualsF(Hash[TRef[Int]].hash(ref1), ref1.##)
       _ <- assertNotEqualsF(Hash[TRef[Int]].hash(ref1), Hash[TRef[Int]].hash(ref2)) // with high probability
       _ <- assertF(Order[TRef[Int]].neqv(ref1, ref2))
+    } yield ()
+  }
+
+  test("Show instance") {
+    for {
+      ref1 <- newTRef(42)
+      ref2 <- newTRef(42)
+      _ <- assertEqualsF(Show[TRef[Int]].show(ref1), ref1.toString)
+      _ <- assertNotEqualsF(Show[TRef[Int]].show(ref1), Show[TRef[Int]].show(ref2)) // with high probability
+      _ <- assertF(ref1.toString.startsWith("TRef@"))
     } yield ()
   }
 
