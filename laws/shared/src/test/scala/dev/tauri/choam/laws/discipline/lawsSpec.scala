@@ -88,6 +88,7 @@ trait LawsSpec
 
     checkAll("Order[Ref[Int]]", OrderTests[Ref[Int]].order)
     checkAll("Hash[Ref[Int]]", HashTests[Ref[Int]].hash)
+    checkAll("Order[TRef[Int]]", OrderTests[TRef[Int]].order)
     checkAll("Hash[TRef[Int]]", HashTests[TRef[Int]].hash)
 
     checkAll("InvariantSemigroupal[RefLike]", InvariantSemigroupalTests[RefLike].invariantSemigroupal[String, Int, Long])

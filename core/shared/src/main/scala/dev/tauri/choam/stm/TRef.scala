@@ -18,9 +18,9 @@
 package dev.tauri.choam
 package stm
 
-import cats.kernel.Hash
+import cats.kernel.{ Hash, Order }
 
-import internal.mcas.Mcas
+import internal.mcas.{ Mcas, MemoryLocation }
 
 sealed trait TRef[A] {
 
@@ -55,11 +55,21 @@ object TRef extends TRefInstances0 {
   }
 }
 
-private[stm] sealed abstract class TRefInstances0 { this: TRef.type =>
+private[stm] sealed abstract class TRefInstances0 extends TRefInstances1 { this: TRef.type =>
 
   implicit final def hashForDevTauriChoamStmTRef[A]: Hash[TRef[A]] =
     _hashInstance.asInstanceOf[Hash[TRef[A]]]
 
   private[this] val _hashInstance: Hash[TRef[Any]] =
     Hash.fromUniversalHashCode
+}
+
+private[stm] sealed abstract class TRefInstances1 { this: TRef.type =>
+
+  implicit final def orderForDevTauriChoamStmTRef[A]: Order[TRef[A]] =
+    _orderInstance.asInstanceOf[Order[TRef[A]]]
+
+  private[this] val _orderInstance: Order[TRef[Any]] = { (x, y) =>
+    MemoryLocation.globalCompare(x.refImpl.loc, y.refImpl.loc)
+  }
 }
