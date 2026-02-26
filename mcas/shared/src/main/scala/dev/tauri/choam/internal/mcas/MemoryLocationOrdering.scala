@@ -57,9 +57,17 @@ private final class MemoryLocationOrdering[A]
     if (a eq b) {
       0
     } else if (ah == bh) {
-      impossible(s"[globalCompare] ref collision: ${a} and ${b}")
+      throwRefCollision(a, b)
     } else {
       go(0)
     }
+  }
+
+  private[this] final def throwRefCollision(a: MemoryLocation[?], b: MemoryLocation[?]): Nothing = {
+      val aCls = if (a ne null) a.getClass().getName() else "null"
+      val aIhc = System.identityHashCode(a).toHexString
+      val bCls = if (b ne null) b.getClass().getName() else "null"
+      val bIhc = System.identityHashCode(b).toHexString
+      impossible(s"[globalCompare] ref collision: ${a} (${aCls}@${aIhc}) and ${b} (${bCls}@${bIhc})")
   }
 }
