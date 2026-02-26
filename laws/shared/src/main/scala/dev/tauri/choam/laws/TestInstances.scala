@@ -28,7 +28,7 @@ import org.scalacheck.rng.Seed
 
 import core.{ Rxn, Ref, Ref2, RefLike }
 import stm.TRef
-import internal.mcas.{ Mcas, RefIdGen }
+import internal.mcas.{ Mcas, MemoryLocation, RefIdGen }
 
 trait TestInstances extends TestInstances1 { self =>
 
@@ -90,6 +90,14 @@ trait TestInstances extends TestInstances1 { self =>
     Cogen.cogenLong.contramap[TRef[A]] { tref =>
       tref.refImpl.loc.id
     }
+  }
+
+  implicit def arbMemLoc[A](implicit arbA: Arbitrary[A]): Arbitrary[MemoryLocation[A]] = Arbitrary {
+    arbRef[A].arbitrary.map(_.loc)
+  }
+
+  implicit def cogenMemLoc[A]: Cogen[MemoryLocation[A]] = {
+    Cogen.cogenLong.contramap[MemoryLocation[A]](_.id)
   }
 
   implicit def arbAxn[B](

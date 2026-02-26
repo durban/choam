@@ -20,7 +20,7 @@ package laws
 package discipline
 
 import cats.implicits._
-import cats.kernel.laws.discipline.{ SemigroupTests, MonoidTests, HashTests }
+import cats.kernel.laws.discipline.{ SemigroupTests, MonoidTests, HashTests, OrderTests }
 import cats.laws.discipline.{ DeferTests, MonadTests, AlignTests, InvariantTests, InvariantSemigroupalTests }
 import cats.effect.kernel.testkit.TestContext
 import cats.effect.laws.{ UniqueTests, ClockTests }
@@ -31,7 +31,7 @@ import munit.DisciplineSuite
 
 import core.{ Rxn, Ref, RefLike, Reactive, AsyncReactive }
 import stm.{ TRef }
-import internal.mcas.Mcas
+import internal.mcas.{ Mcas, MemoryLocation }
 
 final class LawsSpecThreadConfinedMcas
   extends LawsSpec
@@ -89,7 +89,7 @@ trait LawsSpec
     checkAll("Hash[Ref[Int]]", HashTests[Ref[Int]].hash)
     checkAll("Hash[TRef[Int]]", HashTests[TRef[Int]].hash)
 
-    // TODO: test Order[MemoryLocation[?]]
+    checkAll("Order[MemoryLocation[?]]", OrderTests[MemoryLocation[String]].order)
 
     checkAll("InvariantSemigroupal[RefLike]", InvariantSemigroupalTests[RefLike].invariantSemigroupal[String, Int, Long])
     checkAll("InvariantSemigroupal[Map]", InvariantSemigroupalTests[data.Map[String, *]].invariantSemigroupal[String, Int, Long])
