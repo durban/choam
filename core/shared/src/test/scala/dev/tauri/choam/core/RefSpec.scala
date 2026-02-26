@@ -146,9 +146,9 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
         val back: MemoryLocation[String] = bad.cast[String]
         back
       }
-      res <- Rxn.loc.modify[String, Double](r2, { ov =>
+      res <- r2.asInstanceOf[Ref[String]].modify[Double] { ov =>
         (ov + "b", 42.5)
-      }).run[F]
+      }.run[F]
       _ <- assertEqualsF(res, 42.5)
       _ <- assertResultF(r1.get.run[F], "ab")
     } yield ()
