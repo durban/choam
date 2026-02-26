@@ -18,8 +18,6 @@
 package dev.tauri.choam
 package core
 
-import scala.math.Ordering
-
 import cats.kernel.{ Hash, Order }
 import cats.{ InvariantSemigroupal, Show }
 import cats.data.State
@@ -322,14 +320,6 @@ object Ref extends RefInstances0 {
 }
 
 private[core] sealed abstract class RefInstances0 extends RefInstances1 { this: Ref.type =>
-
-  private[this] val _orderingInstance: Ordering[Ref[Any]] = new Ordering[Ref[Any]] {
-    final override def compare(x: Ref[Any], y: Ref[Any]): Int =
-      MemoryLocation.globalCompare(x.loc, y.loc)
-  }
-
-  implicit final def orderingForDevTauriChoamCoreRef[A]: Ordering[Ref[A]] =
-    _orderingInstance.asInstanceOf[Ordering[Ref[A]]]
 }
 
 private sealed abstract class RefInstances1 extends RefInstances2 { this: Ref.type =>
@@ -339,7 +329,7 @@ private sealed abstract class RefInstances1 extends RefInstances2 { this: Ref.ty
       MemoryLocation.globalCompare(x.loc, y.loc)
   }
 
-  implicit final def orderForDevTauriChoamCoreRef[A]: Order[Ref[A]] =
+  private[choam] final def orderForDevTauriChoamCoreRef[A]: Order[Ref[A]] =
     _orderInstance.asInstanceOf[Order[Ref[A]]]
 }
 

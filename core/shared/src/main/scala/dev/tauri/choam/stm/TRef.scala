@@ -73,7 +73,7 @@ private[stm] sealed abstract class TRefInstances0 extends TRefInstances1 { this:
 
 private[stm] sealed abstract class TRefInstances1 { this: TRef.type =>
 
-  implicit final def orderForDevTauriChoamStmTRef[A]: Order[TRef[A]] =
+  private[choam] final def orderForDevTauriChoamStmTRef[A]: Order[TRef[A]] =
     _orderInstance.asInstanceOf[Order[TRef[A]]]
 
   private[this] val _orderInstance: Order[TRef[Any]] = { (x, y) =>

@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package laws
 
-import cats.kernel.Order
+import cats.kernel.Eq
 import cats.laws.IsEq
 import cats.laws.IsEqArrow
 import cats.syntax.all._
@@ -28,7 +28,7 @@ import core.Ref
 sealed trait RefLaws {
 
   def equalsItself[A](r: Ref[A]): IsEq[Boolean] =
-    Order[Ref[A]].eqv(r, r) <-> true
+    Eq[Ref[A]].eqv(r, r) <-> true
 
   def uniqueIdsSameType[A](x: Ref[A], y: Ref[A]): IsEq[Boolean] = {
     ((x eq y) || (x.loc.id =!= y.loc.id)) <-> true
@@ -42,7 +42,7 @@ sealed trait RefLaws {
     r.## <-> r.loc.id.toInt
 
   def orderConsistentWithIdentity[A](x: Ref[A], y: Ref[A]): IsEq[Boolean] =
-    Order[Ref[A]].eqv(x, y) <-> (x eq y)
+    Eq[Ref[A]].eqv(x, y) <-> (x eq y)
 }
 
 object RefLaws {

@@ -20,11 +20,9 @@ package core
 
 import java.util.concurrent.ThreadLocalRandom
 
-import scala.math.Ordering
-
 import cats.{ Monad, Semigroupal, ~> }
 import cats.arrow.FunctionK
-import cats.kernel.{ Order, Hash, Eq }
+import cats.kernel.{ Hash, Eq }
 import cats.effect.IO
 import cats.effect.kernel.{ Ref => CatsRef }
 
@@ -201,14 +199,14 @@ trait RefSpec_Real[F[_]] extends RefLikeSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("Order/Ordering/Hash instances") {
-    Order[Ref[Int]]
-    Ordering[Ref[Int]]
-    Hash[Ref[Int]]
-    def parametric[A]: Int = {
-      (Order[Ref[A]].## ^ Ordering[Ref[A]].## ^ Hash[Ref[A]].##).abs
+  test("Hash instance") {
+    def parametric[A](ref: Ref[A]): Int = {
+      Hash[Ref[A]].hash(ref)
     }
-    assert(parametric[String] >= 0)
+    for {
+      ref <- newRef("foo")
+      _ <- assertEqualsF(parametric(ref), ref.##)
+    } yield ()
   }
 }
 

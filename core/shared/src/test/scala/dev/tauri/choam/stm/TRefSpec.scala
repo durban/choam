@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import scala.concurrent.duration._
 
-import cats.kernel.{ Eq, Hash, Order }
+import cats.kernel.{ Eq, Hash }
 import cats.Show
 import cats.effect.IO
 
@@ -90,7 +90,7 @@ trait TRefSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
     } yield ()
   }
 
-  test("Hash and Order instances") {
+  test("Hash instance") {
     for {
       ref1 <- newTRef(42)
       ref2 <- newTRef(42)
@@ -98,7 +98,6 @@ trait TRefSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       _ <- assertF(Eq[TRef[Int]].neqv(ref1, ref2))
       _ <- assertEqualsF(Hash[TRef[Int]].hash(ref1), ref1.##)
       _ <- assertNotEqualsF(Hash[TRef[Int]].hash(ref1), Hash[TRef[Int]].hash(ref2)) // with high probability
-      _ <- assertF(Order[TRef[Int]].neqv(ref1, ref2))
     } yield ()
   }
 
