@@ -113,9 +113,9 @@ trait MemoSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
         getTxnIdentity.flatMap { js =>
           if (is ne js) { // someone else already initialized, we can commit:
             Txn.pure((is, js))
-          } else { // we initialized, but let's roll back with 1/2 chance:
+          } else { // we initialized, but let's roll back with 1/4 chance:
             Txn.randomUuid.flatMap { uuid =>
-              if ((uuid.getLeastSignificantBits() % 2L) == 0L) Txn.retry
+              if ((uuid.getLeastSignificantBits() % 4L) == 0L) Txn.retry
               else Txn.pure((is, js))
             }
           }
@@ -132,6 +132,6 @@ trait MemoSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       _ <- assertF(i2 ne i)
       _ <- assertResultF(ctr.get.commit, 2)
     } yield ()
-    t.replicateA_(1000)
+    t.replicateA_(10000)
   }
 }
