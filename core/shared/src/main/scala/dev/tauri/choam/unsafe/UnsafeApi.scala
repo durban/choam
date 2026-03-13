@@ -28,9 +28,18 @@ object UnsafeApi {
 
   final def apply(rt: ChoamRuntime): UnsafeApi =
     new UnsafeApi(rt) {}
+
+  private[UnsafeApi] sealed abstract class AttemptRes[+A]
+  private[UnsafeApi] sealed abstract class SyncRes[+A] extends AttemptRes[A]
+  private[UnsafeApi] final class Done[A](val res: A) extends SyncRes[A]
+  private[UnsafeApi] final class Alt[A](val alt: Rxn[A]) extends SyncRes[A]
+  private[UnsafeApi] final object ImmediateFullRetry extends SyncRes[Nothing]
+  private[UnsafeApi] final class Suspend(val sus: CanSuspendInF) extends AttemptRes[Nothing]
 }
 
 sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
+
+  import UnsafeApi.{ SyncRes, Done, Alt, ImmediateFullRetry }
 
   // `atomically`: running in fully synchronous mode
 
@@ -44,25 +53,7 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
    * to methods called from the `block`.
    */
   final def atomically[A](block: InRxn => A): A = {
-    val state = Rxn.unsafe.startImperative(this.rt.mcasImpl, RetryStrategy.Default : RetryStrategy.CanSuspend[false])
-    state.initCtx(this.rt.mcasImpl.currentContext())
-
-    @tailrec
-    def go(): A = {
-      val result = this.runBlock(state, block)
-      if (state.imperativeCommit()) {
-        state.beforeResult()
-        result
-      } else {
-        this.imperativeRetry(state)
-        go()
-      }
-    }
-
-    val a = go()
-    // TODO: saveStats
-    state.invalidateCtx()
-    a
+    this.atomicallyWithAlts(block)
   }
 
   /** Like `atomically`, but only read-only operations are allowed */
@@ -70,24 +61,83 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
     this.atomically(block) // TODO: optimize for read-only execution
   }
 
-  private[this] final def runBlock[A](state: InRxn, block: InRxn => A): A = {
-    var done = false
-    var result: A = nullOf[A]
-    while (!done) {
-      try {
-        result = block(state)
-        done = true
-      } catch {
-        case _: RetryException =>
-          this.imperativeRetry(state)
+  private[choam] final def atomicallyWithAlts[A](block: Function1[InRxn, A], alts: Rxn[A]*): A = {
+    val state = Rxn.unsafe.startImperative(this.rt.mcasImpl, RetryStrategy.Default : RetryStrategy.CanSuspend[false])
+    state.initCtx(this.rt.mcasImpl.currentContext())
+    addAlts(state, alts)
+
+    @tailrec
+    def go(alt: Option[Rxn[A]]): A = {
+      val syncRes = alt match {
+        case None => this.runBlockSync(state, block)
+        case Some(alt) => this.runAltSync(state, alt)
+      }
+      syncRes match {
+        case newAlt: Alt[_] => go(Some(newAlt.alt.asInstanceOf[Rxn[A]]))
+        case done: Done[_] => done.res
+        case ImmediateFullRetry => go(None)
       }
     }
-    result
+
+    val a = go(None)
+    val res = if (state.imperativeCommit()) {
+      state.beforeResult()
+      a
+    } else {
+      val maybeAlt: Option[Rxn[A]] = this.imperativeRetryNoSuspend(state) match {
+        case Some(newAlt) => Some(newAlt.asInstanceOf[Rxn[A]])
+        case None => None
+      }
+      go(maybeAlt)
+    }
+    // TODO: saveStats
+    state.invalidateCtx()
+    res
   }
 
-  private[this] final def imperativeRetry(state: InRxn): Unit = {
-    val opt: Option[CanSuspendInF] = state.imperativeRetry()
-    _assert(opt.isEmpty)
+  private[this] final def addAlts[A](state: InRxn, alts: Seq[Rxn[A]]): Unit = {
+    val len = alts.length
+    var idx = len - 1
+    while (idx >= 0) {
+      jsCheckIdx(idx, len)
+      state.imperativeAddAlt(alts(idx))
+      idx -= 1
+    }
+  }
+
+  private[this] final def runBlockSync[A](state: InRxn, block: InRxn => A): SyncRes[A] = {
+    try {
+      new Done(block(state))
+    } catch {
+      case _: RetryException =>
+        this.imperativeRetryNoSuspend(state) match {
+          case Some(alt) => new Alt(alt.asInstanceOf[Rxn[A]])
+          case None => ImmediateFullRetry
+        }
+    }
+  }
+
+  private[this] final def runAltSync[A](state: InRxn, alt: Rxn[A]): SyncRes[A] = {
+    try {
+      new Done(state.embedRxn(alt))
+    } catch {
+      case _: RetryException =>
+        this.imperativeRetryNoSuspend(state) match {
+          case Some(newAlt) => new Alt(newAlt.asInstanceOf[Rxn[A]])
+          case None => ImmediateFullRetry
+        }
+    }
+  }
+
+  private[this] final def imperativeRetryNoSuspend(state: InRxn): Option[Rxn[?]] = {
+    state.imperativeRetry() match {
+      case Left(None) =>
+        None // ok, full retry without alt
+      case Left(Some(suspend)) =>
+        impossible(s"imperativeRetryNoSuspend got ${suspend}")
+      case Right(alt) =>
+        Some(alt)
+    }
   }
 
   // `atomicallyInAsync`: possibly async retries
@@ -146,14 +196,16 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
           } catch {
             case _: RetryException =>
               state.imperativeRetry() match {
-                case None =>
+                case Left(None) =>
                   // spinning done, retry immediately:
                   step(ctx)
-                case Some(canSuspend) =>
+                case Left(Some(canSuspend)) =>
                   // we'll suspend:
                   state.beforeSuspend()
                   val sus = canSuspend.suspend[F](mcas, ctx)
                   F.flatMap(poll(sus)) { _ => step(ctxHint = ctx) }
+                case Right(alt) =>
+                  sys.error(s"TODO: loading alt in atomicallyInAsync: ${alt}")
               }
           }
         } finally {

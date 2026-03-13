@@ -20,6 +20,8 @@ package unsafe
 
 import cats.effect.IO
 
+import core.Rxn
+
 final class AtomicallySpec_DefaultMcas_IO
   extends BaseSpecIO
   with SpecDefaultMcas
@@ -37,5 +39,52 @@ trait AtomicallySpec[F[_]] extends UnsafeApiSpecBase[F] { this: McasImplSpec =>
     F.delay {
       api.atomicallyReadOnly(block)
     }
+  }
+
+  test("atomicallyWithAlts") {
+    val ref = api.atomically { implicit ir => newRef("foo") }
+    val res = api.atomicallyWithAlts(
+      { implicit ir =>
+        ref.value = "bar"
+        alwaysRetry() : Unit
+        impossible("unreachable")
+      },
+      ref.set("xyz").as(42),
+      ref.set("-").map { _ =>
+        impossible("should never be executed") : Unit
+        99
+      },
+    )
+    assertEquals(res, 42)
+    assertEquals(api.atomicallyWithAlts(readRef(ref)(using _)), "xyz")
+  }
+
+  test("embedRxn") { // TODO: move to CommonImperativeApiSpec
+    val ref1 = api.atomically { implicit ir => newRef("foo") }
+    val ref2 = api.atomically { implicit ir => newRef("x") }
+    val res = api.atomically { implicit ir =>
+      ref1.value = "bar"
+      val ov2 = embedRxn(ref2.getAndSet("y"))
+      (ov2, ref1.value)
+    }
+    assertEquals(res, ("x", "bar"))
+    assertEquals(api.atomically { implicit u => ref1.value }, "bar")
+    assertEquals(api.atomically { implicit u => ref2.value }, "y")
+  }
+
+  test("embedRxn with retry - 1") { // TODO: move to CommonImperativeApiSpec
+    val ref1 = api.atomically { implicit ir => newRef("foo") }
+    val ref2 = api.atomically { implicit ir => newRef("x") }
+    val res = api.atomicallyWithAlts(
+      { implicit ir =>
+        ref1.value = "bar"
+        val ov2 = embedRxn(ref2.getAndSet("y") *> Rxn.unsafe.retry[AnyRef]) // CCE
+        (ov2, ref1.value)
+      },
+      Rxn.pure(("", ""))
+    )
+    assertEquals(res, ("", ""))
+    assertEquals(api.atomically { implicit u => ref1.value }, "foo")
+    assertEquals(api.atomically { implicit u => ref2.value }, "x")
   }
 }

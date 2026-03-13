@@ -35,7 +35,9 @@ sealed trait InRxn extends InRoRxn {
   private[choam] def currentContext(): Mcas.ThreadContext
   private[choam] def initCtx(c: Mcas.ThreadContext): Unit
   private[choam] def invalidateCtx(): Unit
-  private[choam] def imperativeRetry(): Option[CanSuspendInF]
+  private[choam] def imperativeAddAlt(alt: Rxn[_]): Unit
+  private[choam] def imperativeRetry(): Either[Option[CanSuspendInF], Rxn[?]]
+  private[choam] def embedRxn[A](rxn: Rxn[A]): A
   private[choam] def writeRef[A](ref: MemoryLocation[A], nv: A): Unit
   private[choam] def writeRefArray[A](arr: Ref.Array[A], idx: Int, nv: A): Unit
   private[choam] def updateRef[A](ref: MemoryLocation[A], f: A => A): Unit
@@ -50,7 +52,8 @@ sealed trait InRxn extends InRoRxn {
 }
 
 private[choam] object InRxn {
-  private[choam] trait InterpState extends InRxn { // TODO: this is not really related to the imperative API
+
+  private[choam] trait InterpState extends InRxn {
     private[choam] def localOrigin: RxnLocal.Origin
     private[choam] def registerLocal(local: InternalLocal): Unit
     private[choam] def removeLocal(local: InternalLocal): Unit

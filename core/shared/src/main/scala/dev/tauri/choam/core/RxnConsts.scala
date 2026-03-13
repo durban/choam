@@ -37,4 +37,5 @@ private object RxnConsts {
   final val ContOrElse = 15
   final val ContFlatten = 16
   final val ContRegisterPostCommit = 17
+  final val ContEmbedRxn = 18
 }

@@ -821,6 +821,13 @@ object Rxn extends RxnInstances0 {
   private[core] val _AlwaysRetry: RxnImpl[Any] =
     new AlwaysRetry
 
+  private final class EmbedRxnDone[A]() extends RxnImpl[A] { // TODO: can we reuse Done for this?
+    final override def toString: String = "EmbedRxnDone()"
+  }
+
+  private[this] val _EmbedRxnDone: RxnImpl[Any] =
+    new EmbedRxnDone
+
   private final class PostCommit[A](val rxn: Rxn[A], val pc: A => Rxn[Unit]) extends RxnImpl[A] {
     final override def toString: String = s"PostCommit(${rxn}, <function>)"
   }
@@ -1361,6 +1368,8 @@ object Rxn extends RxnInstances0 {
       this.a.asInstanceOf[A]
     }
 
+    // TODO: some (or all) of the fields below could be packed into a single Long
+
     private[this] var retries: Int =
       0
 
@@ -1375,6 +1384,9 @@ object Rxn extends RxnInstances0 {
     /** Initially `true`, and if a `+` is encountered, becomes `false` (and then remains `false`) */
     private[this] var mutable: Boolean = // TODO: this makes it slower if there is `+`! (See `InterpreterBench`.)
       true
+
+    private[this] var isInEmbedRxn: Boolean =
+      false
 
     /**
      * Becomes `true` when the first `tentativeRead` is executed.
@@ -1540,7 +1552,7 @@ object Rxn extends RxnInstances0 {
       }
     }
 
-    private[this] final def saveAlt[A, B](k: Rxn[B]): Unit = {
+    private[this] final def saveAlt[B](k: Rxn[B]): Unit = {
       val a = this.alts match {
         case null =>
           val newStack = new ArrayObjStack[Any](initSize = 8)
@@ -1774,6 +1786,8 @@ object Rxn extends RxnInstances0 {
         case 17 => // ContRegisterPostCommit
           contK.pop()
           nextOnPanic(ex)
+        case 18 => // ContEmbedRxn
+          Rxn.unsafe.imperativePanicImpl[Nothing](ex)
         case ct => // mustn't happen
           impossible(s"Unknown contT: ${ct} (nextOnPanic)")
       }
@@ -1908,6 +1922,8 @@ object Rxn extends RxnInstances0 {
             case ex =>
               nextOnPanic(ex)
           }
+        case 18 => // ContEmbedRxn
+          _EmbedRxnDone
         case ct => // mustn't happen
           impossible(s"Unknown contT: ${ct} (next)")
       }
@@ -1918,6 +1934,9 @@ object Rxn extends RxnInstances0 {
       permanent: Boolean = false,
       noDebug: Boolean = false,
     ): Rxn[Any] = {
+      if (this.isInEmbedRxn) {
+        throw unsafePackage.RetryException.notPermanentFailure
+      }
       if (this.strategy.isDebug && (!noDebug)) {
         this.strategy match {
           case stepper: RetryStrategy.Internal.Stepper[_] =>
@@ -2534,6 +2553,10 @@ object Rxn extends RxnInstances0 {
             next()
           }
           loop(nxt)
+        case _: EmbedRxnDone[_] =>
+          val result = this.aCastTo[R]
+          this.a = null
+          result
       }
     }
 
@@ -2728,17 +2751,48 @@ object Rxn extends RxnInstances0 {
       }
     }
 
-    final override def imperativeRetry(): Option[unsafePackage.CanSuspendInF] = {
+    private[choam] final override def imperativeAddAlt(alt: Rxn[_]): Unit = {
+      this.saveAlt(alt)
+    }
+
+    final override def imperativeRetry(): Either[Option[unsafePackage.CanSuspendInF], Rxn[?]] = {
       this.retry() match {
         case null =>
           // atomically/atomicallyInAsync has `null` as `startRxn` (and no
           // post-commit actions for now), so this means a full retry after spinning:
-          None
+          Left(None)
         case s: SuspendUntil =>
-          Some(s)
-        case xyz =>
-          // this shouldn't happen, because atomically/atomicallyInAsync has no alts (for now):
-          impossible(s"retry (called in imperativeRetry) returned $xyz")
+          Left(Some(s))
+        case alt =>
+          Right(alt)
+      }
+    }
+
+    private[choam] final override def embedRxn[A](rxn: Rxn[A]): A = {
+      val contT = this.contT
+      contT.push(RxnConsts.ContEmbedRxn)
+      this.isInEmbedRxn = true
+      try {
+        this.loop(rxn) match {
+          case _: SuspendUntil =>
+            impossible("loop in embedRxn produced SuspendUntil")
+          case result =>
+            _assert(contT.peek() != RxnConsts.ContEmbedRxn)
+            result.asInstanceOf[A]
+        }
+      } catch {
+        case re: unsafePackage.RetryException =>
+          popUntilEmbedRxn(contT)
+          throw re
+      } finally {
+        this.isInEmbedRxn = false
+      }
+    }
+
+    @tailrec
+    private[this] final def popUntilEmbedRxn(contT: ByteStack): Unit = {
+      if (contT.pop() != RxnConsts.ContEmbedRxn) {
+        popUntilEmbedRxn(contT)
       }
     }
 

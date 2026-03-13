@@ -166,6 +166,10 @@ package object unsafe {
     Rxn.unsafe.imperativePanicImpl(ex)
   }
 
+  final def embedRxn[A](rxn: Rxn[A])(implicit ir: InRxn): A = {
+    ir.embedRxn(rxn)
+  }
+
   private[choam] final def alwaysRetry()(implicit ir: InRxn): Nothing = {
     throw RetryException.notPermanentFailure
   }
