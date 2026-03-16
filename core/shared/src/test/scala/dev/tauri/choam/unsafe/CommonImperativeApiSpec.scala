@@ -34,9 +34,12 @@ trait CommonImperativeApiSpec[F[_]]
 
   import CommonImperativeApiSpec.MyException
 
-  def runBlock[A](block: InRxn => A): F[A]
+  final def runBlock[A](block: InRxn => A): F[A] =
+    this.runBlockWithAlts(block)
 
   def runRoBlock[A](block: InRoRxn => A): F[A]
+
+  def runBlockWithAlts[A](block: InRxn => A, alts: Rxn[A]*): F[A]
 
   test("Hello, World!") {
 
@@ -476,6 +479,39 @@ trait CommonImperativeApiSpec[F[_]]
         assert(Either.catchOnly[IndexOutOfBoundsException] { arr(-1) = "" }.isLeft)
         assertEquals(arr.length, 3)
       }
+    } yield ()
+  }
+
+  test("embedRxn") {
+    for {
+      ref1 <- runBlock { implicit ir => newRef("foo") }
+      ref2 <- runBlock { implicit ir => newRef("x") }
+      res <- runBlock { implicit ir =>
+        ref1.value = "bar"
+        val ov2 = embedRxn(ref2.getAndSet("y"))
+        (ov2, ref1.value)
+      }
+      _ <- assertEqualsF(res, ("x", "bar"))
+      _ <- assertResultF(runBlock { implicit u => ref1.value }, "bar")
+      _ <- assertResultF(runBlock { implicit u => ref2.value }, "y")
+    } yield ()
+  }
+
+  test("embedRxn with retry - 1") {
+    for {
+      ref1 <- runBlock { implicit ir => newRef("foo") }
+      ref2 <- runBlock { implicit ir => newRef("x") }
+      res <- runBlockWithAlts(
+        { implicit ir =>
+          ref1.value = "bar"
+          val ov2 = embedRxn(ref2.getAndSet("y") *> Rxn.unsafe.retry[AnyRef]) // CCE
+          (ov2, ref1.value)
+        },
+        Rxn.pure(("", ""))
+      )
+      _ <- assertEqualsF(res, ("", ""))
+      _ <- assertResultF(runBlock { implicit u => ref1.value }, "foo")
+      _ <- assertResultF(runBlock { implicit u => ref2.value }, "x")
     } yield ()
   }
 }

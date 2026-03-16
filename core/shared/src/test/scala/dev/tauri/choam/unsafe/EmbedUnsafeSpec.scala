@@ -33,8 +33,8 @@ trait EmbedUnsafeSpec[F[_]]
   extends CommonImperativeApiSpec[F]
   with EmbedUnsafeSpecPlatform[F] { this: McasImplSpec =>
 
-  final override def runBlock[A](block: InRxn => A): F[A] = {
-    Rxn.unsafe.embedUnsafe(block).run[F]
+  final override def runBlockWithAlts[A](block: InRxn => A, alts: Rxn[A]*): F[A] = {
+    Rxn.unsafe.embedUnsafeWithAlts(block, alts: _*).run[F]
   }
 
   final override def runRoBlock[A](block: InRoRxn => A): F[A] = {

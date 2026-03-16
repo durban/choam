@@ -20,7 +20,7 @@ package unsafe
 
 import cats.effect.IO
 
-import core.Ref
+import core.{ Rxn, Ref }
 
 final class AtomicallyInAsyncSpec_DefaultMcas_IO
   extends BaseSpecIO
@@ -32,8 +32,8 @@ trait AtomicallyInAsyncSpec[F[_]] extends UnsafeApiSpecBase[F] { this: McasImplS
   private[this] val str: RetryStrategy =
     RetryStrategy.Default.withCede
 
-  final override def runBlock[A](block: InRxn => A): F[A] = {
-    api.atomicallyInAsync(str)(block)
+  final override def runBlockWithAlts[A](block: InRxn => A, alts: Rxn[A]*): F[A] = {
+    api.atomicallyInAsyncWithAlts(str)(block, alts: _*)
   }
 
   final override def runRoBlock[A](block: InRoRxn => A): F[A] = {

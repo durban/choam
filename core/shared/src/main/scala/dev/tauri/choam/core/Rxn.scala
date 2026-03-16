@@ -758,10 +758,13 @@ object Rxn extends RxnInstances0 {
     /** Embeds a block of code, which uses the unsafe/imperative API, into a `Rxn`. */
     @inline
     final def embedUnsafe[A](unsafeBlock: unsafePackage.InRxn => A): Rxn[A] =
-      embedUnsafeImpl(unsafeBlock)
+      embedUnsafeWithAlts(unsafeBlock)
 
-    final def embedUnsafeImpl[A](unsafeBlock: unsafePackage.InRxn => A): RxnImpl[A] = {
-      new Rxn.Ctx3[Rxn[A]]({ (state: unsafePackage.InRxn) =>
+    private[choam] final def embedUnsafeWithAlts[A](unsafeBlock: unsafePackage.InRxn => A, alts: Rxn[A]*): Rxn[A] =
+      embedUnsafeImpl(unsafeBlock, alts: _*)
+
+    private[choam] final def embedUnsafeImpl[A](unsafeBlock: unsafePackage.InRxn => A, alts: Rxn[A]*): RxnImpl[A] = {
+      val primary = new Rxn.Ctx3[Rxn[A]]({ (state: unsafePackage.InRxn) =>
         try {
           pure[A](unsafeBlock(state))
         } catch {
@@ -769,6 +772,7 @@ object Rxn extends RxnInstances0 {
             retry[A]
         }
       }).flatten
+      alts.foldLeft(primary)(_ + _)
     }
 
     /** Internal API called by `atomically` */
