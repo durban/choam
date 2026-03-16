@@ -170,23 +170,4 @@ trait EmbedUnsafeSpec[F[_]]
       _ <- assertResultF(layer2(ctr02, ctr12).run[F], 42)
     } yield ()
   }
-
-  test("embedRxn with retry - 2") { // TODO: move to CommonImperativeApiSpec
-    for {
-      ctr <- F.delay(new AtomicInteger)
-      ref <- Ref(0).run[F]
-      ref2 <- Ref(0).run[F]
-      res <- (Rxn.unsafe.embedUnsafe[Int] { implicit ir =>
-        ref2.value = ref2.value + 1
-        embedRxn(ref.update(_ + 1) *> Rxn.unsafe.delay(ctr.incrementAndGet() < 5).flatMap { cond =>
-          if (cond) Rxn.unsafe.retry
-          else ref.get
-        })
-      }).run[F]
-      _ <- assertEqualsF(res, 1)
-      _ <- assertResultF(ref.get.run[F], 1)
-      _ <- assertResultF(ref2.get.run[F], 1)
-      _ <- assertResultF(F.delay(ctr.get()), 5)
-    } yield ()
-  }
 }

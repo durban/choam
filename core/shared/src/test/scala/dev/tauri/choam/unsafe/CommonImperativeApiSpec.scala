@@ -514,4 +514,23 @@ trait CommonImperativeApiSpec[F[_]]
       _ <- assertResultF(runBlock { implicit u => ref2.value }, "x")
     } yield ()
   }
+
+  test("embedRxn with retry - 2") {
+    for {
+      ctr <- F.delay(new AtomicInteger)
+      ref <- Ref(0).run[F]
+      ref2 <- Ref(0).run[F]
+      res <- runBlock { implicit ir =>
+        ref2.value = ref2.value + 1
+        embedRxn(ref.update(_ + 1) *> Rxn.unsafe.delay(ctr.incrementAndGet() < 5).flatMap { cond =>
+          if (cond) Rxn.unsafe.retry
+          else ref.get
+        })
+      }
+      _ <- assertEqualsF(res, 1)
+      _ <- assertResultF(ref.get.run[F], 1)
+      _ <- assertResultF(ref2.get.run[F], 1)
+      _ <- assertResultF(F.delay(ctr.get()), 5)
+    } yield ()
+  }
 }
