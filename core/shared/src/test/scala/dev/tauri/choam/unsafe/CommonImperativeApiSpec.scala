@@ -534,10 +534,32 @@ trait CommonImperativeApiSpec[F[_]]
     } yield ()
   }
 
+  test("*WithAlts") {
+    for {
+      ref <- runBlock { implicit ir => newRef("foo") }
+      res <- runBlockWithAlts(
+        { implicit ir =>
+          ref.value = "bar"
+          alwaysRetry() : Unit
+          impossible("unreachable")
+        },
+        ref.set("xyz").as(42),
+        ref.set("-").map { _ =>
+          impossible("should never be executed") : Unit
+          99
+        },
+      )
+      _ <- assertEqualsF(res, 42)
+      _ <- assertResultF(runBlockWithAlts(readRef(ref)(using _)), "xyz")
+    } yield ()
+  }
+
   test("*WithAlts should circle back to the original block eventually") {
     for {
       ctr1 <- F.delay(new AtomicInteger)
       ctr2 <- F.delay(new AtomicInteger)
+      ctr3 <- F.delay(new AtomicInteger)
+      ctr4 <- F.delay(new AtomicInteger)
       res <- runBlockWithAlts(
         { implicit u =>
           if (ctr1.getAndIncrement() > 0) {
@@ -546,9 +568,9 @@ trait CommonImperativeApiSpec[F[_]]
             alwaysRetry()
           }
         },
-        Rxn.unsafe.retry[Int],
-        Rxn.unsafe.retry[Int],
-        Rxn.unsafe.delay(ctr2.getAndIncrement()).flatMap { c =>
+        Rxn.unsafe.delay(ctr2.getAndIncrement()) *> Rxn.unsafe.retry[Int],
+        Rxn.unsafe.delay(ctr3.getAndIncrement()) *> Rxn.unsafe.retry[Int],
+        Rxn.unsafe.delay(ctr4.getAndIncrement()).flatMap { c =>
           if (c > 0) Rxn.pure(99)
           else Rxn.unsafe.retry[Int]
         },
@@ -556,6 +578,8 @@ trait CommonImperativeApiSpec[F[_]]
       _ <- assertEqualsF(res, 42)
       _ <- assertResultF(F.delay(ctr1.get()), 2)
       _ <- assertResultF(F.delay(ctr2.get()), 1)
+      _ <- assertResultF(F.delay(ctr3.get()), 1)
+      _ <- assertResultF(F.delay(ctr4.get()), 1)
     } yield ()
   }
 }

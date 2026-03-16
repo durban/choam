@@ -25,7 +25,7 @@ import java.util.concurrent.ThreadLocalRandom
 sealed trait Mcas {
 
   /** Returns the context associated with the current thread */
-  def currentContext(): Mcas.ThreadContext
+  def currentContext(): Mcas.ThreadContext // TODO: accept optional ctxHint (for optimization)
 
   private[choam] def close(): Unit
 

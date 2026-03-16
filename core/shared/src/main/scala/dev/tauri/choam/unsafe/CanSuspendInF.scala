@@ -26,6 +26,6 @@ private[choam] trait CanSuspendInF {
 
   def suspend[F[_]](
     mcasImpl: Mcas,
-    mcasCtx: Mcas.ThreadContext,
+    ctxHint: Mcas.ThreadContext,
   )(implicit F: Async[F]): F[Unit]
 }

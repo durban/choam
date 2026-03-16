@@ -40,22 +40,4 @@ trait AtomicallySpec[F[_]] extends UnsafeApiSpecBase[F] { this: McasImplSpec =>
       api.atomicallyReadOnly(block)
     }
   }
-
-  test("atomicallyWithAlts") {
-    val ref = api.atomically { implicit ir => newRef("foo") }
-    val res = api.atomicallyWithAlts(
-      { implicit ir =>
-        ref.value = "bar"
-        alwaysRetry() : Unit
-        impossible("unreachable")
-      },
-      ref.set("xyz").as(42),
-      ref.set("-").map { _ =>
-        impossible("should never be executed") : Unit
-        99
-      },
-    )
-    assertEquals(res, 42)
-    assertEquals(api.atomicallyWithAlts(readRef(ref)(using _)), "xyz")
-  }
 }

@@ -39,7 +39,7 @@ object UnsafeApi {
   private[UnsafeApi] final class Done[A](val res: A) extends SyncRes[A]
   private[UnsafeApi] final class Alt[A](val alt: Rxn[A]) extends SyncRes[A]
   private[UnsafeApi] final object ImmediateFullRetry extends SyncRes[Nothing]
-  private[UnsafeApi] final class Suspend(val sus: CanSuspendInF, val ctx: ThreadContext) extends AttemptRes[Nothing]
+  private[UnsafeApi] final class Suspend(val sus: CanSuspendInF, val ctxHint: ThreadContext) extends AttemptRes[Nothing]
 }
 
 sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
@@ -134,13 +134,28 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
     }
   }
 
-  private[this] final def runAltAsync[F[_], A](state: InRxn, ctx: ThreadContext, alt: Rxn[A])(implicit F: Async[F]): F[AttemptRes[A]] = {
+  private[this] final def runAltAsync[F[_], A](state: InRxn, mcas: Mcas, ctxHint: ThreadContext, alt: Rxn[A])(implicit F: Async[F]): F[AttemptRes[A]] = {
     F.delay {
+      val ctx = if ((ctxHint ne null) && mcas.isCurrentContext(ctxHint)) {
+        ctxHint
+      } else {
+        mcas.currentContext()
+      }
+      state.initCtx(ctx)
       try {
-        new Done(state.embedRxn(alt))
+        val result = state.embedRxn(alt)
+        if (state.imperativeCommit()) {
+          state.beforeResult()
+          new Done(result)
+        } else {
+          imperativeRetryMaySuspend(state, ctx).cast[A]
+        }
       } catch {
         case _: RetryException =>
-          imperativeRetryMaySuspend(state, ctx).asInstanceOf[AttemptRes[A]]
+          imperativeRetryMaySuspend(state, ctx).cast[A]
+      } finally {
+        // TODO: this.saveStats()
+        state.invalidateCtx()
       }
     }
   }
@@ -242,10 +257,10 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
           go(step(ctxHint), ctxHint)
         case sus: Suspend =>
           state.beforeSuspend()
-          val ctx = sus.ctx
-          F.flatMap(poll(sus.sus.suspend(mcas, ctx))) { _ => go(step(ctx), ctx) }
+          val ctxHint = sus.ctxHint
+          F.flatMap(poll(sus.sus.suspend(mcas, ctxHint))) { _ => go(step(ctxHint), ctxHint) }
         case alt: Alt[?] =>
-          runAltAsync(state, ctxHint, alt.alt).flatMap(go(_, ctxHint))
+          runAltAsync(state, mcas, ctxHint, alt.alt).flatMap(go(_, ctxHint))
       }
 
       go(step(null), null)

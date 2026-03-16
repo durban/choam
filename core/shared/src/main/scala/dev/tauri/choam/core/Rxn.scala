@@ -981,14 +981,14 @@ object Rxn extends RxnInstances0 {
 
     def toF[F[_]](
       mcasImpl: Mcas,
-      mcasCtx: Mcas.ThreadContext,
+      ctxHint: Mcas.ThreadContext,
     )(implicit F: Async[F]): F[Rxn[Any]]
 
     final override def suspend[F[_]](
       mcasImpl: Mcas,
-      mcasCtx: Mcas.ThreadContext,
+      ctxHint: Mcas.ThreadContext,
     )(implicit F: Async[F]): F[Unit] = {
-      F.flatMap(this.toF[F](mcasImpl, mcasCtx)) {
+      F.flatMap(this.toF[F](mcasImpl, ctxHint)) {
         case null =>
           F.unit
         case x =>
@@ -1006,7 +1006,7 @@ object Rxn extends RxnInstances0 {
 
     final override def toF[F[_]](
       mcasImpl: Mcas,
-      mcasCtx: Mcas.ThreadContext,
+      ctxHint: Mcas.ThreadContext,
     )(implicit F: Async[F]): F[Rxn[Any]] =
       F.as(Backoff2.tokenToF[F](token), null)
   }
@@ -1021,7 +1021,7 @@ object Rxn extends RxnInstances0 {
 
     final override def toF[G[_]](
       mcasImpl: Mcas,
-      mcasCtx: Mcas.ThreadContext,
+      ctxHint: Mcas.ThreadContext,
     )(implicit G: Async[G]): G[Rxn[Any]] = {
       // Note: these casts are "safe", since `perform[Stm]WithStepper`
       // sets things up so that `F` and `G` are the same.
@@ -1038,7 +1038,7 @@ object Rxn extends RxnInstances0 {
 
     final override def toF[F[_]](
       mcasImpl: Mcas,
-      mcasCtx: Mcas.ThreadContext,
+      ctxHint: Mcas.ThreadContext,
     )(implicit F: Async[F]): F[Rxn[Any]] = {
       if ((desc ne null) && (desc.size > 0)) {
         F.cont(new Cont[F, Rxn[Any], Rxn[Any]] {
@@ -1050,7 +1050,12 @@ object Rxn extends RxnInstances0 {
                   val cb2 = { (_: Null) =>
                     resume(rightNull)
                   }
-                  val refsAndCancelIds = subscribe(mcasImpl, mcasCtx, cb2)
+                  val ctx = if (mcasImpl.isCurrentContext(ctxHint)) {
+                    ctxHint
+                  } else {
+                    mcasImpl.currentContext()
+                  }
+                  val refsAndCancelIds = subscribe(mcasImpl, ctx, cb2)
                   if (refsAndCancelIds eq null) {
                     // some ref already changed, don't suspend:
                     G.pure(null)
@@ -2779,6 +2784,9 @@ object Rxn extends RxnInstances0 {
       try {
         this.loop(rxn) match {
           case _: SuspendUntil =>
+            // Note: when isInEmbedRxn is true, retry()
+            // will always throw a RetryException, so
+            // this branch is impossible.
             impossible("loop in embedRxn produced SuspendUntil")
           case result =>
             _assert(contT.peek() != RxnConsts.ContEmbedRxn)
