@@ -533,4 +533,29 @@ trait CommonImperativeApiSpec[F[_]]
       _ <- assertResultF(F.delay(ctr.get()), 5)
     } yield ()
   }
+
+  test("*WithAlts should circle back to the original block eventually") {
+    for {
+      ctr1 <- F.delay(new AtomicInteger)
+      ctr2 <- F.delay(new AtomicInteger)
+      res <- runBlockWithAlts(
+        { implicit u =>
+          if (ctr1.getAndIncrement() > 0) {
+            42
+          } else {
+            alwaysRetry()
+          }
+        },
+        Rxn.unsafe.retry[Int],
+        Rxn.unsafe.retry[Int],
+        Rxn.unsafe.delay(ctr2.getAndIncrement()).flatMap { c =>
+          if (c > 0) Rxn.pure(99)
+          else Rxn.unsafe.retry[Int]
+        },
+      )
+      _ <- assertEqualsF(res, 42)
+      _ <- assertResultF(F.delay(ctr1.get()), 2)
+      _ <- assertResultF(F.delay(ctr2.get()), 1)
+    } yield ()
+  }
 }
