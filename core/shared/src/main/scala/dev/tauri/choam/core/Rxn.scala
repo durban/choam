@@ -768,8 +768,8 @@ object Rxn extends RxnInstances0 {
         try {
           pure[A](unsafeBlock(state))
         } catch {
-          case _: unsafePackage.RetryException =>
-            retry[A]
+          case re: unsafePackage.RetryException =>
+            if (re.isPermanentFailure) StmImpl.retryWhenChanged[A] else retry[A]
         }
       }).flatten
       alts.foldLeft(primary)(_ + _)
@@ -1944,7 +1944,12 @@ object Rxn extends RxnInstances0 {
       noDebug: Boolean = false,
     ): Rxn[Any] = {
       if (this.isInEmbedRxn) {
-        throw unsafePackage.RetryException.notPermanentFailure
+        val re = if (permanent) {
+          unsafePackage.RetryException.permanentFailure
+        } else {
+          unsafePackage.RetryException.notPermanentFailure
+        }
+        throw re
       }
       if (this.strategy.isDebug && (!noDebug)) {
         this.strategy match {
@@ -2764,8 +2769,8 @@ object Rxn extends RxnInstances0 {
       this.saveAlt(alt)
     }
 
-    final override def imperativeRetry(): Either[Option[unsafePackage.CanSuspendInF], Rxn[?]] = {
-      this.retry() match {
+    final override def imperativeRetry(permanent: Boolean): Either[Option[unsafePackage.CanSuspendInF], Rxn[?]] = {
+      this.retry(permanent = permanent) match {
         case null =>
           // atomically/atomicallyInAsync has `null` as `startRxn` (and no
           // post-commit actions for now), so this means a full retry after spinning:

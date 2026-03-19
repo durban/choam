@@ -20,7 +20,9 @@ package unsafe
 
 import scala.util.control.ControlThrowable
 
-private[choam] final class RetryException private () extends ControlThrowable {
+private[choam] sealed abstract class RetryException private () extends ControlThrowable {
+
+  def isPermanentFailure: Boolean
 
   final override def fillInStackTrace(): Throwable =
     this
@@ -31,10 +33,17 @@ private[choam] final class RetryException private () extends ControlThrowable {
 
 private[choam] object RetryException {
 
-  private[choam] val notPermanentFailure: RetryException =
-    new RetryException
+  private[this] final class NotPermanentFailure extends RetryException {
+    final override def isPermanentFailure: Boolean = false
+  }
 
-  // TODO:
-  // private[choam] val permanentFailure: RetryException =
-  //   new RetryException
+  private[this] final class PermanentFailure extends RetryException {
+    final override def isPermanentFailure: Boolean = true
+  }
+
+  private[choam] val notPermanentFailure: RetryException =
+    new NotPermanentFailure
+
+  private[choam] val permanentFailure: RetryException =
+    new PermanentFailure
 }

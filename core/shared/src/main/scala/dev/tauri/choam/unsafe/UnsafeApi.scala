@@ -89,7 +89,7 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
       state.beforeResult()
       a
     } else {
-      val maybeAlt: Option[Rxn[A]] = this.imperativeRetryNoSuspend(state) match {
+      val maybeAlt: Option[Rxn[A]] = this.imperativeRetryNoSuspend(state, permanent = false) match {
         case Some(newAlt) => Some(newAlt.asInstanceOf[Rxn[A]])
         case None => None
       }
@@ -114,8 +114,8 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
     try {
       new Done(block(state))
     } catch {
-      case _: RetryException =>
-        this.imperativeRetryNoSuspend(state) match {
+      case re: RetryException =>
+        this.imperativeRetryNoSuspend(state, permanent = re.isPermanentFailure) match {
           case Some(alt) => new Alt(alt.asInstanceOf[Rxn[A]])
           case None => ImmediateFullRetry
         }
@@ -126,8 +126,8 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
     try {
       new Done(state.embedRxn(alt))
     } catch {
-      case _: RetryException =>
-        this.imperativeRetryNoSuspend(state) match {
+      case re: RetryException =>
+        this.imperativeRetryNoSuspend(state, permanent = re.isPermanentFailure) match {
           case Some(newAlt) => new Alt(newAlt.asInstanceOf[Rxn[A]])
           case None => ImmediateFullRetry
         }
@@ -148,11 +148,11 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
           state.beforeResult()
           new Done(result)
         } else {
-          imperativeRetryMaySuspend(state, ctx).cast[A]
+          imperativeRetryMaySuspend(state, ctx, permanent = false).cast[A]
         }
       } catch {
-        case _: RetryException =>
-          imperativeRetryMaySuspend(state, ctx).cast[A]
+        case re: RetryException =>
+          imperativeRetryMaySuspend(state, ctx, permanent = re.isPermanentFailure).cast[A]
       } finally {
         // TODO: this.saveStats()
         state.invalidateCtx()
@@ -160,8 +160,8 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
     }
   }
 
-  private[this] final def imperativeRetryNoSuspend(state: InRxn): Option[Rxn[?]] = {
-    state.imperativeRetry() match {
+  private[this] final def imperativeRetryNoSuspend(state: InRxn, permanent: Boolean): Option[Rxn[?]] = {
+    state.imperativeRetry(permanent) match {
       case Left(None) =>
         None // ok, full retry without alt
       case Left(Some(suspend)) =>
@@ -171,8 +171,8 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
     }
   }
 
-  private[this] final def imperativeRetryMaySuspend(state: InRxn, ctx: ThreadContext): AttemptRes[?] = {
-    state.imperativeRetry() match {
+  private[this] final def imperativeRetryMaySuspend(state: InRxn, ctx: ThreadContext, permanent: Boolean): AttemptRes[?] = {
+    state.imperativeRetry(permanent) match {
       case Left(None) =>
         ImmediateFullRetry // ok, full retry without alt
       case Left(Some(suspend)) =>
@@ -238,11 +238,11 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
               state.beforeResult()
               new Done(result)
             } else {
-              imperativeRetryMaySuspend(state, ctx).cast[A]
+              imperativeRetryMaySuspend(state, ctx, permanent = false).cast[A]
             }
           } catch {
-            case _: RetryException =>
-              imperativeRetryMaySuspend(state, ctx).cast[A]
+            case re: RetryException =>
+              imperativeRetryMaySuspend(state, ctx, permanent = re.isPermanentFailure).cast[A]
           }
         } finally {
           // TODO: this.saveStats()

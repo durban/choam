@@ -18,16 +18,24 @@
 package dev.tauri.choam
 package unsafe
 
-import stm.TRef
+import stm.{ TRef, Txn }
 
-object UnsafeStm {
+object UnsafeStm { // TODO: better name
+
+  // TODO: separate implicit for these, e.g., `InTxn`?
+
+  final def newTRef[A](initial: A)(implicit ir: InRxn): TRef[A] =
+    TRef.unsafe(initial)(ir.currentContext())
 
   final def updateTRef[A](ref: TRef[A])(f: A => A)(implicit ir: InRxn): Unit = {
     ir.updateRef(ref.refImpl.loc, f)
   }
 
-  // TODO:
-  // private[choam] final def retryWhenChanged()(implicit ir: InRxn): Nothing = {
-  //   throw RetryException.permanentFailure
-  // }
+  final def embedTxn[A](txn: Txn[A])(implicit ir: InRxn): A = {
+    ir.embedRxn(txn.impl)
+  }
+
+  private[choam] final def retryWhenChanged()(implicit ir: InRxn): Nothing = {
+    throw RetryException.permanentFailure
+  }
 }

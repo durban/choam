@@ -298,6 +298,7 @@ object Txn extends TxnInstances0 {
     }
 
     private[choam] final def embedUnsafeWithAlts[A](unsafeBlock: unsafe2.InRxn => A, alts: Txn[A]*): Txn[A] = {
+      // TODO: what about `orElse`-alts?
       val rxnAlts = alts.map[Rxn[A]](_.impl)
       Rxn.unsafe.embedUnsafeImpl(unsafeBlock, rxnAlts: _*)
     }

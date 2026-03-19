@@ -44,7 +44,7 @@ private[choam] abstract class ChoamUtilsBase extends ChoamUtilsBasePlatform {
   private[choam] final def isNull[A](a: A): Boolean =
     box(a) eq null
 
-  /** @see Rxn.unsafe.impossibleRxn */
+  /** @see Rxn.unsafe.impossibleRxn */ // TODO: throw a subclass, make it immediately abort the interpreter
   @inline
   private[choam] final def impossible(s: String): Nothing =
     throw new AssertionError(s)
