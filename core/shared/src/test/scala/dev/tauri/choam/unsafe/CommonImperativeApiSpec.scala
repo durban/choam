@@ -504,7 +504,7 @@ trait CommonImperativeApiSpec[F[_]]
       res <- runBlockWithAlts(
         { implicit ir =>
           ref1.value = "bar"
-          val ov2 = embedRxn(ref2.getAndSet("y") *> Rxn.unsafe.retry[AnyRef]) // CCE
+          val ov2 = embedRxn(ref2.getAndSet("y") *> Rxn.unsafe.retry[AnyRef])
           (ov2, ref1.value)
         },
         Rxn.pure(("", ""))
@@ -531,6 +531,29 @@ trait CommonImperativeApiSpec[F[_]]
       _ <- assertResultF(ref.get.run[F], 1)
       _ <- assertResultF(ref2.get.run[F], 1)
       _ <- assertResultF(F.delay(ctr.get()), 5)
+    } yield ()
+  }
+
+  test("Multiple embedRxn's in a block") {
+    for {
+      ctr <- F.delay(new AtomicInteger)
+      ref1 <- Ref("a").run
+      ref2 <- Ref("x").run
+      res <- runBlock { implicit u =>
+        ref1.value = "b"
+        val e2 = embedRxn(ref2.getAndSet("y"))
+        val v2 = ref2.value
+        if (ctr.getAndIncrement() == 0) {
+          alwaysRetry()
+        }
+        val e1 = embedRxn(ref1.getAndSet("c"))
+        val v1 = ref1.value
+        (e1, v1, e2, v2)
+      }
+      _ <- assertEqualsF(res, ("b", "c", "x", "y"))
+      _ <- assertResultF(ref1.get.run[F], "c")
+      _ <- assertResultF(ref2.get.run[F], "y")
+      _ <- assertResultF(F.delay(ctr.get()), 2)
     } yield ()
   }
 

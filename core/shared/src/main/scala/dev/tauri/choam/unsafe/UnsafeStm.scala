@@ -18,23 +18,16 @@
 package dev.tauri.choam
 package unsafe
 
-import scala.util.control.ControlThrowable
+import stm.TRef
 
-private[choam] final class RetryException private () extends ControlThrowable {
+object UnsafeStm {
 
-  final override def fillInStackTrace(): Throwable =
-    this
-
-  final override def initCause(cause: Throwable): Throwable =
-    throw new IllegalStateException // something is seriously wrong
-}
-
-private[choam] object RetryException {
-
-  private[choam] val notPermanentFailure: RetryException =
-    new RetryException
+  final def updateTRef[A](ref: TRef[A])(f: A => A)(implicit ir: InRxn): Unit = {
+    ir.updateRef(ref.refImpl.loc, f)
+  }
 
   // TODO:
-  // private[choam] val permanentFailure: RetryException =
-  //   new RetryException
+  // private[choam] final def retryWhenChanged()(implicit ir: InRxn): Nothing = {
+  //   throw RetryException.permanentFailure
+  // }
 }

@@ -33,7 +33,7 @@ import core.{ Ref, Rxn }
  *      imperative methods "inside" a `Rxn` created with
  *      the default (functional) API.
  */
-package object unsafe {
+package object unsafe extends UnsafePackageLowPrio0 {
 
   /**
    * Extension methods for more convenient handling of `Ref`s
@@ -170,7 +170,17 @@ package object unsafe {
     ir.embedRxn(rxn)
   }
 
-  private[choam] final def alwaysRetry()(implicit ir: InRxn): Nothing = {
+  private[choam] final def alwaysRetry()(implicit ir: InRxn): Nothing = { // TODO: better name: retryUnconditionally?
     throw RetryException.notPermanentFailure
+  }
+}
+
+private[choam] sealed abstract class UnsafePackageLowPrio0 {
+
+  import scala.language.implicitConversions
+
+  @inline
+  implicit final def indirectTRefSyntax[A](self: stm.TRef[A]): unsafe.TRefSyntax[A] = {
+    new unsafe.TRefSyntax(self)
   }
 }
