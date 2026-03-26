@@ -534,6 +534,75 @@ trait CommonImperativeApiSpec[F[_]]
     } yield ()
   }
 
+  test("embedRxn with alts inside") {
+    for {
+      ref1 <- runBlock { implicit ir => newRef("foo") }
+      ref2 <- runBlock { implicit ir => newRef("x") }
+      res <- runBlock { implicit ir =>
+        ref1.value = "bar"
+        val ov2 = embedRxn(Rxn.unsafe.retry + ref2.getAndSet("y") + Rxn.unsafe.retry)
+        (ov2, ref1.value)
+      }
+      _ <- assertEqualsF(res, ("x", "bar"))
+      _ <- assertResultF(runBlock { implicit u => ref1.value }, "bar")
+      _ <- assertResultF(runBlock { implicit u => ref2.value }, "y")
+    } yield ()
+  }
+
+  test("embedRxn with alts outside") {
+    for {
+      ref1 <- runBlock { implicit ir => newRef("foo") }
+      ref2 <- runBlock { implicit ir => newRef("x") }
+      res <- runBlockWithAlts(
+        { implicit ir =>
+          ref1.value = "bar"
+          val ov2 = embedRxn(ref2.getAndSet("y") <* Rxn.unsafe.retry)
+          (ov2, ref1.value)
+        },
+        Rxn.pure(("", ""))
+      )
+      _ <- assertEqualsF(res, ("", ""))
+      _ <- assertResultF(runBlock { implicit u => ref1.value }, "foo")
+      _ <- assertResultF(runBlock { implicit u => ref2.value }, "x")
+    } yield ()
+  }
+
+  test("embedRxn with alts inside and outside - 1") {
+    for {
+      ref1 <- runBlock { implicit ir => newRef("foo") }
+      ref2 <- runBlock { implicit ir => newRef("x") }
+      res <- runBlockWithAlts(
+        { implicit ir =>
+          ref1.value = "bar"
+          val ov2 = embedRxn((ref2.getAndSet("y") <* Rxn.unsafe.retry) + ref2.getAndSet("z"))
+          (ov2, ref1.value)
+        },
+        Rxn.pure(("", ""))
+      )
+      _ <- assertEqualsF(res, ("x", "bar"))
+      _ <- assertResultF(runBlock { implicit u => ref1.value }, "bar")
+      _ <- assertResultF(runBlock { implicit u => ref2.value }, "z")
+    } yield ()
+  }
+
+  test("embedRxn with alts inside and outside - 2") {
+    for {
+      ref1 <- runBlock { implicit ir => newRef("foo") }
+      ref2 <- runBlock { implicit ir => newRef("x") }
+      res <- runBlockWithAlts(
+        { implicit ir =>
+          ref1.value = "bar"
+          val ov2 = embedRxn((ref2.getAndSet("y") <* Rxn.unsafe.retry) + (ref2.getAndSet("z") <* Rxn.unsafe.retry))
+          (ov2, ref1.value)
+        },
+        Rxn.pure(("", ""))
+      )
+      _ <- assertEqualsF(res, ("", ""))
+      _ <- assertResultF(runBlock { implicit u => ref1.value }, "foo")
+      _ <- assertResultF(runBlock { implicit u => ref2.value }, "x")
+    } yield ()
+  }
+
   test("Multiple embedRxn's in a block") {
     for {
       ctr <- F.delay(new AtomicInteger)

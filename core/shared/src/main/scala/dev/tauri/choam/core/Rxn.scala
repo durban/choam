@@ -769,7 +769,11 @@ object Rxn extends RxnInstances0 {
           pure[A](unsafeBlock(state))
         } catch {
           case re: unsafePackage.RetryException =>
-            if (re.isPermanentFailure) StmImpl.retryWhenChanged[A] else retry[A]
+            if (re.isPermanentFailure) {
+              StmImpl.retryWhenChanged[A]
+             } else {
+              retry[A]
+             }
         }
       }).flatten
       alts.foldLeft(primary)(_ + _)
@@ -1597,6 +1601,38 @@ object Rxn extends RxnInstances0 {
       alts.push3(contKList.takeSnapshot(), pc.takeSnapshot(), k)
     }
 
+    private[this] final def markAltsForEmbedRxn(): Unit = {
+      this.alts match {
+        case null => // okay, we won't mistakenly load anything from there
+        case alts => alts.push(_EmbedRxnDone)
+      }
+      this.stmAlts match {
+        case null => // as above
+        case stmAlts => stmAlts.push(_EmbedRxnDone)
+      }
+    }
+
+    private[this] final def unmarkAltsForEmbedRxn(): Unit = {
+      this.alts match {
+        case null =>
+          // nothing to do
+        case alts =>
+          while (alts.nonEmpty() && equ(alts.peek(), _EmbedRxnDone)) {
+            alts.pop()
+          }
+      }
+      this.stmAlts match {
+        case null =>
+          // nothing to do
+        case stmAlts =>
+          // as stmAlts are lexically nested, all we have is the marker:
+          if (stmAlts.nonEmpty()) {
+            val marker = stmAlts.pop()
+            _assert(equ(marker, _EmbedRxnDone))
+          }
+      }
+    }
+
     private[this] final def takeLocalsSnapshot(locals: IdentityHashMap[InternalLocal, AnyRef]): AnyRef = {
       if (locals eq null) {
         null
@@ -1650,14 +1686,21 @@ object Rxn extends RxnInstances0 {
     private[this] final def discardStmAlt(): Unit = {
       val s = this.stmAlts
       _assert(s ne null)
-      s.popAndDiscard(7)
+      val top = s.pop()
+      _assert(!equ(top, _EmbedRxnDone))
+      s.popAndDiscard(6)
     }
 
     private[this] final def _tryLoadAlt(alts: ArrayObjStack[Any], isPermanentFailure: Boolean): Rxn[R] = {
       if ((alts ne null) && alts.nonEmpty()) {
         val res = alts.pop().asInstanceOf[Rxn[R]]
-        this._loadRestOfAlt(alts, isPermanentFailure = isPermanentFailure)
-        res
+        if (this.isInEmbedRxn && (res eq _EmbedRxnDone)) {
+          alts.push(_EmbedRxnDone) // put it back
+          null
+        } else {
+          this._loadRestOfAlt(alts, isPermanentFailure = isPermanentFailure)
+          res
+        }
       } else {
         null
       }
@@ -1943,14 +1986,6 @@ object Rxn extends RxnInstances0 {
       permanent: Boolean = false,
       noDebug: Boolean = false,
     ): Rxn[Any] = {
-      if (this.isInEmbedRxn) {
-        val re = if (permanent) {
-          unsafePackage.RetryException.permanentFailure
-        } else {
-          unsafePackage.RetryException.notPermanentFailure
-        }
-        throw re
-      }
       if (this.strategy.isDebug && (!noDebug)) {
         this.strategy match {
           case stepper: RetryStrategy.Internal.Stepper[_] =>
@@ -1968,6 +2003,13 @@ object Rxn extends RxnInstances0 {
         // of a `+` or `orElse`, so we're
         // not incrementing `retries`:
         alt
+      } else if (this.isInEmbedRxn) {
+        val re = if (permanent) {
+          unsafePackage.RetryException.permanentFailure
+        } else {
+          unsafePackage.RetryException.notPermanentFailure
+        }
+        throw re
       } else {
         _assert((!permanent) || this.isStm) // otherwise it is a misused `Rxn.unsafe.retryWhenChanged`
         // really retrying:
@@ -2786,6 +2828,7 @@ object Rxn extends RxnInstances0 {
       val contT = this.contT
       contT.push(RxnConsts.ContEmbedRxn)
       this.isInEmbedRxn = true
+      this.markAltsForEmbedRxn()
       try {
         this.loop(rxn) match {
           case _: SuspendUntil =>
@@ -2802,6 +2845,7 @@ object Rxn extends RxnInstances0 {
           popUntilEmbedRxn(contT)
           throw re
       } finally {
+        this.unmarkAltsForEmbedRxn()
         this.isInEmbedRxn = false
       }
     }

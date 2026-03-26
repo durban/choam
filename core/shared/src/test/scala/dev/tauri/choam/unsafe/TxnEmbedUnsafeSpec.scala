@@ -20,11 +20,13 @@ package unsafe
 
 import java.util.concurrent.atomic.AtomicInteger
 
+import scala.concurrent.duration._
+
 import cats.effect.IO
 
 import core.{ Rxn, Ref }
 import stm.{ Txn, TRef, TxnBaseSpec }
-import UnsafeStm.{ updateTRef, newTRef }
+import UnsafeStm.{ updateTRef, newTRef, embedTxn }
 
 final class TxnEmbedUnsafeSpec_DefaultMcas_IO
   extends BaseSpecIO
@@ -95,6 +97,7 @@ trait TxnEmbedUnsafeSpec[F[_]]
         if (ref.value < 5) UnsafeStm.retryWhenChanged()
         else ref.value
       }).commit.start
+      _ <- F.sleep(0.01.seconds)
       _ <- ref.set(6).commit
       res <- fib.joinWithNever
       _ <- assertEqualsF(res, 7)
@@ -119,7 +122,7 @@ trait TxnEmbedUnsafeSpec[F[_]]
           assertEquals(ref2.value, 0)
           ref1.value = 42
           ref2.value = 99
-          val (m1, m2) = embedRxn(getAndIncrBoth(ref1.refImpl, ref2.refImpl))
+          val (m1, m2) = embedRxn(Rxn.unsafe.retry + getAndIncrBoth(ref1.refImpl, ref2.refImpl))
           assertEquals(m1, 42)
           assertEquals(m2, 99)
           assertEquals(ref1.value, 43)
@@ -134,7 +137,35 @@ trait TxnEmbedUnsafeSpec[F[_]]
     } yield ()
   }
 
-  // TODO: test("embedTxn in Txn.unsafe.embedUnsafe - simple")
+  test("embedTxn in Txn.unsafe.embedUnsafe - simple") {
+    def getAndIncrBoth(ref1: TRef[Int], ref2: TRef[Int]): Txn[(Int, Int)] = {
+      (ref1.get, ref2.get).flatMapN { (v1, v2) =>
+        ref1.set(v1 + 1) *> ref2.set(v2 + 1).as((v1, v2))
+      }
+    }
+    for {
+      ref1 <- TRef(0).commit
+      ref2 <- TRef(0).commit
+      txn = ref1.get.flatMap { v1 =>
+        ref1.set(v1 + 1) *> Txn.unsafe.embedUnsafe[Unit] { implicit ir =>
+          assertEquals(ref1.value, 1)
+          assertEquals(ref2.value, 0)
+          ref1.value = 42
+          ref2.value = 99
+          val (m1, m2) = embedTxn(Txn.retry orElse getAndIncrBoth(ref1, ref2))
+          assertEquals(m1, 42)
+          assertEquals(m2, 99)
+          assertEquals(ref1.value, 43)
+          assertEquals(ref2.value, 100)
+          ref1.value = 44
+          ref2.value = 101
+        } *> (ref1.get, ref2.get).tupled
+      }
+      _ <- assertResultF(txn.commit, (44, 101))
+      _ <- assertResultF(ref1.get.commit, 44)
+      _ <- assertResultF(ref2.get.commit, 101)
+    } yield ()
+  }
 
   test("embedRxn in Txn.unsafe.embedUnsafe - nested") {
     def layer0(ref1: Ref[Int], ref2: Ref[String], ctr0: AtomicInteger): Rxn[(Int, String)] = {
@@ -197,5 +228,64 @@ trait TxnEmbedUnsafeSpec[F[_]]
     } yield ()
   }
 
-  // TODO: test("embedTxn in Txn.unsafe.embedUnsafe - nested")
+  test("embedTxn in Txn.unsafe.embedUnsafe - nested") {
+    def layer0(ref1: TRef[Int], ref2: TRef[String], ctr0: AtomicInteger): Txn[(Int, String)] = {
+      Txn.unsafe.embedUnsafe { implicit ir =>
+        ctr0.getAndIncrement()
+        val ov1 = ref1.value
+        val ov2 = ref2.value
+        ref1.value = ov1 + 1
+        ref2.value = ov2 + "layer0"
+        (ov1, ov2)
+      }
+    }
+    def layer1(ref1: TRef[Int], ref2: TRef[String], ctr0: AtomicInteger, ctr1: AtomicInteger): Txn[(Int, String, Int, String)] = {
+      Txn.unsafe.embedUnsafe { implicit ir =>
+        ctr1.getAndIncrement()
+        val ov1 = ref1.value
+        val ov2 = ref2.value
+        ref1.value = ov1 + 1
+        ref2.value = ov2 + "layer1"
+        val (eov1, eov2) = embedTxn(layer0(ref1, ref2, ctr0))
+        assertEquals(eov1, ov1 + 1)
+        assertEquals(eov2, ov2 + "layer1")
+        assertEquals(ref1.value, ov1 + 1 + 1)
+        assertEquals(ref2.value, ov2 + "layer1" + "layer0")
+        updateTRef(ref1)(_ + 1)
+        updateTRef(ref2)(_ + "layer1again")
+        (ov1, ov2, eov1, eov2)
+      }
+    }
+    def layer2(ctr0: AtomicInteger, ctr1: AtomicInteger): Txn[Int] = {
+      TRef[Int](0).flatMap { ref1 =>
+        Txn.unsafe.embedUnsafe { implicit ir =>
+          newTRef("")
+        }.flatMap { ref2 =>
+          ref1.update(_ + 1) *> ref2.update(_ + "layer2") *> layer1(ref1, ref2, ctr0, ctr1).flatMap {
+            case (ov1, ov2, eov1, eov2) =>
+              Txn.unsafe.delay {
+                assertEquals(ov1, 1)
+                assertEquals(ov2, "layer2")
+                assertEquals(eov1, 2)
+                assertEquals(eov2, "layer2layer1")
+                assertEquals(ctr0.get(), 1)
+                assertEquals(ctr1.get(), 1)
+              } *> Txn.unsafe.embedUnsafe { implicit ir =>
+                assertEquals(ref1.value, 4)
+                assertEquals(ref2.value, "layer2layer1layer0layer1again")
+                42
+              }
+          }
+        }
+      }
+    }
+    for {
+      ctr01 <- F.delay(new AtomicInteger)
+      ctr11 <- F.delay(new AtomicInteger)
+      _ <- assertResultF(layer2(ctr01, ctr11).commit, 42)
+      ctr02 <- F.delay(new AtomicInteger)
+      ctr12 <- F.delay(new AtomicInteger)
+      _ <- assertResultF(layer2(ctr02, ctr12).commit, 42)
+    } yield ()
+  }
 }
