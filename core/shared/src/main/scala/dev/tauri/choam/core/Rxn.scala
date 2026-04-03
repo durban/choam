@@ -2825,10 +2825,8 @@ object Rxn extends RxnInstances0 {
     }
 
     final override def imperativeRetry(permanent: Boolean): Either[Option[unsafePackage.CanSuspendInF], Rxn[?]] = {
-      this.retry(
-        permanent = permanent,
-        isInEmbedRxn = this.isInEmbedRxn, // TODO: FIXME
-      ) match {
+      _assert(!this.isInEmbedRxn) // Note: embedUnsafe doesnt't call us
+      this.retry(permanent = permanent, isInEmbedRxn = false) match {
         case null =>
           // atomically/atomicallyInAsync has `null` as `startRxn` (and no
           // post-commit actions for now), so this means a full retry after spinning:

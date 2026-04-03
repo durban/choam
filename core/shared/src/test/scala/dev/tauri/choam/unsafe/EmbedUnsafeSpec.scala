@@ -170,4 +170,47 @@ trait EmbedUnsafeSpec[F[_]]
       _ <- assertResultF(layer2(ctr02, ctr12).run[F], 42)
     } yield ()
   }
+
+  test("embedUnsafe/embedRxn nesting + retries") {
+    for {
+      ctr0 <- F.delay(new AtomicInteger)
+      ctr1 <- F.delay(new AtomicInteger)
+      state <- Ref(0).run
+      fallback <- Ref(0).run
+      rxn = embedUnsafeExample(ctr0, ctr1, state, fallback)
+      _ <- assertResultF(rxn.run, 99L)
+      _ <- assertResultF(fallback.get.run, 100)
+      _ <- assertResultF(rxn.run, 42L)
+    } yield ()
+  }
+
+  private def embedUnsafeExample(ctr0: AtomicInteger, ctr1: AtomicInteger, state: Ref[Int], fallback: Ref[Int]): Rxn[Long] = {
+    Rxn.unsafe.embedUnsafeWithAlts(
+      { implicit u =>
+        ctr0.incrementAndGet()
+        val l = state.update(_ - 1) *> Rxn.unsafe.retry[Int]
+        val x = embedRxn(l + Rxn.unsafe.embedUnsafe { implicit u =>
+          if (ctr1.getAndIncrement() > 1) {
+            alwaysRetry()
+          }
+          val ov = state.value
+          state.value = ov + 1
+          val y = if (ov == 0) {
+            embedRxn(Rxn.unsafe.retry[Int])
+          } else {
+            embedRxn(Rxn.unsafe.embedUnsafe { implicit u =>
+              assertEquals(state.value, 2)
+              20
+            } + Rxn.unsafe.retry)
+          }
+          assertEquals(y, 20)
+          assertEquals(state.value, ov + 1)
+          assertEquals(fallback.value, 100)
+          y + 22
+        } + (Rxn.pure(123) <* Rxn.unsafe.retry))
+        x.toLong
+      },
+      state.update(_ + 1) *> fallback.update(_ + 100).as(99L),
+    )
+  }
 }
