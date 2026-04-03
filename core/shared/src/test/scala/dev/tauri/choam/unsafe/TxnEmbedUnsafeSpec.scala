@@ -230,17 +230,20 @@ trait TxnEmbedUnsafeSpec[F[_]]
 
   test("embedTxn in Txn.unsafe.embedUnsafe - nested") {
     def layer0(ref1: TRef[Int], ref2: TRef[String], ctr0: AtomicInteger): Txn[(Int, String)] = {
-      Txn.unsafe.embedUnsafe { implicit ir =>
-        ctr0.getAndIncrement()
+      val embedded = Txn.unsafe.embedUnsafe { implicit ir =>
+        if (ctr0.getAndIncrement() == 0) {
+          UnsafeStm.retryWhenChanged()
+        }
         val ov1 = ref1.value
         val ov2 = ref2.value
         ref1.value = ov1 + 1
         ref2.value = ov2 + "layer0"
         (ov1, ov2)
       }
+      Txn.retry orElse embedded orElse embedded
     }
     def layer1(ref1: TRef[Int], ref2: TRef[String], ctr0: AtomicInteger, ctr1: AtomicInteger): Txn[(Int, String, Int, String)] = {
-      Txn.unsafe.embedUnsafe { implicit ir =>
+      Txn.retry orElse Txn.unsafe.embedUnsafe { implicit ir =>
         ctr1.getAndIncrement()
         val ov1 = ref1.value
         val ov2 = ref2.value
@@ -259,16 +262,18 @@ trait TxnEmbedUnsafeSpec[F[_]]
     def layer2(ctr0: AtomicInteger, ctr1: AtomicInteger): Txn[Int] = {
       TRef[Int](0).flatMap { ref1 =>
         Txn.unsafe.embedUnsafe { implicit ir =>
+          assert(!ir.isInEmbedRxn)
           newTRef("")
         }.flatMap { ref2 =>
-          ref1.update(_ + 1) *> ref2.update(_ + "layer2") *> layer1(ref1, ref2, ctr0, ctr1).flatMap {
+          val left = ref1.update(_ + 99) *> Txn.retry
+          val right = ref1.update(_ + 1) *> ref2.update(_ + "layer2") *> layer1(ref1, ref2, ctr0, ctr1).flatMap {
             case (ov1, ov2, eov1, eov2) =>
               Txn.unsafe.delay {
                 assertEquals(ov1, 1)
                 assertEquals(ov2, "layer2")
                 assertEquals(eov1, 2)
                 assertEquals(eov2, "layer2layer1")
-                assertEquals(ctr0.get(), 1)
+                assertEquals(ctr0.get(), 2)
                 assertEquals(ctr1.get(), 1)
               } *> Txn.unsafe.embedUnsafe { implicit ir =>
                 assertEquals(ref1.value, 4)
@@ -276,6 +281,7 @@ trait TxnEmbedUnsafeSpec[F[_]]
                 42
               }
           }
+          left orElse right
         }
       }
     }

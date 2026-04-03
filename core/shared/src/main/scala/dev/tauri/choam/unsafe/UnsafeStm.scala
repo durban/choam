@@ -35,6 +35,7 @@ object UnsafeStm { // TODO: better name
     ir.embedRxn(txn.impl)
   }
 
+  // TODO: this is not exactly a good name, as it can also go to the other side of an `orElse`
   private[choam] final def retryWhenChanged()(implicit ir: InRxn): Nothing = {
     throw RetryException.permanentFailure
   }

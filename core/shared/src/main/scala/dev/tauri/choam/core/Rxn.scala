@@ -1398,8 +1398,11 @@ object Rxn extends RxnInstances0 {
     private[this] var mutable: Boolean = // TODO: this makes it slower if there is `+`! (See `InterpreterBench`.)
       true
 
-    private[this] var isInEmbedRxn: Boolean =
-      false
+    private[this] var _embedRxnCount: Int =
+      0
+
+    private[choam] final override def isInEmbedRxn: Boolean =
+      this._embedRxnCount > 0
 
     /**
      * Becomes `true` when the first `tentativeRead` is executed.
@@ -1625,10 +1628,9 @@ object Rxn extends RxnInstances0 {
         case null =>
           // nothing to do
         case stmAlts =>
-          // as stmAlts are lexically nested, all we have is the marker:
-          if (stmAlts.nonEmpty()) {
-            val marker = stmAlts.pop()
-            _assert(equ(marker, _EmbedRxnDone))
+          // as stmAlts are lexically nested, IF we have a marker, it's on top:
+          if (stmAlts.nonEmpty() && equ(stmAlts.peek(), _EmbedRxnDone)) {
+            stmAlts.pop() : Unit
           }
       }
     }
@@ -1675,12 +1677,12 @@ object Rxn extends RxnInstances0 {
       }
     }
 
-    private[this] final def tryLoadAlt(isPermanentFailure: Boolean): Rxn[R] = {
-      if (isPermanentFailure) {
-        _tryLoadAlt(this.stmAlts, isPermanentFailure)
-      } else {
-        _tryLoadAlt(this.alts, isPermanentFailure)
-      }
+    private[this] final def tryLoadAlt(
+      isPermanentFailure: Boolean,
+      isInEmbedRxn: Boolean,
+    ): Rxn[R] = {
+      val a = if (isPermanentFailure) this.stmAlts else this.alts
+      _tryLoadAlt(a, isPermanentFailure = isPermanentFailure, isInEmbedRxn = isInEmbedRxn)
     }
 
     private[this] final def discardStmAlt(): Unit = {
@@ -1691,13 +1693,18 @@ object Rxn extends RxnInstances0 {
       s.popAndDiscard(6)
     }
 
-    private[this] final def _tryLoadAlt(alts: ArrayObjStack[Any], isPermanentFailure: Boolean): Rxn[R] = {
+    private[this] final def _tryLoadAlt(
+      alts: ArrayObjStack[Any],
+      isPermanentFailure: Boolean,
+      isInEmbedRxn: Boolean,
+    ): Rxn[R] = {
       if ((alts ne null) && alts.nonEmpty()) {
         val res = alts.pop().asInstanceOf[Rxn[R]]
-        if (this.isInEmbedRxn && (res eq _EmbedRxnDone)) {
+        if (isInEmbedRxn && (res eq _EmbedRxnDone)) {
           alts.push(_EmbedRxnDone) // put it back
           null
         } else {
+          _assert(res ne _EmbedRxnDone)
           this._loadRestOfAlt(alts, isPermanentFailure = isPermanentFailure)
           res
         }
@@ -1984,26 +1991,32 @@ object Rxn extends RxnInstances0 {
     private[this] final def retry(
       canSuspend: Boolean = this.canSuspend,
       permanent: Boolean = false,
+      isInEmbedRxn: Boolean = this.isInEmbedRxn,
       noDebug: Boolean = false,
     ): Rxn[Any] = {
       if (this.strategy.isDebug && (!noDebug)) {
         this.strategy match {
           case stepper: RetryStrategy.Internal.Stepper[_] =>
             return new SuspendWithStepper(stepper, stepper.asyncF.delay { // scalafix:ok
-              this.retry(canSuspend, permanent, noDebug = true)
+              this.retry(
+                canSuspend = canSuspend,
+                permanent = permanent,
+                isInEmbedRxn = isInEmbedRxn,
+                noDebug = true,
+              )
             })
           case str =>
             impossible(s"$str returned isDebug == true")
         }
       }
-      val alt = tryLoadAlt(isPermanentFailure = permanent)
+      val alt = tryLoadAlt(isPermanentFailure = permanent, isInEmbedRxn = isInEmbedRxn)
       if (alt ne null) {
         // we're not actually retrying,
         // just going to the other side
         // of a `+` or `orElse`, so we're
         // not incrementing `retries`:
         alt
-      } else if (this.isInEmbedRxn) {
+      } else if (isInEmbedRxn) {
         val re = if (permanent) {
           unsafePackage.RetryException.permanentFailure
         } else {
@@ -2812,7 +2825,10 @@ object Rxn extends RxnInstances0 {
     }
 
     final override def imperativeRetry(permanent: Boolean): Either[Option[unsafePackage.CanSuspendInF], Rxn[?]] = {
-      this.retry(permanent = permanent) match {
+      this.retry(
+        permanent = permanent,
+        isInEmbedRxn = this.isInEmbedRxn, // TODO: FIXME
+      ) match {
         case null =>
           // atomically/atomicallyInAsync has `null` as `startRxn` (and no
           // post-commit actions for now), so this means a full retry after spinning:
@@ -2827,7 +2843,8 @@ object Rxn extends RxnInstances0 {
     private[choam] final override def embedRxn[A](rxn: Rxn[A]): A = {
       val contT = this.contT
       contT.push(RxnConsts.ContEmbedRxn)
-      this.isInEmbedRxn = true
+      this._embedRxnCount += 1
+      Predef.assert(this._embedRxnCount > 0) // detect overflow (unlikely)
       this.markAltsForEmbedRxn()
       try {
         this.loop(rxn) match {
@@ -2845,8 +2862,9 @@ object Rxn extends RxnInstances0 {
           popUntilEmbedRxn(contT)
           throw re
       } finally {
+        this._embedRxnCount -= 1
+        _assert(this._embedRxnCount >= 0)
         this.unmarkAltsForEmbedRxn()
-        this.isInEmbedRxn = false
       }
     }
 

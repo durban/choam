@@ -38,6 +38,7 @@ sealed trait InRxn extends InRoRxn {
   private[choam] def imperativeAddAlt(alt: Rxn[_]): Unit
   private[choam] def imperativeRetry(permanent: Boolean): Either[Option[CanSuspendInF], Rxn[?]]
   private[choam] def embedRxn[A](rxn: Rxn[A]): A
+  private[choam] def isInEmbedRxn: Boolean // TODO: do we need this?
   private[choam] def writeRef[A](ref: MemoryLocation[A], nv: A): Unit
   private[choam] def writeRefArray[A](arr: Ref.Array[A], idx: Int, nv: A): Unit
   private[choam] def updateRef[A](ref: MemoryLocation[A], f: A => A): Unit
