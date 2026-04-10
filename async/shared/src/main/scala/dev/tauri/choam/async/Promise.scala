@@ -128,7 +128,11 @@ object Promise {
   private[this] final class Waiting[A](
     val cbs: LongMap[Right[Throwable, A] => Unit],
     val nextId: Long
-  ) extends State[A]
+  ) extends State[A] {
+
+    final override def toString: String =
+      s"Promise.Waiting(LongMap(size = ${cbs.size}), nextId = ${nextId})"
+  }
 
   private[this] final object Waiting {
 
@@ -139,9 +143,15 @@ object Promise {
       _empty.asInstanceOf[Waiting[A]]
   }
 
-  private[this] final class Done[A](val a: A) extends State[A] with InsertRes[A]
+  private[this] final class Done[A](val a: A) extends State[A] with InsertRes[A] {
+    final override def toString: String =
+      s"Promise.Done(${a})"
+  }
 
-  private[this] final class CancelId(val id: Long) extends InsertRes[Nothing]
+  private[this] final class CancelId(val id: Long) extends InsertRes[Nothing] {
+    final override def toString: String =
+      s"Promise.CancelId(${id})"
+  }
 
   private[this] sealed abstract class PromiseReadImpl[A]
     extends Promise.Get[A] { self =>
