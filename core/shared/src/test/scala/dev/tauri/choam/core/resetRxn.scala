@@ -16,13 +16,13 @@
  */
 
 package dev.tauri.choam
-package laws
+package core
 
 import cats.syntax.all._
 
 import core.{ Rxn, Ref }
 
-private final case class ResetRxn[+B](
+private[choam] final case class ResetRxn[+B](
   rxn: Rxn[B],
   refs: Set[ResetRef[?]] = Set.empty,
 ) {
@@ -47,7 +47,7 @@ private final case class ResetRxn[+B](
     ResetRxn(this.rxn.map(f), this.refs)
 }
 
-private final case class ResetRef[A](ref: Ref[A], resetTo: A) {
+private[choam] final case class ResetRef[A](ref: Ref[A], resetTo: A) {
   final def reset: Rxn[Unit] = {
     ref.set(resetTo)
   }

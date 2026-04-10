@@ -559,7 +559,7 @@ lazy val laws = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
   .nativeSettings(commonSettingsNative)
-  .dependsOn(async % "compile->compile;test->test")
+  .dependsOn(async % "compile->compile;compile->test")
   .settings(
     libraryDependencies ++= Seq(
       dependencies.catsLaws.value,

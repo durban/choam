@@ -16,7 +16,7 @@
  */
 
 package dev.tauri.choam
-package laws
+package core
 
 import cats.{ Eq, Semigroupal }
 import cats.syntax.all._

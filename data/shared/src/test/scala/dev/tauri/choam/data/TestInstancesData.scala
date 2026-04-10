@@ -16,13 +16,15 @@
  */
 
 package dev.tauri.choam
-package laws
+package data
 
 import cats.{ Eq, Hash, Order }
 import cats.syntax.all._
 
 import org.scalacheck.{ Arbitrary, Cogen, Gen }
 import org.scalacheck.rng.Seed
+
+import core.TestInstancesCore
 
 trait TestInstancesData extends TestInstancesDataLowPrio {
 
@@ -60,7 +62,7 @@ trait TestInstancesData extends TestInstancesDataLowPrio {
     }
   }
 
-  private[laws] final def insertIntoMap[M[k, v] <: data.Map[k, v], K, V](m: M[K, V], kvs: List[(K, V)]): Gen[M[K, V]] = {
+  private[choam] final def insertIntoMap[M[k, v] <: Map[k, v], K, V](m: M[K, V], kvs: List[(K, V)]): Gen[M[K, V]] = {
     genDelay {
       this.unsafePerformForTest(kvs.traverse_ { case (k, v) =>
         m.put(k, v)

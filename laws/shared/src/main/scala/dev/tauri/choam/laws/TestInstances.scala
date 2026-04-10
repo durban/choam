@@ -18,4 +18,6 @@
 package dev.tauri.choam
 package laws
 
+import data.TestInstancesData
+
 trait TestInstances extends TestInstancesData
