@@ -30,7 +30,7 @@ final class FuzzingSpec_DefaultMcas_IO
 
 trait FuzzingSpec[F[_]] extends BaseSpecAsyncF[F] with ScalaCheckEffectSuite { self: McasImplSpec =>
 
-  val gen = new RxnUnsafeGenerator[F](this.mcasImpl) {
+  private val gen = new RxnUnsafeGenerator[F](this.mcasImpl) {
     final override def assertEquals[A](actual: A, expected: A): Unit =
       self.assertEquals(actual, expected)
   }
