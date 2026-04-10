@@ -40,7 +40,7 @@ abstract class RxnUnsafeGenerator[F[_]](mcas: Mcas)(implicit F: AsyncReactive[F]
     block => Rxn.unsafe.embedUnsafe(block).run[F],
   )
 
-  final def generate(seed: Long): F[Any] = {
+  final def generate(seed: Long, size: Int): F[Any] = {
     val os = new MutSeed(seed)
     val run = os.select(runner)
     val is = os.nextLong()
@@ -65,7 +65,7 @@ abstract class RxnUnsafeGenerator[F[_]](mcas: Mcas)(implicit F: AsyncReactive[F]
             local = embedRxn(pureGen.generate(s.nextLong()))
         }
       }
-      for (_ <- 1 to 10000) {
+      for (_ <- 1 to size) {
         step()
       }
       readRef(currRef)

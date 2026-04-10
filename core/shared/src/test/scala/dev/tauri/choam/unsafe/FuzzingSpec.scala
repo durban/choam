@@ -35,9 +35,14 @@ trait FuzzingSpec[F[_]] extends BaseSpecAsyncF[F] with ScalaCheckEffectSuite { s
       self.assertEquals(actual, expected)
   }
 
+  private val size = this.platform match {
+    case Js | Jvm => 10000
+    case Native => 5000
+  }
+
   test("fuzzing") {
     forAllF { (seed: Long) =>
-      gen.generate(seed).map(_ => true)
+      gen.generate(seed, size = size).map(_ => true)
     }
   }
 }
