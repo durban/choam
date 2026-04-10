@@ -180,7 +180,29 @@ trait EmbedUnsafeSpec[F[_]]
       rxn = embedUnsafeExample(ctr0, ctr1, state, fallback)
       _ <- assertResultF(rxn.run, 99L)
       _ <- assertResultF(fallback.get.run, 100)
+      _ <- assertResultF(state.get.run, 1)
+      _ <- assertResultF(F.delay(ctr0.get()), 1)
+      _ <- assertResultF(F.delay(ctr1.get()), 1)
       _ <- assertResultF(rxn.run, 42L)
+      _ <- assertResultF(fallback.get.run, 100)
+      _ <- assertResultF(state.get.run, 2)
+      _ <- assertResultF(F.delay(ctr0.get()), 2)
+      _ <- assertResultF(F.delay(ctr1.get()), 2)
+      _ <- assertResultF(rxn.run, 99L)
+      _ <- assertResultF(fallback.get.run, 200)
+      _ <- assertResultF(state.get.run, 3)
+      _ <- assertResultF(F.delay(ctr0.get()), 3)
+      _ <- assertResultF(F.delay(ctr1.get()), 3)
+      _ <- assertResultF(rxn.run, 99L)
+      _ <- assertResultF(fallback.get.run, 300)
+      _ <- assertResultF(state.get.run, 4)
+      _ <- assertResultF(F.delay(ctr0.get()), 5)
+      _ <- assertResultF(F.delay(ctr1.get()), 5)
+      _ <- assertResultF(rxn.run, 99L)
+      _ <- assertResultF(fallback.get.run, 400)
+      _ <- assertResultF(state.get.run, 5)
+      _ <- assertResultF(F.delay(ctr0.get()), 6)
+      _ <- assertResultF(F.delay(ctr1.get()), 6)
     } yield ()
   }
 
@@ -210,7 +232,13 @@ trait EmbedUnsafeSpec[F[_]]
         } + (Rxn.pure(123) <* Rxn.unsafe.retry))
         x.toLong
       },
-      state.update(_ + 1) *> fallback.update(_ + 100).as(99L),
+      state.update(_ + 1) *> Rxn.unsafe.suspend {
+        if (ctr0.get() == 4) {
+          Rxn.unsafe.retry[Unit]
+        } else {
+          Rxn.unit
+        }
+      } *> fallback.update(_ + 100).as(99L),
     )
   }
 }
