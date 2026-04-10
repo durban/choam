@@ -2283,7 +2283,7 @@ object Rxn extends RxnInstances0 {
       a = null
       if (!equ(res, postCommitResultMarker)) {
         // final result, Done will need it:
-        contK.push(res)
+        contK.push(res) // TODO: try to avoid this push if there are no PCs
       }
       while (pc.nonEmpty()) { // TODO: instead of the while loop, push these all at once
         contT.push2(
@@ -3014,8 +3014,7 @@ object Rxn extends RxnInstances0 {
         // then we push the PCs:
         preparePcActions()
         // and execute them:
-        val pcResult = loop(next())
-        _assert(pcResult == ())
+        loop(next()) : Unit
       }
       ok
     }

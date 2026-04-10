@@ -22,16 +22,16 @@ import java.util.concurrent.ThreadLocalRandom
 
 import cats.effect.IO
 
-import core.Rxn
-import unsafe.{ InRxn, UnsafeApi, alwaysRetry }
+import core.{ Rxn, Ref }
+import unsafe.{ InRxn, UnsafeApi, alwaysRetry, RefSyntax, embedRxn, getAndSetRef }
 
 final class PromiseSpecUnsafeApi_EmbedUnsafe_DefaultMcas_IO
   extends BaseSpecTickedIO
   with SpecDefaultMcas
   with PromiseSpecUnsafeApi[IO] {
 
-  protected final override def runBlock[A](block: InRxn => A): IO[A] =
-    Rxn.unsafe.embedUnsafe(block(_)).run[IO]
+  protected final override def runBlockWithAlts[A](block: InRxn => A, alts: Rxn[A]*): IO[A] =
+    Rxn.unsafe.embedUnsafeWithAlts(block(_), alts: _*).run[IO]
 }
 
 final class PromiseSpecUnsafeApi_Atomically_DefaultMcas_IO
@@ -40,8 +40,8 @@ final class PromiseSpecUnsafeApi_Atomically_DefaultMcas_IO
   with SpecDefaultMcas
   with PromiseSpecUnsafeApi[IO] {
 
-  protected final override def runBlock[A](block: InRxn => A): IO[A] =
-    F.delay { this.api.atomically(block) }
+  protected final override def runBlockWithAlts[A](block: InRxn => A, alts: Rxn[A]*): IO[A] =
+    F.delay { this.api.atomicallyWithAlts(block, alts: _*) }
 }
 
 final class PromiseSpecUnsafeApi_AtomicallyInAsync_DefaultMcas_IO
@@ -50,14 +50,17 @@ final class PromiseSpecUnsafeApi_AtomicallyInAsync_DefaultMcas_IO
   with SpecDefaultMcas
   with PromiseSpecUnsafeApi[IO] {
 
-  protected final override def runBlock[A](block: InRxn => A): IO[A] =
-    this.api.atomicallyInAsync[IO, A](RetryStrategy.Default.withCede)(block)
+  protected final override def runBlockWithAlts[A](block: InRxn => A, alts: Rxn[A]*): IO[A] =
+    this.api.atomicallyInAsyncWithAlts[IO, A](RetryStrategy.Default.withCede)(block, alts: _*)
 }
 
 trait PromiseSpecUnsafeApi[F[_]]
   extends BaseSpecAsyncF[F] { this: McasImplSpec & TestContextSpec[F] =>
 
-  protected def runBlock[A](block: InRxn => A): F[A]
+  protected def runBlockWithAlts[A](block: InRxn => A, alts: Rxn[A]*): F[A]
+
+  protected def runBlock[A](block: InRxn => A): F[A] =
+    runBlockWithAlts(block)
 
   test("Promise#unsafeComplete") {
     for {
@@ -120,11 +123,87 @@ trait PromiseSpecUnsafeApi[F[_]]
       fib2 <- p2.get.start
       _ <- this.tickAll
       _ <- p1.complete(42).run
-      _ <- runBlock { implicit ir =>
+      ok <- runBlock { implicit ir =>
         p2.unsafeComplete("foo")
       }
+      _ <- assertF(ok)
       _ <- assertResultF(fib1.joinWithNever, 42)
       _ <- assertResultF(fib2.joinWithNever, "foo")
+    } yield ()
+  }
+
+  test("After embedRxn") {
+    for {
+      r <- Ref[Int](0).run
+      p <- Promise[Int].run
+      f1 <- F.deferred[Unit]
+      f2 <- F.deferred[Unit]
+      fib1 <- p.get.guarantee(f1.complete(()).void).start
+      fib2 <- p.get.guarantee(f2.complete(()).void).start
+      _ <- this.tickAll
+      res1 <- runBlockWithAlts(
+        { implicit u =>
+          r.value = 42
+          assert(embedRxn(p.complete(42)))
+          alwaysRetry() : Int
+        },
+        Rxn.pure(99)
+      )
+      _ <- assertEqualsF(res1, 99)
+      _ <- this.tickAll
+      _ <- assertResultF(f1.tryGet, None)
+      _ <- assertResultF(f2.tryGet, None)
+      _ <- assertResultF(r.get.run, 0)
+      res2 <- runBlock { implicit u =>
+        r.value = 42
+        assert(p.unsafeComplete(43))
+        assertEquals(getAndSetRef(r, 99), 42)
+        56
+      }
+      _ <- assertEqualsF(res2, 56)
+      _ <- this.tickAll
+      _ <- assertResultF(f1.tryGet, Some(()))
+      _ <- assertResultF(f2.tryGet, Some(()))
+      _ <- assertResultF(r.get.run, 99)
+      _ <- fib1.joinWithNever
+      _ <- fib2.joinWithNever
+    } yield ()
+  }
+
+  test("Within embedRxn") {
+    for {
+      r <- Ref[Int](0).run
+      p <- Promise[Int].run
+      f1 <- F.deferred[Unit]
+      f2 <- F.deferred[Unit]
+      fib1 <- p.get.guarantee(f1.complete(()).void).start
+      fib2 <- p.get.guarantee(f2.complete(()).void).start
+      _ <- this.tickAll
+      res1 <- runBlockWithAlts(
+        { implicit u =>
+          r.value = 42
+          assert(embedRxn(p.complete(42)))
+          alwaysRetry() : Int
+        },
+        Rxn.pure(99)
+      )
+      _ <- assertEqualsF(res1, 99)
+      _ <- this.tickAll
+      _ <- assertResultF(f1.tryGet, None)
+      _ <- assertResultF(f2.tryGet, None)
+      _ <- assertResultF(r.get.run, 0)
+      res2 <- runBlock { implicit u =>
+        r.value = 42
+        assert(embedRxn(p.complete(43)))
+        56
+      }
+      _ <- assertEqualsF(res2, 56)
+      _ <- this.tickAll
+      _ <- assertResultF(f1.tryGet, Some(()))
+      _ <- assertResultF(f2.tryGet, Some(()))
+      _ <- assertResultF(r.get.run, 42)
+      _ <- fib1.joinWithNever
+      _ <- fib2.joinWithNever
     } yield ()
   }
 }
