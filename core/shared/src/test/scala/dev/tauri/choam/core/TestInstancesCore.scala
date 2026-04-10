@@ -89,17 +89,19 @@ trait TestInstancesCore extends TestInstancesCoreLowPrio { self =>
     implicit
     arbB: Arbitrary[B],
   ): Arbitrary[Rxn[B]] = {
-    implicit val arbAny: Arbitrary[Any] = Arbitrary(
-      Gen.oneOf(
-        Gen.const(()),
-        Gen.const(null),
-        Gen.alphaNumStr,
-        Gen.long,
-      )
-    )
+    implicit val arbAny: Arbitrary[Any] = this.arbAny
     implicit val cogAny: Cogen[Any] = Cogen.cogenInt.contramap[Any](_.##)
     Arbitrary { self.arbRxn[Any, B].arbitrary }
   }
+
+  private[choam] final def arbAny: Arbitrary[Any] = Arbitrary(
+    Gen.oneOf(
+      Gen.const(()),
+      Gen.const(null),
+      Gen.alphaNumStr,
+      Gen.long,
+    )
+  )
 
   private[choam] final def unsafePerformForTest[B](rxn: Rxn[B]): B = {
     rxn.unsafePerform(self.mcasImpl)
@@ -177,19 +179,6 @@ trait TestInstancesCore extends TestInstancesCoreLowPrio { self =>
         val rxn = ref.modify[B] { aOld => (aa(aOld), ab(aOld)) }
         ResetRxn(rxn, Set(ResetRef(ref, a0)))
       },
-      // TODO: this generates `r: Rxn[A, B]` so that `r * r` can never commit
-      // for {
-      //   aa <- arbAA.arbitrary
-      //   ab <- arbAB.arbitrary
-      //   a0 <- arbA.arbitrary
-      //   ref <- genDelay { Ref.unsafe(a0) }
-      // } yield {
-      //   val rxn = ref.unsafeDirectRead.flatMap { oldA =>
-      //     val newA = aa(oldA)
-      //     ref.unsafeCas(oldA, newA).as(ab(newA))
-      //   }
-      //   ResetRxn(rxn, Set(ResetRef(ref, a0)))
-      // },
       Gen.lzy {
         for {
           r <- arbResetRxn[A, B].arbitrary
