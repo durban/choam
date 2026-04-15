@@ -37,27 +37,29 @@ abstract class RxnUnsafeGenerator[F[_]](mcas: Mcas) {
     size: Int,
     runner: (InRxn => Any) => F[Any]
   ): F[Any] = {
+    require(size >= 0)
     val os = new MutSeed(seed)
     val is = os.nextLong()
-    val block = generateBlock(is, size = size)
+    val block = generateBlock(is, size = size, ref = null)
     runner(block)
   }
 
   private[this] final def generateBlock(
     is: Long,
     size: Int,
+    ref: Ref[Any],
   ): (InRxn => Any) = { implicit u =>
     val s = new MutSeed(is)
-    var currRef: Ref[Any] = newRef[Any]("")
+    var currRef: Ref[Any] = if (ref ne null) ref else newRef[Any]("")
     val refRef: Ref[Ref[Any]] = newRef[Ref[Any]](currRef)
-    var lastWrittenToRef: Any = ""
+    var lastWrittenToRef: Any = currRef.value
     var local: Any = 42
     val localLocal: RxnLocal[Any] = newLocal(42)
     def step(): Unit = {
       assertEquals(readRef(currRef), lastWrittenToRef)
       assertEquals(local, embedRxn(localLocal.get))
       assert(refRef.value eq currRef)
-      s.nextBounded(4) match {
+      s.nextBounded(7) match {
         case 0 =>
           val ns = s.nextString()
           currRef = newRef[Any](ns)
@@ -80,6 +82,13 @@ abstract class RxnUnsafeGenerator[F[_]](mcas: Mcas) {
           val ex = embedRxn(Rxn.unsafe.exchanger[Int, String])
           val opt = embedRxn(ex.dual.exchange("foo").?)
           assert(opt.isEmpty)
+        case 6 =>
+          val innerBlock = generateBlock(s.nextLong(), size = size >>> 1, ref = currRef)
+          val rxn: Rxn[Any] = Rxn.unsafe.embedUnsafe(innerBlock)
+          embedRxn(rxn) : Unit
+          lastWrittenToRef = currRef.value
+        case _ =>
+          assert(false)
       }
     }
     for (_ <- 1 to size) {

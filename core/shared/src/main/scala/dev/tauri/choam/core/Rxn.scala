@@ -3014,7 +3014,10 @@ object Rxn extends RxnInstances0 {
         // then we push the PCs:
         preparePcActions()
         // and execute them:
+        // TODO: val ret: R =
         loop(next()) : Unit
+        // TODO: previously we've had this assertion; it is incorrect:
+        // TODO: _assert(ret == ())
       }
       ok
     }
