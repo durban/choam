@@ -21,80 +21,95 @@ package unsafe
 import java.util.SplittableRandom
 
 import internal.mcas.Mcas
-import core.{ Rxn, Ref, RxnGenerator, AsyncReactive }
+import core.{ Rxn, Ref, RxnGenerator }
 import RxnUnsafeGenerator.MutSeed
 
-abstract class RxnUnsafeGenerator[F[_]](mcas: Mcas)(implicit F: AsyncReactive[F]) {
+abstract class RxnUnsafeGenerator[F[_]](mcas: Mcas) {
 
   protected def assertEquals[A](actual: A, expected: A): Unit
+  protected def assert(cond: Boolean): Unit
 
-  private[this] val pureGen = new RxnGenerator(mcas)
+  private[this] val pureGen =
+    new RxnGenerator(mcas)
 
-  private[this] val rt = ChoamRuntime.forTesting(mcas)
-
-  private[this] val u = UnsafeApi(rt)
-
-  private[this] val runner = List[(InRxn => Any) => F[Any]](
-    block => F.asyncInst.delay { u.atomically(block) },
-    block => u.atomicallyInAsync[F, Any](RetryStrategy.Default)(block)(using F.asyncInst),
-    block => Rxn.unsafe.embedUnsafe(block).run[F],
-  )
-
-  final def generate(seed: Long, size: Int): F[Any] = {
+  final def generate(
+    seed: Long,
+    size: Int,
+    runner: (InRxn => Any) => F[Any]
+  ): F[Any] = {
     val os = new MutSeed(seed)
-    val run = os.select(runner)
     val is = os.nextLong()
-    val block: InRxn => Any = { implicit u =>
-      val s = new MutSeed(is)
-      var currRef: Ref[Any] = newRef[Any]("")
-      var lastWrittenToRef: Any = ""
-      var local: Any = 42
-      def step(): Unit = {
-        assertEquals(readRef(currRef), lastWrittenToRef)
-        s.nextBounded(4) match {
-          case 0 =>
-            val ns = s.nextString()
-            currRef = newRef[Any](ns)
-            lastWrittenToRef = ns
-          case 1 =>
-            writeRef(currRef, local)
-            lastWrittenToRef = local
-          case 2 =>
-            addPostCommit(pureGen.generate(s.nextLong()).void)
-          case 3 =>
-            local = embedRxn(pureGen.generate(s.nextLong()))
-        }
-      }
-      for (_ <- 1 to size) {
-        step()
-      }
-      readRef(currRef)
-    }
+    val block = generateBlock(is, size = size)
+    runner(block)
+  }
 
-    run(block)
+  private[this] final def generateBlock(
+    is: Long,
+    size: Int,
+  ): (InRxn => Any) = { implicit u =>
+    val s = new MutSeed(is)
+    var currRef: Ref[Any] = newRef[Any]("")
+    val refRef: Ref[Ref[Any]] = newRef[Ref[Any]](currRef)
+    var lastWrittenToRef: Any = ""
+    var local: Any = 42
+    val localLocal: RxnLocal[Any] = newLocal(42)
+    def step(): Unit = {
+      assertEquals(readRef(currRef), lastWrittenToRef)
+      assertEquals(local, embedRxn(localLocal.get))
+      assert(refRef.value eq currRef)
+      s.nextBounded(4) match {
+        case 0 =>
+          val ns = s.nextString()
+          currRef = newRef[Any](ns)
+          val ov = getAndSetRef(refRef, currRef)
+          assertEquals(ov.value, lastWrittenToRef)
+          lastWrittenToRef = ns
+        case 1 =>
+          writeRef(currRef, local)
+          lastWrittenToRef = local
+        case 2 =>
+          addPostCommit(pureGen.generate(s.nextLong()).void)
+        case 3 =>
+          local = embedRxn(pureGen.generate(s.nextLong()))
+          embedRxn(localLocal.set(local))
+        case 4 =>
+          val ov = embedRxn(currRef.getAndSet(local))
+          assertEquals(ov, lastWrittenToRef)
+          lastWrittenToRef = local
+        case 5 =>
+          val ex = embedRxn(Rxn.unsafe.exchanger[Int, String])
+          val opt = embedRxn(ex.dual.exchange("foo").?)
+          assert(opt.isEmpty)
+      }
+    }
+    for (_ <- 1 to size) {
+      step()
+    }
+    readRef(currRef)
   }
 }
 
 object RxnUnsafeGenerator {
 
-  final class MutSeed(rng: SplittableRandom) {
+  final class MutSeed(seed: Long) {
 
-    def this(seed: Long) = this(new SplittableRandom(seed))
+    private[this] val rng: SplittableRandom =
+      new SplittableRandom(seed)
 
-    def nextBounded(maxExclusive: Int): Int = {
+    final def nextBounded(maxExclusive: Int): Int = {
       rng.nextInt(0, maxExclusive)
     }
 
-    def select[A](as: Seq[A]): A = {
+    final def select[A](as: Seq[A]): A = {
       val idx = this.nextBounded(as.length)
       as(idx)
     }
 
-    def nextLong(): Long = {
+    final def nextLong(): Long = {
       rng.nextLong()
     }
 
-    def nextString(): String = {
+    final def nextString(): String = {
       this.nextLong().toString
     }
   }

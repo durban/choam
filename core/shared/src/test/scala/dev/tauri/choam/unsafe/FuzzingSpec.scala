@@ -23,6 +23,8 @@ import cats.effect.IO
 import org.scalacheck.effect.PropF.forAllF
 import munit.ScalaCheckEffectSuite
 
+import core.Rxn
+
 final class FuzzingSpec_DefaultMcas_IO
   extends BaseSpecIO
   with SpecDefaultMcas
@@ -30,19 +32,47 @@ final class FuzzingSpec_DefaultMcas_IO
 
 trait FuzzingSpec[F[_]] extends BaseSpecAsyncF[F] with ScalaCheckEffectSuite { self: McasImplSpec =>
 
-  private val gen = new RxnUnsafeGenerator[F](this.mcasImpl) {
+  private[this] val rt = ChoamRuntime.forTesting(this.mcasImpl)
+
+  private[this] val u = UnsafeApi(rt)
+
+  private[this] val gen = new RxnUnsafeGenerator[F](this.mcasImpl) {
     final override def assertEquals[A](actual: A, expected: A): Unit =
       self.assertEquals(actual, expected)
+
+    final override def assert(cond: Boolean): Unit =
+      self.assert(cond)
   }
 
-  private val size = this.platform match {
+  private[this] val size = this.platform match {
     case Js | Jvm => 10000
     case Native => 5000
   }
 
-  test("fuzzing") {
+  val atomicallyRunner: (InRxn => Any) => F[Any] =
+    block => F.delay { u.atomically(block) }
+
+  val atomicallyInAsyncRunner: (InRxn => Any) => F[Any] =
+    block => u.atomicallyInAsync[F, Any](RetryStrategy.Default)(block)(using F)
+
+  val embedUnsafeRunner: (InRxn => Any) => F[Any] =
+    block => Rxn.unsafe.embedUnsafe(block).run[F]
+
+  test("fuzzing (atomically)") {
     forAllF { (seed: Long) =>
-      gen.generate(seed, size = size).map(_ => true)
+      gen.generate(seed, size = size, runner = atomicallyRunner).map(_ => true)
+    }
+  }
+
+  test("fuzzing (atomicallyInAsync)") {
+    forAllF { (seed: Long) =>
+      gen.generate(seed, size = size, runner = atomicallyInAsyncRunner).map(_ => true)
+    }
+  }
+
+  test("fuzzing (embedUnsafe)") {
+    forAllF { (seed: Long) =>
+      gen.generate(seed, size = size, runner = embedUnsafeRunner).map(_ => true)
     }
   }
 }
