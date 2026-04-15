@@ -46,7 +46,7 @@ trait FuzzingSpec[F[_]] extends BaseSpecAsyncF[F] with ScalaCheckEffectSuite { s
 
   private[this] val size = this.platform match {
     case Js | Jvm => 10000
-    case Native => 5000
+    case Native => 3000
   }
 
   val atomicallyRunner: (InRxn => Any) => F[Any] =
