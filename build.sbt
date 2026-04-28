@@ -841,7 +841,7 @@ lazy val commonSettingsNative = Seq[Setting[_]](
       .withSourceLevelDebuggingConfig(_.enableAll)
       .withCompileOptions(_ ++ Seq(
         "-DGC_ASSERTIONS",
-        // "-DDEBUG_PRINT",
+        "-DDEBUG_PRINT",
       ))
   },
   envVars ++= Map(
