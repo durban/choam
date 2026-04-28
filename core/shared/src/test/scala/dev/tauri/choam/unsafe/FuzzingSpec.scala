@@ -37,17 +37,20 @@ trait FuzzingSpec[F[_]] extends BaseSpecAsyncF[F] with ScalaCheckEffectSuite { s
   private[this] val u = UnsafeApi(rt)
 
   private[this] val gen = new RxnUnsafeGenerator[F](this.mcasImpl) {
-    final override def assertEquals[A](actual: A, expected: A): Unit =
-      self.assertEquals(actual, expected)
 
-    final override def assert(cond: Boolean): Unit =
+    final override def assertEquals[A](actual: A, expected: A)(implicit loc: munit.Location): Unit = {
+      self.assertEquals(actual, expected)
+    }
+
+    final override def assert(cond: Boolean)(implicit loc: munit.Location): Unit = {
       self.assert(cond)
+    }
   }
 
   private[this] val size = this.platform match {
-    case Jvm => 100
-    case Js => 70
-    case Native => 60
+    case Jvm => 110
+    case Js => 80
+    case Native => 75
   }
 
   val atomicallyRunner: (InRxn => Any) => F[Any] =

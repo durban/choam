@@ -1606,11 +1606,11 @@ object Rxn extends RxnInstances0 {
 
     private[this] final def markAltsForEmbedRxn(): Unit = {
       this.alts match {
-        case null => // okay, we won't mistakenly load anything from there
+        case null => ()
         case alts => alts.push(_EmbedRxnDone)
       }
       this.stmAlts match {
-        case null => // as above
+        case null => ()
         case stmAlts => stmAlts.push(_EmbedRxnDone)
       }
     }
@@ -1618,15 +1618,20 @@ object Rxn extends RxnInstances0 {
     private[this] final def unmarkAltsForEmbedRxn(): Unit = {
       this.alts match {
         case null =>
-          // nothing to do
+          () // nothing to do
         case alts =>
-          while (alts.nonEmpty() && equ(alts.peek(), _EmbedRxnDone)) {
-            alts.pop()
-          }
+          // We are leaving an embedRxn, and
+          // removing all alts registered during
+          // that embedRxn. (We'd never be able
+          // to execute them. This is a limitation
+          // of embedRxn. This is an unfortunate
+          // change in how `+` works in the unsafe
+          // API, as compared to in the safe API.)
+          popUntilEmbedRxn(alts)
       }
       this.stmAlts match {
         case null =>
-          // nothing to do
+          () // nothing to do
         case stmAlts =>
           // as stmAlts are lexically nested, IF we have a marker, it's on top:
           if (stmAlts.nonEmpty() && equ(stmAlts.peek(), _EmbedRxnDone)) {
@@ -1701,7 +1706,7 @@ object Rxn extends RxnInstances0 {
       if ((alts ne null) && alts.nonEmpty()) {
         val res = alts.pop().asInstanceOf[Rxn[R]]
         if (isInEmbedRxn && (res eq _EmbedRxnDone)) {
-          alts.push(_EmbedRxnDone) // put it back
+          alts.push(_EmbedRxnDone) // put it back // TODO: FIXME
           null
         } else {
           _assert(res ne _EmbedRxnDone)
@@ -2870,6 +2875,21 @@ object Rxn extends RxnInstances0 {
     private[this] final def popUntilEmbedRxn(contT: ByteStack): Unit = {
       if (contT.pop() != RxnConsts.ContEmbedRxn) {
         popUntilEmbedRxn(contT)
+      }
+    }
+
+    /*
+     * Removes alts until it founds an _EmbedRxnDone
+     * (removes that too) or until the stack is emptied.
+     * A stack not containing _EmbedRxnDone can happen,
+     * when upon entering the embedRxn the stack was null;
+     * in that case emptying the stack is correct, as all
+     * the alts belong to the embedRxn.
+     */
+    @tailrec
+    private[this] final def popUntilEmbedRxn(alts: ObjStack[Any]): Unit = {
+      if (alts.nonEmpty() && (alts.pop() != _EmbedRxnDone)) {
+        popUntilEmbedRxn(alts)
       }
     }
 

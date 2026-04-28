@@ -19,6 +19,9 @@ package dev.tauri.choam
 package unsafe
 
 import java.util.SplittableRandom
+import java.util.concurrent.atomic.AtomicInteger
+
+import scala.runtime.ObjectRef
 
 import internal.mcas.Mcas
 import core.{ Rxn, Ref, RxnGenerator }
@@ -26,8 +29,11 @@ import RxnUnsafeGenerator.MutSeed
 
 abstract class RxnUnsafeGenerator[F[_]](mcas: Mcas) {
 
-  protected def assertEquals[A](actual: A, expected: A): Unit
-  protected def assert(cond: Boolean): Unit
+  protected def assertEquals[A](actual: A, expected: A)(implicit loc: munit.Location): Unit
+  protected def assert(cond: Boolean)(implicit loc: munit.Location): Unit
+
+  private[this] final val retryChance =
+    1 << 18
 
   private[this] val pureGen =
     new RxnGenerator(mcas)
@@ -40,7 +46,7 @@ abstract class RxnUnsafeGenerator[F[_]](mcas: Mcas) {
     require(size >= 0)
     val os = new MutSeed(seed)
     val is = os.nextLong()
-    val block = generateBlock(is, size = size, ref = null)
+    val block = generateBlock(is, size = size, ref = null, retryCtr = new AtomicInteger, locals = Nil, refs = Nil)
     runner(block)
   }
 
@@ -48,45 +54,82 @@ abstract class RxnUnsafeGenerator[F[_]](mcas: Mcas) {
     is: Long,
     size: Int,
     ref: Ref[Any],
+    retryCtr: AtomicInteger,
+    locals: List[ObjectRef[Option[Any]]],
+    refs: List[ObjectRef[Ref[Any]]],
   ): (InRxn => Any) = { implicit u =>
     val s = new MutSeed(is)
-    var currRef: Ref[Any] = if (ref ne null) ref else newRef[Any]("")
-    val refRef: Ref[Ref[Any]] = newRef[Ref[Any]](currRef)
-    var lastWrittenToRef: Any = currRef.value
-    var local: Any = 42
+    val currRef: ObjectRef[Ref[Any]] = ObjectRef.create(if (ref ne null) ref else newRef[Any](""))
+    val refRef: Ref[Ref[Any]] = newRef[Ref[Any]](currRef.elem)
+    var lastWrittenToRef: Any = currRef.elem.value
+    val local: ObjectRef[Option[Any]] = ObjectRef.create(Some(42))
     val localLocal: RxnLocal[Any] = newLocal(42)
+    def maybeRetry(): Unit = {
+      val shift = retryCtr.getAndIncrement()
+      if (s.nextBounded(Integer.MAX_VALUE) < (retryChance >>> shift)) {
+        // we'll retry, but we need to reset the
+        // state we have here in imperative code:
+        local.elem = None
+        locals.foreach(_.elem = None)
+        currRef.elem = null
+        refs.foreach(_.elem = null)
+        alwaysRetry()
+      }
+    }
     def step(): Unit = {
-      assertEquals(readRef(currRef), lastWrittenToRef)
-      assertEquals(local, embedRxn(localLocal.get))
-      assert(refRef.value eq currRef)
-      s.nextBounded(7) match {
+      currRef.elem match {
+        case null =>
+          currRef.elem = refRef.value
+        case currRef =>
+          assertEquals(readRef(currRef), lastWrittenToRef)
+      }
+      local.elem match {
+        case Some(lv) => assertEquals(lv, embedRxn(localLocal.get))
+        case None => ()
+      }
+      assert(refRef.value eq currRef.elem)
+      s.nextBounded(8) match {
         case 0 =>
           val ns = s.nextString()
-          currRef = newRef[Any](ns)
-          val ov = getAndSetRef(refRef, currRef)
-          assertEquals(ov.value, lastWrittenToRef)
+          currRef.elem = newRef[Any](ns)
+          val ov = getAndSetRef(refRef, currRef.elem)
+          val ovv = ov.value
+          assertEquals(ovv, lastWrittenToRef)
           lastWrittenToRef = ns
         case 1 =>
-          writeRef(currRef, local)
-          lastWrittenToRef = local
+          val lv = local.elem.getOrElse("")
+          writeRef(currRef.elem, lv)
+          lastWrittenToRef = lv
         case 2 =>
           addPostCommit(pureGen.generate(s.nextLong()).void)
         case 3 =>
-          local = embedRxn(pureGen.generate(s.nextLong()))
-          embedRxn(localLocal.set(local))
+          val lv = embedRxn(pureGen.generate(s.nextLong()))
+          local.elem = Some(lv)
+          embedRxn(localLocal.set(lv))
         case 4 =>
-          val ov = embedRxn(currRef.getAndSet(local))
+          val lv = local.elem.getOrElse("")
+          val ov = embedRxn(currRef.elem.getAndSet(lv))
           assertEquals(ov, lastWrittenToRef)
-          lastWrittenToRef = local
+          lastWrittenToRef = lv
         case 5 =>
           val ex = embedRxn(Rxn.unsafe.exchanger[Int, String])
           val opt = embedRxn(ex.dual.exchange("foo").?)
           assert(opt.isEmpty)
         case 6 =>
-          val innerBlock = generateBlock(s.nextLong(), size = size >>> 1, ref = currRef)
+          val innerBlock = generateBlock(
+            s.nextLong(),
+            size = size >>> 1,
+            ref = currRef.elem,
+            retryCtr = retryCtr,
+            locals = local :: locals,
+            refs = currRef :: refs,
+          )
           val rxn: Rxn[Any] = Rxn.unsafe.embedUnsafe(innerBlock)
           embedRxn(rxn) : Unit
-          lastWrittenToRef = currRef.value
+          currRef.elem = refRef.value
+          lastWrittenToRef = currRef.elem.value
+        case 7 =>
+          maybeRetry()
         case _ =>
           assert(false)
       }
@@ -94,7 +137,7 @@ abstract class RxnUnsafeGenerator[F[_]](mcas: Mcas) {
     for (_ <- 1 to size) {
       step()
     }
-    readRef(currRef)
+    readRef(currRef.elem)
   }
 }
 

@@ -674,4 +674,64 @@ trait CommonImperativeApiSpec[F[_]]
       _ <- assertResultF(F.delay(ctr4.get()), 1)
     } yield ()
   }
+
+  test("Mustn't try loading a + alt in an embedRxn after leaving that embedRxn") {
+    for {
+      ctr <- F.delay(new AtomicInteger)
+      ref1 <- Ref(0).run
+      ctr1 <- F.delay(new AtomicInteger)
+      ref2 <- Ref(0).run
+      ctr2 <- F.delay(new AtomicInteger)
+      res <- runBlock { implicit u =>
+        val r = embedRxn(Rxn.unsafe.embedUnsafe { implicit u =>
+          val left = ref1.update(_ + 1) *> Rxn.unsafe.delay(ctr1.getAndIncrement())
+          val right = ref2.update(_ + 1) *> Rxn.unsafe.delay(ctr2.getAndIncrement())
+          embedRxn(left + right)
+        })
+        if (ctr.getAndIncrement() == 0) {
+          alwaysRetry()
+        } else {
+          r
+        }
+      }
+      _ <- assertEqualsF(res, 1)
+      _ <- assertResultF(ref1.get.run, 1)
+      _ <- assertResultF(F.delay(ctr1.get()), 2)
+      _ <- assertResultF(ref2.get.run, 0)
+      _ <- assertResultF(F.delay(ctr2.get()), 0)
+    } yield ()
+  }
+
+  test("Mustn't try loading a + alt in an embedRxn after leaving that embedRxn (nested)") {
+    for {
+      ctr <- F.delay(new AtomicInteger)
+      ref1 <- Ref(0).run
+      ctr1 <- F.delay(new AtomicInteger)
+      ref2 <- Ref(0).run
+      ctr2 <- F.delay(new AtomicInteger)
+      pcRef <- Ref(0).run
+      res <- runBlock { implicit u =>
+        addPostCommit(pcRef.update(_ + 1))
+        val r = embedRxn(Rxn.unsafe.embedUnsafe { implicit u =>
+          val left = ref1.update(_ + 1) *> Rxn.unsafe.delay(ctr1.getAndIncrement())
+          val right = ref2.update(_ + 1) *> Rxn.unsafe.delay(ctr2.getAndIncrement())
+          embedRxn(Rxn.unsafe.embedUnsafe { implicit u =>
+            // NB: the <* is so that we hit a different
+            // codepath in imperativeCommit.
+            embedRxn((left + right) <* Rxn.unit)
+          })
+        })
+        if (ctr.getAndIncrement() == 0) {
+          alwaysRetry()
+        } else {
+          r
+        }
+      }
+      _ <- assertEqualsF(res, 1)
+      _ <- assertResultF(ref1.get.run, 1)
+      _ <- assertResultF(F.delay(ctr1.get()), 2)
+      _ <- assertResultF(ref2.get.run, 0)
+      _ <- assertResultF(F.delay(ctr2.get()), 0)
+    } yield ()
+  }
 }
