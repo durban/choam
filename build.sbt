@@ -836,7 +836,7 @@ lazy val commonSettingsJs = Seq[Setting[_]](
 lazy val commonSettingsNative = Seq[Setting[_]](
   nativeConfig ~= { config =>
     config
-      .withGC(GC.immix)
+      .withGC(GC.commix)
       .withMultithreading(true)
       .withSourceLevelDebuggingConfig(_.enableAll)
       .withCompileOptions(_ ++ Seq(
