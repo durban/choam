@@ -129,6 +129,10 @@ trait MUnitUtils extends MUnitUtilsPlatform { this: FunSuite =>
     vmName.contains("OpenJ9")
   }
 
+  final def isLinux(): Boolean = {
+    System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("linux")
+  }
+
   final def isWindows(): Boolean = {
     System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("windows")
   }

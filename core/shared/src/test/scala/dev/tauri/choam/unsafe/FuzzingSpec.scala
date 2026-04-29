@@ -53,28 +53,37 @@ trait FuzzingSpec[F[_]] extends BaseSpecAsyncF[F] with ScalaCheckEffectSuite { s
     case Native => 75
   }
 
-  val atomicallyRunner: (InRxn => Any) => F[Any] =
+  private val atomicallyRunner: (InRxn => Any) => F[Any] =
     block => F.delay { u.atomically(block) }
 
-  val atomicallyInAsyncRunner: (InRxn => Any) => F[Any] =
+  private val atomicallyInAsyncRunner: (InRxn => Any) => F[Any] =
     block => u.atomicallyInAsync[F, Any](RetryStrategy.Default)(block)(using F)
 
-  val embedUnsafeRunner: (InRxn => Any) => F[Any] =
+  private val embedUnsafeRunner: (InRxn => Any) => F[Any] =
     block => Rxn.unsafe.embedUnsafe(block).run[F]
 
+  private def skipOnSnArmLinux(): Unit = {
+    if ((this.platform eq Native) && this.isArm() && this.isLinux()) {
+      assume(false)
+    }
+  }
+
   test("fuzzing (atomically)") {
+    skipOnSnArmLinux()
     forAllF { (seed: Long) =>
       gen.generate(seed, size = size, runner = atomicallyRunner).map(_ => true)
     }
   }
 
   test("fuzzing (atomicallyInAsync)") {
+    skipOnSnArmLinux()
     forAllF { (seed: Long) =>
       gen.generate(seed, size = size, runner = atomicallyInAsyncRunner).map(_ => true)
     }
   }
 
   test("fuzzing (embedUnsafe)") {
+    skipOnSnArmLinux()
     forAllF { (seed: Long) =>
       gen.generate(seed, size = size, runner = embedUnsafeRunner).map(_ => true)
     }
