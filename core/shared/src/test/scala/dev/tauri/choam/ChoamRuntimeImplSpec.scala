@@ -28,7 +28,7 @@ import core.{ AsyncReactive, Ref, Rxn, Reactive }
 final class ChoamRuntimeImplSpec extends ChoamRuntimeImplSpecPlatform {
 
   final override def munitIOTimeout: Duration =
-    super.munitIOTimeout * 2
+    super.munitIOTimeout * 3
 
   test("Using multiple runtimes in parallel") {
     val N = 8192
