@@ -33,7 +33,7 @@ abstract class RxnUnsafeGenerator[F[_]](mcas: Mcas) {
   protected def assert(cond: Boolean)(implicit loc: munit.Location): Unit
 
   private[this] final val retryChance =
-    1 << 18
+    Integer.MAX_VALUE
 
   private[this] val pureGen =
     new RxnGenerator(mcas)
@@ -65,8 +65,9 @@ abstract class RxnUnsafeGenerator[F[_]](mcas: Mcas) {
     val local: ObjectRef[Option[Any]] = ObjectRef.create(Some(42))
     val localLocal: RxnLocal[Any] = newLocal(42)
     def maybeRetry(): Unit = {
-      val shift = retryCtr.getAndIncrement()
-      if (s.nextBounded(Integer.MAX_VALUE) < (retryChance >>> shift)) {
+      val shift = java.lang.Math.min(retryCtr.getAndIncrement(), 0x1f)
+      val chance = retryChance >>> shift
+      if (s.nextBounded(Integer.MAX_VALUE) < chance) {
         // we'll retry, but we need to reset the
         // state we have here in imperative code:
         local.elem = None
