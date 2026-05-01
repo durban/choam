@@ -3020,7 +3020,7 @@ object Rxn extends RxnInstances0 {
       pc.push(pca)
     }
 
-    final override def imperativeCommit(): Boolean = {
+    final override def imperativeCommit(result: Any): Boolean = {
       val ok = handleCommit()
       if (ok && pc.nonEmpty()) {
         // post-commit actions are "proper" `Rxn`s, so they
@@ -3034,10 +3034,15 @@ object Rxn extends RxnInstances0 {
         // then we push the PCs:
         preparePcActions()
         // and execute them:
-        // TODO: val ret: R =
-        loop(next()) : Unit
-        // TODO: previously we've had this assertion; it is incorrect:
-        // TODO: _assert(ret == ())
+        try {
+          // TODO: val ret: R =
+          loop(next()) : Unit
+          // TODO: previously we've had this assertion; it is incorrect:
+          // TODO: _assert(ret == ())
+        } catch {
+          case ex: PostCommitException =>
+            throw new PostCommitException(_committedResult = result, _errors = ex.errors)
+        }
       }
       ok
     }

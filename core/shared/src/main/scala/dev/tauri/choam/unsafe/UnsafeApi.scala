@@ -85,7 +85,7 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
     }
 
     val a = go(None)
-    val res = if (state.imperativeCommit()) {
+    val res = if (state.imperativeCommit(a)) {
       state.beforeResult()
       a
     } else {
@@ -144,7 +144,7 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
       state.initCtx(ctx)
       try {
         val result = state.embedRxn(alt)
-        if (state.imperativeCommit()) {
+        if (state.imperativeCommit(result)) {
           state.beforeResult()
           new Done(result)
         } else {
@@ -234,7 +234,7 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
         try {
           try {
             val result = block(state)
-            if (state.imperativeCommit()) {
+            if (state.imperativeCommit(result)) {
               state.beforeResult()
               new Done(result)
             } else {

@@ -45,7 +45,7 @@ sealed trait InRxn extends InRoRxn {
   private[choam] def updateRefArray[A](arr: Ref.Array[A], idx: Int, f: A => A): Unit
   private[choam] def getAndSetRef[A](ref: MemoryLocation[A], nv: A): A
   private[choam] def imperativeTicketWrite[A](hwd: LogEntry[A], newest: A): Unit
-  private[choam] def imperativeCommit(): Boolean
+  private[choam] def imperativeCommit(result: Any): Boolean
   private[choam] def beforeSuspend(): Unit
   private[choam] def beforeResult(): Unit
   private[choam] def imperativePostCommit(pc: Rxn[Unit]): Unit

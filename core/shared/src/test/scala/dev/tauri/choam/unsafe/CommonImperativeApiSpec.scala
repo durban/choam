@@ -27,7 +27,9 @@ import core.{ Rxn, Ref }
 
 object CommonImperativeApiSpec {
 
-  final class MyException(val ref: Ref[Int]) extends Exception
+  final class MyException(val ref: Ref[Int]) extends Exception {
+    def this() = this(null)
+  }
 
   final class MyList[A](val payload: A, val next: Ref[MyList[A]]) {
     final def snapshot: Rxn[List[A]] = {
@@ -760,6 +762,45 @@ trait CommonImperativeApiSpec[F[_]]
     for {
       ml <- MyList.fromList(lst).run[F]
       _ <- assertResultF(ml.snapshot.run, lst)
+    } yield ()
+  }
+
+  test("Exception inside embedRxn") {
+    val throws = List[Rxn[String]](
+      Rxn.unsafe.delay { throw new MyException },
+      Rxn.unit.map { _ => throw new MyException },
+      Rxn.unit.flatMap { _ => throw new MyException },
+    )
+    for {
+      _ <- throws.traverse_ { t =>
+        runBlock[String] { implicit u =>
+          val x: String = embedRxn(t)
+          fail(x)
+        }.attempt.flatMap[Unit] {
+          case Left(ex) => assertF(ex.isInstanceOf[MyException])
+          case Right(x) => failF(x)
+        }
+      }
+      _ <- throws.traverse_ { t =>
+        Ref(0).run[F].flatMap { ref =>
+          runBlock[String] { implicit u =>
+            addPostCommit(Rxn.unsafe.embedUnsafe { implicit u =>
+              embedRxn(t) : Unit
+            })
+            addPostCommit(ref.update(_ + 1))
+            "foo"
+          }.attempt.flatMap[Unit] {
+            case Left(ex: Rxn.PostCommitException) =>
+              assertEqualsF(ex.committedResult, "foo") *> assertF(ex.errors.head.isInstanceOf[MyException]) *> (
+                assertF(ex.errors.tail.isEmpty)
+              ) *> assertResultF(ref.get.run, 1)
+            case Left(ex) =>
+              failF(s"Unexpected exception: ${ex}")
+            case Right(x) =>
+              failF(x)
+          }
+        }
+      }
     } yield ()
   }
 }
