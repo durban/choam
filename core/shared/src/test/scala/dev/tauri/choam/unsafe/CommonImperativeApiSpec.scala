@@ -803,4 +803,50 @@ trait CommonImperativeApiSpec[F[_]]
       }
     } yield ()
   }
+
+  test("PC inside embedRxn") {
+    for {
+      r1 <- Ref(0).run
+      // normal commit:
+      v1 <- runBlock { implicit u =>
+        assertEquals(embedRxn(Rxn.unit.postCommit(r1.update(_ + 1))), ())
+        "foo"
+      }
+      _ <- assertEqualsF(v1, "foo")
+      _ <- assertResultF(r1.get.run, 1)
+      // retry after the PC is registered:
+      v2 <- runBlockWithAlts(
+        { implicit u =>
+          assertEquals(embedRxn(Rxn.unit.postCommit(r1.update(_ + 1))), ())
+          alwaysRetry() : Unit
+          "bar"
+        },
+        Rxn.pure("barAlt"),
+      )
+      _ <- assertEqualsF(v2, "barAlt")
+      _ <- assertResultF(r1.get.run, 1)
+    } yield ()
+  }
+
+  test("embedRxn inside PC") {
+    for {
+      r1 <- Ref(0).run
+      r2 <- Ref(0).run
+      // normal Rxn:
+      _ <- r1.update(_ + 1).postCommit(Rxn.unsafe.embedUnsafe { implicit u =>
+        embedRxn(r2.update(_ + 2))
+      }).run
+      _ <- assertResultF(r1.get.run, 1)
+      _ <- assertResultF(r2.get.run, 2)
+      // imperative Rxn:
+      _ <- runBlock { implicit u =>
+        updateRef(r1)(_ + 1)
+        addPostCommit(Rxn.unsafe.embedUnsafe { implicit u =>
+          embedRxn(r2.update(_ + 2))
+        })
+      }
+      _ <- assertResultF(r1.get.run, 2)
+      _ <- assertResultF(r2.get.run, 4)
+    } yield ()
+  }
 }
