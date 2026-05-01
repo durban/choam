@@ -48,9 +48,15 @@ trait FuzzingSpec[F[_]] extends BaseSpecAsyncF[F] with ScalaCheckEffectSuite { s
   }
 
   private[this] val size = this.platform match {
-    case Jvm => 115
-    case Js => 81
-    case Native => 72
+    case Jvm =>
+      115
+    case Js =>
+      81
+    case Native =>
+      // TODO: SN seems to occasionally hang(?)
+      // TODO: as a result of this test, so we
+      // TODO: make the test much smaller:
+      16 // was 72
   }
 
   private val atomicallyRunner: (InRxn => Any) => F[Any] =
@@ -62,28 +68,28 @@ trait FuzzingSpec[F[_]] extends BaseSpecAsyncF[F] with ScalaCheckEffectSuite { s
   private val embedUnsafeRunner: (InRxn => Any) => F[Any] =
     block => Rxn.unsafe.embedUnsafe(block).run[F]
 
-  private def skipOnSnArmLinux(): Unit = {
-    if ((this.platform eq Native)) { // && this.isArm() && this.isLinux()) {
-      assume(false)
-    }
-  }
+  // private def skipOnSnArmLinux(): Unit = {
+  //   if ((this.platform eq Native) && this.isArm() && this.isLinux()) {
+  //     assume(false)
+  //   }
+  // }
 
   test("fuzzing (atomically)") {
-    skipOnSnArmLinux()
+    // skipOnSnArmLinux()
     forAllF { (seed: Long) =>
       gen.generate(seed, size = size, runner = atomicallyRunner).map(_ => true)
     }
   }
 
   test("fuzzing (atomicallyInAsync)") {
-    skipOnSnArmLinux()
+    // skipOnSnArmLinux()
     forAllF { (seed: Long) =>
       gen.generate(seed, size = size, runner = atomicallyInAsyncRunner).map(_ => true)
     }
   }
 
   test("fuzzing (embedUnsafe)") {
-    skipOnSnArmLinux()
+    // skipOnSnArmLinux()
     forAllF { (seed: Long) =>
       gen.generate(seed, size = size, runner = embedUnsafeRunner).map(_ => true)
     }
