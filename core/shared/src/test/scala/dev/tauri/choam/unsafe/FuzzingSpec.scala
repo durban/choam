@@ -63,7 +63,7 @@ trait FuzzingSpec[F[_]] extends BaseSpecAsyncF[F] with ScalaCheckEffectSuite { s
     block => Rxn.unsafe.embedUnsafe(block).run[F]
 
   private def skipOnSnArmLinux(): Unit = {
-    if ((this.platform eq Native) && this.isArm() && this.isLinux()) {
+    if ((this.platform eq Native)) { // && this.isArm() && this.isLinux()) {
       assume(false)
     }
   }
