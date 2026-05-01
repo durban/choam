@@ -1234,6 +1234,19 @@ object Rxn extends RxnInstances0 {
   }
 
   /**
+   * Thrown when an `Rxn` tries to execute an exchange inside
+   * an `embedRxn` (which is unsupported).
+   */
+  private[choam] final class ExchangeInEmbedRxn private[Rxn] () extends Exception {
+
+    final override def fillInStackTrace(): Throwable =
+      this
+
+    final override def initCause(cause: Throwable): Throwable =
+      throw new IllegalStateException // something is seriously wrong
+  }
+
+  /**
    * Used to temporarily package a `Throwable` into a known exception type
    *
    * We use this to distinguish exceptions thrown by user-provided "functions"
@@ -2386,6 +2399,9 @@ object Rxn extends RxnInstances0 {
           a = ctx.readDirect(c.ref)
           loop(next())
         case c: Exchange[_, _] => // Exchange
+          if (this.isInEmbedRxn) { // this is unsupported:
+            throw new ExchangeInEmbedRxn
+          }
           val msg = Exchanger.Msg.newMsg(
             value = c.a,
             contK = contKList.takeSnapshot(),

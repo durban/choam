@@ -166,6 +166,27 @@ package object unsafe extends UnsafePackageLowPrio0 {
     Rxn.unsafe.imperativePanicImpl(ex)
   }
 
+  /**
+   * Executes a regular [[Rxn]] in an imperative block
+   *
+   * `embedRxn` has a number of limitations due to the
+   * nature of blocks using the imperative API:
+   * - Any alts created by a `+` in `rxn` which are not
+   *   executed before leaving the `embedRxn` will be
+   *   discarded. (This is due to us being unable to
+   *   continue in the middle of an imperative block;
+   *   we'd need delimited continuations or something
+   *   like that to be able to support this.)
+   * - If `rxn` tries to execute an exchange, it will
+   *   panic. (An exchange joins two `Rxn`s; that is
+   *   not possible if one or both sides is in an
+   *   imperative block, since in that case the interpreter
+   *   state doesn't adequately describe the state of
+   *   an executing `Rxn`.)
+   * - Mutually recursive invocations of `embedRxn` and
+   *   `embedUnsafe` are not stack-safe. (This is
+   *   unavoidable due to its signature.)
+   */
   final def embedRxn[A](rxn: Rxn[A])(implicit ir: InRxn): A = {
     ir.embedRxn(rxn)
   }

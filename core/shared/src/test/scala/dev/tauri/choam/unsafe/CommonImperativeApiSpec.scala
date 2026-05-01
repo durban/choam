@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.{ AtomicInteger, AtomicBoolean }
 
 import cats.syntax.all._
 
-import core.{ Rxn, Ref }
+import core.{ Rxn, Ref, Exchanger, Reactive }
 
 object CommonImperativeApiSpec {
 
@@ -847,6 +847,31 @@ trait CommonImperativeApiSpec[F[_]]
       }
       _ <- assertResultF(r1.get.run, 2)
       _ <- assertResultF(r2.get.run, 4)
+    } yield ()
+  }
+
+  test("exchange inside embedRxn (unsupported)") {
+    val rea = Reactive[F]
+    val str = RetryStrategy.Default.withMaxRetries(Some(1024))
+    for {
+      r1 <- Ref("").run
+      r2 <- Ref(0).run
+      ex <- Exchanger[Int, String].run[F]
+      left <- rea.run(ex.exchange(42).flatMap(r1.set), str).attempt.start
+      right <- runBlock { implicit u =>
+        val v = embedRxn(ex.dual.exchange("foo"))
+        r2.value = v
+      }.attempt.start
+      _ <- left.joinWithNever.flatMap[Unit] {
+        case Left(_: Rxn.MaxRetriesExceeded) => F.unit // ok
+        case r => failF(s"unexpected result: ${r}")
+      }
+      _ <- right.joinWithNever.flatMap[Unit] {
+        case Left(_: Rxn.ExchangeInEmbedRxn) => F.unit // ok
+        case r => failF(s"unexpected result: ${r}")
+      }
+      _ <- assertResultF(r1.get.run, "")
+      _ <- assertResultF(r2.get.run, 0)
     } yield ()
   }
 }
