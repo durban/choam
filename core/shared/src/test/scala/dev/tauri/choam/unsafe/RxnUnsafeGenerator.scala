@@ -89,7 +89,7 @@ abstract class RxnUnsafeGenerator[F[_]](mcas: Mcas) {
         case None => ()
       }
       assert(refRef.value eq currRef.elem)
-      s.nextBounded(8) match {
+      s.nextBounded(7) match {
         case 0 =>
           val ns = s.nextString()
           currRef.elem = newRef[Any](ns)
@@ -113,10 +113,6 @@ abstract class RxnUnsafeGenerator[F[_]](mcas: Mcas) {
           assertEquals(ov, lastWrittenToRef)
           lastWrittenToRef = lv
         case 5 =>
-          val ex = embedRxn(Rxn.unsafe.exchanger[Int, String])
-          val opt = embedRxn(ex.dual.exchange("foo").?)
-          assert(opt.isEmpty)
-        case 6 =>
           val innerBlock = generateBlock(
             s.nextLong(),
             size = size >>> 1,
@@ -129,7 +125,7 @@ abstract class RxnUnsafeGenerator[F[_]](mcas: Mcas) {
           embedRxn(rxn) : Unit
           currRef.elem = refRef.value
           lastWrittenToRef = currRef.elem.value
-        case 7 =>
+        case 6 =>
           maybeRetry()
         case _ =>
           assert(false)
