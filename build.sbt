@@ -26,7 +26,7 @@ import com.typesafe.tools.mima.core.{
   IncompatibleMethTypeProblem,
 }
 
-import scala.scalanative.build.GC
+import scala.scalanative.build.{ Mode, GC }
 import sbt.ProjectReference
 import sbtcrossproject.CrossProject
 
@@ -837,6 +837,7 @@ lazy val commonSettingsNative = Seq[Setting[_]](
   nativeConfig ~= { config =>
     config
       .withGC(GC.immix)
+      .withMode(Mode.debug)
       .withMultithreading(true)
       .withSourceLevelDebuggingConfig(_.enableAll)
       .withCompileOptions(_ ++ Seq(
