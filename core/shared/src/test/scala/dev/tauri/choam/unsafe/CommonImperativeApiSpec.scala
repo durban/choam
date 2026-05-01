@@ -21,18 +21,38 @@ package unsafe
 import java.util.concurrent.ThreadLocalRandom
 import java.util.concurrent.atomic.{ AtomicInteger, AtomicBoolean }
 
+import cats.syntax.all._
+
 import core.{ Rxn, Ref }
 
 object CommonImperativeApiSpec {
 
   final class MyException(val ref: Ref[Int]) extends Exception
+
+  final class MyList[A](val payload: A, val next: Ref[MyList[A]]) {
+    final def snapshot: Rxn[List[A]] = {
+      Rxn.unsafe.embedUnsafe { implicit u =>
+        val n = this.next.value
+        if (n eq null) List(this.payload)
+        else this.payload :: embedRxn(n.snapshot)
+      }
+    }
+  }
+
+  final object MyList {
+    final def fromList[A](lst: List[A]): Rxn[MyList[A]] = {
+      lst.foldM(null : MyList[A]) { (ml, a) =>
+        Ref(ml).map { ref => new MyList(a, ref) }
+      }
+    }
+  }
 }
 
 trait CommonImperativeApiSpec[F[_]]
   extends BaseSpecAsyncF[F]
   with CommonImperativeApiSpecPlatform[F] { this: McasImplSpec =>
 
-  import CommonImperativeApiSpec.MyException
+  import CommonImperativeApiSpec.{ MyException, MyList }
 
   final def runBlock[A](block: InRxn => A): F[A] =
     this.runBlockWithAlts(block)
@@ -732,6 +752,14 @@ trait CommonImperativeApiSpec[F[_]]
       _ <- assertResultF(F.delay(ctr1.get()), 2)
       _ <- assertResultF(ref2.get.run, 0)
       _ <- assertResultF(F.delay(ctr2.get()), 0)
+    } yield ()
+  }
+
+  test("Recursive embedUnsafe/embedRxn stack safety".ignore) { // TODO: expected failure
+    val lst = (1 to 1000000).toList
+    for {
+      ml <- MyList.fromList(lst).run[F]
+      _ <- assertResultF(ml.snapshot.run, lst)
     } yield ()
   }
 }
