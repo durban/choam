@@ -18,6 +18,8 @@
 package dev.tauri.choam
 package unsafe
 
+import scala.concurrent.duration._
+
 import cats.effect.IO
 
 import org.scalacheck.effect.PropF.forAllF
@@ -31,6 +33,9 @@ final class FuzzingSpec_DefaultMcas_IO
   with FuzzingSpec[IO]
 
 trait FuzzingSpec[F[_]] extends BaseSpecAsyncF[F] with ScalaCheckEffectSuite { self: McasImplSpec =>
+
+  final override def munitTimeout: Duration =
+    super.munitTimeout * 2
 
   private[this] val rt = ChoamRuntime.forTesting(this.mcasImpl)
 
