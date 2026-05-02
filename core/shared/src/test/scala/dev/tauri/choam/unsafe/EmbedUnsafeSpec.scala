@@ -82,6 +82,7 @@ trait EmbedUnsafeSpec[F[_]]
 
   test("exchange before embedRxn") {
     for {
+      _ <- assumeF(!this.isJs()) // exchanger doesn't work on JS
       r1 <- Ref("").run
       r2 <- Ref(0).run
       r3 <- Ref(0).run
@@ -104,6 +105,7 @@ trait EmbedUnsafeSpec[F[_]]
 
   test("exchange after embedRxn") {
     for {
+      _ <- assumeF(!this.isJs()) // exchanger doesn't work on JS
       r1 <- Ref("").run
       r2 <- Ref(0).run
       r3 <- Ref(0).run
