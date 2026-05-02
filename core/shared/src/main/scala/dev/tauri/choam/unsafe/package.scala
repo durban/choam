@@ -183,6 +183,7 @@ package object unsafe extends UnsafePackageLowPrio0 {
    *   imperative block, since in that case the interpreter
    *   state doesn't adequately describe the state of
    *   an executing `Rxn`.)
+   *   TODO: instead of panicking, could we just retry?
    * - Mutually recursive invocations of `embedRxn` and
    *   `embedUnsafe` are not stack-safe. (This is
    *   unavoidable due to its signature.)
