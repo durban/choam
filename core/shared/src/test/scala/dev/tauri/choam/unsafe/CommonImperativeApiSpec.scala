@@ -874,4 +874,19 @@ trait CommonImperativeApiSpec[F[_]]
       _ <- assertResultF(r2.get.run, 0)
     } yield ()
   }
+
+  test("RxnLocal + embedRxn") {
+    for {
+      leakedLocal <- Rxn.unsafe.newLocal(0).run
+      _ <- leakedLocal.set(1).run // we won't see this below
+      r <- runBlockWithAlts(
+        { implicit u =>
+          embedRxn(leakedLocal.set(42)) // this must be rolled back
+          alwaysRetry()
+        },
+        leakedLocal.get,
+      )
+      _ <- assertEqualsF(r, 0)
+    } yield ()
+  }
 }
