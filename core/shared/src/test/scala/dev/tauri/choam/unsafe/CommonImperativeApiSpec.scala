@@ -18,7 +18,7 @@
 package dev.tauri.choam
 package unsafe
 
-import java.util.concurrent.ThreadLocalRandom
+import java.util.concurrent.{ ThreadLocalRandom, CountDownLatch }
 import java.util.concurrent.atomic.{ AtomicInteger, AtomicBoolean }
 
 import cats.syntax.all._
@@ -872,6 +872,31 @@ trait CommonImperativeApiSpec[F[_]]
       }
       _ <- assertResultF(r1.get.run, "")
       _ <- assertResultF(r2.get.run, 0)
+    } yield ()
+  }
+
+  test("opacity in an unsafe block") {
+    for {
+      ctr <- F.delay(new AtomicInteger)
+      r1 <- Ref(0).run
+      r2 <- Ref(0).run
+      latch1 <- F.delay(new CountDownLatch(1))
+      latch2 <- F.delay(new CountDownLatch(1))
+      f <- runBlock { implicit u =>
+        ctr.incrementAndGet()
+        val v1 = r1.value
+        latch1.countDown()
+        latch2.await()
+        val v2 = r2.value
+        assertEquals(v1, 1)
+        assertEquals(v2, 1)
+        v1 + v2
+      }.start
+      _ <- F.delay(latch1.await())
+      _ <- (r1.update(_ + 1) *> r2.update(_ + 1)).run
+      _ <- F.delay(latch2.countDown())
+      _ <- assertResultF(f.joinWithNever, 2)
+      _ <- assertResultF(F.delay(ctr.get()), 2)
     } yield ()
   }
 }

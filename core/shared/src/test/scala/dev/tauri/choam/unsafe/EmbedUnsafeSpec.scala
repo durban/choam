@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import cats.effect.IO
 
-import core.{ Rxn, Ref }
+import core.{ Rxn, Ref, Exchanger }
 
 final class EmbedUnsafeSpec_DefaultMcas_IO
   extends BaseSpecIO
@@ -77,6 +77,48 @@ trait EmbedUnsafeSpec[F[_]]
       _ <- assertResultF(ref.get.run[F], 1)
       _ <- assertResultF(ref2.get.run[F], 1)
       _ <- assertResultF(F.delay(ctr.get()), 5)
+    } yield ()
+  }
+
+  test("exchange before embedRxn") {
+    for {
+      r1 <- Ref("").run
+      r2 <- Ref(0).run
+      r3 <- Ref(0).run
+      ex <- Exchanger[Int, String].run[F]
+      left <- ex.exchange(42).flatMap(r1.set).run.start
+      right <- ex.dual.exchange("foo").flatMap { i =>
+        Rxn.unsafe.embedUnsafe { implicit u =>
+          r2.value = i
+          embedRxn(r3.set(i))
+          i
+        }
+      }.run.start
+      _ <- left.joinWithNever
+      _ <- right.joinWithNever
+      _ <- assertResultF(r1.get.run, "foo")
+      _ <- assertResultF(r2.get.run, 42)
+      _ <- assertResultF(r3.get.run, 42)
+    } yield ()
+  }
+
+  test("exchange after embedRxn") {
+    for {
+      r1 <- Ref("").run
+      r2 <- Ref(0).run
+      r3 <- Ref(0).run
+      ex <- Exchanger[Int, String].run[F]
+      left <- ex.exchange(42).flatMap(r1.set).run.start
+      right <- Rxn.unsafe.embedUnsafe { implicit u =>
+        r2.value = 99
+        embedRxn(r3.set(99))
+        "99"
+      }.flatMap(ex.dual.exchange).run.start
+      _ <- left.joinWithNever
+      _ <- assertResultF(right.joinWithNever, 42)
+      _ <- assertResultF(r1.get.run, "99")
+      _ <- assertResultF(r2.get.run, 99)
+      _ <- assertResultF(r3.get.run, 99)
     } yield ()
   }
 
