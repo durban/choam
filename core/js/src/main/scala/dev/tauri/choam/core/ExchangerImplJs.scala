@@ -24,7 +24,7 @@ private final class ExchangerImplJs[A, B](d: ExchangerImplJs[B, A] = null)
   extends Exchanger.UnsealedExchanger[A, B] {
 
     final override def exchange(a: A): Rxn[B] =
-      Rxn.unsafe.retry[B]
+      Rxn.internal.exchange[A, B](this, a)
 
     // NB: this MUST be initialized before `dual`,
     // otherwise it could remain uninitialized (null).
@@ -43,6 +43,8 @@ private final class ExchangerImplJs[A, B](d: ExchangerImplJs[B, A] = null)
       @unused params: Exchanger.Params,
       @unused ctx: Mcas.ThreadContext,
     ): Either[Rxn.ExStatMap, Exchanger.Msg] = {
-      impossible("ExchangerImplJs#tryExchange")
+      // NB: This will force an immediate retry;
+      // NB: that is the only thing we can do on JS.
+      Left(msg.exchangerData)
     }
 }
