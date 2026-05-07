@@ -75,7 +75,7 @@ sealed abstract class RetryStrategy {
 
   private[choam] def canSuspend: CanSuspend
 
-  private[choam] def asCantSuspendOrNull: RetryStrategy.CanSuspend[false] // TODO: better name
+  private[choam] def asSpinOrNull: RetryStrategy.CanSuspend[false]
 
   private[choam] def isDebug: Boolean
 }
@@ -227,7 +227,7 @@ object RetryStrategy {
     private[choam] final override def canSuspend: true =
       true
 
-    private[choam] final override def asCantSuspendOrNull: RetryStrategy.CanSuspend[false] =
+    private[choam] final override def asSpinOrNull: RetryStrategy.CanSuspend[false] =
       null
 
     private[choam] final override def isDebug: Boolean =
@@ -367,7 +367,7 @@ object RetryStrategy {
     private[choam] final override def canSuspend =
       false
 
-    private[choam] final override def asCantSuspendOrNull: RetryStrategy.CanSuspend[false] =
+    private[choam] final override def asSpinOrNull: RetryStrategy.CanSuspend[false] =
       this
 
     private[choam] final override def isDebug =
@@ -511,7 +511,7 @@ object RetryStrategy {
       private[choam] final override def canSuspend: true =
         true
 
-      private[choam] final override def asCantSuspendOrNull =
+      private[choam] final override def asSpinOrNull =
         null
 
       final override def maxCede: Int =

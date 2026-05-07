@@ -242,7 +242,7 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
     str: RetryStrategy,
     poll: F ~> F,
   )(implicit F: Async[F]): F[A] = {
-    str.asCantSuspendOrNull match {
+    str.asSpinOrNull match {
       case null =>
         // cede or sleep strategy:
         val mcas = this.rt.mcasImpl
@@ -287,10 +287,10 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
 
         go(step(null), null)
 
-      case cantSuspend =>
+      case spin =>
         // spin strategy, so not really async:
         F.delay {
-          this.atomicallyWithAlts(cantSuspend)(block)
+          this.atomicallyWithAlts(spin)(block)
         }
     }
   }
