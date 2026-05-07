@@ -43,9 +43,9 @@ trait TxnEmbedUnsafeSpec[F[_]]
     this.runBlock(block)
   }
 
-  final override def runBlockWithAlts[A](block: InRxn => A, alts: Rxn[A]*): F[A] = {
+  final override def runBlockWithAlts[A](str: RetryStrategy)(block: InRxn => A, alts: Rxn[A]*): F[A] = {
     val txnAlts = alts.map[Txn[A]](_.impl)
-    Txn.unsafe.embedUnsafeWithAlts(block, txnAlts: _*).commit
+    stm.Transactive[F].commit(Txn.unsafe.embedUnsafeWithAlts(block, txnAlts: _*), str.withCede)
   }
 
   test("Txn.unsafe.embedUnsafe basics") {

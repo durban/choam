@@ -58,7 +58,7 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
    * to methods called from the `block`.
    */
   final def atomically[A](block: InRxn => A): A = {
-    this.atomicallyWithAlts(block)
+    this.atomicallyWithAlts(RetryStrategy.Default)(block)
   }
 
   /** Like `atomically`, but only read-only operations are allowed */
@@ -66,7 +66,22 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
     this.atomically(block) // TODO: optimize for read-only execution
   }
 
-  private[choam] final def atomicallyWithAlts[A](block: Function1[InRxn, A], alts: Rxn[A]*): A = {
+  private[choam] final def atomicallyWithAlts[A](str: RetryStrategy.CanSuspend[false])(block: Function1[InRxn, A], alts: Rxn[A]*): A = {
+    _assert(!str.isDebug)
+    // TODO: we're not using `str.maxSpin` here
+    // TODO: write a test for maxRetries, because counting here is probably incorrect (due to embedRxn)
+    @nowarn("cat=lint-performance") // TODO
+    var retries = str.maxRetries.getOrElse(-1)
+    def decrAndCheckRetries(): Unit = {
+      retries match {
+        case -1 =>
+          () // infinite retries allowed
+        case 0 =>
+          throw new Rxn.MaxRetriesExceeded(str.maxRetriesInt)
+        case n =>
+          retries = n - 1
+      }
+    }
     val state = Rxn.unsafe.startImperative(this.rt.mcasImpl, RetryStrategy.Default : RetryStrategy.CanSuspend[false])
     state.initCtx(this.rt.mcasImpl.currentContext())
     addAlts(state, alts)
@@ -78,9 +93,14 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
         case Some(alt) => this.runAltSync(state, alt)
       }
       syncRes match {
-        case newAlt: Alt[_] => go(Some(newAlt.alt.asInstanceOf[Rxn[A]]))
-        case done: Done[_] => done.res
-        case ImmediateFullRetry => go(None)
+        case newAlt: Alt[_] =>
+          decrAndCheckRetries()
+          go(Some(newAlt.alt.asInstanceOf[Rxn[A]]))
+        case done: Done[_] =>
+          done.res
+        case ImmediateFullRetry =>
+          decrAndCheckRetries()
+          go(None)
       }
     }
 
@@ -89,6 +109,7 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
       state.beforeResult()
       a
     } else {
+      decrAndCheckRetries()
       val maybeAlt: Option[Rxn[A]] = this.imperativeRetryNoSuspend(state, permanent = false) match {
         case Some(newAlt) => Some(newAlt.asInstanceOf[Rxn[A]])
         case None => None
@@ -221,54 +242,56 @@ sealed abstract class UnsafeApi private (rt: ChoamRuntime) {
     str: RetryStrategy,
     poll: F ~> F,
   )(implicit F: Async[F]): F[A] = {
-    if (str.canSuspend) {
-      // cede or sleep strategy:
-      val mcas = this.rt.mcasImpl
-      def step(ctxHint: ThreadContext): AttemptRes[A] = {
-        val ctx = if ((ctxHint ne null) && mcas.isCurrentContext(ctxHint)) {
-          ctxHint
-        } else {
-          mcas.currentContext()
-        }
-        state.initCtx(ctx)
-        try {
-          try {
-            val result = block(state)
-            if (state.imperativeCommit(result)) {
-              state.beforeResult()
-              new Done(result)
-            } else {
-              imperativeRetryMaySuspend(state, ctx, permanent = false).cast[A]
-            }
-          } catch {
-            case re: RetryException =>
-              imperativeRetryMaySuspend(state, ctx, permanent = re.isPermanentFailure).cast[A]
+    str.asCantSuspendOrNull match {
+      case null =>
+        // cede or sleep strategy:
+        val mcas = this.rt.mcasImpl
+        def step(ctxHint: ThreadContext): AttemptRes[A] = {
+          val ctx = if ((ctxHint ne null) && mcas.isCurrentContext(ctxHint)) {
+            ctxHint
+          } else {
+            mcas.currentContext()
           }
-        } finally {
-          // TODO: this.saveStats()
-          state.invalidateCtx()
+          state.initCtx(ctx)
+          try {
+            try {
+              val result = block(state)
+              if (state.imperativeCommit(result)) {
+                state.beforeResult()
+                new Done(result)
+              } else {
+                imperativeRetryMaySuspend(state, ctx, permanent = false).cast[A]
+              }
+            } catch {
+              case re: RetryException =>
+                imperativeRetryMaySuspend(state, ctx, permanent = re.isPermanentFailure).cast[A]
+            }
+          } finally {
+            // TODO: this.saveStats()
+            state.invalidateCtx()
+          }
         }
-      }
 
-      def go(res: AttemptRes[A], ctxHint: ThreadContext): F[A] = res match {
-        case d: Done[_] =>
-          F.pure(d.res)
-        case ImmediateFullRetry =>
-          go(step(ctxHint), ctxHint)
-        case sus: Suspend =>
-          state.beforeSuspend()
-          val ctxHint = sus.ctxHint
-          F.flatMap(poll(sus.sus.suspend(mcas, ctxHint))) { _ => go(step(ctxHint), ctxHint) }
-        case alt: Alt[?] =>
-          runAltAsync(state, mcas, ctxHint, alt.alt).flatMap(go(_, ctxHint))
-      }
+        def go(res: AttemptRes[A], ctxHint: ThreadContext): F[A] = res match {
+          case d: Done[_] =>
+            F.pure(d.res)
+          case ImmediateFullRetry =>
+            go(step(ctxHint), ctxHint)
+          case sus: Suspend =>
+            state.beforeSuspend()
+            val ctxHint = sus.ctxHint
+            F.flatMap(poll(sus.sus.suspend(mcas, ctxHint))) { _ => go(step(ctxHint), ctxHint) }
+          case alt: Alt[?] =>
+            runAltAsync(state, mcas, ctxHint, alt.alt).flatMap(go(_, ctxHint))
+        }
 
-      go(step(null), null)
-    } else {
-      // spin strategy, so not really async:
-      F.delay {
-        this.atomically(block)
-      }
+        go(step(null), null)
+
+      case cantSuspend =>
+        // spin strategy, so not really async:
+        F.delay {
+          this.atomicallyWithAlts(cantSuspend)(block)
+        }
     }
   }
 }

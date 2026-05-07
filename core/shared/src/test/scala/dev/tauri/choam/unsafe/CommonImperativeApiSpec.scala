@@ -61,7 +61,10 @@ trait CommonImperativeApiSpec[F[_]]
 
   def runRoBlock[A](block: InRoRxn => A): F[A]
 
-  def runBlockWithAlts[A](block: InRxn => A, alts: Rxn[A]*): F[A]
+  def runBlockWithAlts[A](block: InRxn => A, alts: Rxn[A]*): F[A] =
+    this.runBlockWithAlts(RetryStrategy.Default)(block, alts: _*)
+
+  def runBlockWithAlts[A](str: RetryStrategy)(block: InRxn => A, alts: Rxn[A]*): F[A]
 
   test("Hello, World!") {
 
@@ -850,7 +853,7 @@ trait CommonImperativeApiSpec[F[_]]
     } yield ()
   }
 
-  test("exchange inside embedRxn (unsupported)") {
+  test("exchange inside embedRxn (retries)") {
     val rea = Reactive[F]
     val str = RetryStrategy.Default.withMaxRetries(Some(1024))
     for {
@@ -858,16 +861,16 @@ trait CommonImperativeApiSpec[F[_]]
       r2 <- Ref(0).run
       ex <- Exchanger[Int, String].run[F]
       left <- rea.run(ex.exchange(42).flatMap(r1.set), str).attempt.start
-      right <- runBlock { implicit u =>
+      right <- runBlockWithAlts(str)({ implicit u =>
         val v = embedRxn(ex.dual.exchange("foo"))
         r2.value = v
-      }.attempt.start
+      }).attempt.start
       _ <- left.joinWithNever.flatMap[Unit] {
         case Left(_: Rxn.MaxRetriesExceeded) => F.unit // ok
         case r => failF(s"unexpected result: ${r}")
       }
       _ <- right.joinWithNever.flatMap[Unit] {
-        case Left(_: Rxn.ExchangeInEmbedRxn) => F.unit // ok
+        case Left(_: Rxn.MaxRetriesExceeded) => F.unit // ok
         case r => failF(s"unexpected result: ${r}")
       }
       _ <- assertResultF(r1.get.run, "")

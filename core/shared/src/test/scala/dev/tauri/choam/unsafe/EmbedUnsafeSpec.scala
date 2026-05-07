@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import cats.effect.IO
 
-import core.{ Rxn, Ref, Exchanger }
+import core.{ Rxn, Ref, Exchanger, AsyncReactive }
 
 final class EmbedUnsafeSpec_DefaultMcas_IO
   extends BaseSpecIO
@@ -33,8 +33,8 @@ trait EmbedUnsafeSpec[F[_]]
   extends CommonImperativeApiSpec[F]
   with EmbedUnsafeSpecPlatform[F] { this: McasImplSpec =>
 
-  final override def runBlockWithAlts[A](block: InRxn => A, alts: Rxn[A]*): F[A] = {
-    Rxn.unsafe.embedUnsafeWithAlts(block, alts: _*).run[F]
+  final override def runBlockWithAlts[A](str: RetryStrategy)(block: InRxn => A, alts: Rxn[A]*): F[A] = {
+    AsyncReactive[F].runAsync(Rxn.unsafe.embedUnsafeWithAlts(block, alts: _*), str)
   }
 
   final override def runRoBlock[A](block: InRoRxn => A): F[A] = {

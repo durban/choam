@@ -29,9 +29,11 @@ final class AtomicallySpec_DefaultMcas_IO
 
 trait AtomicallySpec[F[_]] extends UnsafeApiSpecBase[F] { this: McasImplSpec =>
 
-  final override def runBlockWithAlts[A](block: InRxn => A, alts: Rxn[A]*): F[A] = {
+  final override def runBlockWithAlts[A](str: RetryStrategy)(block: InRxn => A, alts: Rxn[A]*): F[A] = {
+    val s = str.asCantSuspendOrNull
+    assertNotEquals(s, null)
     F.delay {
-      api.atomicallyWithAlts(block, alts: _*)
+      api.atomicallyWithAlts(s)(block, alts: _*)
     }
   }
 

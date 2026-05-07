@@ -178,12 +178,13 @@ package object unsafe extends UnsafePackageLowPrio0 {
    *   we'd need delimited continuations or something
    *   like that to be able to support this.)
    * - If `rxn` tries to execute an exchange, it will
-   *   panic. (An exchange joins two `Rxn`s; that is
-   *   not possible if one or both sides is in an
+   *   immediately retry. (An exchange joins two `Rxn`s;
+   *   that is not possible if one or both sides is in an
    *   imperative block, since in that case the interpreter
    *   state doesn't adequately describe the state of
-   *   an executing `Rxn`.)
-   *   TODO: instead of panicking, could we just retry?
+   *   an executing `Rxn`.) Note, that this retry could
+   *   happen anyway, if there is no other side for the
+   *   exchange.
    * - Mutually recursive invocations of `embedRxn` and
    *   `embedUnsafe` are not stack-safe. (This is
    *   unavoidable due to its signature.)

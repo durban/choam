@@ -1202,7 +1202,7 @@ object Rxn extends RxnInstances0 {
     ck
   }
 
-  final class MaxRetriesExceeded private[Rxn] (maxRetries: Int)
+  final class MaxRetriesExceeded private[choam] (maxRetries: Int)
     extends Exception(s"exceeded maxRetries of ${maxRetries}") {
 
     final override def fillInStackTrace(): Throwable =
@@ -1225,19 +1225,6 @@ object Rxn extends RxnInstances0 {
 
     final def errors: NonEmptyList[Throwable] =
       _errors
-
-    final override def fillInStackTrace(): Throwable =
-      this
-
-    final override def initCause(cause: Throwable): Throwable =
-      throw new IllegalStateException // something is seriously wrong
-  }
-
-  /**
-   * Thrown when an `Rxn` tries to execute an exchange inside
-   * an `embedRxn` (which is unsupported).
-   */
-  private[choam] final class ExchangeInEmbedRxn private[Rxn] () extends Exception {
 
     final override def fillInStackTrace(): Throwable =
       this
@@ -2399,44 +2386,53 @@ object Rxn extends RxnInstances0 {
           a = ctx.readDirect(c.ref)
           loop(next())
         case c: Exchange[_, _] => // Exchange
-          if (this.isInEmbedRxn) { // this is unsupported:
-            throw new ExchangeInEmbedRxn
-          }
-          val msg = Exchanger.Msg.newMsg(
-            value = c.a,
-            contK = contKList.takeSnapshot(),
-            contT = contT.takeSnapshot(),
-            desc = this.descImm, // TODO: could we just call `toImmutable`?
-            postCommit = pc.takeSnapshot(),
-            exchangerData = stats,
-            hasTentativeRead = this.hasTentativeRead,
-          )
-          c.exchanger.tryExchange(msg = msg, params = exParams, ctx = ctx) match {
-            case Left(newStats) =>
-              _stats = newStats
-              // Couldn't exchange, because:
-              // - didn't find a partner in time; or
-              // - found a partner, but it didn't fulfilled our offer in time; or
-              // - found a partner, but it rescinded before we could've fulfilled its offer; or
-              // - found a partner, but the merged descriptor can't be extended; or
-              // - found a partner with an overlapping descriptor.
-              // In any case we'll retry (since `Exchanger` is supposed to be
-              // used through `Eliminator`, we'll probably retry the primary op).
-              loop(retry())
-            case Right(contMsg) =>
-              _stats = contMsg.exchangerData
-              this.hasTentativeRead = contMsg.hasTentativeRead
-              val nxt = loadAltFrom(contMsg) match {
-                case Left(ex) =>
-                  // the other side encountered a panic while
-                  // executing our Rxn, so we must handle it:
-                  a = ExchangePanicMarker // just to help with debugging if anyone uses this
-                  nextOnPanic(ex)
-                case Right(result) =>
-                  a = result
-                  next()
-              }
-              loop(nxt)
+          if (this.isInEmbedRxn) {
+            // We can't actually perform an exchange
+            // when we're inside an embedRxn (due to
+            // the InterpreterState not being a complete
+            // representation of our current state).
+            // So we just retry immediately (with an
+            // exchanger this was already possible if
+            // there is no other side, so we don't lose
+            // correctness with this retry).
+            loop(retry())
+          } else {
+            val msg = Exchanger.Msg.newMsg(
+              value = c.a,
+              contK = contKList.takeSnapshot(),
+              contT = contT.takeSnapshot(),
+              desc = this.descImm, // TODO: could we just call `toImmutable`?
+              postCommit = pc.takeSnapshot(),
+              exchangerData = stats,
+              hasTentativeRead = this.hasTentativeRead,
+            )
+            c.exchanger.tryExchange(msg = msg, params = exParams, ctx = ctx) match {
+              case Left(newStats) =>
+                _stats = newStats
+                // Couldn't exchange, because:
+                // - didn't find a partner in time; or
+                // - found a partner, but it didn't fulfilled our offer in time; or
+                // - found a partner, but it rescinded before we could've fulfilled its offer; or
+                // - found a partner, but the merged descriptor can't be extended; or
+                // - found a partner with an overlapping descriptor.
+                // In any case we'll retry (since `Exchanger` is supposed to be
+                // used through `Eliminator`, we'll probably retry the primary op).
+                loop(retry())
+              case Right(contMsg) =>
+                _stats = contMsg.exchangerData
+                this.hasTentativeRead = contMsg.hasTentativeRead
+                val nxt = loadAltFrom(contMsg) match {
+                  case Left(ex) =>
+                    // the other side encountered a panic while
+                    // executing our Rxn, so we must handle it:
+                    a = ExchangePanicMarker // just to help with debugging if anyone uses this
+                    nextOnPanic(ex)
+                  case Right(result) =>
+                    a = result
+                    next()
+                }
+                loop(nxt)
+            }
           }
         case c: AndAlso[_, _] => // AndAlso
           contT.push2(RxnConsts.ContAndAlsoJoin, RxnConsts.ContAndAlso)

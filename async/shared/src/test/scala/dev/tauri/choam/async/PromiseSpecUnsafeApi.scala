@@ -41,7 +41,7 @@ final class PromiseSpecUnsafeApi_Atomically_DefaultMcas_IO
   with PromiseSpecUnsafeApi[IO] {
 
   protected final override def runBlockWithAlts[A](block: InRxn => A, alts: Rxn[A]*): IO[A] =
-    F.delay { this.api.atomicallyWithAlts(block, alts: _*) }
+    F.delay { this.api.atomicallyWithAlts(RetryStrategy.Default)(block, alts: _*) }
 }
 
 final class PromiseSpecUnsafeApi_AtomicallyInAsync_DefaultMcas_IO
