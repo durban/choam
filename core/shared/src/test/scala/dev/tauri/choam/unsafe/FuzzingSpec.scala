@@ -41,6 +41,9 @@ trait FuzzingSpec[F[_]] extends BaseSpecAsyncF[F] with ScalaCheckEffectSuite { s
 
   private[this] val u = UnsafeApi(rt)
 
+  private[this] implicit val transactive: stm.Transactive[F] =
+    new stm.Transactive.TransactiveImpl(this.mcasImpl)(using this.F)
+
   private[this] val gen = new RxnUnsafeGenerator[F](this.mcasImpl) {
 
     final override def assertEquals[A](actual: A, expected: A)(implicit loc: munit.Location): Unit = {
@@ -73,6 +76,9 @@ trait FuzzingSpec[F[_]] extends BaseSpecAsyncF[F] with ScalaCheckEffectSuite { s
   private val embedUnsafeRunner: (InRxn => Any) => F[Any] =
     block => Rxn.unsafe.embedUnsafe(block).run[F]
 
+  private val txnEmbedUnsafeRunner: (InRxn => Any) => F[Any] =
+    block => stm.Txn.unsafe.embedUnsafe(block).commit[F]
+
   // private def skipOnSnArmLinux(): Unit = {
   //   if ((this.platform eq Native) && this.isArm() && this.isLinux()) {
   //     assume(false)
@@ -97,6 +103,13 @@ trait FuzzingSpec[F[_]] extends BaseSpecAsyncF[F] with ScalaCheckEffectSuite { s
     // skipOnSnArmLinux()
     forAllF { (seed: Long) =>
       gen.generate(seed, size = size, runner = embedUnsafeRunner).map(_ => true)
+    }
+  }
+
+  test("fuzzing (Txn embedUnsafe)") {
+    // skipOnSnArmLinux()
+    forAllF { (seed: Long) =>
+      gen.generate(seed, size = size, runner = txnEmbedUnsafeRunner).map(_ => true)
     }
   }
 }
