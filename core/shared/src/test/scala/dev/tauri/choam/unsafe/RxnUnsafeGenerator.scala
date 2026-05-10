@@ -41,12 +41,21 @@ abstract class RxnUnsafeGenerator[F[_]](mcas: Mcas) {
   final def generate(
     seed: Long,
     size: Int,
-    runner: (InRxn => Any) => F[Any]
+    runner: (InRxn => Any) => F[Any],
+    isStm: Boolean = false,
   ): F[Any] = {
     require(size >= 0)
     val os = new MutSeed(seed)
     val is = os.nextLong()
-    val block = generateBlock(is, size = size, ref = null, retryCtr = new AtomicInteger, locals = Nil, refs = Nil)
+    val block = generateBlock(
+      is,
+      size = size,
+      ref = null,
+      retryCtr = new AtomicInteger,
+      locals = Nil,
+      refs = Nil,
+      isStm = isStm,
+    )
     runner(block)
   }
 
@@ -57,6 +66,7 @@ abstract class RxnUnsafeGenerator[F[_]](mcas: Mcas) {
     retryCtr: AtomicInteger,
     locals: List[ObjectRef[Option[Any]]],
     refs: List[ObjectRef[Ref[Any]]],
+    isStm: Boolean,
   ): (InRxn => Any) = { implicit u =>
     val s = new MutSeed(is)
     val currRef: ObjectRef[Ref[Any]] = ObjectRef.create(if (ref ne null) ref else newRef[Any](""))
@@ -75,6 +85,15 @@ abstract class RxnUnsafeGenerator[F[_]](mcas: Mcas) {
         currRef.elem = null
         refs.foreach(_.elem = null)
         alwaysRetry()
+      }
+    }
+    def generateOneRxn(): Rxn[Any] = {
+      val rxn = pureGen.generate(s.nextLong(), includeTxn = isStm)
+      if (isStm) {
+        // we include a fallback, because if it suspends, we can't test it:
+        Rxn.unsafe.orElse(rxn, Rxn.pure(42))
+      } else {
+        rxn
       }
     }
     def step(): Unit = {
@@ -102,9 +121,9 @@ abstract class RxnUnsafeGenerator[F[_]](mcas: Mcas) {
           writeRef(currRef.elem, lv)
           lastWrittenToRef = lv
         case 2 =>
-          addPostCommit(pureGen.generate(s.nextLong()).void)
+          addPostCommit(generateOneRxn().void)
         case 3 =>
-          val lv = embedRxn(pureGen.generate(s.nextLong()))
+          val lv = embedRxn(generateOneRxn())
           local.elem = Some(lv)
           embedRxn(localLocal.set(lv))
         case 4 =>
@@ -120,6 +139,7 @@ abstract class RxnUnsafeGenerator[F[_]](mcas: Mcas) {
             retryCtr = retryCtr,
             locals = local :: locals,
             refs = currRef :: refs,
+            isStm = isStm,
           )
           val rxn: Rxn[Any] = Rxn.unsafe.embedUnsafe(innerBlock)
           embedRxn(rxn) : Unit

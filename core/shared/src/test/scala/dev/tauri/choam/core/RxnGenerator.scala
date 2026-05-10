@@ -20,7 +20,7 @@ package core
 
 import java.lang.Math
 
-import org.scalacheck.Gen
+import org.scalacheck.{ Gen, Arbitrary }
 import org.scalacheck.rng.Seed
 
 import internal.mcas.{ Mcas, RefIdGen }
@@ -38,16 +38,37 @@ final class RxnGenerator(mcas: Mcas) { self =>
       this.mcasImpl.currentContext().refIdGen
   }
 
-  final def generate(seed: Long): Rxn[Any] = {
+  final def generate(seed: Long, includeTxn: Boolean): Rxn[Any] = {
     val nxt = Seed(seed).next
-    val gen = Math.abs(seed.toInt % 4) match {
+    val n = if (includeTxn) 6 else 4
+    val gen = Math.abs(seed.toInt % n) match {
       case 0 => ti.arbAxn[Int]
       case 1 => ti.arbAxn[String]
       case 2 => ti.arbAxn[Long]
       case 3 => ti.arbAxn[Any](using ti.arbAny)
-      case x => impossible(s"abs(_ % 4) returned ${x}")
+      case 4 | 5 => Arbitrary { generateTxn(seed).map(_.impl) }
+      case x => impossible(s"abs(_ % ${n}) returned ${x}")
     }
     gen.arbitrary.pureApply(params, nxt)
+  }
+
+  private[this] final def generateTxn(seed: Long): Gen[stm.Txn[Any]] = { // TODO: better Txn generator
+    Gen.oneOf(
+      Gen.asciiStr.map(stm.Txn.pure),
+      Gen.long.map(stm.Txn.pure),
+      Gen.const(stm.Txn.randomUuid),
+      Gen.const(stm.Txn.unique),
+      Gen.const(stm.Txn.fastRandom.nextAlphaNumeric),
+      Gen.const(stm.Txn.fastRandom.nextString(4)),
+      Gen.lzy { generateTxn(seed ^ 0x969ac61863642a5fL).map(_.map(_.##)) },
+      Gen.lzy {
+        for {
+          txn1 <- generateTxn(seed ^ 0x15a79260e8a8ca74L)
+          txn2 <- generateTxn(seed ^ 0x9b5e2964962a0316L)
+        } yield txn1 orElse txn2
+      },
+      Gen.const(stm.Txn.retry),
+    )
   }
 }
 

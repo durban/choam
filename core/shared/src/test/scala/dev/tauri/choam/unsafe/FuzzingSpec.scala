@@ -35,7 +35,7 @@ final class FuzzingSpec_DefaultMcas_IO
 trait FuzzingSpec[F[_]] extends BaseSpecAsyncF[F] with ScalaCheckEffectSuite { self: McasImplSpec =>
 
   final override def munitTimeout: Duration =
-    super.munitTimeout * 2
+    super.munitTimeout * 5
 
   private[this] val rt = ChoamRuntime.forTesting(this.mcasImpl)
 
@@ -109,7 +109,7 @@ trait FuzzingSpec[F[_]] extends BaseSpecAsyncF[F] with ScalaCheckEffectSuite { s
   test("fuzzing (Txn embedUnsafe)") {
     // skipOnSnArmLinux()
     forAllF { (seed: Long) =>
-      gen.generate(seed, size = size, runner = txnEmbedUnsafeRunner).map(_ => true)
+      gen.generate(seed, size = size, runner = txnEmbedUnsafeRunner, isStm = true).map(_ => true)
     }
   }
 }
