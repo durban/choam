@@ -53,7 +53,7 @@ trait TPromiseSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       fibResults <- fibs.traverse(_.joinWithNever)
       _ <- assertEqualsF(fibResults, List.fill(N)(okIdx))
     } yield ()
-    t.replicateA_(if (isJs()) 10 else 100)
+    t.replicateA_(if (isJvm()) 150 else 10)
   }
 
   test("complete/cancel race") {
@@ -98,21 +98,21 @@ trait TPromiseSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
         true // SN scheduling is too different; JS doesn't really matter here
       }
     } yield someWasCancelled
-    t.replicateA(if (isJs()) 10 else 200).flatMap { cancellations =>
+    t.replicateA(if (isJvm()) 250 else 10).flatMap { cancellations =>
       assertF(cancellations.exists(ok => ok))
     }
   }
 
   test("complete left side of orElse") {
     val t = orElseTest(leftSide = true, N = 1024, M = 16)
-    t.replicateA(if (isJs()) 10 else 200).flatMap { cancellations =>
+    t.replicateA(if (isJvm()) 250 else 10).flatMap { cancellations =>
       assertF(cancellations.exists(ok => ok))
     }
   }
 
   test("complete right side of orElse") {
     val t = orElseTest(leftSide = false, N = 1024, M = 16)
-    t.replicateA(if (isJs()) 10 else 200).flatMap { cancellations =>
+    t.replicateA(if (isJvm()) 250 else 10).flatMap { cancellations =>
       assertF(cancellations.exists(ok => ok))
     }
   }
