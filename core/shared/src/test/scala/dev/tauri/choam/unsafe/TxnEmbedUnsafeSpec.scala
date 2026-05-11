@@ -44,8 +44,7 @@ trait TxnEmbedUnsafeSpec[F[_]]
   }
 
   final override def runBlockWithAlts[A](str: RetryStrategy)(block: InRxn => A, alts: Rxn[A]*): F[A] = {
-    val txnAlts = alts.map[Txn[A]](_.impl)
-    stm.Transactive[F].commit(Txn.unsafe.embedUnsafeWithAlts(block, txnAlts: _*), str.withCede)
+    stm.Transactive[F].commit(Txn.unsafe.embedUnsafeWithAltsAndRxn(block, alts = Nil, rxnAlts = alts), str.withCede)
   }
 
   test("Txn.unsafe.embedUnsafe basics") {
@@ -292,6 +291,43 @@ trait TxnEmbedUnsafeSpec[F[_]]
       ctr02 <- F.delay(new AtomicInteger)
       ctr12 <- F.delay(new AtomicInteger)
       _ <- assertResultF(layer2(ctr02, ctr12).commit, 42)
+    } yield ()
+  }
+
+  test("Txn.retry inside embedTxn (alt)") {
+    for {
+      ref <- TRef(0).commit[F]
+      r <- Txn.unsafe.embedUnsafeWithAlts[String](
+        { implicit u =>
+          assertEquals(ref.value, 0)
+          ref.value = 1
+          val s: String = embedTxn(Txn.retry[String])
+          s + "x"
+        },
+        Txn.pure("z"),
+        Txn.pure("zz"),
+      ).commit[F]
+      _ <- assertEqualsF(r, "z")
+      _ <- assertResultF(ref.get.commit, 0)
+    } yield ()
+  }
+
+  test("Txn.retry inside embedTxn (suspend)") {
+    for {
+      ref <- TRef(0).commit[F]
+      fib <- Txn.unsafe.embedUnsafe[String]{ implicit u =>
+        if (ref.value == 0) {
+          val s: String = embedTxn(Txn.retry[String])
+          s + "x"
+        } else {
+          ref.value = 42
+          "z"
+        }
+      }.commit[F].start
+      _ <- F.cede
+      _ <- ref.set(1).commit
+      _ <- assertResultF(fib.joinWithNever, "z")
+      _ <- assertResultF(ref.get.commit, 42)
     } yield ()
   }
 }

@@ -761,9 +761,13 @@ object Rxn extends RxnInstances0 {
       embedUnsafeWithAlts(unsafeBlock)
 
     private[choam] final def embedUnsafeWithAlts[A](unsafeBlock: unsafePackage.InRxn => A, alts: Rxn[A]*): Rxn[A] =
-      embedUnsafeImpl(unsafeBlock, alts: _*)
+      embedUnsafeImpl(unsafeBlock, alts, Nil)
 
-    private[choam] final def embedUnsafeImpl[A](unsafeBlock: unsafePackage.InRxn => A, alts: Rxn[A]*): RxnImpl[A] = {
+    private[choam] final def embedUnsafeImpl[A](
+      unsafeBlock: unsafePackage.InRxn => A,
+      alts: Seq[Rxn[A]],
+      stmAlts: Seq[Txn[A]],
+    ): RxnImpl[A] = {
       val primary = new Rxn.Ctx3[Rxn[A]]({ (state: unsafePackage.InRxn) =>
         try {
           pure[A](unsafeBlock(state))
@@ -776,7 +780,9 @@ object Rxn extends RxnInstances0 {
              }
         }
       }).flatten
-      alts.foldLeft(primary)(_ + _)
+      stmAlts.foldLeft(
+        alts.foldLeft(primary)(_ + _)
+      ) { (acc, stmAlt) => acc.orElse(stmAlt).impl }
     }
 
     /** Internal API called by `atomically` */
