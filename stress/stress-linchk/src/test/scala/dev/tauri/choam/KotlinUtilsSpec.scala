@@ -166,7 +166,7 @@ final class KotlinUtilsSpec extends munit.FunSuite {
 
   test("ref") {
     val crt = K.ref("foo").flatMap { ref =>
-      ref.set("bar") *> ref.get
+      ref.set("bar").flatMap { _ => ref.get }
     }
     assertEquals(runSync(crt), "bar")
   }
