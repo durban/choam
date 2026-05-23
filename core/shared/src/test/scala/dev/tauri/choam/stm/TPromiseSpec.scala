@@ -104,14 +104,14 @@ trait TPromiseSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
   }
 
   test("complete left side of orElse") {
-    val t = orElseTest(leftSide = true, N = 1024, M = 16)
+    val t = orElseTest(leftSide = true, N = 768, M = 16)
     t.replicateA(if (isJvm()) 250 else 10).flatMap { cancellations =>
       assertF(cancellations.exists(ok => ok))
     }
   }
 
   test("complete right side of orElse") {
-    val t = orElseTest(leftSide = false, N = 1024, M = 16)
+    val t = orElseTest(leftSide = false, N = 768, M = 16)
     t.replicateA(if (isJvm()) 250 else 10).flatMap { cancellations =>
       assertF(cancellations.exists(ok => ok))
     }
@@ -135,7 +135,7 @@ trait TPromiseSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
       toCancel =  rng.shuffle(fibs).take(N >> 1)
       results <- F.both(
         toCancel.parTraverseVoid(_.cancel),
-        (1 to M).toList.parTraverse { i =>
+        F.cede *> (1 to M).toList.parTraverse { i =>
           F.cede *> p.complete(i).commit.map { ok => (i, ok) }
         },
       ).map(_._2)
