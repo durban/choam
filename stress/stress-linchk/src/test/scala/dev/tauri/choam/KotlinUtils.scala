@@ -95,6 +95,16 @@ object KotlinUtils {
     kd.getCompleted()
   }
 
+  /** Runs `crt` on the current thread, throws if it suspends */
+  final def runCompletelyOrThrow[A](crt: KtCrt[A]): A = {
+    val r = crt.apply(null)
+    if (equ(r, CoroutineSingletons.COROUTINE_SUSPENDED)) {
+      throw new IllegalStateException("got COROUTINE_SUSPENDED in runCompletelyOrThrow")
+    } else {
+      r.asInstanceOf[A]
+    }
+  }
+
   /** A partial and incorrect `Async` instance for suspend functions */
   final def ceAsyncForKotlinCoroutine: Async[KtCrt] = {
     new Async[KtCrt] {
@@ -158,19 +168,20 @@ object KotlinUtils {
       final override def async[A](k: (Either[Throwable, A] => Unit) => KtCrt[Option[KtCrt[Unit]]]): KtCrt[A] = { kk =>
         val res: AnyRef = CancellableContinuationKt.suspendCancellableCoroutine[A]({ c =>
           val crt: KtCrt[Option[KtCrt[Unit]]] = k({
-            case Left(ex) => c.resumeWith(ResultKt.createFailure(ex))
-            case Right(a) => c.resumeWith(a)
+            case Left(ex) =>
+              c.resumeWith(ResultKt.createFailure(ex))
+            case Right(a) =>
+              _assert(!equ(a, CoroutineSingletons.COROUTINE_SUSPENDED))
+              c.resumeWith(a)
           })
-          val x: AnyRef = crt.apply(null) // TODO: we're cheating here
-          _assert(x ne CoroutineSingletons.COROUTINE_SUSPENDED) // so we detect if the cheat doesn't work
+          val x: AnyRef = runCompletelyOrThrow(crt) // TODO: we're cheating here
           val fin = x.asInstanceOf[Option[KtCrt[Unit]]]
           fin match {
             case None =>
               // technically should be uncancelable, but it doesn't matter for our tests
             case Some(fin) =>
               c.invokeOnCancellation({ _ =>
-                val y: AnyRef = fin(null) // TODO: cheating again
-                _assert(y ne CoroutineSingletons.COROUTINE_SUSPENDED) // so we detect if the cheat doesn't work
+                runCompletelyOrThrow(fin) // TODO: cheating again
                 kotlin.Unit.INSTANCE
               })
           }
@@ -260,39 +271,56 @@ object KotlinUtils {
     k: Continuation[_ >: B],
     first: Boolean,
   ): AnyRef = {
-    val kk = if (first) {
-      new FlatMapCont(k.asInstanceOf[Continuation[AnyRef]], f.asInstanceOf[AnyRef => KtCrt[AnyRef]])
+    if (k eq null) {
+      // not a real coroutine, probably runCompletelyOrThrow
+      _assert(first)
+      val x = fa.apply(null)
+      if (x eq CoroutineSingletons.COROUTINE_SUSPENDED) {
+        throw new IllegalStateException("null continuation, but got COROUTINE_SUSPENDED from fa")
+      } else {
+        val fb = f(x.asInstanceOf[A])
+        val y = fb.apply(null)
+        if (y eq CoroutineSingletons.COROUTINE_SUSPENDED) {
+          throw new IllegalStateException("null continuation, but got COROUTINE_SUSPENDED from f(a)")
+        } else {
+          y
+        }
+      }
     } else {
-      k.asInstanceOf[FlatMapCont]
-    }
-    kk.state match {
-      case 0 =>
-        ResultKt.throwOnFailure(kk.result)
-        kk.state = 1
-        val x = fa.apply(kk.asInstanceOf[Continuation[A]])
-        if (x eq CoroutineSingletons.COROUTINE_SUSPENDED) {
-          x
-        } else {
-          kk.result = x
-          flatMapImpl(fa)(f)(kk.asInstanceOf[Continuation[B]], first = false)
-        }
-      case 1 =>
-        ResultKt.throwOnFailure(kk.result)
-        val a: A = kk.result.asInstanceOf[A]
-        kk.state = 2
-        val x = f(a).apply(kk.asInstanceOf[Continuation[B]])
-        if (x eq CoroutineSingletons.COROUTINE_SUSPENDED) {
-          x
-        } else {
-          kk.result = x
-          flatMapImpl(fa)(f)(kk.asInstanceOf[Continuation[B]], first = false)
-        }
-      case 2 =>
-        ResultKt.throwOnFailure(kk.result)
-        val b: B = kk.result.asInstanceOf[B]
-        box(b)
-      case _ =>
-        throw new IllegalStateException
+      val kk = if (first) {
+        new FlatMapCont(k.asInstanceOf[Continuation[AnyRef]], f.asInstanceOf[AnyRef => KtCrt[AnyRef]])
+      } else {
+        k.asInstanceOf[FlatMapCont]
+      }
+      kk.state match {
+        case 0 =>
+          ResultKt.throwOnFailure(kk.result)
+          kk.state = 1
+          val x = fa.apply(kk.asInstanceOf[Continuation[A]])
+          if (x eq CoroutineSingletons.COROUTINE_SUSPENDED) {
+            x
+          } else {
+            kk.result = x
+            flatMapImpl(fa)(f)(kk.asInstanceOf[Continuation[B]], first = false)
+          }
+        case 1 =>
+          ResultKt.throwOnFailure(kk.result)
+          val a: A = kk.result.asInstanceOf[A]
+          kk.state = 2
+          val x = f(a).apply(kk.asInstanceOf[Continuation[B]])
+          if (x eq CoroutineSingletons.COROUTINE_SUSPENDED) {
+            x
+          } else {
+            kk.result = x
+            flatMapImpl(fa)(f)(kk.asInstanceOf[Continuation[B]], first = false)
+          }
+        case 2 =>
+          ResultKt.throwOnFailure(kk.result)
+          val b: B = kk.result.asInstanceOf[B]
+          box(b)
+        case _ =>
+          throw new IllegalStateException
+      }
     }
   }
 }

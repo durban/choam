@@ -770,7 +770,10 @@ lazy val stressLinchk = project.in(file("stress") / "stress-linchk")
   .enablePlugins(NoPublishPlugin)
   .dependsOn(async.jvm % "compile->compile;test->test")
   .settings(
-    libraryDependencies += dependencies.lincheck.value,
+    libraryDependencies ++= Seq(
+      dependencies.lincheck.value,
+      // "org.jetbrains.kotlin" % "kotlin-metadata-jvm" % "2.2.0",
+    ),
     Test / fork := true, // otherwise the bytecode transformers won't work
   )
 
