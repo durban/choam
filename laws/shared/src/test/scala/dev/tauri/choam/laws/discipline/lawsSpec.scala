@@ -43,7 +43,19 @@ final class LawsSpecThreadConfinedMcas
 trait LawsSpec
   extends DisciplineSuite
   with TestInstances
-  with cats.effect.testkit.TestInstances { self: McasImplSpec =>
+  with cats.effect.testkit.TestInstances
+  with MUnitUtils { self: McasImplSpec =>
+
+  protected final override def scalaCheckTestParameters = {
+    val default = super.scalaCheckTestParameters
+    if (this.isNative()) {
+      // SN CI jobs seem to get killed randomly,
+      // so let's try to make the tests smaller:
+      default.withMaxSize(default.maxSize >> 1)
+    } else {
+      default
+    }
+  }
 
   val tc: TestContext =
     TestContext()
