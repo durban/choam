@@ -26,7 +26,7 @@ import cats.effect.kernel.testkit.TestContext
 import cats.effect.laws.{ UniqueTests, ClockTests }
 import cats.effect.{ IO, SyncIO }
 
-import org.scalacheck.Prop
+import org.scalacheck.{ Prop, Test }
 import munit.DisciplineSuite
 
 import core.{ Rxn, Ref, RefLike, Reactive, AsyncReactive }
@@ -46,7 +46,7 @@ trait LawsSpec
   with cats.effect.testkit.TestInstances
   with MUnitUtils { self: McasImplSpec =>
 
-  protected final override def scalaCheckTestParameters = {
+  protected final override def scalaCheckTestParameters: Test.Parameters = {
     val default = super.scalaCheckTestParameters
     if (this.isNative()) {
       // SN CI jobs seem to get killed randomly,
