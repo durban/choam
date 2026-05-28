@@ -59,7 +59,8 @@ import kotlinx.coroutines.{
  * incorrect in places. We only implement the parts that we
  * need for our `Txn` tests to run. Notably, we don't care
  * about cancellation at all, since our tests (for now) don't
- * cancel.
+ * cancel. (We also specify `cancellableOnSuspension = false`
+ * for our `@Operation`s, so Lincheck also doesn't cancel them.)
  */
 object KotlinUtils {
 

@@ -91,20 +91,20 @@ private class TestState {
   private[this] val p: TPromise[String] =
     KotlinUtils.runCompletelyOrThrow(TPromise[String].commit)
 
-  @Operation
   @Nullable
+  @Operation(cancellableOnSuspension = false, blocking = true)
   def read(@NotNull $completion: Continuation[_ >: String]): AnyRef = {
     p.get.commit.apply($completion)
   }
 
-  @Operation
   @Nullable
+  @Operation(cancellableOnSuspension = false)
   def complete1(@NotNull $completion: Continuation[_ >: Boolean]): AnyRef = {
     p.complete("result1").commit.apply($completion)
   }
 
-  @Operation
   @Nullable
+  @Operation(cancellableOnSuspension = false)
   def complete2(@NotNull $completion: Continuation[_ >: Boolean]): AnyRef = {
     p.complete("result2").commit.apply($completion)
   }
