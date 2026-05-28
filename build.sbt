@@ -915,6 +915,7 @@ lazy val commonSettings = Seq[Setting[_]](
     "-Wnonunit-statement",
     "-Wvalue-discard",
   ),
+  Test / testOptions += Tests.Argument(TestFrameworks.MUnit, "--log=debug"),
   Compile / doc / scalacOptions ++= {
     if (!ScalaArtifacts.isScala3(scalaVersion.value)) {
       Seq("-Ymacro-expand:none")
