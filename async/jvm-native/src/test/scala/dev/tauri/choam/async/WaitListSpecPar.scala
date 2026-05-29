@@ -109,17 +109,17 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     }
   }
 
-  testEnqueueCancelBounded("AsyncQueue.bounded", AsyncQueue.bounded[String](42).run[F].widen, bounds = List(1, 8))
-  testEnqueueCancelBounded("BoundedQueue.linked", BoundedQueueImpl.linked[String](42).run[F].widen, bounds = List(1, 8))
+  for (bound <- List(1, 8)) {
+    testEnqueueCancelBounded("AsyncQueue.bounded", AsyncQueue.bounded[String](bound = bound).run[F].widen, bound = bound)
+    testEnqueueCancelBounded("BoundedQueue.linked", BoundedQueueImpl.linked[String](bound = bound).run[F].widen, bound = bound)
+  }
 
   private def testEnqueueCancelBounded(
     name: String,
     newEmptyQ: F[AsyncQueue.Take[String] & AsyncQueue.Put[String]],
-    bounds: List[Int],
+    bound: Int,
   ): Unit = {
-    for (bound <- bounds) {
-      _testEnqueueCancelBounded(name, newEmptyQ, bound)
-    }
+    _testEnqueueCancelBounded(name, newEmptyQ, bound)
   }
 
   private def _testEnqueueCancelBounded(
