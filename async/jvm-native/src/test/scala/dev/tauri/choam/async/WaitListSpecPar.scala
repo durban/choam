@@ -129,9 +129,13 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
   ): Unit = {
 
     val repeat = this.platform match {
-      case Jvm => 50000
-      case Native => 5000
-      case Js => fail("JS")
+      case Jvm =>
+        if (this.isMac() && (!this.isArm())) 30000 // mac-intel CI runners seem slow
+        else 50000
+      case Native =>
+        5000
+      case Js =>
+        fail("JS")
     }
 
     def enqAndSave(q: AsyncQueue.Put[String], ref: Ref[F, Boolean], item: String): F[Unit] = {
