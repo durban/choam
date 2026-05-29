@@ -36,7 +36,7 @@ final class TPromiseModelTest extends FunSuite with RxnLinchkSpec {
 
   test("Model checking TPromise".tag(SLOW)) {
     val opts = fastModelCheckingOptions()
-    opts.check(classOf[TestState])
+    opts.check(classOf[TPromiseModelTestState])
   }
 
   // test("foo".only) {
@@ -75,9 +75,9 @@ final class TPromiseModelTest extends FunSuite with RxnLinchkSpec {
   k = 1,
   xi = 48,
   d1 = Array("\u0000\u001a\n\u0002\u0018\u0002\n\u0002\u0010\u0000\n\u0002\b\u0003\n\u0002\u0010\u000e\n\u0002\b\u0002\n\u0002\u0010\u000b\n\u0000\u0018\u00002\u00020\u0001B\u0007\u00a2\u0006\u0004\b\u0002\u0010\u0003J\u000e\u0010\u0004\u001a\u00020\u0005H\u0086@\u00a2\u0006\u0002\u0010\u0006J\u000e\u0010\u0007\u001a\u00020\bH\u0086@\u00a2\u0006\u0002\u0010\u0006J\u000e\u0010\t\u001a\u00020\bH\u0086@\u00a2\u0006\u0002\u0010\u0006"),
-  d2 = Array("Ldev/tauri/choam/stm/TestState;", "", "<init>", "()V", "read", "", "(Lkotlin/coroutines/Continuation;)Ljava/lang/Object;", "complete1", "", "complete2"),
+  d2 = Array("Ldev/tauri/choam/stm/TPromiseModelTestState;", "", "<init>", "()V", "read", "", "(Lkotlin/coroutines/Continuation;)Ljava/lang/Object;", "complete1", "", "complete2"),
 )
-private class TestState {
+private class TPromiseModelTestState {
 
   private[this] val crt: ChoamRuntime =
     ChoamRuntime.forTesting(RxnLinchkSpec.defaultMcasForTesting)
