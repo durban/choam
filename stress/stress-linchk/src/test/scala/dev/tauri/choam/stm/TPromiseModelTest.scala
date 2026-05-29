@@ -58,9 +58,12 @@ final class TPromiseModelTest extends FunSuite with RxnLinchkSpec {
  *
  * ```
  * class TestState {
- *   suspend fun read(): String = ...
- *   suspend fun complete1(): Boolean = ...
- *   suspend fun complete2(): Boolean = ...
+ *   suspend fun op0I_1(): Int = 0
+ *   suspend fun op0I_2(): Int = 0
+ *   suspend fun op1II_1(i: Int): Int = 0
+ *   suspend fun op0S_1(): String = ""
+ *   suspend fun op0S_2(): String = ""
+ *   suspend fun op1SS_1(s: String): String = ""
  * }
  * ```
  *
@@ -74,8 +77,8 @@ final class TPromiseModelTest extends FunSuite with RxnLinchkSpec {
   mv = Array(2, 1, 0),
   k = 1,
   xi = 48,
-  d1 = Array("\u0000\u001a\n\u0002\u0018\u0002\n\u0002\u0010\u0000\n\u0002\b\u0003\n\u0002\u0010\u000e\n\u0002\b\u0002\n\u0002\u0010\u000b\n\u0000\u0018\u00002\u00020\u0001B\u0007\u00a2\u0006\u0004\b\u0002\u0010\u0003J\u000e\u0010\u0004\u001a\u00020\u0005H\u0086@\u00a2\u0006\u0002\u0010\u0006J\u000e\u0010\u0007\u001a\u00020\bH\u0086@\u00a2\u0006\u0002\u0010\u0006J\u000e\u0010\t\u001a\u00020\bH\u0086@\u00a2\u0006\u0002\u0010\u0006"),
-  d2 = Array("Ldev/tauri/choam/stm/TPromiseModelTestState;", "", "<init>", "()V", "read", "", "(Lkotlin/coroutines/Continuation;)Ljava/lang/Object;", "complete1", "", "complete2"),
+  d1 = Array("\u0000\u001c\n\u0002\u0018\u0002\n\u0002\u0010\u0000\n\u0002\b\u0003\n\u0002\u0010\b\n\u0002\b\u0006\n\u0002\u0010\u000e\n\u0002\b\u0004\u0018\u00002\u00020\u0001B\u0007\u00a2\u0006\u0004\b\u0002\u0010\u0003J\u000e\u0010\u0004\u001a\u00020\u0005H\u0086@\u00a2\u0006\u0002\u0010\u0006J\u000e\u0010\u0007\u001a\u00020\u0005H\u0086@\u00a2\u0006\u0002\u0010\u0006J\u0016\u0010\b\u001a\u00020\u00052\u0006\u0010\t\u001a\u00020\u0005H\u0086@\u00a2\u0006\u0002\u0010\nJ\u000e\u0010\u000b\u001a\u00020\fH\u0086@\u00a2\u0006\u0002\u0010\u0006J\u000e\u0010\r\u001a\u00020\fH\u0086@\u00a2\u0006\u0002\u0010\u0006J\u0016\u0010\u000e\u001a\u00020\f2\u0006\u0010\u000f\u001a\u00020\fH\u0086@\u00a2\u0006\u0002\u0010\u0010"),
+  d2 = Array("Ldev/tauri/choam/stm/TPromiseModelTestState;", "", "<init>", "()V", "op0I_1", "", "(Lkotlin/coroutines/Continuation;)Ljava/lang/Object;", "op0I_2", "op1II_1", "i", "(ILkotlin/coroutines/Continuation;)Ljava/lang/Object;", "op0S_1", "", "op0S_2", "op1SS_1", "s", "(Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;"),
 )
 private class TPromiseModelTestState {
 
@@ -93,19 +96,19 @@ private class TPromiseModelTestState {
 
   @Nullable
   @Operation(cancellableOnSuspension = false, blocking = true)
-  def read(@NotNull $completion: Continuation[_ >: String]): AnyRef = {
+  def op0S_1(@NotNull $completion: Continuation[_ >: String]): AnyRef = {
     p.get.commit.apply($completion)
   }
 
   @Nullable
   @Operation(cancellableOnSuspension = false)
-  def complete1(@NotNull $completion: Continuation[_ >: Boolean]): AnyRef = {
-    p.complete("result1").commit.apply($completion)
+  def op0I_1(@NotNull $completion: Continuation[_ >: Int]): AnyRef = {
+    p.complete("result1").map(if (_) 1 else 0).commit.apply($completion)
   }
 
   @Nullable
   @Operation(cancellableOnSuspension = false)
-  def complete2(@NotNull $completion: Continuation[_ >: Boolean]): AnyRef = {
-    p.complete("result2").commit.apply($completion)
+  def op0I_2(@NotNull $completion: Continuation[_ >: Int]): AnyRef = {
+    p.complete("result2").map(if (_) 1 else 0).commit.apply($completion)
   }
 }
