@@ -20,7 +20,6 @@ package internal
 package skiplist
 
 import org.jetbrains.kotlinx.lincheck.paramgen.{ IntGen, StringGen }
-import org.jetbrains.kotlinx.lincheck.annotations.StateRepresentation
 import org.jetbrains.lincheck.datastructures.{ Operation, Param }
 
 import munit.FunSuite
@@ -45,16 +44,6 @@ object SkipListModelTest {
     private[this] val m: SkipListMap[Int, String] =
       new SkipListMap
 
-    @StateRepresentation
-    def stateRepr(): String = {
-      val lst = List.newBuilder[String]
-      m.foreachAndSum { (k, v) =>
-        lst += s"[${k}, ${v}]"
-        0
-      }
-      lst.result().mkString("{", "; ", "}")
-    }
-
     @Operation
     def insert(key: Int, value: String): Option[String] = {
       m.put(key, value)
@@ -77,13 +66,6 @@ object SkipListModelTest {
 
     private[this] val m =
       scala.collection.mutable.TreeMap.empty[Int, String]
-
-    @StateRepresentation
-    def stateRepr(): String = {
-      m.toList.map {
-        case (k, cb) => s"[${k}, ${cb}]"
-      }.mkString("{", "; ", "}")
-    }
 
     @Operation
     def insert(key: Int, value: String): Option[String] = {
