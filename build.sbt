@@ -625,6 +625,10 @@ lazy val testExt = crossProject(JVMPlatform, JSPlatform, NativePlatform)
       Test / test,
       (Compile / run).toTask(""), // this runs CeAppMixinTest
     ).value,
+    testNoSlow := Def.sequential(
+      testNoSlow,
+      (Compile / run).toTask(""), // this runs CeAppMixinTest
+    ).value
   )
   .jsSettings(
     scalaJSUseMainModuleInitializer := true,
@@ -856,6 +860,8 @@ lazy val commonSettingsNative = Seq[Setting[_]](
   ),
 )
 
+val testNoSlow = taskKey[Unit]("For running tests excluding SLOW ones")
+
 lazy val commonSettings = Seq[Setting[_]](
   scalacOptions ++= Seq(
     "-language:higherKinds",
@@ -916,6 +922,7 @@ lazy val commonSettings = Seq[Setting[_]](
     "-Wvalue-discard",
   ),
   Test / testOptions += Tests.Argument(TestFrameworks.MUnit, "--log=debug"),
+  testNoSlow := (Test / testOnly).toTask(" -- --exclude-tags=SLOW").value,
   Compile / doc / scalacOptions ++= {
     if (!ScalaArtifacts.isScala3(scalaVersion.value)) {
       Seq("-Ymacro-expand:none")
@@ -1142,7 +1149,7 @@ def mkCiAlias(proj: String, full: Boolean, extraLink: Option[String] = None): Li
     if (full) {
       List("test")
     } else {
-      List("testOnly -- --exclude-tags=SLOW")
+      List("testNoSlow")
     }
   ) ++ List("compatCheck")
 }
