@@ -610,6 +610,16 @@ lazy val testExt = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .nativeSettings(commonSettingsNative)
   .dependsOn(stream % "compile->compile;test->test")
   .dependsOn(ce % "compile->compile;test->test")
+  .settings(
+    Test / test := Def.sequential(
+      Test / test,
+      (Compile / run).toTask(""), // this runs CeAppMixinTest
+    ).value,
+    testNoSlow := Def.sequential(
+      testNoSlow,
+      (Compile / run).toTask(""), // this runs CeAppMixinTest
+    ).value
+  )
   .jvmSettings(
     run / fork := true,
     Test / fork := true,
@@ -621,22 +631,13 @@ lazy val testExt = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     Test / run / javaOptions ++= List(
       "-Ddev.tauri.choam.internal.mcas.impl=Emcas", // so that JmxDemo works
     ),
-    Test / test := Def.sequential(
-      Test / test,
-      (Compile / run).toTask(""), // this runs CeAppMixinTest
-    ).value,
-    testNoSlow := Def.sequential(
-      testNoSlow,
-      (Compile / run).toTask(""), // this runs CeAppMixinTest
-    ).value
   )
   .jsSettings(
     scalaJSUseMainModuleInitializer := true,
-    libraryDependencies += dependencies.scalaJsSecRnd.value,
-    Test / test := Def.sequential(
-      Test / test,
-      (Compile / run).toTask(""), // this runs CeAppMixinTest
-    ).value,
+    libraryDependencies ++= Seq(
+      Seq(dependencies.scalaJsSecRnd.value),
+      dependencies.scalaJsLocale.value,
+    ).flatten,
   )
 
 // Note: run `show graalNiExample/GraalVMNativeImage/packageBin` in sbt
