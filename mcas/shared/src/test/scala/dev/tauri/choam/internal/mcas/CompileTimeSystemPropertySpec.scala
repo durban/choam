@@ -17,6 +17,7 @@
 
 package dev.tauri.choam
 package internal
+package mcas
 
 final class CompileTimeSystemPropertySpec extends BaseSpec {
 
