@@ -28,7 +28,8 @@ import cats.effect.std.{ UUIDGen, Random, SecureRandom }
 import core.{ Rxn, RxnImpl }
 import dev.tauri.choam.{ unsafe => unsafe2 }
 import internal.mcas.Mcas
-import internal.{ ClockImpl, random }
+import internal.random
+import internal.clock.ClockImpl
 
 /**
  * An [[https://en.wikipedia.org/wiki/Software_transactional_memory STM]]

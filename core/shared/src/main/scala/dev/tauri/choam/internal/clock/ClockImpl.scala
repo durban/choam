@@ -17,6 +17,7 @@
 
 package dev.tauri.choam
 package internal
+package clock
 
 import java.util.concurrent.TimeUnit.{ NANOSECONDS, MILLISECONDS }
 

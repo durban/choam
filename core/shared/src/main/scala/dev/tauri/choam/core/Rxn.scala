@@ -32,7 +32,8 @@ import unsafePackage.InRxn
 import stm.Txn
 import internal.mcas.{ MemoryLocation, Mcas, LogEntry, McasStatus, Descriptor, AbstractDescriptor, Consts, Hamt, Version }
 import internal.mcas.Hamt.IllegalInsertException
-import internal.{ random, ClockImpl }
+import internal.random
+import internal.clock.ClockImpl
 
 /**
  * An effect with result type `A`; when executed, it
