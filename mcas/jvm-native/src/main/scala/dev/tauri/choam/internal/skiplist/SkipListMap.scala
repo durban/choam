@@ -259,14 +259,14 @@ private[choam] final class SkipListMap[K, V]()(implicit K: Order[K])
    */
   @tailrec
   private[this] final def doPut(key: K, value: V, onlyIfAbsent: Boolean, tlr: ThreadLocalRandom): Option[V] = {
-    val h = _head.getAcquire()
+    var h = _head.getAcquire()
     var levels = 0 // number of levels descended
     var b: Node = if (h eq null) {
       // head not initialized yet, do it now;
       // first node of the base list is a sentinel
       // (without payload):
       val base = new Node(MARKER, TOMB, null)
-      val h = new Index(base, null, null)
+      h = new Index(base, null, null)
       if (_head.compareAndSet(null, h)) base else null
     } else {
       // we have a head; find a node in the base list
