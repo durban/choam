@@ -46,7 +46,7 @@ trait LinchkUtils {
    * We need this to see fatal errors thrown in a forked JVM during a test (which
    * tend to happen with the bytecode-rewriting when using `ModelCheckingOptions`).
    */
-  def printFatalErrors[A](block: => A): A = {
+  final def printFatalErrors[A](block: => A): A = {
     try {
       block
     } catch {
@@ -56,10 +56,10 @@ trait LinchkUtils {
     }
   }
 
-  def defaultModelCheckingOptions(): ModelCheckingOptions =
+  final def defaultModelCheckingOptions(): ModelCheckingOptions =
     this.fastModelCheckingOptions()
 
-  def fastModelCheckingOptions(): ModelCheckingOptions = {
+  final def fastModelCheckingOptions(): ModelCheckingOptions = {
     // this is the "fast" configuration from the Lincheck paper:
     this.makeModelCheckingOptions(
       scenarios = 30,
@@ -69,7 +69,7 @@ trait LinchkUtils {
     )
   }
 
-  def longModelCheckingOptions(): ModelCheckingOptions = {
+  final def longModelCheckingOptions(): ModelCheckingOptions = {
     // this is the "long" configuration from the Lincheck paper:
     this.makeModelCheckingOptions(
       scenarios = 100,
@@ -79,7 +79,7 @@ trait LinchkUtils {
     )
   }
 
-  private[this] def makeModelCheckingOptions(
+  private[this] final def makeModelCheckingOptions(
     scenarios: Int,
     threads: Int,
     operationsPerThread: Int,
@@ -95,7 +95,7 @@ trait LinchkUtils {
         assumedAtomicClassNames.contains(fullClassName) ||
         fullClassName.startsWith("scala.collection.immutable.")
       }
-      new ManagedStrategyGuarantee.MethodBuilder(KotlinFromScala.function1(assumedAtomicPred))
+      new ManagedStrategyGuarantee.MethodBuilder(assumedAtomicPred _)
         .allMethods()
         .treatAsAtomic()
     }
