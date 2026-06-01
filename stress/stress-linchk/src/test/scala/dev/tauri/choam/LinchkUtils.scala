@@ -95,7 +95,7 @@ trait LinchkUtils {
         assumedAtomicClassNames.contains(fullClassName) ||
         fullClassName.startsWith("scala.collection.immutable.")
       }
-      new ManagedStrategyGuarantee.MethodBuilder(assumedAtomicPred _)
+      new ManagedStrategyGuarantee.MethodBuilder({ cn => assumedAtomicPred(cn) })
         .allMethods()
         .treatAsAtomic()
     }
