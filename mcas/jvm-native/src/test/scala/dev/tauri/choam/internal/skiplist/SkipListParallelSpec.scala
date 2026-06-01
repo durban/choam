@@ -43,7 +43,8 @@ final class SkipListParallelSpec extends CatsEffectSuite with ScalaCheckEffectSu
   }
 
   test("get race") {
-    PropF.forAllF { (m: SkipListMap[Int, String], ks: Set[Int]) =>
+    PropF.forAllF { (m: SkipListMap[Int, String], _ks: Set[Int], _i: Int) =>
+      val ks: Set[Int] = _ks + _i
       IO {
         for (k <- ks) {
           m.put(k, k.toString)
@@ -51,6 +52,38 @@ final class SkipListParallelSpec extends CatsEffectSuite with ScalaCheckEffectSu
       } *> IO.parTraverseN(4)(ks.toList) { k =>
         repeat { assertEquals(m.get(k), Some(k.toString())) }
       }.void
+    }
+  }
+
+  test("get race on singleton") {
+    val someFoo = Some("foo")
+    PropF.forAllF { (i: Int) =>
+      IO {
+        val m = new SkipListMap[Int, String]
+        m.put(i, "foo")
+        m
+      }.flatMap { m =>
+        IO.parReplicateAN(4)(4, repeat { assertEquals(m.get(i), someFoo) }).void
+      }
+    }
+  }
+
+  test("get/put race on singleton") {
+    val someFoo = Some("foo")
+    PropF.forAllF { (i: Int, j: Int) =>
+      IO {
+        val m = new SkipListMap[Int, String]
+        m.put(i, "foo")
+        m
+      }.flatMap { m =>
+        val jj = if (i == j) j + 1 else j
+        val put = IO { m.put(jj, "bar") }
+        val get = IO { assertEquals(m.get(i), someFoo) }
+        IO.both(
+          IO.both(put, get),
+          IO.both(put, get),
+        ).replicateA_(N >> 2)
+      }
     }
   }
 
