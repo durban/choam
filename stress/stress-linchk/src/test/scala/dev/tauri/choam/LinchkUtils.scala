@@ -59,8 +59,8 @@ trait LinchkUtils {
   final def defaultModelCheckingOptions(): ModelCheckingOptions =
     this.fastModelCheckingOptions()
 
+  /** This is the "fast" configuration from the Lincheck paper */
   final def fastModelCheckingOptions(): ModelCheckingOptions = {
-    // this is the "fast" configuration from the Lincheck paper:
     this.makeModelCheckingOptions(
       scenarios = 30,
       threads = 2,
@@ -69,13 +69,23 @@ trait LinchkUtils {
     )
   }
 
+  /** This is the "long" configuration from the Lincheck paper */
   final def longModelCheckingOptions(): ModelCheckingOptions = {
-    // this is the "long" configuration from the Lincheck paper:
     this.makeModelCheckingOptions(
       scenarios = 100,
       threads = 3,
       operationsPerThread = 4,
       invocationsPerScenario = 10000,
+    )
+  }
+
+  /** This is somewhere between the other two */
+  final def mediumModelCheckingOptions(): ModelCheckingOptions = {
+    this.makeModelCheckingOptions(
+      scenarios = 60,
+      threads = 3,
+      operationsPerThread = 3,
+      invocationsPerScenario = 2000,
     )
   }
 

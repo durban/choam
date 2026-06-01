@@ -19,7 +19,7 @@ package dev.tauri.choam
 package internal
 package skiplist
 
-import org.jetbrains.kotlinx.lincheck.paramgen.{ IntGen, StringGen }
+import org.jetbrains.kotlinx.lincheck.paramgen.IntGen
 import org.jetbrains.lincheck.datastructures.{ Operation, Param }
 
 import munit.FunSuite
@@ -27,7 +27,7 @@ import munit.FunSuite
 final class SkipListModelTest extends FunSuite with BaseLinchkSpec {
 
   test("Model checking test of SkipListMap".tag(SLOW)) {
-    val opts = defaultModelCheckingOptions()
+    val opts = mediumModelCheckingOptions()
       .sequentialSpecification(classOf[SkipListModelTest.TestStateSequential])
     printFatalErrors {
       opts.check(classOf[SkipListModelTest.TestState])
@@ -38,48 +38,85 @@ final class SkipListModelTest extends FunSuite with BaseLinchkSpec {
 object SkipListModelTest {
 
   @Param(name = "key", gen = classOf[IntGen])
-  @Param(name = "value", gen = classOf[StringGen])
+  @Param(name = "value", gen = classOf[IntGen], conf = "1:5")
   class TestState {
 
-    private[this] val m: SkipListMap[Int, String] =
+    private[this] val m: SkipListMap[Int, Int] =
       new SkipListMap
 
     @Operation
-    def insert(key: Int, value: String): Option[String] = {
+    def put(key: Int, value: Int): Option[Int] = {
       m.put(key, value)
     }
 
     @Operation
-    def lookup(key: Int): Option[String] = {
+    def putIfAbsent(key: Int, value: Int): Option[Int] = {
+      m.putIfAbsent(key, value)
+    }
+
+    @Operation
+    def lookup(key: Int): Option[Int] = {
       m.get(key)
     }
 
     @Operation
-    def remove(key: Int): Boolean = {
+    def del(key: Int): Boolean = {
       m.del(key)
+    }
+
+    @Operation
+    def remove(key: Int, value: Int): Boolean = {
+      // Note: `SkipListMap#remove` uses reference
+      // equality, so here we depend on small `Int`s
+      // having a stable identity.
+      m.remove(key, value)
     }
   }
 
   @Param(name = "key", gen = classOf[IntGen])
-  @Param(name = "value", gen = classOf[StringGen])
+  @Param(name = "value", gen = classOf[IntGen], conf = "1:5")
   class TestStateSequential {
 
     private[this] val m =
-      scala.collection.mutable.TreeMap.empty[Int, String]
+      scala.collection.mutable.TreeMap.empty[Int, Int]
 
     @Operation
-    def insert(key: Int, value: String): Option[String] = {
+    def put(key: Int, value: Int): Option[Int] = {
       m.put(key, value)
     }
 
     @Operation
-    def lookup(key: Int): Option[String] = {
+    def putIfAbsent(key: Int, value: Int): Option[Int] = {
+      m.get(key) match {
+        case s @ Some(_) =>
+          s
+        case None =>
+          m.put(key, value)
+          None
+      }
+    }
+
+    @Operation
+    def lookup(key: Int): Option[Int] = {
       m.get(key)
     }
 
     @Operation
-    def remove(key: Int): Boolean = {
+    def del(key: Int): Boolean = {
       m.remove(key).isDefined
+    }
+
+    @Operation
+    def remove(key: Int, value: Int): Boolean = {
+      m.get(key) match {
+        case Some(other) if (value == other) =>
+          m.remove(key)
+          true
+        case Some(_) =>
+          false
+        case None =>
+          false
+      }
     }
   }
 }
