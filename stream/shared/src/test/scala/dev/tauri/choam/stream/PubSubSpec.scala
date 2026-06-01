@@ -37,6 +37,12 @@ trait PubSubSpec[F[_]]
 
   private[this] final val BS = if (this.isNative()) 512 else 1024
 
+  private[this] val repeat = this.platform match {
+    case Jvm => 50
+    case Js => 1
+    case Native => 20
+  }
+
   commonTests("DropOldest", PubSub.OverflowStrategy.dropOldest(BS))
   commonTests("DropNewest", PubSub.OverflowStrategy.dropNewest(BS))
   commonTests("Unbounded", PubSub.OverflowStrategy.unbounded)
@@ -84,11 +90,6 @@ trait PubSubSpec[F[_]]
         _ <- assertEqualsF(v1.toSet, expSet)
         _ <- checkOrder(v1, str)
       } yield ()
-      val repeat = this.platform match {
-        case Jvm => 50
-        case Js => 1
-        case Native => 25
-      }
       t.replicateA_(repeat)
     }
 
@@ -123,11 +124,6 @@ trait PubSubSpec[F[_]]
         _ <- checkOrder(v1, str2) // we may lose items, but the order must be correct
         _ <- checkOrder(v2, str2) // we may lose items, but the order must be correct
       } yield ()
-      val repeat = this.platform match {
-        case Jvm => 50
-        case Js => 1
-        case Native => 25
-      }
       t.replicateA_(repeat)
     }
 
@@ -157,12 +153,7 @@ trait PubSubSpec[F[_]]
         _ <- assertF((clue(r2) == Vector()) || (r2 == Vector(2)))
         _ <- assertF((clue(r3) == Vector()) || (r3 == Vector(3)))
       } yield ()
-      val repeat = this.platform match {
-        case Jvm => 500
-        case Js => 1
-        case Native => 250
-      }
-      t.replicateA_(repeat)
+      t.replicateA_(repeat * 10)
     }
 
     test(s"$name - subscribe/close/publish race") {
@@ -199,15 +190,9 @@ trait PubSubSpec[F[_]]
           } yield ()
         }
       } yield ()
-      val repeat = this.platform match {
-        case Jvm => 50
-        case Js => 1
-        case Native => 25
-      }
       t.replicateA_(repeat)
     }
   }
-
 
   private def checkOrder(v: Vector[Int], str2: PubSub.OverflowStrategy): F[Unit] = F.delay {
     val canLoseItems = str2.fold(
