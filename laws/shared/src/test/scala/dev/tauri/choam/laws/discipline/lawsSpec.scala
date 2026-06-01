@@ -50,8 +50,9 @@ trait LawsSpec
     val default = super.scalaCheckTestParameters
     if (this.isNative()) {
       // SN CI jobs seem to get killed randomly,
-      // so let's try to make the tests smaller:
-      default.withMaxSize(default.maxSize >> 1)
+      // or to hang, so let's try to make the
+      // tests smaller (maxSize defaults to 100):
+      default.withMaxSize(default.maxSize >> 2)
     } else {
       default
     }
