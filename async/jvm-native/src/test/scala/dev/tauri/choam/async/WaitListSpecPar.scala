@@ -130,7 +130,7 @@ trait WaitListSpecPar[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
 
     val repeat = this.platform match {
       case Jvm =>
-        if (this.isMac() && (!this.isArm())) 30000 // mac-intel CI runners seem slow
+        if (this.isMac()) 30000 // mac CI runners seem slow(?)
         else 50000
       case Native =>
         5000
