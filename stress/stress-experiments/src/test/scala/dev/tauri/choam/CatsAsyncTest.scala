@@ -25,7 +25,7 @@ import cats.effect.kernel.{ Fiber, Outcome }
 import cats.effect.IO
 import cats.effect.unsafe.{ IORuntime, SleepSystem }
 
-import org.openjdk.jcstress.annotations.{ Ref => _, Outcome => JOutcome, _ }
+import org.openjdk.jcstress.annotations.{ Outcome => JOutcome, _ }
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.infra.results.LLLL_Result

@@ -28,7 +28,7 @@ import ObjStack.Lst
 private sealed trait ExchangerImplJvm[A, B]
   extends Exchanger.UnsealedExchanger[A, B] {
 
-  import ExchangerImplJvm.{ size => _, _ }
+  import ExchangerImplJvm.{ Statistics, StatMap }
 
   // TODO: could we use a single elimination array?
   protected def incoming: AtomicReferenceArray[ExchangerNode[?]]

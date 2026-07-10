@@ -32,7 +32,7 @@ import sbtcrossproject.CrossProject
 
 // Scala versions:
 val scala2 = "2.13.18"
-val scala3 = "3.3.7"
+val scala3 = "3.3.8"
 
 // CI JVM versions:
 val jvmOldest = JavaSpec.temurin("11")
@@ -813,6 +813,18 @@ lazy val layout = project.in(file("layout"))
   .dependsOn(core.jvm % "compile->compile;test->test")
 
 lazy val commonSettingsJvm = Seq[Setting[_]](
+  scalacOptions ++= (
+    if (!ScalaArtifacts.isScala3(scalaVersion.value)) {
+      // 2.13
+      Nil
+    } else {
+      // 3
+      List(
+        // TODO: we only set this for JVM due to https://github.com/scala-native/scala-native/issues/4869
+        "-Yfuture-lazy-vals", // VarHandle instead of Unsafe
+      )
+    }
+  ),
   Test / fork := true,
   Test / javaOptions ++= Seq(
     // Note: forked JVM doesn't seem to use the .jvmopts
@@ -1108,7 +1120,7 @@ lazy val dependencies = new {
       catsLaws.value,
       "org.typelevel" %%% "cats-effect-kernel-testkit" % catsEffectVersion,
       "org.typelevel" %%% "cats-effect-testkit" % catsEffectVersion,
-      "org.scalameta" %%% "munit" % "1.3.0", // https://github.com/scalameta/munit
+      "org.scalameta" %%% "munit" % "1.3.4", // https://github.com/scalameta/munit
       "org.typelevel" %%% "munit-cats-effect" % "2.2.0", // https://github.com/typelevel/munit-cats-effect
       "org.typelevel" %%% "scalacheck-effect" % scalacheckEffectVersion,
       "org.typelevel" %%% "scalacheck-effect-munit" % scalacheckEffectVersion,

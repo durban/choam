@@ -19,7 +19,7 @@ package dev.tauri.choam
 
 import java.util.concurrent.atomic.AtomicBoolean
 
-import org.openjdk.jcstress.annotations.{ Ref => _, Outcome => JOutcome, _ }
+import org.openjdk.jcstress.annotations.{ Outcome => JOutcome, _ }
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.infra.results.I_Result

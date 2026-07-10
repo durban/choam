@@ -20,7 +20,7 @@ package internal
 package mcas
 package emcas
 
-import org.openjdk.jcstress.annotations.{ Ref => _, _ }
+import org.openjdk.jcstress.annotations._
 import org.openjdk.jcstress.annotations.Outcome.Outcomes
 import org.openjdk.jcstress.annotations.Expect._
 import org.openjdk.jcstress.infra.results.LLLLL_Result
