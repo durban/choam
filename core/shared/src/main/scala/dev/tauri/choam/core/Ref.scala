@@ -300,11 +300,11 @@ object Ref extends RefInstances0 {
 
   // Utilities:
 
-  final def consistentRead[A, B](ra: Ref[A], rb: Ref[B]): Rxn[(A, B)] = { // TODO:0.5: private?
+  private[choam] final def consistentRead[A, B](ra: Ref[A], rb: Ref[B]): Rxn[(A, B)] = {
     ra.get * rb.get
   }
 
-  final def consistentReadMany[A](refs: List[Ref[A]]): Rxn[List[A]] = { // TODO:0.5: private?
+  private[choam] final def consistentReadMany[A](refs: List[Ref[A]]): Rxn[List[A]] = {
     refs.foldRight(Rxn.pure(List.empty[A])) { (ref, acc) =>
       (ref.get * acc).map {
         case (h, t) => h :: t
