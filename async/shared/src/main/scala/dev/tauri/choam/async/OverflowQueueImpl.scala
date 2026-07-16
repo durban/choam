@@ -21,22 +21,23 @@ package async
 import cats.effect.std.{ Queue => CatsQueue }
 
 import core.{ Rxn, AsyncReactive }
+import data.Queue
 
 private object OverflowQueueImpl {
 
-  final def ringBuffer[A](capacity: Int): Rxn[AsyncQueue.WithSize[A]] = {
+  final def ringBuffer[A](capacity: Int): Rxn[AsyncQueue.WithSize[A] & Queue.WithSize[A]] = {
     data.Queue.ringBuffer[A](capacity).flatMap { rb =>
       makeRingBuffer(rb)
     }
   }
 
-  final def ringBuffer[A](capacity: Int, str: AllocationStrategy): Rxn[AsyncQueue.WithSize[A]] = {
+  final def ringBuffer[A](capacity: Int, str: AllocationStrategy): Rxn[AsyncQueue.WithSize[A] & Queue.WithSize[A]] = {
     data.Queue.ringBuffer[A](capacity, str).flatMap { rb =>
       makeRingBuffer(rb)
     }
   }
 
-  final def droppingQueue[A](capacity: Int): Rxn[AsyncQueue.WithSize[A]] = {
+  final def droppingQueue[A](capacity: Int): Rxn[AsyncQueue.WithSize[A] & Queue.WithSize[A]] = {
     data.Queue.dropping[A](capacity).flatMap { dq =>
       GenWaitList[A](dq.poll, dq.offer, dq.peek).map { gwl =>
         new DroppingQueue[A](dq, gwl)
@@ -44,7 +45,7 @@ private object OverflowQueueImpl {
     }
   }
 
-  private[this] final def makeRingBuffer[A](underlying: data.Queue.WithSize[A]): Rxn[AsyncQueue.WithSize[A]] = {
+  private[this] final def makeRingBuffer[A](underlying: data.Queue.WithSize[A]): Rxn[AsyncQueue.WithSize[A] & Queue.WithSize[A]] = {
     WaitList(underlying.poll, underlying.add, underlying.peek).map { wl =>
       new RingBuffer(underlying, wl)
     }

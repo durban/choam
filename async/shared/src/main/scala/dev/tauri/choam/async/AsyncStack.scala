@@ -67,13 +67,13 @@ sealed trait AsyncStack[A] { this: Stack[A] =>
  */
 object AsyncStack {
 
-  final def apply[A]: Rxn[AsyncStack[A] with Stack[A]] =
+  final def apply[A]: Rxn[AsyncStack[A] & Stack[A]] =
     Stack[A].flatMap(fromSyncStack[A])
 
-  final def apply[A](str: AllocationStrategy): Rxn[AsyncStack[A] with Stack[A]] =
+  final def apply[A](str: AllocationStrategy): Rxn[AsyncStack[A] & Stack[A]] =
     Stack[A](str).flatMap(fromSyncStack[A])
 
-  final def eliminationStack[A]: Rxn[AsyncStack[A] with Stack[A]] =
+  final def eliminationStack[A]: Rxn[AsyncStack[A] & Stack[A]] =
     Stack.eliminationStack[A].flatMap(fromSyncStack[A])
 
   implicit final def asyncStackIsStack[A]: AsyncStack[A] <:< Stack[A] =
@@ -88,12 +88,12 @@ object AsyncStack {
       final override def poll: Rxn[Option[B]] = fa.impl.poll.map(_.map(f))
       final override def peek: Rxn[Option[B]] = fa.impl.peek.map(_.map(f))
       private[choam] final override def size: Rxn[Int] = fa.impl.size
-      private[async] final override def impl: AsyncStack[B] with Stack[B] = this
+      private[async] final override def impl: AsyncStack[B] & Stack[B] = this
       final override def pop[F[_]](implicit F: AsyncReactive[F]): F[B] = F.monad.map(fa.pop)(f)
     }
   }
 
-  private[this] final def fromSyncStack[A](stack: Stack[A]): Rxn[AsyncStack[A] with Stack[A]] = {
+  private[this] final def fromSyncStack[A](stack: Stack[A]): Rxn[AsyncStack[A] & Stack[A]] = {
     WaitList(stack.poll, stack.push, stack.peek).map { wl =>
       new AsyncStack[A] with Stack.UnsealedStack[A] {
         final override def push(a: A): Rxn[Unit] =

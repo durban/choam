@@ -21,10 +21,11 @@ package async
 import cats.effect.std.{ Queue => CatsQueue }
 
 import core.{ Rxn, AsyncReactive }
+import data.Queue
 
 private object UnboundedQueueImpl {
 
-  final def apply[A]: Rxn[AsyncQueue[A]] = {
+  final def apply[A]: Rxn[AsyncQueue[A] & Queue[A]] = {
     data.Queue.unbounded[A].flatMap { q =>
       WaitList[A](q.poll, q.add, q.peek).map { wl =>
         new AsyncQueue.UnsealedAsyncQueue[A] {
@@ -43,7 +44,7 @@ private object UnboundedQueueImpl {
     }
   }
 
-  final def withSize[A]: Rxn[AsyncQueue.WithSize[A]] = {
+  final def withSize[A]: Rxn[AsyncQueue.WithSize[A] & Queue.WithSize[A]] = {
     data.Queue.unboundedWithSize[A].flatMap { q =>
       WaitList[A](q.poll, q.add, q.peek).map { wl =>
         new AsyncQueue.UnsealedAsyncQueueWithSize[A] {

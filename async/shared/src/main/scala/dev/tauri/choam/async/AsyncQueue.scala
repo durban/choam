@@ -24,11 +24,13 @@ import cats.effect.std.{ Queue => CatsQueue }
 import core.{ Rxn, AsyncReactive }
 
 sealed trait AsyncQueue[A]
-  extends data.Queue.UnsealedQueue[A] // TODO:0.5: this private type appears in scaladoc
-  with AsyncQueue.SourceSink[A] {
+  extends AsyncQueue.SourceSink[A] { this: data.Queue[A] =>
 
   final override def put[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit] =
     F.run(this.add(a))
+
+  final def asQueue: data.Queue[A] =
+    this
 }
 
 /**
@@ -56,21 +58,25 @@ sealed trait AsyncQueue[A]
  */
 object AsyncQueue {
 
-  sealed trait Take[+A]
-    extends data.Queue.UnsealedQueuePoll[A] { // TODO:0.5: this private type appears in scaladoc
+  sealed trait Take[+A] { this: data.Queue.Poll[A] =>
 
     // TODO: add InvariantSyntax (to be able to call it like `.take[F]`)
     def take[F[_], AA >: A](implicit F: AsyncReactive[F]): F[AA]
     // TODO: asCats : QueueSource (but: needs size)
+
+    final def asPoll: data.Queue.Poll[A] = this
   }
 
   final object Take {
+
+    implicit final def takeIsPoll[A]: Take[A] <:< data.Queue.Poll[A] =
+      <:<.refl[Take[A]].asInstanceOf[Take[A] <:< data.Queue.Poll[A]]
 
     implicit final def functorForDevTauriChoamAsyncAsyncQueueTake: Functor[AsyncQueue.Take] =
       _functorInstance
 
     private[this] val _functorInstance: Functor[Take] = new Functor[Take] {
-      final override def map[A, B](fa: Take[A])(f: A => B): Take[B] = new Take[B] {
+      final override def map[A, B](fa: Take[A])(f: A => B): Take[B] = new Take[B] with data.Queue.UnsealedQueuePoll[B] {
         final override def poll: Rxn[Option[B]] = fa.poll.map(_.map(f))
         final override def peek: Rxn[Option[B]] = fa.peek.map(_.map(f))
         final override def take[F[_], BB >: B](implicit F: AsyncReactive[F]): F[BB] = F.monad.map(fa.take)(f)
@@ -78,20 +84,24 @@ object AsyncQueue {
     }
   }
 
-  sealed trait Put[-A]
-    extends data.Queue.UnsealedQueueOffer[A] { // TODO:0.5: this private type appears in scaladoc
+  sealed trait Put[-A] { this: data.Queue.Offer[A] =>
 
     def put[F[_]](a: A)(implicit F: AsyncReactive[F]): F[Unit]
     // TODO: asCats : QueueSink
+
+    final def asOffer: data.Queue.Offer[A] = this
   }
 
   final object Put {
+
+    implicit final def putIsOffer[A]: Put[A] <:< data.Queue.Offer[A] =
+      <:<.refl[Put[A]].asInstanceOf[Put[A] <:< data.Queue.Offer[A]]
 
     implicit final def contravariantFunctorForDevTauriChoamAsyncAsyncQueuePut: Contravariant[AsyncQueue.Put] =
       _contravariantFunctorInstance
 
     private[this] val _contravariantFunctorInstance: Contravariant[Put] = new Contravariant[Put] {
-      final override def contramap[A, B](fa: Put[A])(f: B => A): Put[B] = new Put[B] {
+      final override def contramap[A, B](fa: Put[A])(f: B => A): Put[B] = new Put[B] with data.Queue.UnsealedQueueOffer[B] {
         final override def offer(b: B): Rxn[Boolean] = fa.offer(f(b))
         final override def put[F[_]](b: B)(implicit F: AsyncReactive[F]): F[Unit] = fa.put(f(b))
       }
@@ -99,17 +109,22 @@ object AsyncQueue {
   }
 
   sealed trait SourceSink[A]
-    extends data.Queue.UnsealedQueueSourceSink[A] // TODO:0.5: this private type appears in scaladoc
-    with AsyncQueue.Take[A]
-    with AsyncQueue.Put[A]
+    extends AsyncQueue.Take[A]
+    with AsyncQueue.Put[A] { this: data.Queue.SourceSink[A] =>
+
+    final def asDataQueueSourceSink: data.Queue.SourceSink[A] = this
+  }
 
   final object SourceSink {
+
+    implicit final def sourceSinkIsDataQueueSourceSink[A]: SourceSink[A] <:< data.Queue.SourceSink[A] =
+      <:<.refl[SourceSink[A]].asInstanceOf[SourceSink[A] <:< data.Queue.SourceSink[A]]
 
     implicit final def invariantFunctorForDevTauriChoamAsyncAsyncQueueSourceSink: Invariant[AsyncQueue.SourceSink] =
       _invariantFunctorInstance
 
     private[this] val _invariantFunctorInstance: Invariant[SourceSink] = new Invariant[SourceSink] {
-      final override def imap[A, B](fa: SourceSink[A])(f: A => B)(g: B => A): SourceSink[B] = new SourceSink[B] {
+      final override def imap[A, B](fa: SourceSink[A])(f: A => B)(g: B => A): SourceSink[B] = new SourceSink[B] with data.Queue.UnsealedQueueSourceSink[B] {
         final override def poll: Rxn[Option[B]] = fa.poll.map(_.map(f))
         final override def peek: Rxn[Option[B]] = fa.peek.map(_.map(f))
         final override def offer(b: B): Rxn[Boolean] = fa.offer(g(b))
@@ -120,20 +135,25 @@ object AsyncQueue {
   }
 
   sealed trait WithSize[A]
-    extends AsyncQueue[A] {
+    extends AsyncQueue[A] { this: data.Queue.WithSize[A] =>
 
     def size: Rxn[Int]
 
     def asCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A]
+
+    final def asDataQueueWithSize: data.Queue.WithSize[A] = this
   }
 
   final object WithSize {
+
+    implicit final def withSizeIsDataQueueWithSize[A]: WithSize[A] <:< data.Queue.WithSize[A] =
+      <:<.refl[WithSize[A]].asInstanceOf[WithSize[A] <:< data.Queue.WithSize[A]]
 
     implicit final def invariantFunctorForDevTauriChoamAsyncAsyncQueueWithSize: Invariant[AsyncQueue.WithSize] =
       _invariantFunctorInstance
 
     private[this] val _invariantFunctorInstance: Invariant[WithSize] = new Invariant[WithSize] {
-      final override def imap[A, B](fa: WithSize[A])(f: A => B)(g: B => A): WithSize[B] = new WithSize[B] {
+      final override def imap[A, B](fa: WithSize[A])(f: A => B)(g: B => A): WithSize[B] = new WithSize[B] with data.Queue.UnsealedQueueWithSize[B] {
         final override def poll: Rxn[Option[B]] = fa.poll.map(_.map(f))
         final override def peek: Rxn[Option[B]] = fa.peek.map(_.map(f))
         final override def offer(b: B): Rxn[Boolean] = fa.offer(g(b))
@@ -147,11 +167,14 @@ object AsyncQueue {
     }
   }
 
+  implicit final def asyncQueueIsQueue[A]: AsyncQueue[A] <:< data.Queue[A] =
+    <:<.refl[AsyncQueue[A]].asInstanceOf[AsyncQueue[A] <:< data.Queue[A]]
+
   implicit final def invariantFunctorForDevTauriChoamAsyncAsyncQueue: Invariant[AsyncQueue] =
     _invariantFunctorInstance
 
   private[this] val _invariantFunctorInstance: Invariant[AsyncQueue] = new Invariant[AsyncQueue] {
-    final override def imap[A, B](fa: AsyncQueue[A])(f: A => B)(g: B => A): AsyncQueue[B] = new AsyncQueue[B] {
+    final override def imap[A, B](fa: AsyncQueue[A])(f: A => B)(g: B => A): AsyncQueue[B] = new AsyncQueue[B] with data.Queue.UnsealedQueue[B] {
       final override def poll: Rxn[Option[B]] = fa.poll.map(_.map(f))
       final override def peek: Rxn[Option[B]] = fa.peek.map(_.map(f))
       final override def offer(b: B): Rxn[Boolean] = fa.offer(g(b))
@@ -160,40 +183,40 @@ object AsyncQueue {
     }
   }
 
-  final def unbounded[A]: Rxn[AsyncQueue[A]] =
+  final def unbounded[A]: Rxn[AsyncQueue[A] & data.Queue[A]] =
     UnboundedQueueImpl[A]
 
-  final def bounded[A](bound: Int): Rxn[AsyncQueue.SourceSink[A]] =
+  final def bounded[A](bound: Int): Rxn[AsyncQueue.SourceSink[A] & data.Queue.SourceSink[A]] =
     BoundedQueueImpl.array[A](bound) // TODO: technically, this is already "WithSize" (see also below)
 
-  final def dropping[A](capacity: Int): Rxn[AsyncQueue.WithSize[A]] =
+  final def dropping[A](capacity: Int): Rxn[AsyncQueue.WithSize[A] & data.Queue.WithSize[A]] =
     OverflowQueueImpl.droppingQueue[A](capacity)
 
-  final def ringBuffer[A](capacity: Int): Rxn[AsyncQueue.WithSize[A]] =
+  final def ringBuffer[A](capacity: Int): Rxn[AsyncQueue.WithSize[A] & data.Queue.WithSize[A]] =
     OverflowQueueImpl.ringBuffer[A](capacity)
 
-  final def unboundedWithSize[A]: Rxn[AsyncQueue.WithSize[A]] =
+  final def unboundedWithSize[A]: Rxn[AsyncQueue.WithSize[A] & data.Queue.WithSize[A]] =
     UnboundedQueueImpl.withSize[A]
 
   // TODO: boundedWithSize : AsyncQueue.SourceSinkWithSize? (see below)
 
   private[choam] trait UnsealedAsyncQueueTake[+A]
-    extends AsyncQueue.Take[A]
+    extends AsyncQueue.Take[A] with data.Queue.UnsealedQueuePoll[A]
 
   private[choam] trait UnsealedAsyncQueuePut[-A]
-    extends AsyncQueue.Put[A]
+    extends AsyncQueue.Put[A] with data.Queue.UnsealedQueueOffer[A]
 
   private[choam] trait UnsealedAsyncQueueSourceSink[A]
-    extends AsyncQueue.SourceSink[A]
+    extends AsyncQueue.SourceSink[A] with data.Queue.UnsealedQueueSourceSink[A]
 
   private[choam] trait UnsealedAsyncQueue[A]
-    extends AsyncQueue[A]
+    extends AsyncQueue[A] with data.Queue.UnsealedQueue[A]
 
   private[choam] trait UnsealedAsyncQueueWithSize[A]
-    extends AsyncQueue.WithSize[A]
+    extends AsyncQueue.WithSize[A] with data.Queue.UnsealedQueueWithSize[A]
 
   private[choam] sealed trait SourceSinkWithSize[A] // TODO: do we want this public? (see above)
-    extends AsyncQueue.SourceSink[A] {
+    extends AsyncQueue.SourceSink[A] with data.Queue.UnsealedQueueSourceSink[A] {
 
     def asCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, A]
 
