@@ -40,14 +40,14 @@ trait StrictOverflowQueueSpec[F[_]]
   extends OverflowQueueSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
 
   final override def newRingBuffer[A](capacity: Int): F[AsyncQueue.WithSize[A]] =
-    AsyncQueue.ringBuffer[A](capacity).run[F]
+    AsyncQueue.ringBuffer[A](capacity).run[F].widen
 }
 
 trait LazyOverflowQueueSpec[F[_]]
   extends OverflowQueueSpec[F] { this: McasImplSpec & TestContextSpec[F] =>
 
   final override def newRingBuffer[A](capacity: Int): F[AsyncQueue.WithSize[A]] =
-    OverflowQueueImpl.ringBuffer[A](capacity, AllocationStrategy.SparseFlat).run[F]
+    OverflowQueueImpl.ringBuffer[A](capacity, AllocationStrategy.SparseFlat).run[F].widen
 }
 
 trait OverflowQueueSpec[F[_]]
@@ -57,7 +57,7 @@ trait OverflowQueueSpec[F[_]]
   def newRingBuffer[A](capacity: Int): F[AsyncQueue.WithSize[A]]
 
   def newDroppingQueue[A](capacity: Int): F[AsyncQueue.WithSize[A]] =
-    AsyncQueue.dropping(capacity).run[F]
+    AsyncQueue.dropping[A](capacity).run[F].widen
 
   final val Max =
     2048

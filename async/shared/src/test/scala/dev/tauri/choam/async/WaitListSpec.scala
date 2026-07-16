@@ -116,8 +116,8 @@ trait WaitListSpec[F[_]]
     } yield ()
   }
 
-  cancelStressTest[AsyncQueue[String]]("WaitList (put)", AsyncQueue.unbounded[String].run[F], { (q, s) => q.put(s).as(true) })
-  cancelStressTest[AsyncQueue.SourceSink[String]]("GenWaitList (put)", AsyncQueue.bounded[String](8).run[F], { (q, s) => q.put(s).as(true) })
+  cancelStressTest[AsyncQueue[String]]("WaitList (put)", AsyncQueue.unbounded[String].run[F].widen, { (q, s) => q.put(s).as(true) })
+  cancelStressTest[AsyncQueue.SourceSink[String]]("GenWaitList (put)", AsyncQueue.bounded[String](8).run[F].widen, { (q, s) => q.put(s).as(true) })
 
   commonTests("WaitList", AsyncQueue.unbounded[String].run[F].widen)
   commonTests("GenWaitList", AsyncQueue.bounded[String](8).run[F].widen)
