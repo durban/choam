@@ -106,21 +106,21 @@ trait TPromiseSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
         true
       }
     } yield someWasCancelled
-    t.replicateA(if (isJvm()) 250 else 10).flatMap { cancellations =>
+    t.replicateA(if (isJvm()) 400 else 10).flatMap { cancellations =>
       assertF(cancellations.exists(ok => ok))
     }
   }
 
   test("complete left side of orElse") {
     val t = orElseTest(leftSide = true, N = 768, M = 16)
-    t.replicateA(if (isJvm()) 250 else 10).flatMap { cancellations =>
+    t.replicateA(if (isJvm()) 400 else 10).flatMap { cancellations =>
       assertF(cancellations.exists(ok => ok))
     }
   }
 
   test("complete right side of orElse") {
     val t = orElseTest(leftSide = false, N = 768, M = 16)
-    t.replicateA(if (isJvm()) 250 else 10).flatMap { cancellations =>
+    t.replicateA(if (isJvm()) 400 else 10).flatMap { cancellations =>
       assertF(cancellations.exists(ok => ok))
     }
   }
