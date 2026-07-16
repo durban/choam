@@ -167,7 +167,7 @@ package object unsafe extends UnsafePackageLowPrio0 {
   }
 
   /**
-   * Executes a regular [[Rxn]] in an imperative block
+   * Executes a regular [[core.Rxn]] in an imperative block
    *
    * `embedRxn` has a number of limitations due to the
    * nature of blocks using the imperative API:
