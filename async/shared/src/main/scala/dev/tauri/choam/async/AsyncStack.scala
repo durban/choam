@@ -23,10 +23,23 @@ import cats.Invariant
 import core.{ Rxn, AsyncReactive }
 import data.Stack
 
-sealed trait AsyncStack[A]
-  extends Stack.UnsealedStack[A] { // TODO:0.5: this private type appears in scaladoc
+/**
+ * Asynchronous operations for stacks
+ *
+ * @note For technical reasons `AsyncStack` is not
+ *       a subtype of [[data.Stack]], however an
+ *       implicit evidence witnessing this subtype
+ *       relationship is available: [[AsyncStack.asyncStackIsStack]].
+ *
+ * @see [[asStack]] for explicitly converting to a [[data.Stack]]
+ */
+sealed trait AsyncStack[A] { this: Stack[A] =>
 
   def pop[F[_]](implicit F: AsyncReactive[F]): F[A]
+
+  final def asStack: Stack[A] = this
+
+  private[async] def impl: AsyncStack[A] with Stack[A]
 }
 
 /**
@@ -54,31 +67,35 @@ sealed trait AsyncStack[A]
  */
 object AsyncStack {
 
-  final def apply[A]: Rxn[AsyncStack[A]] =
+  final def apply[A]: Rxn[AsyncStack[A] with Stack[A]] =
     Stack[A].flatMap(fromSyncStack[A])
 
-  final def apply[A](str: AllocationStrategy): Rxn[AsyncStack[A]] =
+  final def apply[A](str: AllocationStrategy): Rxn[AsyncStack[A] with Stack[A]] =
     Stack[A](str).flatMap(fromSyncStack[A])
 
-  final def eliminationStack[A]: Rxn[AsyncStack[A]] =
+  final def eliminationStack[A]: Rxn[AsyncStack[A] with Stack[A]] =
     Stack.eliminationStack[A].flatMap(fromSyncStack[A])
+
+  implicit final def asyncStackIsStack[A]: AsyncStack[A] <:< Stack[A] =
+    <:<.refl[AsyncStack[A]].asInstanceOf[AsyncStack[A] <:< Stack[A]]
 
   implicit final def invariantFunctorForDevTauriChoamAsyncAsyncStack: Invariant[AsyncStack] =
     _invariantFunctorInstance
 
   private[this] val _invariantFunctorInstance: Invariant[AsyncStack] = new Invariant[AsyncStack] {
-    final override def imap[A, B](fa: AsyncStack[A])(f: A => B)(g: B => A): AsyncStack[B] = new AsyncStack[B] {
-      final override def push(b: B): Rxn[Unit] = fa.push(g(b))
-      final override def poll: Rxn[Option[B]] = fa.poll.map(_.map(f))
-      final override def peek: Rxn[Option[B]] = fa.peek.map(_.map(f))
-      final override private[choam] def size: Rxn[Int] = fa.size
+    final override def imap[A, B](fa: AsyncStack[A])(f: A => B)(g: B => A): AsyncStack[B] = new AsyncStack[B] with Stack.UnsealedStack[B] {
+      final override def push(b: B): Rxn[Unit] = fa.impl.push(g(b))
+      final override def poll: Rxn[Option[B]] = fa.impl.poll.map(_.map(f))
+      final override def peek: Rxn[Option[B]] = fa.impl.peek.map(_.map(f))
+      private[choam] final override def size: Rxn[Int] = fa.impl.size
+      private[async] final override def impl: AsyncStack[B] with Stack[B] = this
       final override def pop[F[_]](implicit F: AsyncReactive[F]): F[B] = F.monad.map(fa.pop)(f)
     }
   }
 
-  private[this] final def fromSyncStack[A](stack: Stack[A]): Rxn[AsyncStack[A]] = {
+  private[this] final def fromSyncStack[A](stack: Stack[A]): Rxn[AsyncStack[A] with Stack[A]] = {
     WaitList(stack.poll, stack.push, stack.peek).map { wl =>
-      new AsyncStack[A] {
+      new AsyncStack[A] with Stack.UnsealedStack[A] {
         final override def push(a: A): Rxn[Unit] =
           wl.set(a).void
         final override def pop[F[_]](implicit F: AsyncReactive[F]): F[A] =
@@ -89,6 +106,8 @@ object AsyncStack {
           wl.tryGetReadOnly
         private[choam] final override def size: Rxn[Int] =
           stack.size
+        private[async] final override def impl: AsyncStack[A] with Stack[A] =
+          this
       }
     }
   }
