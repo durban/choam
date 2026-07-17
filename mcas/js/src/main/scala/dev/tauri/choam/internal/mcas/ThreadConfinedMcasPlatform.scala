@@ -19,7 +19,7 @@ package dev.tauri.choam
 package internal
 package mcas
 
-abstract class ThreadConfinedMcasPlatform extends Mcas.UnsealedMcas {
+private abstract class ThreadConfinedMcasPlatform extends Mcas.UnsealedMcas {
 
   // This is JS, so there is only 1 thread,
   // so `ThreadConfinedMCAS` is thread-safe:

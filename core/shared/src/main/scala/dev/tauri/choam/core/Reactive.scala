@@ -19,7 +19,7 @@ package dev.tauri.choam
 package core
 
 import cats.{ ~>, Monad }
-import cats.effect.kernel.{ Sync, Resource }
+import cats.effect.kernel.{ Sync, Async, Resource }
 
 import internal.mcas.Mcas
 
@@ -41,8 +41,6 @@ sealed trait Reactive[F[_]] {
 }
 
 object Reactive {
-
-  private[choam] trait UnsealedReactive[F[_]] extends Reactive[F]
 
   final def apply[F[_]](implicit inst: Reactive[F]): inst.type =
     inst
@@ -75,5 +73,38 @@ object Reactive {
       underlying.mcasImpl
     final override def monad: Monad[G] =
       G
+  }
+}
+
+sealed trait AsyncReactive[F[_]] extends Reactive[F] { self =>
+
+  def runAsync[A](r: Rxn[A], s: RetryStrategy): F[A]
+
+  final def runAsync[A](r: Rxn[A]): F[A] =
+    this.runAsync(r, RetryStrategy.Default)
+
+  private[choam] def asyncInst: Async[F]
+}
+
+object AsyncReactive {
+
+  final def apply[F[_]](implicit inst: AsyncReactive[F]): inst.type =
+    inst
+
+  final def from[F[_]](rt: ChoamRuntime)(implicit F: Async[F]): Resource[F, AsyncReactive[F]] =
+    fromIn[F, F](rt)
+
+  final def fromIn[G[_], F[_]](rt: ChoamRuntime)(implicit @unused G: Sync[G], F: Async[F]): Resource[G, AsyncReactive[F]] =
+    Resource.pure(new AsyncReactiveImpl(rt.mcasImpl))
+
+  private[choam] class AsyncReactiveImpl[F[_]](mi: Mcas)(implicit F: Async[F])
+    extends Reactive.SyncReactive[F](mi)
+    with AsyncReactive[F] {
+
+    final override def runAsync[A](r: Rxn[A], s: RetryStrategy): F[A] =
+      r.performInternal[F, A](this.mcasImpl, s)(using F)
+
+    private[choam] final override def asyncInst =
+      F
   }
 }
