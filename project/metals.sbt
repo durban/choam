@@ -4,10 +4,10 @@
 // This plugin enables semantic information to be produced by sbt.
 // It also adds support for debugging using the Debug Adapter Protocol
 
-addSbtPlugin("org.scalameta" % "sbt-metals" % "1.6.8")
+addSbtPlugin("org.scalameta" % "sbt-metals" % "1.6.7")
 
 // This plugin adds the BSP debug capability to sbt server.
 
-addSbtPlugin("ch.epfl.scala" % "sbt-debug-adapter" % "4.2.9")
+addSbtPlugin("ch.epfl.scala" % "sbt-debug-adapter" % "4.2.8")
 
 // format: on
