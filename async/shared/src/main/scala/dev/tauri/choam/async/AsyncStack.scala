@@ -39,7 +39,7 @@ sealed trait AsyncStack[A] { this: Stack[A] =>
 
   final def asStack: Stack[A] = this
 
-  private[async] def impl: AsyncStack[A] with Stack[A]
+  private[async] def impl: AsyncStack[A] & Stack[A]
 }
 
 /**
@@ -106,7 +106,7 @@ object AsyncStack {
           wl.tryGetReadOnly
         private[choam] final override def size: Rxn[Int] =
           stack.size
-        private[async] final override def impl: AsyncStack[A] with Stack[A] =
+        private[async] final override def impl: AsyncStack[A] & Stack[A] =
           this
       }
     }

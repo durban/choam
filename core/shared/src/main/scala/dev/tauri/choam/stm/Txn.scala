@@ -110,7 +110,7 @@ sealed trait Txn[+A] { // short for 'transaction'
    *
    * @see [[cats.Apply.product]]
    */
-  def product[B](that: Txn[B]): Txn[(A, B)]
+  infix def product[B](that: Txn[B]): Txn[(A, B)]
 
   /**
    * Performs `this`, then applies `f`
@@ -138,7 +138,7 @@ sealed trait Txn[+A] { // short for 'transaction'
    *
    * @see [[Txn.retry]]
    */
-  def orElse[X >: A](that: Txn[X]): Txn[X]
+  infix def orElse[X >: A](that: Txn[X]): Txn[X]
 
   private[choam] def impl: RxnImpl[A]
 }

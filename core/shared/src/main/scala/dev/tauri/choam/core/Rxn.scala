@@ -87,7 +87,7 @@ sealed abstract class Rxn[+A] { // short for 'reaction'
 
   def * [B](that: Rxn[B]): Rxn[(A, B)]
 
-  def product[B](that: Rxn[B]): Rxn[(A, B)]
+  infix def product[B](that: Rxn[B]): Rxn[(A, B)]
 
   def ? : Rxn[Option[A]]
 

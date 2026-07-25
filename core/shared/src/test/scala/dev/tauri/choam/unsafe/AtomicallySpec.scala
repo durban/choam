@@ -33,7 +33,7 @@ trait AtomicallySpec[F[_]] extends UnsafeApiSpecBase[F] { this: McasImplSpec =>
     val spin = str.asSpinOrNull
     assertNotEquals(spin, null)
     F.delay {
-      api.atomicallyWithAlts(spin)(block, alts: _*)
+      api.atomicallyWithAlts(spin)(block, alts*)
     }
   }
 

@@ -35,7 +35,7 @@ sealed trait InRxn extends InRoRxn {
   private[choam] def currentContext(): Mcas.ThreadContext
   private[choam] def initCtx(c: Mcas.ThreadContext): Unit
   private[choam] def invalidateCtx(): Unit
-  private[choam] def imperativeAddAlt(alt: Rxn[_]): Unit
+  private[choam] def imperativeAddAlt(alt: Rxn[?]): Unit
   private[choam] def imperativeRetry(permanent: Boolean): Either[Option[CanSuspendInF], Rxn[?]]
   private[choam] def embedRxn[A](rxn: Rxn[A]): A
   private[choam] def isInEmbedRxn: Boolean // TODO: do we need this?

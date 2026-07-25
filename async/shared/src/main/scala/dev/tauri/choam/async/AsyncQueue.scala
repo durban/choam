@@ -161,7 +161,7 @@ object AsyncQueue {
         final override def take[F[_], BB >: B](implicit F: AsyncReactive[F]): F[BB] = F.monad.map(fa.take)(f)
         final override def size: Rxn[Int] = fa.size
         final override def asCats[F[_]](implicit F: AsyncReactive[F]): CatsQueue[F, B] = {
-          CatsQueue.catsInvariantForQueue[F](F.monad).imap(fa.asCats)(f)(g)
+          CatsQueue.catsInvariantForQueue[F](using F.monad).imap(fa.asCats)(f)(g)
         }
       }
     }

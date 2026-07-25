@@ -31,7 +31,7 @@ final class PromiseSpecUnsafeApi_EmbedUnsafe_DefaultMcas_IO
   with PromiseSpecUnsafeApi[IO] {
 
   protected final override def runBlockWithAlts[A](block: InRxn => A, alts: Rxn[A]*): IO[A] =
-    Rxn.unsafe.embedUnsafeWithAlts(block(_), alts: _*).run[IO]
+    Rxn.unsafe.embedUnsafeWithAlts(block(_), alts*).run[IO]
 }
 
 final class PromiseSpecUnsafeApi_Atomically_DefaultMcas_IO
@@ -41,7 +41,7 @@ final class PromiseSpecUnsafeApi_Atomically_DefaultMcas_IO
   with PromiseSpecUnsafeApi[IO] {
 
   protected final override def runBlockWithAlts[A](block: InRxn => A, alts: Rxn[A]*): IO[A] =
-    F.delay { this.api.atomicallyWithAlts(RetryStrategy.Default)(block, alts: _*) }
+    F.delay { this.api.atomicallyWithAlts(RetryStrategy.Default)(block, alts*) }
 }
 
 final class PromiseSpecUnsafeApi_AtomicallyInAsync_DefaultMcas_IO
@@ -51,7 +51,7 @@ final class PromiseSpecUnsafeApi_AtomicallyInAsync_DefaultMcas_IO
   with PromiseSpecUnsafeApi[IO] {
 
   protected final override def runBlockWithAlts[A](block: InRxn => A, alts: Rxn[A]*): IO[A] =
-    this.api.atomicallyInAsyncWithAlts[IO, A](RetryStrategy.Default.withCede)(block, alts: _*)
+    this.api.atomicallyInAsyncWithAlts[IO, A](RetryStrategy.Default.withCede)(block, alts*)
 }
 
 trait PromiseSpecUnsafeApi[F[_]]

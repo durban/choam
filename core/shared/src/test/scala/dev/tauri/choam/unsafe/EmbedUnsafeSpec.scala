@@ -34,7 +34,7 @@ trait EmbedUnsafeSpec[F[_]]
   with EmbedUnsafeSpecPlatform[F] { this: McasImplSpec =>
 
   final override def runBlockWithAlts[A](str: RetryStrategy)(block: InRxn => A, alts: Rxn[A]*): F[A] = {
-    AsyncReactive[F].runAsync(Rxn.unsafe.embedUnsafeWithAlts(block, alts: _*), str)
+    AsyncReactive[F].runAsync(Rxn.unsafe.embedUnsafeWithAlts(block, alts*), str)
   }
 
   final override def runRoBlock[A](block: InRoRxn => A): F[A] = {

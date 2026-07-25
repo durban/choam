@@ -1516,7 +1516,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     for ((r, cls) <- specialExceptions(ref, arr)) {
       assert(Either.catchOnly[Throwable] {
         r.unsafePerform(this.mcasImpl)
-      } (scala.reflect.ClassTag(cls), implicitly).isLeft)
+      } (using scala.reflect.ClassTag(cls), implicitly).isLeft)
     }
   }
 
@@ -1528,6 +1528,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       }.flatMap { _ =>
         specialExceptions(ref, arr).traverse_ { case (r, cls) =>
           r.run[F].attemptNarrow[Throwable](
+            using
             implicitly,
             scala.reflect.ClassTag(cls),
             implicitly,
@@ -1579,7 +1580,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     import RxnSpec.{ MyException, throwingRxns, specialExceptions }
     (Ref(0) * Ref.array(4, 0) * Rxn.unsafe.newLocal(0)).run[F].flatMap { case ((ref, arr), local) =>
 
-      def checkWithPc(throwingRxn: Rxn[Any], cls: Class[_ <: Throwable]) = {
+      def checkWithPc(throwingRxn: Rxn[Any], cls: Class[? <: Throwable]) = {
         for {
           ref <- Ref(0).run[F]
           pcRef <- Ref(0).run[F]
@@ -1624,7 +1625,7 @@ trait RxnSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
     import RxnSpec.{ MyException, throwingRxns, specialExceptions }
     (Ref(0) * Ref.array(4, 0) * Rxn.unsafe.newLocal(0)).run[F].flatMap { case ((ref, arr), local) =>
 
-      def checkWithNestedPc(throwingRxn: Rxn[Any], cls: Class[_ <: Throwable]) = {
+      def checkWithNestedPc(throwingRxn: Rxn[Any], cls: Class[? <: Throwable]) = {
         for {
           ref <- Ref(0).run[F]
           pcRef0 <- Ref(0).run[F]
@@ -1748,7 +1749,7 @@ private[choam] object RxnSpec {
     arr.refs(0).flatModify(_ => throw new MyException(42)),
   )
 
-  private def specialExceptions(ref: Ref[Int], arr: Ref.Array[Int]) = List[(Rxn[Any], Class[_ <: Throwable])](
+  private def specialExceptions(ref: Ref[Int], arr: Ref.Array[Int]) = List[(Rxn[Any], Class[? <: Throwable])](
     (ref.update(_ + 1) *> Rxn.unsafe.unread(ref), classOf[internal.mcas.Hamt.IllegalRemovalException]),
     (Rxn.unsafe.assert(false, "foo"), classOf[AssertionError]),
     (Rxn.unsafe.ticketRead(ref).flatMap { ticket =>

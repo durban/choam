@@ -62,7 +62,7 @@ trait CommonImperativeApiSpec[F[_]]
   def runRoBlock[A](block: InRoRxn => A): F[A]
 
   def runBlockWithAlts[A](block: InRxn => A, alts: Rxn[A]*): F[A] =
-    this.runBlockWithAlts(RetryStrategy.Default)(block, alts: _*)
+    this.runBlockWithAlts(RetryStrategy.Default)(block, alts*)
 
   def runBlockWithAlts[A](str: RetryStrategy)(block: InRxn => A, alts: Rxn[A]*): F[A]
 
