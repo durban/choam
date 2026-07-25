@@ -32,10 +32,10 @@ import sbtcrossproject.CrossProject
 
 // Scala versions:
 val scala2 = "2.13.18"
-val scala3 = "3.3.8"
+val scala3 = "3.3.8" // TODO:0.5: 3.9.0 LTS
 
 // CI JVM versions:
-val jvmOldest = JavaSpec.temurin("11")
+val jvmOldest = JavaSpec.temurin("11") // TODO:0.5: 17
 val jvmLts = JavaSpec.temurin("21")
 val jvmLatest = JavaSpec.temurin("25")
 val jvmTemurins = List(jvmOldest, jvmLts, jvmLatest)
@@ -140,7 +140,7 @@ ThisBuild / assertionsEnabled := !java.lang.Boolean.getBoolean("dev.tauri.choam.
 
 ThisBuild / tlBaseVersion := "0.5"
 ThisBuild / tlUntaggedAreSnapshots := false // => we get versions like 0.4-39d987a
-ThisBuild / tlJdkRelease := Some(11)
+ThisBuild / tlJdkRelease := Some(11) // TODO:0.5: 17
 
 // When checking version policy, ignore dependencies to internal modules whose version is like `1.2.3+4...`:
 ThisBuild / versionPolicyIgnoredInternalDependencyVersions := Some("^\\d+\\.\\d+\\.\\d+\\-.*-SNAPSHOT".r)
