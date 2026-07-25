@@ -2844,7 +2844,7 @@ object Rxn extends RxnInstances0 {
       }
     }
 
-    private[choam] final override def imperativeAddAlt(alt: Rxn[_]): Unit = {
+    private[choam] final override def imperativeAddAlt(alt: Rxn[?]): Unit = {
       this.saveAlt(alt)
     }
 
