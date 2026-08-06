@@ -60,6 +60,26 @@ A warning like this appears when running tests in `stressLinchk`:
 
 According to https://stackoverflow.com/a/57957031, this is harmless.
 
+### Exceptions
+
+Some types of exceptions must never be thrown, because they are (probably) undefined behavior on Scala.js:
+
+- `ArrayIndexOutOfBoundsException` and `StringIndexOutOfBoundsException`: use `IndexOutOfBoundsException` instead.
+  Indexing into an array (or string, though that's not typical) must check the index; see `jsCheckIdx`, which
+  is a NOP in Scala, but checks the index (and throws if necessary) in Scala.js.
+- `NegativeArraySizeException`: when allocating an array, care must be taken, so the length is non-negative;
+  if it is, throw an `AssertionError` instead.
+
+The following types of exceptions are allowed, even though they are similarly UB in Scala.js.
+(Nevertheless, they should not be thrown directly, as `throw new ...`.) The users are recommended
+to use the corresponding Scala.js linker settings, or otherwise avoid the situations which can
+lead to these exceptions.
+
+- `NullPointerException`: users are directed to never pass `null` to library methods, or use the
+  `Compliant` Scala.js linker setting (`null` as a payload _is_ allowed). See the [README.md].
+
+Further reading: https://www.scala-js.org/doc/semantics.html#undefined-behaviors
+
 ## Historical decisions
 
 Older versions used to have (sometimes significantly) different API and internals.
