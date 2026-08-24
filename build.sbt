@@ -1048,7 +1048,7 @@ lazy val consts = new {
 lazy val dependencies = new {
 
   val catsVersion = "2.13.0" // https://github.com/typelevel/cats
-  val catsEffectVersion = "3.7.0" // https://github.com/typelevel/cats-effect
+  val catsEffectVersion = "3.7.1" // https://github.com/typelevel/cats-effect
   val catsCollectionsVersion = "0.9.10" // https://github.com/typelevel/cats-collections
   val fs2Version = "3.13.0" // https://github.com/typelevel/fs2
   val scalacheckEffectVersion = "2.1.0" // https://github.com/typelevel/scalacheck-effect
@@ -1076,7 +1076,7 @@ lazy val dependencies = new {
   // JVM:
   val jol = Def.setting("org.openjdk.jol" % "jol-core" % jolVersion)
   val jmh = Def.setting("org.openjdk.jmh" % "jmh-core" % jmhVersion)
-  val jcTools = Def.setting("org.jctools" % "jctools-core" % "4.0.6") // https://github.com/JCTools/JCTools
+  val jcTools = Def.setting("org.jctools" % "jctools-core" % "4.0.7") // https://github.com/JCTools/JCTools
   val lincheck = Def.setting("org.jetbrains.lincheck" % "lincheck" % "3.5") // https://github.com/JetBrains/lincheck
 
   // JS:
@@ -1120,7 +1120,7 @@ lazy val dependencies = new {
       catsLaws.value,
       "org.typelevel" %%% "cats-effect-kernel-testkit" % catsEffectVersion,
       "org.typelevel" %%% "cats-effect-testkit" % catsEffectVersion,
-      "org.scalameta" %%% "munit" % "1.3.4", // https://github.com/scalameta/munit
+      "org.scalameta" %%% "munit" % "1.3.5", // https://github.com/scalameta/munit
       "org.typelevel" %%% "munit-cats-effect" % "2.2.0", // https://github.com/typelevel/munit-cats-effect
       "org.typelevel" %%% "scalacheck-effect" % scalacheckEffectVersion,
       "org.typelevel" %%% "scalacheck-effect-munit" % scalacheckEffectVersion,
