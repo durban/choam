@@ -37,90 +37,90 @@ jobs:
         java:
           - temurin@17
           - temurin@21
-          - temurin@25
+          - temurin@26
           - graalvm@21
           - graalvm@25
-          - semeru@25
+          - semeru@26
         ci: [ciJVM, ciJS, ciNative]
         include:
-          - os: windows-2025
-            java: temurin@25
-            scala: 2.13
-            ci: ciJS
           - os: ubuntu-24.04
-            java: temurin@25
+            java: temurin@26
             scala: 2.13
-            ci: ciNative
+            ci: ciJVM
           - os: windows-11-arm
             java: temurin@21
             scala: 2.13
             ci: ciJVM
           - os: macos-15
-            java: temurin@25
-            scala: 2.13
-            ci: ciNative
-          - os: windows-2025
-            java: temurin@25
-            scala: 2.13
-            ci: ciJVM
-          - os: macos-15
-            java: temurin@25
+            java: temurin@26
             scala: 2.13
             ci: ciJS
+          - os: windows-2025
+            java: temurin@26
+            scala: 2.13
+            ci: ciJVM
           - os: macos-15
-            java: temurin@25
-            scala: 2.13
-            ci: ciJVM
-          - os: macos-15-intel
-            java: temurin@25
-            scala: 2.13
-            ci: ciJVM
-          - os: macos-15-intel
-            java: temurin@25
+            java: temurin@26
             scala: 2.13
             ci: ciNative
           - os: ubuntu-24.04
-            java: temurin@25
+            java: temurin@26
+            scala: 2.13
+            ci: ciNative
+          - os: windows-2025
+            java: temurin@26
+            scala: 2.13
+            ci: ciJS
+          - os: macos-15-intel
+            java: temurin@26
+            scala: 2.13
+            ci: ciJVM
+          - os: macos-15
+            java: temurin@26
             scala: 2.13
             ci: ciJVM
           - os: macos-15-intel
-            java: temurin@25
+            java: temurin@26
+            scala: 2.13
+            ci: ciNative
+          - os: windows-2025
+            java: temurin@26
             scala: 3
             ci: ciJVM
-          - os: windows-2025
-            java: temurin@25
+          - os: ubuntu-24.04
+            java: temurin@26
+            scala: 3
+            ci: ciJVM
+          - os: macos-15
+            java: temurin@26
             scala: 3
             ci: ciJS
-          - os: windows-2025
-            java: temurin@25
-            scala: 3
-            ci: ciJVM
           - os: windows-11-arm
             java: temurin@21
             scala: 3
             ci: ciJVM
-          - os: ubuntu-24.04
-            java: temurin@25
-            scala: 3
-            ci: ciJVM
           - os: macos-15
-            java: temurin@25
-            scala: 3
-            ci: ciJS
-          - os: macos-15
-            java: temurin@25
-            scala: 3
-            ci: ciNative
-          - os: ubuntu-24.04
-            java: temurin@25
+            java: temurin@26
             scala: 3
             ci: ciNative
           - os: macos-15
-            java: temurin@25
+            java: temurin@26
             scala: 3
             ci: ciJVM
           - os: macos-15-intel
-            java: temurin@25
+            java: temurin@26
+            scala: 3
+            ci: ciJVM
+          - os: ubuntu-24.04
+            java: temurin@26
+            scala: 3
+            ci: ciNative
+          - os: windows-2025
+            java: temurin@26
+            scala: 3
+            ci: ciJS
+          - os: macos-15-intel
+            java: temurin@26
             scala: 3
             ci: ciNative
         exclude:
@@ -133,7 +133,7 @@ jobs:
             scala: 3
           - java: temurin@21
             scala: 3
-          - java: temurin@25
+          - java: temurin@26
             scala: 2.13
             ci: ciJVM
           - java: temurin@17
@@ -144,7 +144,7 @@ jobs:
             ci: ciJS
           - java: graalvm@25
             ci: ciJS
-          - java: semeru@25
+          - java: semeru@26
             ci: ciJS
           - java: temurin@17
             ci: ciNative
@@ -152,7 +152,7 @@ jobs:
             ci: ciNative
           - java: graalvm@25
             ci: ciNative
-          - java: semeru@25
+          - java: semeru@26
             ci: ciNative
     runs-on: ${{ matrix.os }}
     timeout-minutes: 360
@@ -199,17 +199,17 @@ jobs:
         shell: bash
         run: sbt -v -Dsbt.server.forcestart=true +update
 
-      - name: Setup Java (temurin@25)
-        id: setup-java-temurin-25
-        if: matrix.java == 'temurin@25'
+      - name: Setup Java (temurin@26)
+        id: setup-java-temurin-26
+        if: matrix.java == 'temurin@26'
         uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
         with:
           distribution: temurin
-          java-version: 25
+          java-version: 26
           cache: sbt
 
       - name: sbt update
-        if: matrix.java == 'temurin@25' && steps.setup-java-temurin-25.outputs.cache-hit == 'false'
+        if: matrix.java == 'temurin@26' && steps.setup-java-temurin-26.outputs.cache-hit == 'false'
         shell: bash
         run: sbt -v -Dsbt.server.forcestart=true +update
 
@@ -241,17 +241,17 @@ jobs:
         shell: bash
         run: sbt -v -Dsbt.server.forcestart=true +update
 
-      - name: Setup Java (semeru@25)
-        id: setup-java-semeru-25
-        if: matrix.java == 'semeru@25'
+      - name: Setup Java (semeru@26)
+        id: setup-java-semeru-26
+        if: matrix.java == 'semeru@26'
         uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
         with:
           distribution: semeru
-          java-version: 25
+          java-version: 26
           cache: sbt
 
       - name: sbt update
-        if: matrix.java == 'semeru@25' && steps.setup-java-semeru-25.outputs.cache-hit == 'false'
+        if: matrix.java == 'semeru@26' && steps.setup-java-semeru-26.outputs.cache-hit == 'false'
         shell: bash
         run: sbt -v -Dsbt.server.forcestart=true +update
 
@@ -259,19 +259,19 @@ jobs:
         shell: bash
         run: sbt -v -Dsbt.server.forcestart=true githubWorkflowCheck
 
-      - if: (!((matrix.java == 'semeru@25'))) && (!(contains(github.event.head_commit.message, 'full CI')))
+      - if: (!((matrix.java == 'semeru@26'))) && (!(contains(github.event.head_commit.message, 'full CI')))
         shell: bash
         run: sbt -v -Dsbt.server.forcestart=true '++ ${{ matrix.scala }}' '${{ matrix.ci }}'
 
-      - if: (!((matrix.java == 'semeru@25'))) && (contains(github.event.head_commit.message, 'full CI'))
+      - if: (!((matrix.java == 'semeru@26'))) && (contains(github.event.head_commit.message, 'full CI'))
         shell: bash
         run: sbt -v -Dsbt.server.forcestart=true '++ ${{ matrix.scala }}' '${{ matrix.ci }}Full'
 
-      - if: ((matrix.java == 'semeru@25'))
+      - if: ((matrix.java == 'semeru@26'))
         shell: bash
         run: 'sbt -v -Dsbt.server.forcestart=true ''++ ${{ matrix.scala }}'' -J-Xgcpolicy:balanced ''${{ matrix.ci }}'''
 
-      - if: (matrix.os == 'ubuntu-24.04-arm') && (matrix.java == 'temurin@25') && (matrix.scala == '2.13.18')
+      - if: (matrix.os == 'ubuntu-24.04-arm') && (matrix.java == 'temurin@26') && (matrix.scala == '2.13.18')
         shell: bash
         run: sbt -v -Dsbt.server.forcestart=true '++ ${{ matrix.scala }}' checkScalafix
 
@@ -279,28 +279,28 @@ jobs:
         shell: bash
         run: sbt -v -Dsbt.server.forcestart=true '++ ${{ matrix.scala }}' runLincheckTests
 
-      - if: (matrix.ci == 'ciJVM') && (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@25')) && (contains(github.event.head_commit.message, 'stressMcas'))
+      - if: (matrix.ci == 'ciJVM') && (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@26')) && (contains(github.event.head_commit.message, 'stressMcas'))
         shell: bash
         run: sbt -v -Dsbt.server.forcestart=true '++ ${{ matrix.scala }}' stressMcas/Jcstress/run
 
-      - if: (matrix.ci == 'ciJVM') && (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@25')) && (contains(github.event.head_commit.message, 'stressCore'))
+      - if: (matrix.ci == 'ciJVM') && (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@26')) && (contains(github.event.head_commit.message, 'stressCore'))
         shell: bash
         run: sbt -v -Dsbt.server.forcestart=true '++ ${{ matrix.scala }}' stressCore/Jcstress/run
 
-      - if: (matrix.ci == 'ciJVM') && (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@25')) && (contains(github.event.head_commit.message, 'stressData'))
+      - if: (matrix.ci == 'ciJVM') && (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@26')) && (contains(github.event.head_commit.message, 'stressData'))
         shell: bash
         run: sbt -v -Dsbt.server.forcestart=true '++ ${{ matrix.scala }}' stressData/Jcstress/run
 
-      - if: (matrix.ci == 'ciJVM') && (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@25')) && (contains(github.event.head_commit.message, 'stressAsync'))
+      - if: (matrix.ci == 'ciJVM') && (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@26')) && (contains(github.event.head_commit.message, 'stressAsync'))
         shell: bash
         run: sbt -v -Dsbt.server.forcestart=true '++ ${{ matrix.scala }}' stressAsync/Jcstress/run
 
-      - if: (matrix.ci == 'ciJVM') && (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@25')) && (contains(github.event.head_commit.message, 'stressExperiments'))
+      - if: (matrix.ci == 'ciJVM') && (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@26')) && (contains(github.event.head_commit.message, 'stressExperiments'))
         shell: bash
         run: sbt -v -Dsbt.server.forcestart=true '++ ${{ matrix.scala }}' stressExperiments/Jcstress/run
 
       - name: Upload JCStress results
-        if: (success() || failure()) && (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@25')) && ((contains(github.event.head_commit.message, 'stressMcas') || contains(github.event.head_commit.message, 'stressCore') || contains(github.event.head_commit.message, 'stressData') || contains(github.event.head_commit.message, 'stressAsync') || contains(github.event.head_commit.message, 'stressExperiments'))) && (matrix.ci == 'ciJVM')
+        if: (success() || failure()) && (((matrix.os == 'macos-15') || (matrix.os == 'ubuntu-24.04-arm') || (matrix.os == 'ubuntu-24.04')) && (matrix.java == 'temurin@26')) && ((contains(github.event.head_commit.message, 'stressMcas') || contains(github.event.head_commit.message, 'stressCore') || contains(github.event.head_commit.message, 'stressData') || contains(github.event.head_commit.message, 'stressAsync') || contains(github.event.head_commit.message, 'stressExperiments'))) && (matrix.ci == 'ciJVM')
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
         with:
           name: jcstress-results-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}
@@ -380,17 +380,17 @@ jobs:
         if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
         run: sbt -v -Dsbt.server.forcestart=true +update
 
-      - name: Setup Java (temurin@25)
-        id: setup-java-temurin-25
-        if: matrix.java == 'temurin@25'
+      - name: Setup Java (temurin@26)
+        id: setup-java-temurin-26
+        if: matrix.java == 'temurin@26'
         uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
         with:
           distribution: temurin
-          java-version: 25
+          java-version: 26
           cache: sbt
 
       - name: sbt update
-        if: matrix.java == 'temurin@25' && steps.setup-java-temurin-25.outputs.cache-hit == 'false'
+        if: matrix.java == 'temurin@26' && steps.setup-java-temurin-26.outputs.cache-hit == 'false'
         run: sbt -v -Dsbt.server.forcestart=true +update
 
       - name: Setup Java (graalvm@21)
@@ -419,17 +419,17 @@ jobs:
         if: matrix.java == 'graalvm@25' && steps.setup-java-graalvm-25.outputs.cache-hit == 'false'
         run: sbt -v -Dsbt.server.forcestart=true +update
 
-      - name: Setup Java (semeru@25)
-        id: setup-java-semeru-25
-        if: matrix.java == 'semeru@25'
+      - name: Setup Java (semeru@26)
+        id: setup-java-semeru-26
+        if: matrix.java == 'semeru@26'
         uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
         with:
           distribution: semeru
-          java-version: 25
+          java-version: 26
           cache: sbt
 
       - name: sbt update
-        if: matrix.java == 'semeru@25' && steps.setup-java-semeru-25.outputs.cache-hit == 'false'
+        if: matrix.java == 'semeru@26' && steps.setup-java-semeru-26.outputs.cache-hit == 'false'
         run: sbt -v -Dsbt.server.forcestart=true +update
 
       - name: Submit Dependencies
