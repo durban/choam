@@ -96,19 +96,19 @@ private class TPromiseModelTestState {
 
   @Nullable
   @Operation(cancellableOnSuspension = false, blocking = true)
-  def op0S_1(@NotNull $completion: Continuation[_ >: String]): AnyRef = {
+  def op0S_1(@NotNull `$completion`: Continuation[? >: String]): AnyRef = {
     p.get.commit.apply($completion)
   }
 
   @Nullable
   @Operation(cancellableOnSuspension = false)
-  def op0I_1(@NotNull $completion: Continuation[_ >: Int]): AnyRef = {
+  def op0I_1(@NotNull `$completion`: Continuation[? >: Int]): AnyRef = {
     p.complete("result1").map(if (_) 1 else 0).commit.apply($completion)
   }
 
   @Nullable
   @Operation(cancellableOnSuspension = false)
-  def op0I_2(@NotNull $completion: Continuation[_ >: Int]): AnyRef = {
+  def op0I_2(@NotNull `$completion`: Continuation[? >: Int]): AnyRef = {
     p.complete("result2").map(if (_) 1 else 0).commit.apply($completion)
   }
 }

@@ -48,7 +48,7 @@ object TRef extends TRefInstances0 {
     impl(a, ctx.refIdGen.nextId())
 
   /** Creates a `Ref` which is also a `TRef`; use with caution! */
-  private[choam] final def unsafeRefWithId[A](a: A, id: Long): core.Ref[A] with TRef[A] =
+  private[choam] final def unsafeRefWithId[A](a: A, id: Long): core.Ref[A] & TRef[A] =
     impl(a, id)
 
   private[this] final def impl[A](a: A, id: Long): TRefImpl[A] = {

@@ -133,7 +133,7 @@ trait RxnImplSpec[F[_]] extends BaseSpecAsyncF[F] { this: McasImplSpec =>
       import scala.language.reflectiveCalls
       interpState.asInstanceOf[{ def contKForTesting: ObjStack[Any] }].contKForTesting
     }.flatMap { (contK: ObjStack[Any]) =>
-      Rxn.unsafe.assert(contK.isInstanceOf[ArrayObjStack[_]])
+      Rxn.unsafe.assert(contK.isInstanceOf[ArrayObjStack[?]])
     }
     def rxn(r1: Ref[Int], r2: Ref[Int]): Rxn[Int] = Rxn
       .fastRandom

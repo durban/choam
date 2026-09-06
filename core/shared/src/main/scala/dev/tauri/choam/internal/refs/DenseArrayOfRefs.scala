@@ -147,7 +147,7 @@ private[choam] final class DenseArrayOfTRefs[A](
 ) extends DenseArrayOfXRefs[A](size, initial, str, rig)
   with stm.TArray.UnsealedTArray[A] {
 
-  protected[this] final override type RefT[a] = Ref[a] with stm.TRef[a]
+  protected[this] final override type RefT[a] = Ref[a] & stm.TRef[a]
 
   protected[this] final override def createRef(initial: A, str: AllocationStrategy, rig: RefIdGen): RefT[A] =
     Ref.unsafeTRef(initial, str, rig)

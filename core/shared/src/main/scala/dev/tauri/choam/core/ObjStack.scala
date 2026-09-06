@@ -113,7 +113,7 @@ private object ObjStack {
       }
     }
 
-    private[this] final def equalsTo(that: Lst[_]): Boolean = {
+    private[this] final def equalsTo(that: Lst[?]): Boolean = {
       Lst.isEqual(this, that)
     }
   }
@@ -142,7 +142,7 @@ private object ObjStack {
     }
 
     @tailrec
-    private final def isEqual(x: Lst[_], y: Lst[_]): Boolean = {
+    private final def isEqual(x: Lst[?], y: Lst[?]): Boolean = {
       x match {
         case null =>
           y eq null

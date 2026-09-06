@@ -147,7 +147,7 @@ private[choam] final class SparseArrayOfRefs[A](
     Ref.unsafeWithId(initial, str, id)
 
   protected[this] final override def refTTag: ClassTag[RefT[A]] =
-    ClassTag[Ref[A]](classOf[Ref[_]])
+    ClassTag[Ref[A]](classOf[Ref[?]])
 }
 
 private[choam] final class SparseArrayOfTRefs[A](
@@ -158,11 +158,11 @@ private[choam] final class SparseArrayOfTRefs[A](
 ) extends SparseArrayOfXRefs[A](size, initial, str, rig)
   with stm.TArray.UnsealedTArray[A] {
 
-  protected[this] final override type RefT[a] = Ref[a] with stm.TRef[a]
+  protected[this] final override type RefT[a] = Ref[a] & stm.TRef[a]
 
   protected[this] def createRef(initial: A, str: AllocationStrategy, id: Long): RefT[A] =
     stm.TRef.unsafeRefWithId(initial, id) // TODO: padded
 
   protected[this] final override def refTTag: ClassTag[RefT[A]] =
-    ClassTag[Ref[A] with stm.TRef[A]](classOf[Ref[_]])
+    ClassTag[Ref[A] & stm.TRef[A]](classOf[Ref[?]])
 }

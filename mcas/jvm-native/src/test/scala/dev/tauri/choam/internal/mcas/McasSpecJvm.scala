@@ -239,9 +239,11 @@ abstract class McasSpecJvm extends McasSpec { this: McasImplSpec =>
     t.start()
     t.join()
     assert(ok)
+    assert(newVer != Version.None)
     // try to finish the swap:
     val res = ctx.tryPerform(d4)
     val endTs = ctx.start().validTs
+    assertEquals(endTs, newVer + Version.Incr)
     assertEquals(res, McasStatus.Successful)
     assertEquals(endTs, startTs + (2 * Version.Incr))
     assertSameInstance(ctx.readDirect(r1), "b")

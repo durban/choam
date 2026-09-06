@@ -124,7 +124,7 @@ object Ref extends RefInstances0 {
     }
   }
 
-  private[choam] final def tRef[A](initial: A, str: AllocationStrategy = AllocationStrategy.DefaultStm): RxnImpl[Ref[A] with stm.TRef[A]] = {
+  private[choam] final def tRef[A](initial: A, str: AllocationStrategy = AllocationStrategy.DefaultStm): RxnImpl[Ref[A] & stm.TRef[A]] = {
     Rxn.unsafe.delayContextImpl { ctx =>
       Ref.unsafeTRef(initial, str, ctx.refIdGen)
     }
@@ -179,7 +179,7 @@ object Ref extends RefInstances0 {
     }
   }
 
-  private[choam] final def safeTArrayImpl[A](size: Int, initial: A, str: AllocationStrategy): RxnImpl[Ref.Array[A] with stm.TArray[A]] = {
+  private[choam] final def safeTArrayImpl[A](size: Int, initial: A, str: AllocationStrategy): RxnImpl[Ref.Array[A] & stm.TArray[A]] = {
     require(str.stm)
     if (size > 0) {
       if (str.flat) {
@@ -218,7 +218,7 @@ object Ref extends RefInstances0 {
     }
   }
 
-  private[this] final def unsafeTArray[A](size: Int, initial: A, str: AllocationStrategy, rig: RefIdGen): Ref.Array[A] with stm.TArray[A] = {
+  private[this] final def unsafeTArray[A](size: Int, initial: A, str: AllocationStrategy, rig: RefIdGen): Ref.Array[A] & stm.TArray[A] = {
     require(str.stm)
     if (size > 0) {
       if (str.flat) {
@@ -251,7 +251,7 @@ object Ref extends RefInstances0 {
     internal.refs.unsafeNewDenseRefArray[A](size = size, initial = initial)(rig.nextArrayIdBase(size))
   }
 
-  private[this] final def unsafeDenseTArray[A](size: Int, initial: A, rig: RefIdGen): Ref.Array[A] with stm.TArray[A] = {
+  private[this] final def unsafeDenseTArray[A](size: Int, initial: A, rig: RefIdGen): Ref.Array[A] & stm.TArray[A] = {
     require(size > 0)
     internal.refs.unsafeNewDenseRefTArray[A](size = size, initial = initial)(rig.nextArrayIdBase(size))
   }
@@ -261,7 +261,7 @@ object Ref extends RefInstances0 {
     internal.refs.unsafeNewSparseRefArray[A](size = size, initial = initial)(rig.nextArrayIdBase(size))
   }
 
-  private[this] final def unsafeSparseTArray[A](size: Int, initial: A, rig: RefIdGen): Ref.Array[A] with stm.TArray[A] = {
+  private[this] final def unsafeSparseTArray[A](size: Int, initial: A, rig: RefIdGen): Ref.Array[A] & stm.TArray[A] = {
     require(size > 0)
     internal.refs.unsafeNewSparseRefTArray[A](size = size, initial = initial)(rig.nextArrayIdBase(size))
   }
@@ -270,7 +270,7 @@ object Ref extends RefInstances0 {
     unsafeWithId(initial, str, rig.nextId())
   }
 
-  private[choam] final def unsafeTRef[A](initial: A, str: AllocationStrategy, rig: RefIdGen): Ref[A] with stm.TRef[A] = {
+  private[choam] final def unsafeTRef[A](initial: A, str: AllocationStrategy, rig: RefIdGen): Ref[A] & stm.TRef[A] = {
     require(str.stm)
     stm.TRef.unsafeRefWithId(initial, rig.nextId()) // TODO: padded TRef
   }

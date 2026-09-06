@@ -1193,7 +1193,7 @@ final class MutHamtSpec extends ScalaCheckSuite with MUnitUtils with PropertyHel
       mutHamt2.insert(Val(ids(1)))
       val hamt1 = mutHamt1.copyToImmutable()
       val hamt2 = mutHamt2.copyToImmutable()
-      val merged0 = if (flip) { hamt2 insertedAllFrom hamt1 } else { hamt1 insertedAllFrom hamt2 }
+      val merged0 = if (flip) { hamt2 `insertedAllFrom` hamt1 } else { hamt1 `insertedAllFrom` hamt2 }
       val merged1 = merged0.inserted(Val(ids(4)))
       val merged2 = merged1.inserted(Val(ids(3)))
       val merged3 = merged2.inserted(Val(ids(2)))

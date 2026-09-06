@@ -32,7 +32,7 @@ package object refs extends RefsPackagePlatform {
     new DenseRefArray[A](__size = size, initial = initial, _idBase = idBase)
   }
 
-  private[choam] def unsafeNewDenseRefTArray[A](size: Int, initial: A)(idBase: Long): stm.TArray[A] with Ref.Array[A] = {
+  private[choam] def unsafeNewDenseRefTArray[A](size: Int, initial: A)(idBase: Long): stm.TArray[A] & Ref.Array[A] = {
     new DenseTRefArray[A](__size = size, initial = initial, _idBase = idBase)
   }
 
@@ -40,7 +40,7 @@ package object refs extends RefsPackagePlatform {
     new SparseRefArray[A](__size = size, initial = initial, _idBase = idBase)
   }
 
-  private[choam] def unsafeNewSparseRefTArray[A](size: Int, initial: A)(idBase: Long): stm.TArray[A] with Ref.Array[A] = {
+  private[choam] def unsafeNewSparseRefTArray[A](size: Int, initial: A)(idBase: Long): stm.TArray[A] & Ref.Array[A] = {
     new SparseTRefArray[A](__size = size, initial = initial, _idBase = idBase)
   }
 

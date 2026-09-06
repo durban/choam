@@ -336,7 +336,7 @@ Throughout the library, we are assuming the following:
     - no backwards compatibility
 - Scala versions:
   - 2.13
-  - 3 LTS
+  - 3.9
 
 ### Lock-freedom
 

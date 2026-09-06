@@ -115,7 +115,7 @@ trait LinchkUtils {
     // things here):
     val timeoutMs = 10000L // default: 10000L
     type Opts = {
-      def invocationTimeout$lincheck(timeoutMs: Long): org.jetbrains.lincheck.datastructures.Options[?, ?]
+      def `invocationTimeout$lincheck`(timeoutMs: Long): org.jetbrains.lincheck.datastructures.Options[?, ?]
     }
     def increaseTimeout(mco: ModelCheckingOptions): ModelCheckingOptions = {
       mco.asInstanceOf[Opts].invocationTimeout$lincheck(timeoutMs).asInstanceOf[ModelCheckingOptions]

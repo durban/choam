@@ -226,6 +226,7 @@ final class EmcasSpec extends BaseSpec {
     assert(ref.unsafeGetMarkerV().get() ne null)
     latch2.countDown()
     t.join()
+    assert(ok)
     while (ref.unsafeGetMarkerV().get() ne null) {
       System.gc()
       Thread.sleep(1L)

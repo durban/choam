@@ -104,7 +104,7 @@ object PubSub {
   ): Rxn[PubSub[A]] = {
     // TODO: if `str` is padded, this AtomicLong should also be padded
     Rxn.unsafe.delay { new AtomicLong }.flatMap { nextId =>
-      Ref(LongMap.empty[Subscription[A, _]], allocStr).flatMap { subscriptions =>
+      Ref(LongMap.empty[Subscription[A, ?]], allocStr).flatMap { subscriptions =>
         Ref(false, allocStr).flatMap { isClosed =>
           Promise[Unit](allocStr).flatMap { awaitClosed =>
             if (publishCanSuspend) {
@@ -401,7 +401,7 @@ object PubSub {
       private[this] final def dropOldestN[A](
         underlying: UnboundedDeque[Chunk[A]],
         n: Int,
-        putItBack: List[SignalChunk[_ <: A]],
+        putItBack: List[SignalChunk[? <: A]],
       ): Rxn[Unit] = {
         underlying.tryTakeLast.flatMap {
           case None =>
@@ -448,11 +448,11 @@ object PubSub {
     def isClosed: Ref[Boolean]
   }
 
-  private[this] final class SuspWith[A](val subs: Subscription[A, _], val cleanup: Rxn[Unit])
+  private[this] final class SuspWith[A](val subs: Subscription[A, ?], val cleanup: Rxn[Unit])
 
   private[this] final class PubSubImpl[A](
     nextId: AtomicLong,
-    val subscriptions: Ref[LongMap[Subscription[A, _]]],
+    val subscriptions: Ref[LongMap[Subscription[A, ?]]],
     val isClosed: Ref[Boolean],
     awaitClosed: Promise[Unit],
     defaultStrategy: OverflowStrategy,
@@ -630,14 +630,14 @@ object PubSub {
 
     private[this] final def asyncEmitChunkImpl[F[_]](
       ch: Chunk[A],
-      wasSuspendedWith: Subscription[A, _],
+      wasSuspendedWith: Subscription[A, ?],
       poll: F ~> F,
     )(implicit F: AsyncReactive[F]): F[Result] = {
       implicit val FF: Async[F] = F.asyncInst
       // Note: about the `Flag`, see the comment in `GenWaitListCommon#asyncGetImpl`
       F.run(GenWaitList.Flag.mkNew(wasSuspendedWith eq null)).flatMap { asyncFinalizerDone =>
         poll(
-          asyncCheckAttemptEitherTuple[F, Subscription[A, _], Result] { cb =>
+          asyncCheckAttemptEitherTuple[F, Subscription[A, ?], Result] { cb =>
             F.run(
               isClosed.get.flatMap { isClosed =>
                 if (isClosed) {
@@ -647,10 +647,10 @@ object PubSub {
                 } else {
                   subscriptions.get.flatMap { subsMap =>
 
-                    def go(itr: Iterator[Subscription[A, _]], dryRun: Boolean): Rxn[Either[SuspWith[A], Unit]] = {
+                    def go(itr: Iterator[Subscription[A, ?]], dryRun: Boolean): Rxn[Either[SuspWith[A], Unit]] = {
                       Rxn.unsafe.suspend {
                         if (itr.hasNext) {
-                          val subs: Subscription[A, _] = itr.next()
+                          val subs: Subscription[A, ?] = itr.next()
                           _assert(subs ne null)
                           val firstTry = (subs ne wasSuspendedWith)
                           val publish1 = subs.publishChunkOrSuspend(ch, cb, flag = asyncFinalizerDone, firstTry = firstTry)

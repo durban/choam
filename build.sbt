@@ -32,7 +32,7 @@ import sbtcrossproject.CrossProject
 
 // Scala versions:
 val scala2 = "2.13.18"
-val scala3 = "3.3.8" // TODO:0.5: 3.9.0 LTS
+val scala3 = "3.9.0"
 
 // CI JVM versions:
 val jvmOldest = JavaSpec.temurin("17")
@@ -813,18 +813,6 @@ lazy val layout = project.in(file("layout"))
   .dependsOn(core.jvm % "compile->compile;test->test")
 
 lazy val commonSettingsJvm = Seq[Setting[_]](
-  scalacOptions ++= (
-    if (!ScalaArtifacts.isScala3(scalaVersion.value)) {
-      // 2.13
-      Nil
-    } else {
-      // 3
-      List(
-        // TODO: we only set this for JVM due to https://github.com/scala-native/scala-native/issues/4869
-        "-Yfuture-lazy-vals", // VarHandle instead of Unsafe
-      )
-    }
-  ),
   Test / fork := true,
   Test / javaOptions ++= Seq(
     // Note: forked JVM doesn't seem to use the .jvmopts
@@ -909,7 +897,7 @@ lazy val commonSettings = Seq[Setting[_]](
         // we disable warnings for `final object`, because Scala 2 doesn't always makes them final;
         // and for "value discard", because Scala 3 doesn't allow silencing them with `: Unit`;
         // and for deprecations, because there are a lot (and they're internal)
-        "-Wconf:any:v,cat=deprecation:s,id=E147:s,id=E175:s", // TODO: for Scala 3.7: ,msg=Ignoring \\[this\\] qualifier:s
+        "-Wconf:any:v,cat=deprecation:s,id=E147:s,id=E175:s,msg=Ignoring \\[this\\] qualifier:s",
         "-Wunused:all",
         // TODO: "-Ysafe-init", // https://github.com/lampepfl/dotty/issues/17997
         "-Ycheck-all-patmat",

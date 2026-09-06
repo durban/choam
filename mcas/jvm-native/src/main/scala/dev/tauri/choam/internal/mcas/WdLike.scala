@@ -114,7 +114,7 @@ final class LogEntry[A] private ( // formerly called HWD
 object LogEntry {
 
   final class InvalidTicketException private[LogEntry] (
-    ref: MemoryLocation[_],
+    ref: MemoryLocation[?],
     nv: Any
   ) extends IllegalStateException(s"invalid ticket for ${ref}; cannot write new value ${nv}") {
     final override def fillInStackTrace(): Throwable =

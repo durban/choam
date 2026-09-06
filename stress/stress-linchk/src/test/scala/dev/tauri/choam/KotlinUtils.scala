@@ -65,7 +65,7 @@ import kotlinx.coroutines.{
 object KotlinUtils {
 
   /** The type representing zero-argument suspend functions */
-  type KtCrt[a] = Function1[Continuation[_ >: a], AnyRef]
+  type KtCrt[a] = Function1[Continuation[? >: a], AnyRef]
 
   /** Starts the suspend function `crt` on a coroutine */
   final def fork[A](crt: KtCrt[A]): KDeferred[A] = {
@@ -115,7 +115,7 @@ object KotlinUtils {
         final override def apply[A](fa: KtCrt[A]): KtCrt[A] = fa
       }
 
-      private[this] def scalaUnitFromKotlinUnit(k: Continuation[_ >: Unit]): Continuation[_ >: kotlin.Unit] = {
+      private[this] def scalaUnitFromKotlinUnit(k: Continuation[? >: Unit]): Continuation[? >: kotlin.Unit] = {
         new ContinuationImpl(k.asInstanceOf[Continuation[AnyRef]]) {
           final override def invokeSuspend(x: AnyRef): AnyRef = {
             ResultKt.throwOnFailure(x)
@@ -163,7 +163,7 @@ object KotlinUtils {
       }
 
       final override def cont[K, R](body: Cont[KtCrt, K, R]): KtCrt[R] = {
-        Async.defaultCont(body)(this)
+        Async.defaultCont(body)(using this)
       }
 
       final override def async[A](k: (Either[Throwable, A] => Unit) => KtCrt[Option[KtCrt[Unit]]]): KtCrt[A] = { kk =>
@@ -235,7 +235,7 @@ object KotlinUtils {
     }
   }
 
-  private[this] final class FlatMapCont(val cont: Continuation[_ >: AnyRef], val f: AnyRef => KtCrt[AnyRef])
+  private[this] final class FlatMapCont(val cont: Continuation[? >: AnyRef], val f: AnyRef => KtCrt[AnyRef])
     extends ContinuationImpl(cont) {
 
     var state: Int = 0
@@ -269,7 +269,7 @@ object KotlinUtils {
    * (I.e., `foo` above is approximately `fa.flatMap(f)`.)
    */
   private final def flatMapImpl[A, B](fa: KtCrt[A])(f: A => KtCrt[B])(
-    k: Continuation[_ >: B],
+    k: Continuation[? >: B],
     first: Boolean,
   ): AnyRef = {
     if (k eq null) {
