@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-val sbtTypelevelVersion = "0.8.6" // https://github.com/typelevel/sbt-typelevel
+val sbtTypelevelVersion = "0.8.7" // https://github.com/typelevel/sbt-typelevel
 
 addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.8") // https://github.com/sbt/sbt-jmh
 addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
@@ -31,11 +31,11 @@ addSbtPlugin("org.typelevel" % "sbt-typelevel-sonatype" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-github" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-github-actions" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-ci" % sbtTypelevelVersion)
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.6.1") // https://github.com/scalameta/sbt-scalafmt
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.6.2") // https://github.com/scalameta/sbt-scalafmt
 addSbtPlugin("com.github.sbt" % "sbt-header" % "5.11.0") // https://github.com/sbt/sbt-header
 addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.14.7") // https://github.com/scalacenter/sbt-scalafix
-addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "1.3.2") // https://github.com/portable-scala/sbt-crossproject
-addSbtPlugin("org.portable-scala" % "sbt-scala-native-crossproject" % "1.3.2") // -"-
+addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "1.4.0") // https://github.com/portable-scala/sbt-crossproject
+addSbtPlugin("org.portable-scala" % "sbt-scala-native-crossproject" % "1.4.0") // -"-
 addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.22.0") // https://www.scala-js.org/
 addSbtPlugin("org.scala-native" % "sbt-scala-native" % "0.5.12") // https://github.com/scala-native/scala-native
 addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.11.7") // https://github.com/sbt/sbt-native-packager
