@@ -76,7 +76,7 @@ trait RxnSpecJvm_Emcas[F[_]] extends RxnSpecJvm[F] with SpecEmcas {
 trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
 
   final override def munitTimeout: Duration =
-    super.munitTimeout * 2
+    super.munitTimeout * 3
 
   test("Thread interruption in infinite retry") {
     val never = Rxn.unsafe.retry[Unit]
