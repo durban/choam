@@ -125,7 +125,7 @@ final class BackoffSpec extends BaseSpec {
     // illegal arguments:
     assert(Try(Backoff.sleepConstNanos(retries = -1, maxSleepNanos = 16.micros.toNanos)).isFailure)
     assert(Try(Backoff.sleepConstNanos(retries = -2, maxSleepNanos = 16.micros.toNanos)).isFailure)
-    assert(Try(Backoff.sleepConstNanos(retries = 0, maxSleepNanos = -16.micros.toNanos)).isFailure)
+    assert(Try(Backoff.sleepConstNanos(retries = 0, maxSleepNanos = (-16).micros.toNanos)).isFailure)
   }
 
   test("Backoff.backoffRandom") {
