@@ -829,7 +829,12 @@ lazy val commonSettingsJvm = Seq[Setting[_]](
     // These are to make CE stacktraces more useful:
     "-Dcats.effect.tracing.mode=FULL",
     "-Dcats.effect.tracing.buffer.size=32",
-  ),
+  ) ++ (if (java.lang.Runtime.version().feature() == 26) {
+    // CI debugging:
+    Seq("--sun-misc-unsafe-memory-access=debug")
+  } else {
+    Nil
+  }),
   libraryDependencies ++= Seq(
     dependencies.zioEverything.value.map(_ % TestInternal),
   ).flatten,
