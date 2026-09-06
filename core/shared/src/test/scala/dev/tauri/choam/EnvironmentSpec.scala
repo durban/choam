@@ -17,6 +17,8 @@
 
 package dev.tauri.choam
 
+import org.typelevel.scalaccompat.annotation.nowarn3
+
 import internal.mcas.{ OsRng, Consts }
 
 final class EnvironmentSpec extends EnvironmentSpecPlatform {
@@ -87,5 +89,21 @@ final class EnvironmentSpec extends EnvironmentSpecPlatform {
         s"${name} property == \"${value}\""
     }
     println(msg)
+  }
+
+  test("Make sure -42.toByte is up to spec") {
+    @nowarn3 val noParens = -42.toByte
+    val parens = (-42).toByte
+    assertEquals(noParens, parens)
+  }
+
+  test("Make sure -42.foo is up to spec") {
+    implicit final class FooSyntax(self: Int) {
+      final def foo: Int = if (self >= 0) 99 else self
+    }
+    @nowarn3 val noParens = -42.foo
+    assertEquals(noParens, -42)
+    val parens = (-42).foo
+    assertEquals(parens, -42)
   }
 }
