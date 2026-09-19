@@ -1044,7 +1044,7 @@ lazy val dependencies = new {
   val jmhVersion = "1.37" // https://github.com/openjdk/jmh
   val jolVersion = "0.17" // https://github.com/openjdk/jol
   val scalaJsLocaleVersion = "1.5.4" // https://github.com/cquiroz/scala-java-locales
-  val scalaJsTimeVersion = "2.6.0" // https://github.com/cquiroz/scala-java-time
+  val scalaJsTimeVersion = "2.7.0" // https://github.com/cquiroz/scala-java-time
   val zioVersion = "2.1.26" // https://github.com/zio/zio
 
   val catsKernel = Def.setting("org.typelevel" %%% "cats-kernel" % catsVersion)
@@ -1059,7 +1059,7 @@ lazy val dependencies = new {
   val catsCollections = Def.setting("org.typelevel" %%% "cats-collections-core" % catsCollectionsVersion)
   val fs2 = Def.setting("co.fs2" %%% "fs2-core" % fs2Version)
   val fs2Io = Def.setting("co.fs2" %%% "fs2-io" % fs2Version)
-  val decline = Def.setting("com.monovore" %%% "decline" % "2.5.0") // https://github.com/bkirwi/decline
+  val decline = Def.setting("com.monovore" %%% "decline" % "2.6.2") // https://github.com/bkirwi/decline
 
   // JVM:
   val jol = Def.setting("org.openjdk.jol" % "jol-core" % jolVersion)
@@ -1077,7 +1077,7 @@ lazy val dependencies = new {
 
   val scalaStm = Def.setting("org.scala-stm" %%% "scala-stm" % "0.11.1") // https://github.com/scala-stm/scala-stm
   val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.13.4") // https://github.com/TimWSpence/cats-stm
-  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.1.0.13")
+  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.1.0.13") // https://github.com/zio/interop-cats
   val zioStm = Def.setting("dev.zio" %%% "zio" % zioVersion)
   val zioEverything = Def.setting[Seq[ModuleID]](Seq(
     Seq(
@@ -1109,7 +1109,7 @@ lazy val dependencies = new {
       "org.typelevel" %%% "cats-effect-kernel-testkit" % catsEffectVersion,
       "org.typelevel" %%% "cats-effect-testkit" % catsEffectVersion,
       "org.scalameta" %%% "munit" % "1.3.6", // https://github.com/scalameta/munit
-      "org.typelevel" %%% "munit-cats-effect" % "2.2.0", // https://github.com/typelevel/munit-cats-effect
+      "org.typelevel" %%% "munit-cats-effect" % "2.2.1", // https://github.com/typelevel/munit-cats-effect
       "org.scalacheck" %%% "scalacheck" % "1.20.0", // https://github.com/typelevel/scalacheck
       "org.typelevel" %%% "scalacheck-effect" % scalacheckEffectVersion,
       "org.typelevel" %%% "scalacheck-effect-munit" % scalacheckEffectVersion,
