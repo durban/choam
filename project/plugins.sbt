@@ -22,7 +22,6 @@ addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
 addSbtPlugin("pl.project13.sbt" % "sbt-jol" %  "0.1.4")
 addSbtPlugin("io.crashbox" % "sbt-gpg" % "0.2.1") // https://github.com/jodersky/sbt-gpg
 addSbtPlugin("ch.epfl.scala" % "sbt-version-policy" % "3.3.0") // https://github.com/scalacenter/sbt-version-policy
-  // ^-- Note: there is a 3.2.2 tagged, but no artifacts for it
 addSbtPlugin("org.typelevel" % "sbt-typelevel-no-publish" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-versioning" % sbtTypelevelVersion)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-settings" % sbtTypelevelVersion)
@@ -33,12 +32,12 @@ addSbtPlugin("org.typelevel" % "sbt-typelevel-github-actions" % sbtTypelevelVers
 addSbtPlugin("org.typelevel" % "sbt-typelevel-ci" % sbtTypelevelVersion)
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.6.2") // https://github.com/scalameta/sbt-scalafmt
 addSbtPlugin("com.github.sbt" % "sbt-header" % "5.11.0") // https://github.com/sbt/sbt-header
-addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.14.8") // https://github.com/scalacenter/sbt-scalafix
+addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.14.9") // https://github.com/scalacenter/sbt-scalafix
 addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "1.4.0") // https://github.com/portable-scala/sbt-crossproject
 addSbtPlugin("org.portable-scala" % "sbt-scala-native-crossproject" % "1.4.0") // -"-
 addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.22.0") // https://www.scala-js.org/
 addSbtPlugin("org.scala-native" % "sbt-scala-native" % "0.5.12") // https://github.com/scala-native/scala-native
-addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.11.7") // https://github.com/sbt/sbt-native-packager
-addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.13.1") // https://github.com/sbt/sbt-buildinfo
+addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.12.0") // https://github.com/sbt/sbt-native-packager
+addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.13.2") // https://github.com/sbt/sbt-buildinfo
 
 ThisBuild / semanticdbEnabled := true
