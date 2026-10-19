@@ -314,7 +314,7 @@ private[mcas] abstract class AbstractHamt[K <: Hamt.HasHash, V <: Hamt.HasKey[K]
             } else {
               fst = false
             }
-            sb.append(a.toString)
+            sb.append(a.toString) : Unit
           }
       }
       i += 1

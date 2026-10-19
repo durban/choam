@@ -1101,7 +1101,7 @@ private[mcas] final class Emcas private (
               // want it to, so we do a new allocation,
               // maybe  that causes the GC to run:
               val arr = new java.util.concurrent.atomic.AtomicLongArray(8192)
-              arr.compareAndExchange(4321, 0L, 42L)
+              arr.compareAndExchange(4321, 0L, 42L) : Unit
             } else {
               System.gc()
             }

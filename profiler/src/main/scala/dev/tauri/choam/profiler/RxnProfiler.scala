@@ -241,25 +241,25 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
     this.elapsedSeconds = getElapsedSeconds()
     this.statsAfter = getRetryStats()
     if (config.commitsPerSecond) {
-      res.addAll(countCommitsPerSecond())
+      res.addAll(countCommitsPerSecond()) : Unit
     }
     if (config.retriesPerCommit) {
-      res.addAll(countRetriesPerCommit(retries = true))
+      res.addAll(countRetriesPerCommit(retries = true)) : Unit
     }
     if (config.triesPerCommit) {
-      res.addAll(countRetriesPerCommit(retries = false))
+      res.addAll(countRetriesPerCommit(retries = false)) : Unit
     }
     if (config.extensionsPerCommit) {
-      res.addAll(countExtensionsPerCommit())
+      res.addAll(countExtensionsPerCommit()) : Unit
     }
     if (config.avgLogSize) {
-      res.addAll(countLogSize(avg = true))
+      res.addAll(countLogSize(avg = true)) : Unit
     }
     if (config.maxLogSize) {
-      res.addAll(countLogSize(avg = false))
+      res.addAll(countLogSize(avg = false)) : Unit
     }
     if (config.measureExchanges) {
-      res.addAll(countExchanges())
+      res.addAll(countExchanges()) : Unit
     }
     if (config.reusedWeakRefs) {
       res.add(new ScalarResult(
@@ -267,13 +267,13 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
         maxReusedWeakRefs(),
         RxnProfiler.UnitCount,
         AggregationPolicy.MAX,
-      ))
+      )) : Unit
     }
     if (!Consts.statsEnabled) {
       res.add(new TextResult(
         s"WARNING: stats are not enabled (if desired, enable them with -D${Consts.statsEnabledProp}=true)",
         "rxn.warning",
-      ))
+      )) : Unit
     }
     res
   }
@@ -360,7 +360,7 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
           RxnProfiler.UnitExchangesPerSecond,
           AggregationPolicy.AVG,
         )
-      )
+      ) : Unit
     }
     if (config.exchangeCount) {
       res.add(
@@ -370,10 +370,10 @@ final class RxnProfiler(configLine: String) extends InternalProfiler {
           RxnProfiler.UnitCount,
           AggregationPolicy.SUM,
         )
-      )
+      ) : Unit
     }
     if (config.exchangerStats) {
-      res.add(collectExchangerStats())
+      res.add(collectExchangerStats()) : Unit
     }
     res
   }

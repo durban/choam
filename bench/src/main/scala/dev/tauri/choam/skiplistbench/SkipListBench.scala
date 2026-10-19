@@ -83,7 +83,7 @@ object SkipListBench {
         m.put(nextKey(tlr), foo)
       }
       while (m.size() < size) {
-        m.put(nextKey(tlr), foo)
+        m.put(nextKey(tlr), foo) : Unit
       }
       assert(m.size() == size)
       m
