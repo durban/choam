@@ -22,8 +22,11 @@ package next
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
+import cats.{ effect => ce }
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+
+import core.Reactive
 
 import kyo.{ <, Kyo, STM, TMap, Sync, Async, Fiber, Abort, Maybe, Loop }
 
@@ -34,53 +37,71 @@ import datastruct.DataMapBench
 @Threads(2)
 class DataMapBench2 {
 
-  import DataMapBench2.{ KyoTMapSt, CeRtSt }
+  import DataMapBench2.{ KyoTMapSt, CeRtSt, KyoRtSt, forkAndBlockKyo }
 
   private[this] final val N = 64
 
   @Benchmark
-  def hash_rxn(s: DataMapBench.TMapHashSt, bh: Blackhole, rnd: RandomState, rt: CeRtSt): Unit = {
-    this.rxnTask(s, bh, rnd).replicateA_(N).unsafeRunSync()(using rt.runtime)
-  }
-
-  @Benchmark
   def hash_kyo(s: KyoTMapSt, bh: Blackhole, rnd: RandomState): Unit = {
-    s.forkAndBlockKyo {
+    forkAndBlockKyo {
       Kyo.foreachDiscard(1 to N) { _ =>
         this.kyoTask(s, bh, rnd)
       }
     }
   }
 
-  private[this] final def rxnTask(s: DataMapBench.RxnMapSt, bh: Blackhole, rnd: RandomState): IO[Unit] = {
+  @Benchmark
+  def hash_rxnOnCe(s: DataMapBench.TMapHashSt, bh: Blackhole, rnd: RandomState, rt: CeRtSt): Unit = {
+    this.rxnTask[IO](s, bh, rnd)(using IO.asyncForIO, s.reactive).replicateA_(N).unsafeRunSync()(using rt.runtime)
+  }
+
+  @Benchmark
+  def hash_rxnOnKyo(s: DataMapBench.TMapHashSt, bh: Blackhole, rnd: RandomState, rt: KyoRtSt): Unit = {
+    // TODO: in this case, there is still a separate ChoamRuntime and Reactive instance (in `s`)
+    forkAndBlockKyo {
+      Kyo.foreachDiscard(1 to N) { _ =>
+        this.rxnTask[<[*, Async & Abort[Throwable]]](s, bh, rnd)(
+          using rt.converter.syncInstance, rt.converter.reactiveInstance
+        )
+      }
+    }
+  }
+
+  private[this] final def rxnTask[F[_]](s: DataMapBench.RxnMapSt, bh: Blackhole, rnd: RandomState)(
+    using
+    F: ce.Sync[F],
+    rF: Reactive[F],
+  ): F[Unit] = {
+    import cats.syntax.all._
+
     val map = s.map
-    IO(rnd.nextIntBounded(4)).flatMap {
+    F.flatMap(F.delay(rnd.nextIntBounded(4))) {
       case n @ (0 | 1) =>
         for {
           key <- if (n == 0) {
             // successful lookup:
             val keys = s.keys
-            IO(keys(rnd.nextIntBounded(keys.length)))
+            F.delay(keys(rnd.nextIntBounded(keys.length)))
           } else {
             // unsuccessful lookup:
             val dummyKeys = s.dummyKeys
-            IO(dummyKeys(rnd.nextIntBounded(dummyKeys.length)))
+            F.delay(dummyKeys(rnd.nextIntBounded(dummyKeys.length)))
           }
-          res <- map.get(key).run[IO](using s.reactive)
-          _ <- IO(bh.consume(res : Option[String]))
+          res <- map.get(key).run[F]
+          _ <- F.delay(bh.consume(res : Option[String]))
         } yield ()
       case n @ (2 | 3) =>
         val delInsKeys = s.delInsKeys
-        IO(delInsKeys(rnd.nextIntBounded(delInsKeys.length))).flatMap { key =>
+        F.delay(delInsKeys(rnd.nextIntBounded(delInsKeys.length))).flatMap { key =>
           if (n == 2) {
             // insert:
-            map.put(key, s.constValue).run[IO](using s.reactive).flatMap { (res: Option[String]) =>
-              IO(bh.consume(res))
+            map.put(key, s.constValue).run[F].flatMap { (res: Option[String]) =>
+              F.delay(bh.consume(res))
             }
           } else {
             // remove:
-            map.del(key).run[IO](using s.reactive).flatMap { (res: Boolean) =>
-              IO(bh.consume(res))
+            map.del(key).run[F].flatMap { (res: Boolean) =>
+              F.delay(bh.consume(res))
             }
           }
         }
@@ -127,10 +148,21 @@ class DataMapBench2 {
 
 object DataMapBench2 {
 
+  private[choam] final def forkAndBlockKyo[A](tsk: A < (Async & Abort[Throwable])): A = {
+    import kyo.AllowUnsafe.embrace.danger
+    Sync.Unsafe.evalOrThrow(Fiber.initUnscoped(tsk).map(_.block(kyo.Duration.Infinity))).getOrThrow
+  }
+
   @State(Scope.Benchmark)
   class CeRtSt {
     val runtime: IORuntime =
       IORuntime.global
+  }
+
+  @State(Scope.Benchmark)
+  class KyoRtSt {
+    val converter: Converter =
+      new Converter(ChoamRuntime.unsafeBlocking()) // TODO: don't create new RT
   }
 
   @State(Scope.Benchmark)
@@ -139,11 +171,6 @@ object DataMapBench2 {
     val map: TMap[String, String] = {
       import kyo.AllowUnsafe.embrace.danger
       Abort.run(kyo.Sync.Unsafe.run(TMap.init)).eval.getOrThrow
-    }
-
-    private[choam] final def forkAndBlockKyo[A](tsk: A < (Async & Abort[Throwable])): A = {
-      import kyo.AllowUnsafe.embrace.danger
-      Sync.Unsafe.evalOrThrow(Fiber.initUnscoped(tsk).map(_.block(kyo.Duration.Infinity))).getOrThrow
     }
 
     override def setupImpl(mapSize: Int): Unit = {

@@ -23,6 +23,8 @@ import kyo.{ Kyo, STM, Abort }
 
 import munit.FunSuite
 
+import DataMapBench2.forkAndBlockKyo
+
 final class KyoTMapStSpec extends FunSuite with MUnitUtils {
 
   private[this] final val N = 131072
@@ -31,8 +33,8 @@ final class KyoTMapStSpec extends FunSuite with MUnitUtils {
     val st = new DataMapBench2.KyoTMapSt
     st.setupImpl(N)
     val m = st.map
-    assertEquals(st.forkAndBlockKyo(STM.run(m.size)), N)
-    st.forkAndBlockKyo {
+    assertEquals(forkAndBlockKyo(STM.run(m.size)), N)
+    forkAndBlockKyo {
       Kyo.foreach(st.keys) { key =>
         STM.run(m.contains(key)).map { ok =>
           if (ok) ()
