@@ -289,10 +289,10 @@ object DataMapBench {
 
     @Setup
     final def setup(): Unit = {
-      this.setupImpl()
+      this.setupImpl(this.mapSize)
     }
 
-    protected def setupImpl(): Unit = {
+    def setupImpl(mapSize: Int): Unit = {
       val delInsSize = mapSize >>> 4
       val dummySize = delInsSize
       assert(delInsSize > 0)
@@ -344,12 +344,12 @@ object DataMapBench {
 
     def map: Map[String, String]
 
-    protected override def setupImpl(): Unit = {
-      super.setupImpl()
-      this.initializeMap()
+    override def setupImpl(mapSize: Int): Unit = {
+      super.setupImpl(mapSize)
+      this.initializeMap(mapSize)
     }
 
-    private[this] def initializeMap(): Unit = {
+    private[this] def initializeMap(@unused mapSize: Int): Unit = {
       var idx = 0
       while (idx < delInsKeys.length) {
         val key = delInsKeys(idx)
@@ -416,12 +416,12 @@ object DataMapBench {
     val tmap: TMap[String, String] =
       TMap.empty[String, String]
 
-    protected override def setupImpl(): Unit = {
-      super.setupImpl()
-      this.initializeMap()
+    override def setupImpl(mapSize: Int): Unit = {
+      super.setupImpl(mapSize)
+      this.initializeMap(mapSize)
     }
 
-    private def initializeMap(): Unit = {
+    private def initializeMap(mapSize: Int): Unit = {
       var idx = 0
       while (idx < delInsKeys.length) {
         val key = delInsKeys(idx)
@@ -436,7 +436,7 @@ object DataMapBench {
         assert(atomic { implicit txn => this.tmap.put(key, constValue) }.isEmpty)
         idx += 1
       }
-      assert(atomic { implicit txn => this.tmap.size } == this.mapSize)
+      assert(atomic { implicit txn => this.tmap.size } == mapSize)
     }
   }
 
@@ -445,12 +445,12 @@ object DataMapBench {
 
     def cm: java.util.concurrent.ConcurrentMap[String, String]
 
-    protected final override def setupImpl(): Unit = {
-      super.setupImpl()
-      this.initializeMap()
+    final override def setupImpl(mapSize: Int): Unit = {
+      super.setupImpl(mapSize)
+      this.initializeMap(mapSize)
     }
 
-    private[this] final def initializeMap(): Unit = {
+    private[this] final def initializeMap(mapSize: Int): Unit = {
       var idx = 0
       while (idx < delInsKeys.length) {
         val key = delInsKeys(idx)
@@ -465,7 +465,7 @@ object DataMapBench {
         assert(this.cm.put(key, constValue) eq null)
         idx += 1
       }
-      assert(this.cm.size() == this.mapSize)
+      assert(this.cm.size() == mapSize)
     }
   }
 
@@ -501,12 +501,12 @@ object DataMapBench {
     val tm: TrieMap[String, String] =
       new TrieMap
 
-    protected final override def setupImpl(): Unit = {
-      super.setupImpl()
-      this.initializeMap()
+    final override def setupImpl(mapSize: Int): Unit = {
+      super.setupImpl(mapSize)
+      this.initializeMap(mapSize)
     }
 
-    private[this] final def initializeMap(): Unit = {
+    private[this] final def initializeMap(mapSize: Int): Unit = {
       var idx = 0
       while (idx < delInsKeys.length) {
         val key = delInsKeys(idx)
@@ -521,7 +521,7 @@ object DataMapBench {
         assert(this.tm.put(key, constValue).isEmpty)
         idx += 1
       }
-      assert(this.tm.size == this.mapSize)
+      assert(this.tm.size == mapSize)
     }
   }
 }

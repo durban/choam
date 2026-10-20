@@ -664,6 +664,22 @@ lazy val graalNiExample = project.in(file("graal-ni-example"))
     ),
   )
 
+/**
+ * Kyo seems Scala 3 only and JVM 25+ only
+ *
+ * So we detect the JVM version, and configure an
+ * `additionalSourceDir`, and put the benchmarks
+ * depending on Kyo in that directory. This way
+ * we can run those benchmarks in a 25+ JVM, but
+ * can still build and test everything on older
+ * (17+) JVMs.
+ */
+def isAtLeastJvm25: Boolean = {
+  java.lang.Runtime.version().feature() >= 25
+}
+
+val additionalSourceDir = "scala-3-jvm-25+"
+
 lazy val bench = project.in(file("bench"))
   .settings(name := "choam-bench")
   .enablePlugins(NoPublishPlugin)
@@ -676,6 +692,23 @@ lazy val bench = project.in(file("bench"))
       dependencies.catsStm.value,
       dependencies.zioStm.value,
       dependencies.jcTools.value,
+    ),
+    libraryDependencies ++= (
+      if (ScalaArtifacts.isScala3(scalaVersion.value) && isAtLeastJvm25) Seq(dependencies.kyo.value) else Nil
+    ),
+    Compile / unmanagedSourceDirectories ++= (
+      if (ScalaArtifacts.isScala3(scalaVersion.value) && isAtLeastJvm25) {
+        Seq((Compile / scalaSource).value.getParentFile / additionalSourceDir)
+      } else {
+        Nil
+      }
+    ),
+    Test / unmanagedSourceDirectories ++= (
+      if (ScalaArtifacts.isScala3(scalaVersion.value) && isAtLeastJvm25) {
+        Seq((Test / scalaSource).value.getParentFile / additionalSourceDir)
+      } else {
+        Nil
+      }
     ),
     Test / fork := true,
     Test / javaOptions ++= List(
@@ -897,7 +930,7 @@ lazy val commonSettings = Seq[Setting[_]](
         // we disable warnings for `final object`, because Scala 2 doesn't always makes them final;
         // and for "value discard", because Scala 3 doesn't allow silencing them with `: Unit`;
         // and for deprecations, because there are a lot (and they're internal)
-        "-Wconf:any:v,cat=deprecation:s,id=E147:s,id=E175:s,msg=Ignoring \\[this\\] qualifier:s",
+        "-Wconf:any:v,cat=deprecation:s,id=E147:s,msg=Ignoring \\[this\\] qualifier:s",
         "-Wunused:all",
         // TODO: "-Ysafe-init", // https://github.com/lampepfl/dotty/issues/17997
         "-Ycheck-all-patmat",
@@ -1060,6 +1093,7 @@ lazy val dependencies = new {
   val fs2 = Def.setting("co.fs2" %%% "fs2-core" % fs2Version)
   val fs2Io = Def.setting("co.fs2" %%% "fs2-io" % fs2Version)
   val decline = Def.setting("com.monovore" %%% "decline" % "2.6.2") // https://github.com/bkirwi/decline
+  val kyo = Def.setting("io.getkyo" %%% "kyo-stm" % "1.0.0-RC7") // https://github.com/getkyo/kyo
 
   // JVM:
   val jol = Def.setting("org.openjdk.jol" % "jol-core" % jolVersion)
