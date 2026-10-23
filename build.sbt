@@ -36,7 +36,7 @@ val scala3 = "3.9.0"
 
 // CI JVM versions:
 val jvmOldest = JavaSpec.temurin("17")
-val jvmLts = JavaSpec.temurin("25")
+val jvmLts = JavaSpec.microsoft("25")
 val jvmLatest = JavaSpec.temurin("27")
 val jvmTemurins = List(jvmOldest, jvmLts, jvmLatest)
 val jvmGraalLts = JavaSpec.graalvm("21")
