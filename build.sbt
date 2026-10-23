@@ -251,7 +251,7 @@ ThisBuild / githubWorkflowBuildMatrixInclusions ++= crossScalaVersions.value.fla
       if (plat != "ciJS") {
         Seq(
           MatrixInclude(matching = Map("os" -> linux86, "java" -> jvmLatest.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty),
-          MatrixInclude(matching = Map("os" -> macosIntel, "java" -> jvmLatest.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty),
+          MatrixInclude(matching = Map("os" -> macosIntel, "java" -> jvmLts.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty),
         ) ++ (
           if (plat != "ciNative") Seq(MatrixInclude(matching = Map("os" -> windowsArm, "java" -> jvmLts.render, "scala" -> binVer, "ci" -> plat), additions = Map.empty))
           else Nil
