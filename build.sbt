@@ -37,12 +37,12 @@ val scala3 = "3.9.0"
 // CI JVM versions:
 val jvmOldest = JavaSpec.temurin("17")
 val jvmLts = JavaSpec.microsoft("25")
-val jvmLatest = JavaSpec.temurin("27")
-val jvmTemurins = List(jvmOldest, jvmLts, jvmLatest)
+val jvmLatest = JavaSpec.temurin("26")
+val jvmOpenJdks = List(jvmOldest, jvmLts, jvmLatest)
 val jvmGraalLts = JavaSpec.graalvm("21")
 val jvmGraalLatest = JavaSpec.graalvm("25")
 val jvmGraals = List(jvmGraalLts, jvmGraalLatest)
-val jvmOpenj9Latest = JavaSpec.semeru("27")
+val jvmOpenj9Latest = JavaSpec.semeru("26")
 val jvmOpenj9s = List(jvmOpenj9Latest)
 
 // CI OS versions:
@@ -218,7 +218,7 @@ ThisBuild / githubWorkflowBuild := List(
     ),
   ),
 )
-ThisBuild / githubWorkflowJavaVersions := Seq(jvmTemurins, jvmGraals, jvmOpenj9s).flatten
+ThisBuild / githubWorkflowJavaVersions := Seq(jvmOpenJdks, jvmGraals, jvmOpenj9s).flatten
 ThisBuild / githubWorkflowOSes := Seq(linux, linux86, windows, windowsArm, macos, macosIntel)
 ThisBuild / githubWorkflowSbtCommand := "sbt -v -Dsbt.server.forcestart=true"
 ThisBuild / githubWorkflowBuildMatrixAdditions ++= Map("ci" -> _quickCiAliases.keys.toList)
