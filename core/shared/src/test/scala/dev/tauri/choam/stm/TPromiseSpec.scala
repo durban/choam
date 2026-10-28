@@ -57,25 +57,23 @@ trait TPromiseSpec[F[_]] extends TxnBaseSpec[F] { this: McasImplSpec =>
   }
 
   test("complete/cancel race") {
-    val nm = this.platform match {
+    val (n, m) = this.platform match {
       case Jvm | Js => (1024, 16)
       case Native => (256, 4)
     }
-    val N = nm._1
-    val M = nm._2
     val rng = new scala.util.Random(ThreadLocalRandom.current().nextLong())
     val t = for {
       p <- TPromise[Int].commit
-      latches <- F.deferred[Unit].replicateA(N)
-      fibs <- (0 until N).toList.traverse { idx => (latches(idx).complete(()) *> p.get.commit).start }
+      latches <- F.deferred[Unit].replicateA(n)
+      fibs <- (0 until n).toList.traverse { idx => (latches(idx).complete(()) *> p.get.commit).start }
       _ <- latches.traverse_(_.get)
       _ <- F.sleep(10.millis)
       _ <- assertResultF(p.tryGet.commit, None)
-      toCancel = rng.shuffle(fibs).take(N >> 1)
+      toCancel = rng.shuffle(fibs).take(n >> 1)
       results <- F.both(
         toCancel.parTraverseVoid(_.cancel),
-        (1 to M).toList.parTraverse { i =>
-          F.cede *> p.complete(i).commit.map { ok => (i, ok) }
+        (1 to m).toList.parTraverse { i =>
+          F.sleep(1.nanos) *> p.complete(i).commit.map { ok => (i, ok) }
         },
       ).map(_._2)
       okResults = results.collect { case (i, true) => i }
