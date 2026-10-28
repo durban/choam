@@ -40,56 +40,50 @@ final class Converter(rt: ChoamRuntime) {
   private[this] val weakSync: ce.Sync[<[*, (Async & Abort[Throwable])]] = {
     new ce.Sync[<[*, (Async & Abort[Throwable])]] {
 
-      private[this] val nopPoll = {
-        new ce.Poll[<[*, Async & Abort[Throwable]]] {
-          final override def apply[B](tsk: B < (Async & Abort[Throwable])): B < (Async & Abort[Throwable]) =
-            tsk
-        }
-      }
-
-      override def rootCancelScope: ce.kernel.CancelScope =
+      final override def rootCancelScope: ce.kernel.CancelScope =
         ce.kernel.CancelScope.Cancelable
 
-      override def pure[A](a: A): A < (Async & Abort[Throwable]) =
+      final override def pure[A](a: A): A < (Async & Abort[Throwable]) =
         a
 
-      override def flatMap[A, B](fa: A < (Async & Abort[Throwable]))(f: A => B < (Async & Abort[Throwable])): B < (Async & Abort[Throwable]) =
+      final override def flatMap[A, B](fa: A < (Async & Abort[Throwable]))(f: A => B < (Async & Abort[Throwable])): B < (Async & Abort[Throwable]) =
         fa.flatMap(f)
 
-      override def uncancelable[A](body: ce.Poll[<[*, (Async & Abort[Throwable])]] => A < (Async & Abort[Throwable])): A < (Async & Abort[Throwable]) =
-        body(nopPoll) // TODO: this doesn't actually makes it uncancelable
-
-      override def suspend[A](hint: ce.Sync.Type)(thunk: => A): A < (Async & Abort[Throwable]) =
+      final override def suspend[A](hint: ce.Sync.Type)(thunk: => A): A < (Async & Abort[Throwable]) =
         Sync.defer { thunk }
 
       // These are not strictly necessary to run an Rxn:
 
-      override def raiseError[A](e: Throwable): A < (Async & Abort[Throwable]) =
+      final override def uncancelable[A](body: ce.Poll[<[*, (Async & Abort[Throwable])]] => A < (Async & Abort[Throwable])): A < (Async & Abort[Throwable]) =
         sys.error("not implemented")
 
-      override def handleErrorWith[A](fa: A < (Async & Abort[Throwable]))(f: Throwable => A < (Async & Abort[Throwable])): A < (Async & Abort[Throwable]) =
+      final override def raiseError[A](e: Throwable): A < (Async & Abort[Throwable]) =
         sys.error("not implemented")
 
-      override def monotonic: FiniteDuration < (Async & Abort[Throwable]) =
+      final override def handleErrorWith[A](fa: A < (Async & Abort[Throwable]))(f: Throwable => A < (Async & Abort[Throwable])): A < (Async & Abort[Throwable]) =
         sys.error("not implemented")
 
-      override def realTime: FiniteDuration < (Async & Abort[Throwable]) =
+      final override def monotonic: FiniteDuration < (Async & Abort[Throwable]) =
         sys.error("not implemented")
 
-      override def tailRecM[A, B](a: A)(f: A => Either[A, B] < (Async & Abort[Throwable])): B < (Async & Abort[Throwable]) =
+      final override def realTime: FiniteDuration < (Async & Abort[Throwable]) =
         sys.error("not implemented")
 
-      override def forceR[A, B](fa: A < (Async & Abort[Throwable]))(fb: B < (Async & Abort[Throwable])): B < (Async & Abort[Throwable]) =
+      final override def tailRecM[A, B](a: A)(f: A => Either[A, B] < (Async & Abort[Throwable])): B < (Async & Abort[Throwable]) =
         sys.error("not implemented")
 
-      override def canceled: Unit < (Async & Abort[Throwable]) =
+      final override def forceR[A, B](fa: A < (Async & Abort[Throwable]))(fb: B < (Async & Abort[Throwable])): B < (Async & Abort[Throwable]) =
         sys.error("not implemented")
 
-      override def onCancel[A](fa: A < (Async & Abort[Throwable]), fin: Unit < (Async & Abort[Throwable])): A < (Async & Abort[Throwable]) =
+      final override def canceled: Unit < (Async & Abort[Throwable]) =
+        sys.error("not implemented")
+
+      final override def onCancel[A](fa: A < (Async & Abort[Throwable]), fin: Unit < (Async & Abort[Throwable])): A < (Async & Abort[Throwable]) =
         sys.error("not implemented")
     }
   }
 
-  private[this] val _reactiveInstance =
+  private[this] val _reactiveInstance = {
     new Reactive.SyncReactive(rt.mcasImpl)(using weakSync)
+  }
 }
