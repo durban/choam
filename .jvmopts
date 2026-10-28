@@ -6,3 +6,5 @@
 -Djdk.graal.Dump=
 -Djdk.graal.PrintBackendCFG=true
 -Djdk.graal.MethodFilter=AbstractHamt.*
+-Dcom.sun.net.ssl.checkRevocation=true
+-Dcom.sun.security.enableCRLDP=true
