@@ -80,6 +80,23 @@ lead to these exceptions.
 
 Further reading: https://www.scala-js.org/doc/semantics.html#undefined-behaviors
 
+### .jvmopts
+
+Due to CVE 2026-114820, certificate revocation checking have been enabled in `.jvmopts`,
+as recommended [here](https://openjdk.org/emudhra). In particular, these two system properties
+have been added:
+
+- `com.sun.net.ssl.checkRevocation=true`
+- `com.sun.security.enableCRLDP=true`
+
+However, revocation checking based on CRLs doesn't seem to work for certain domains
+(in particular, the github API). Due to this problem, OCSP-based revocation checking
+have been enabled too, with:
+
+- adding `java.security.properties=./java.security`;
+- and adding the `java.security` file (the contents of this file is appended to
+  the master security properties file).
+
 ## Historical decisions
 
 Older versions used to have (sometimes significantly) different API and internals.
