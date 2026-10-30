@@ -272,6 +272,8 @@ ThisBuild / githubWorkflowAddedJobs ~= { jobs =>
     val trJob = job.withSteps(job.steps.map(transformWorkflowStep))
     if (trJob.id == "dependency-submission") {
       (trJob
+        .withJavas(List(jvmLatest))
+        .withOses(List(linux86))
         .withPermissions(Some(Permissions.Specify(
           actions = PermissionValue.None,
           checks = PermissionValue.None,

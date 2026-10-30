@@ -324,8 +324,8 @@ jobs:
     if: github.event.repository.fork == false && github.event_name != 'pull_request'
     strategy:
       matrix:
-        os: [ubuntu-22.04]
-        java: [temurin@17]
+        os: [ubuntu-24.04]
+        java: [temurin@26]
     runs-on: ${{ matrix.os }}
     permissions:
       actions: none
