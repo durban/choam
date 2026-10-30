@@ -8,3 +8,5 @@
 -Djdk.graal.MethodFilter=AbstractHamt.*
 -Dcom.sun.net.ssl.checkRevocation=true
 -Dcom.sun.security.enableCRLDP=true
+-Djavax.net.debug=all
+-Djava.security.debug=certpath
