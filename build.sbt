@@ -710,6 +710,14 @@ lazy val bench = project.in(file("bench"))
         Nil
       }
     ),
+    Jmh / javaOptions --= List(
+      "-Dcats.effect.tracing.mode=FULL",
+      "-Ddev.tauri.choam.stats=true",
+    ),
+    Jmh / javaOptions ++= List(
+      "-Dcats.effect.tracing.mode=NONE",
+      "-Ddev.tauri.choam.stats=false",
+    ),
     Test / fork := true,
     Test / javaOptions ++= List(
       "-Ddev.tauri.choam.stats=true",
