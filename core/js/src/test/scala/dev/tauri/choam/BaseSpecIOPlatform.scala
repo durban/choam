@@ -21,7 +21,7 @@ import cats.effect.IO
 
 import internal.ChoamCatsEffectSuite
 
-trait BaseSpecIOPlatform { this: BaseSpecAsyncF[IO] with McasImplSpec with ChoamCatsEffectSuite =>
+trait BaseSpecIOPlatform { this: BaseSpecAsyncF[IO] & McasImplSpec & ChoamCatsEffectSuite =>
 
   protected final override def absolutelyUnsafeRunSync[A](@unused fa: IO[A]): A =
     this.fail("cannot unsafeRunSync on JS")

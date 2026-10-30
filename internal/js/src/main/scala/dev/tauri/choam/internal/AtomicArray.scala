@@ -20,7 +20,7 @@ package internal
 
 private[choam] object AtomicArray {
 
-  private[this] final def checkIndex(arr: Array[_], idx: Int): Unit = {
+  private[this] final def checkIndex(arr: Array[?], idx: Int): Unit = {
     // Out-of-bounds array indexing is undefined behavior(??) on scala-js,
     // so we need this extra check here (on the JVM, we rely on arrays working):
     if ((idx < 0) || (idx >= arr.length)) {
