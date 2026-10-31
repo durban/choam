@@ -1086,9 +1086,9 @@ lazy val dependencies = new {
   val jcstressVersion = "0.16" // https://github.com/openjdk/jcstress
   val jmhVersion = "1.37" // https://github.com/openjdk/jmh
   val jolVersion = "0.17" // https://github.com/openjdk/jol
-  val scalaJsLocaleVersion = "1.5.4" // https://github.com/cquiroz/scala-java-locales
-  val scalaJsTimeVersion = "2.7.0" // https://github.com/cquiroz/scala-java-time
-  val zioVersion = "2.1.26" // https://github.com/zio/zio
+  val scalaJsLocaleVersion = "1.6.0" // https://github.com/cquiroz/scala-java-locales
+  val scalaJsTimeVersion = "2.8.0" // https://github.com/cquiroz/scala-java-time
+  val zioVersion = "2.1.27" // https://github.com/zio/zio
 
   val catsKernel = Def.setting("org.typelevel" %%% "cats-kernel" % catsVersion)
   val catsCore = Def.setting("org.typelevel" %%% "cats-core" % catsVersion)
@@ -1121,7 +1121,7 @@ lazy val dependencies = new {
 
   val scalaStm = Def.setting("org.scala-stm" %%% "scala-stm" % "0.11.1") // https://github.com/scala-stm/scala-stm
   val catsStm = Def.setting("io.github.timwspence" %%% "cats-stm" % "0.13.4") // https://github.com/TimWSpence/cats-stm
-  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.1.0.13") // https://github.com/zio/interop-cats
+  val zioCats = Def.setting("dev.zio" %%% "zio-interop-cats" % "23.1.0.14") // https://github.com/zio/interop-cats // TODO: this now supports SN
   val zioStm = Def.setting("dev.zio" %%% "zio" % zioVersion)
   val zioEverything = Def.setting[Seq[ModuleID]](Seq(
     Seq(
