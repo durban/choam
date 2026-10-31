@@ -21,7 +21,9 @@ package datastruct
 
 import java.util.concurrent.ThreadLocalRandom
 
+import cats.Id
 import cats.kernel.{ Order, Hash }
+import cats.effect.IO
 
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
@@ -68,7 +70,7 @@ class DataMapBench {
   }
 
   @Benchmark
-  def hash_rxn(s: TMapHashSt, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
+  def hash_rxn(s: TMapHashStForId, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
     rxnTask(s, bh, k, rnd)
   }
 
@@ -77,7 +79,7 @@ class DataMapBench {
     rxnTask(s, bh, k, rnd)
   }
 
-  private[this] final def rxnTask(s: RxnMapSt, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
+  private[this] final def rxnTask[F[_]](s: RxnMapSt[F], bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
     val mcasCtx = k.mcasCtx
     val map = s.map
     rnd.nextIntBounded(4) match {
@@ -226,7 +228,7 @@ class DataMapBench {
   }
 
   @Benchmark
-  def replace_hash_rxn(s: TMapHashSt, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
+  def replace_hash_rxn(s: TMapHashStForId, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
     rxnReplaceTask(s, bh, k, rnd)
   }
 
@@ -235,7 +237,7 @@ class DataMapBench {
     rxnReplaceTask(s, bh, k, rnd)
   }
 
-  private[this] final def rxnReplaceTask(s: RxnMapSt, bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
+  private[this] final def rxnReplaceTask[F[_]](s: RxnMapSt[F], bh: Blackhole, k: McasImplState, rnd: RandomState): Unit = {
     val mcasCtx = k.mcasCtx
     val map = s.map
     val keys = s.keys
@@ -250,7 +252,7 @@ object DataMapBench {
   final val size = 8
 
   @State(Scope.Benchmark)
-  abstract class AbstractSt extends McasImplStateBase {
+  abstract class AbstractSt[F[_]] extends GenMcasImplStateBase[F] {
 
     final val constValue =
       "abcde"
@@ -330,7 +332,7 @@ object DataMapBench {
   }
 
   @State(Scope.Benchmark)
-  class DummySt extends AbstractSt {
+  class DummySt extends AbstractSt[Id] with GenMcasImplStateBase.ForId {
 
     val order: Order[String] =
       Order[String]
@@ -340,7 +342,7 @@ object DataMapBench {
   }
 
   @State(Scope.Benchmark)
-  abstract class RxnMapSt extends AbstractSt {
+  abstract class RxnMapSt[F[_]] extends AbstractSt[F] {
 
     def map: Map[String, String]
 
@@ -368,7 +370,7 @@ object DataMapBench {
   }
 
   @State(Scope.Benchmark)
-  class SimpleHashSt extends RxnMapSt {
+  class SimpleHashSt extends RxnMapSt[Id] with GenMcasImplStateBase.ForId {
 
     private[this] val simple: Map[String, String] =
       Map.simpleHashMap[String, String].unsafePerform(this.mcasImpl)
@@ -378,7 +380,7 @@ object DataMapBench {
   }
 
   @State(Scope.Benchmark)
-  class SimpleOrderedSt extends RxnMapSt {
+  class SimpleOrderedSt extends RxnMapSt[Id] with GenMcasImplStateBase.ForId {
 
     private[this] val simple: Map[String, String] =
       Map.simpleOrderedMap[String, String].unsafePerform(this.mcasImpl)
@@ -388,7 +390,7 @@ object DataMapBench {
   }
 
   @State(Scope.Benchmark)
-  class TMapHashSt extends RxnMapSt {
+  abstract class TMapHashSt[F[_]] extends RxnMapSt[F] {
 
     private[this] val m: Map[String, String] =
       Map.hashMap[String, String].unsafePerform(this.mcasImpl)
@@ -398,7 +400,17 @@ object DataMapBench {
   }
 
   @State(Scope.Benchmark)
-  class TMapOrderedSt extends RxnMapSt {
+  class TMapHashStForCe
+    extends TMapHashSt[IO]
+    with GenMcasImplStateBase.ForIO
+
+  @State(Scope.Benchmark)
+  class TMapHashStForId
+    extends TMapHashSt[Id]
+    with GenMcasImplStateBase.ForId
+
+  @State(Scope.Benchmark)
+  class TMapOrderedSt extends RxnMapSt[Id] with GenMcasImplStateBase.ForId {
 
     private[this] val m: Map[String, String] =
       Map.orderedMap[String, String].unsafePerform(this.mcasImpl)
@@ -408,7 +420,7 @@ object DataMapBench {
   }
 
   @State(Scope.Benchmark)
-  class ScalaStmSt extends AbstractSt {
+  class ScalaStmSt extends AbstractSt[Id] with GenMcasImplStateBase.ForId {
 
     import scala.concurrent.stm.atomic
     import scala.concurrent.stm.TMap
@@ -441,7 +453,7 @@ object DataMapBench {
   }
 
   @State(Scope.Benchmark)
-  abstract class JucCmSt extends AbstractSt {
+  abstract class JucCmSt extends AbstractSt[Id] with GenMcasImplStateBase.ForId {
 
     def cm: java.util.concurrent.ConcurrentMap[String, String]
 
@@ -494,7 +506,7 @@ object DataMapBench {
   }
 
   @State(Scope.Benchmark)
-  class TmSt extends AbstractSt {
+  class TmSt extends AbstractSt[Id] with GenMcasImplStateBase.ForId {
 
     import scala.collection.concurrent.TrieMap
 

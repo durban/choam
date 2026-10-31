@@ -21,9 +21,14 @@ package util
 
 import java.lang.Integer.remainderUnsigned
 
+import scala.concurrent.duration._
+
 import org.openjdk.jmh.annotations.{ State, Setup, Scope }
 
+import cats.Id
+import cats.effect.kernel.{ Sync, Async, Poll, CancelScope }
 import cats.effect.{ IO, SyncIO }
+import cats.effect.unsafe.IORuntime
 
 import core.{ Reactive, AsyncReactive }
 import internal.mcas.Mcas
@@ -79,6 +84,89 @@ class UnsafeApiState extends McasImplState {
     unsafe.UnsafeApi(McasImplStateBase.rt)
 }
 
+trait AsyncGenMcasImplStateBase[F[_]]
+  extends GenMcasImplStateBase[F] {
+
+  implicit def asyncF: Async[F]
+
+  implicit val asyncReactive: AsyncReactive[F] =
+    runAndBlock(AsyncReactive.from[F](choamRuntime).allocated)._1
+}
+
+trait GenMcasImplStateBase[F[_]] {
+
+  implicit def syncF: Sync[F]
+
+  def runAndBlock[A](fa: F[A]): A
+
+  implicit val choamRuntime: ChoamRuntime =
+    GenMcasImplStateBase.rt
+
+  implicit val reactive: Reactive[F] =
+    runAndBlock(Reactive.from[F](choamRuntime).allocated)._1
+
+  val mcasImpl: Mcas = {
+    this.choamRuntime.mcasImpl
+  }
+}
+
+object GenMcasImplStateBase {
+
+  object ForIO {
+
+    private[ForIO] val rt: IORuntime =
+      IORuntime.global
+  }
+
+  trait ForIO extends/* TODO: Async */GenMcasImplStateBase[IO] {
+
+    implicit final override def syncF: Sync[IO] =
+      IO.asyncForIO
+
+    final override def runAndBlock[A](fa: IO[A]): A = {
+      fa.unsafeRunSync()(using ForIO.rt)
+    }
+  }
+
+  trait ForId extends GenMcasImplStateBase[Id] {
+
+    implicit final override def syncF: Sync[Id] = {
+      syncForId
+    }
+
+    final override def runAndBlock[A](fa: Id[A]): A = {
+      fa
+    }
+  }
+
+  private[this] val nopPoll: Poll[Id] = new Poll[Id] {
+    final override def apply[A](a: A): A = a
+  }
+
+  private[this] val syncForId: Sync[Id] = new Sync[Id] {
+    final override def pure[A](x: A): Id[A] = x
+    final override def raiseError[A](e: Throwable): Id[A] = throw e
+    final override def monotonic: Id[FiniteDuration] = System.nanoTime().nanos
+    final override def realTime: Id[FiniteDuration] = System.currentTimeMillis().millis
+    final override def flatMap[A, B](fa: Id[A])(f: A => Id[B]): Id[B] = f(fa)
+    final override def tailRecM[A, B](a: A)(f: A => Id[Either[A, B]]): Id[B] = f(a) match {
+      case Left(aa) => tailRecM(aa)(f)
+      case Right(b) => b
+    }
+    final override def rootCancelScope: CancelScope = CancelScope.Uncancelable
+    final override def forceR[A, B](fa: Id[A])(fb: Id[B]): Id[B] = fb
+    final override def uncancelable[A](body: Poll[Id] => Id[A]): Id[A] = body(nopPoll)
+    final override def canceled: Id[Unit] = ()
+    final override def onCancel[A](fa: Id[A], fin: Id[Unit]): Id[A] = fa
+    final override def suspend[A](hint: Sync.Type)(thunk: => A): Id[A] = thunk
+    final override def handleErrorWith[A](fa: Id[A])(f: Throwable => Id[A]): Id[A] = fa
+  }
+
+  private[bench] val rt: ChoamRuntime = {
+    ChoamRuntime.unsafeBlocking()
+  }
+}
+
 abstract class McasImplStateBase {
 
   private[choam] implicit val reactive: AsyncReactive[IO] =
@@ -97,7 +185,7 @@ abstract class McasImplStateBase {
 private[choam] object McasImplStateBase {
 
   private[bench] val rt: ChoamRuntime = {
-    ChoamRuntime.unsafeBlocking()
+    GenMcasImplStateBase.rt
   }
 
   private[choam] val reactiveIO: AsyncReactive[IO] = {

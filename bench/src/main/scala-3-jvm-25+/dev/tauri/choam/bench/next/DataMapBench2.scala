@@ -24,7 +24,6 @@ import org.openjdk.jmh.infra.Blackhole
 
 import cats.{ effect => ce }
 import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 
 import core.Reactive
 
@@ -37,13 +36,14 @@ import datastruct.DataMapBench
 @Threads(2)
 class DataMapBench2 {
 
-  import DataMapBench2.{ KyoTMapSt, CeRtSt, KyoRtSt, forkAndBlockKyo }
+  import DataMapBench.TMapHashStForCe
+  import DataMapBench2.{ KyoTMapSt, TMapHashStForKyo }
 
   private[this] final val N = 64
 
   @Benchmark
   def hash_kyo(s: KyoTMapSt, bh: Blackhole, rnd: RandomState): Unit = {
-    forkAndBlockKyo {
+    s.runAndBlock {
       Kyo.foreachDiscard(1 to N) { _ =>
         this.kyoTask(s, bh, rnd)
       }
@@ -51,23 +51,24 @@ class DataMapBench2 {
   }
 
   @Benchmark
-  def hash_rxnOnCe(s: DataMapBench.TMapHashSt, bh: Blackhole, rnd: RandomState, rt: CeRtSt): Unit = {
-    this.rxnTask[IO](s, bh, rnd)(using IO.asyncForIO, s.reactive).replicateA_(N).unsafeRunSync()(using rt.runtime)
+  def hash_rxnOnCe(s: TMapHashStForCe, bh: Blackhole, rnd: RandomState): Unit = {
+    s.runAndBlock(
+      this.rxnTask[IO](s, bh, rnd)(using s.syncF, s.reactive).replicateA_(N)
+    )
   }
 
   @Benchmark
-  def hash_rxnOnKyo(s: DataMapBench.TMapHashSt, bh: Blackhole, rnd: RandomState, rt: KyoRtSt): Unit = {
-    // TODO: in this case, there is still a separate ChoamRuntime and Reactive instance (in `s`)
-    forkAndBlockKyo {
+  def hash_rxnOnKyo(s: TMapHashStForKyo, bh: Blackhole, rnd: RandomState): Unit = {
+    s.runAndBlock {
       Kyo.foreachDiscard(1 to N) { _ =>
         this.rxnTask[<[*, Async & Abort[Throwable]]](s, bh, rnd)(
-          using rt.converter.syncInstance, rt.converter.reactiveInstance
+          using s.syncF, s.reactive
         )
       }
     }
   }
 
-  private[this] final def rxnTask[F[_]](s: DataMapBench.RxnMapSt, bh: Blackhole, rnd: RandomState)(
+  private[this] final def rxnTask[F[_]](s: DataMapBench.RxnMapSt[F], bh: Blackhole, rnd: RandomState)(
     using
     F: ce.Sync[F],
     rF: Reactive[F],
@@ -148,25 +149,32 @@ class DataMapBench2 {
 
 object DataMapBench2 {
 
+  // TODO: move to KyoUtils
   private[choam] final def forkAndBlockKyo[A](tsk: A < (Async & Abort[Throwable])): A = {
     import kyo.AllowUnsafe.embrace.danger
     Sync.Unsafe.evalOrThrow(Fiber.initUnscoped(tsk).map(_.block(kyo.Duration.Infinity))).getOrThrow
   }
 
-  @State(Scope.Benchmark)
-  class CeRtSt {
-    val runtime: IORuntime =
-      IORuntime.global
+  trait GenMcasImplStateBaseForKyo extends GenMcasImplStateBase[<[*, Async & Abort[Throwable]]] {
+
+    implicit final override def syncF: ce.Sync[<[*, Async & Abort[Throwable]]] =
+      KyoUtils.weakSync
+
+    final override def runAndBlock[A](fa: A < (Async & Abort[Throwable])): A = {
+      forkAndBlockKyo(fa)
+    }
   }
 
   @State(Scope.Benchmark)
-  class KyoRtSt {
-    val converter: Converter =
-      new Converter(ChoamRuntime.unsafeBlocking()) // TODO: don't create new RT
+  class TMapHashStForKyo
+    extends DataMapBench.TMapHashSt[<[*, Async & Abort[Throwable]]]
+    with GenMcasImplStateBaseForKyo {
   }
 
   @State(Scope.Benchmark)
-  class KyoTMapSt extends DataMapBench.AbstractSt {
+  class KyoTMapSt
+    extends DataMapBench.AbstractSt[<[*, Async & Abort[Throwable]]]
+    with GenMcasImplStateBaseForKyo {
 
     val map: TMap[String, String] = {
       import kyo.AllowUnsafe.embrace.danger
@@ -175,7 +183,7 @@ object DataMapBench2 {
 
     override def setupImpl(mapSize: Int): Unit = {
       super.setupImpl(mapSize)
-      forkAndBlockKyo(this.initializeMap(mapSize))
+      this.runAndBlock(this.initializeMap(mapSize))
     }
 
     private[this] def initializeMap(@unused mapSize: Int): Unit < (Async & Abort[Throwable]) = {

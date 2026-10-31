@@ -23,21 +23,16 @@ import scala.concurrent.duration.FiniteDuration
 
 import cats.{ effect => ce }
 
-import core.Reactive
-
 import kyo.{ <, Sync, Async, Abort }
 
-final class Converter(rt: ChoamRuntime) {
+object KyoUtils {
 
-  final def syncInstance: ce.Sync[<[*, (Async & Abort[Throwable])]] = {
-    this.weakSync
+  private[this] val nopPoll = new ce.kernel.Poll[<[*, Async & Abort[Throwable]]] {
+    final override def apply[A](tsk: A < (Async & Abort[Throwable])) = tsk
   }
 
-  final def reactiveInstance: Reactive[<[*, (Async & Abort[Throwable])]] = {
-    this._reactiveInstance
-  }
+  val weakSync: ce.Sync[<[*, (Async & Abort[Throwable])]] = {
 
-  private[this] val weakSync: ce.Sync[<[*, (Async & Abort[Throwable])]] = {
     new ce.Sync[<[*, (Async & Abort[Throwable])]] {
 
       final override def rootCancelScope: ce.kernel.CancelScope =
@@ -52,10 +47,13 @@ final class Converter(rt: ChoamRuntime) {
       final override def suspend[A](hint: ce.Sync.Type)(thunk: => A): A < (Async & Abort[Throwable]) =
         Sync.defer { thunk }
 
-      // These are not strictly necessary to run an Rxn:
+      // These are not strictly necessary to run an Rxn,
+      // but needed to initialize a `Reactive` instance:
 
       final override def uncancelable[A](body: ce.Poll[<[*, (Async & Abort[Throwable])]] => A < (Async & Abort[Throwable])): A < (Async & Abort[Throwable]) =
-        sys.error("not implemented")
+        body(nopPoll)
+
+      // We don't need these:
 
       final override def raiseError[A](e: Throwable): A < (Async & Abort[Throwable]) =
         sys.error("not implemented")
@@ -81,9 +79,5 @@ final class Converter(rt: ChoamRuntime) {
       final override def onCancel[A](fa: A < (Async & Abort[Throwable]), fin: Unit < (Async & Abort[Throwable])): A < (Async & Abort[Throwable]) =
         sys.error("not implemented")
     }
-  }
-
-  private[this] val _reactiveInstance = {
-    new Reactive.SyncReactive(rt.mcasImpl)(using weakSync)
   }
 }
