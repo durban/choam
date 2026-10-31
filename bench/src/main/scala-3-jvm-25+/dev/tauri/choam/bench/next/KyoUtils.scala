@@ -23,9 +23,18 @@ import scala.concurrent.duration.FiniteDuration
 
 import cats.{ effect => ce }
 
-import kyo.{ <, Sync, Async, Abort }
+import kyo.{ <, Sync, Async, Abort, Loop }
 
 object KyoUtils {
+
+  /** Like `Kyo.fill`, but doesn't collect results */
+  final def repeat[A, S](n: Int)(task: A < S): Unit < S = {
+    require(n >= 0)
+    Loop.indexed { idx =>
+      if (idx == n) Loop.done
+      else task `andThen` Loop.continue
+    }
+  }
 
   private[this] val nopPoll = new ce.kernel.Poll[<[*, Async & Abort[Throwable]]] {
     final override def apply[A](tsk: A < (Async & Abort[Throwable])) = tsk

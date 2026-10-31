@@ -27,7 +27,7 @@ import cats.effect.IO
 
 import core.Reactive
 
-import kyo.{ <, Kyo, STM, TMap, Sync, Async, Fiber, Abort, Maybe, Loop }
+import kyo.{ <, STM, TMap, Sync, Async, Fiber, Abort, Maybe, Loop }
 
 import util._
 import datastruct.DataMapBench
@@ -39,12 +39,12 @@ class DataMapBench2 {
   import DataMapBench.TMapHashStForCe
   import DataMapBench2.{ KyoTMapSt, TMapHashStForKyo }
 
-  private[this] final val N = 64
+  private[this] final val N = 512
 
   @Benchmark
   def hash_kyo(s: KyoTMapSt, bh: Blackhole, rnd: RandomState): Unit = {
     s.runAndBlock {
-      Kyo.foreachDiscard(1 to N) { _ =>
+      KyoUtils.repeat(N) {
         this.kyoTask(s, bh, rnd)
       }
     }
@@ -60,7 +60,7 @@ class DataMapBench2 {
   @Benchmark
   def hash_rxnOnKyo(s: TMapHashStForKyo, bh: Blackhole, rnd: RandomState): Unit = {
     s.runAndBlock {
-      Kyo.foreachDiscard(1 to N) { _ =>
+      KyoUtils.repeat(N) {
         this.rxnTask[<[*, Async & Abort[Throwable]]](s, bh, rnd)(
           using s.syncF, s.reactive
         )
