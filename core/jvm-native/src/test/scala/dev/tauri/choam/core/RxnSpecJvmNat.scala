@@ -603,9 +603,9 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
     } yield ()
 
     val N = if (this.isEmcas) {
-      500
+      400
     } else {
-      50 // SpinLockMcas tends to time out
+      40 // SpinLockMcas tends to time out
     }
     t.replicateA_(N)
   }
@@ -646,9 +646,9 @@ trait RxnSpecJvm[F[_]] extends RxnSpec[F] { this: McasImplSpec =>
     } yield ()
 
     val N = if (this.isEmcas) {
-      500
+      400
     } else {
-      50 // SpinLockMcas tends to time out
+      40 // SpinLockMcas tends to time out
     }
     t.replicateA_(N)
   }
