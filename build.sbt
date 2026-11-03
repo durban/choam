@@ -54,6 +54,8 @@ val macos = "macos-15" // ARM64
 val macosIntel = "macos-15-intel" // x86_64
 
 val TestInternal = "test-internal"
+val CCTT = s"compile->compile;${TestInternal}->${TestInternal}"
+val CCCT = s"compile->compile;compile->${TestInternal}"
 
 val openJ9Options: String = {
   val opts = List("-Xgcpolicy:balanced")
@@ -392,7 +394,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
   .nativeSettings(commonSettingsNative)
-  .dependsOn(mcas % "compile->compile;test->test")
+  .dependsOn(mcas % CCTT)
   .settings(
     libraryDependencies ++= Seq(
       dependencies.catsCore.value,
@@ -413,7 +415,7 @@ lazy val mcas = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
   .nativeSettings(commonSettingsNative)
-  .dependsOn(internal % "compile->compile;test->test")
+  .dependsOn(internal % CCTT)
   .settings(
     mimaBinaryIssueFilters ++= Seq(
       // there is no backward compat for `choam-mcas`:
@@ -450,7 +452,7 @@ lazy val data = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
   .nativeSettings(commonSettingsNative)
-  .dependsOn(core % "compile->compile;test->test")
+  .dependsOn(core % CCTT)
   .settings(
     libraryDependencies += dependencies.catsCollections.value,
     mimaBinaryIssueFilters ++= Seq(
@@ -467,7 +469,7 @@ lazy val async = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
   .nativeSettings(commonSettingsNative)
-  .dependsOn(data % "compile->compile;test->test")
+  .dependsOn(data % CCTT)
 
 lazy val stream = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .withoutSuffixFor(JVMPlatform)
@@ -479,7 +481,7 @@ lazy val stream = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
   .nativeSettings(commonSettingsNative)
-  .dependsOn(async % "compile->compile;test->test")
+  .dependsOn(async % CCTT)
   .settings(libraryDependencies ++= Seq(
     dependencies.catsEffectAll.value,
     dependencies.fs2.value,
@@ -490,7 +492,7 @@ lazy val profiler = project.in(file("profiler"))
   .disablePlugins(disabledPlugins: _*)
   .settings(commonSettings)
   .settings(commonSettingsJvm)
-  .dependsOn(core.jvm % "compile->compile;test->test")
+  .dependsOn(core.jvm % CCTT)
   .settings(
     libraryDependencies ++= Seq(
       dependencies.jmh.value,
@@ -512,7 +514,7 @@ lazy val ce = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
   .nativeSettings(commonSettingsNative)
-  .dependsOn(async % "compile->compile;test->test")
+  .dependsOn(async % CCTT)
   .settings(
     libraryDependencies += dependencies.catsEffectAll.value,
   )
@@ -526,7 +528,7 @@ lazy val zi = crossProject(JVMPlatform, JSPlatform) // TODO: this won't work on 
   .settings(commonSettings)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
-  .dependsOn(async % "compile->compile;test->test")
+  .dependsOn(async % CCTT)
   .settings(
     libraryDependencies ++= dependencies.zioEverything.value,
     Test / scalacOptions -= "-Xcheck-macros", // some zio macro somewhere generates invalid code
@@ -544,7 +546,7 @@ lazy val testAssert = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .jsSettings(commonSettingsJs)
   .nativeSettings(commonSettingsNative)
   .settings(buildInfoSettings(pkg = "dev.tauri.choam.helpers"))
-  .dependsOn(ce % "compile->compile;test->test")
+  .dependsOn(ce % CCTT)
   .settings(
     assertionsEnabled := false, // so that we can test that they're disabled
   )
@@ -560,7 +562,7 @@ lazy val laws = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
   .nativeSettings(commonSettingsNative)
-  .dependsOn(async % "compile->compile;compile->test")
+  .dependsOn(async % CCCT)
   .settings(
     libraryDependencies ++= Seq(
       dependencies.catsLaws.value,
@@ -610,8 +612,8 @@ lazy val testExt = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .jvmSettings(commonSettingsJvm)
   .jsSettings(commonSettingsJs)
   .nativeSettings(commonSettingsNative)
-  .dependsOn(stream % "compile->compile;test->test")
-  .dependsOn(ce % "compile->compile;test->test")
+  .dependsOn(stream % CCTT)
+  .dependsOn(ce % CCTT)
   .settings(
     Test / test := Def.sequential(
       Test / test,
@@ -727,8 +729,8 @@ lazy val bench = project.in(file("bench"))
     ),
   )
   .enablePlugins(JmhPlugin)
-  .dependsOn(stream.jvm % "compile->compile;compile->test")
-  .dependsOn(profiler % "compile->compile")
+  .dependsOn(stream.jvm % CCCT)
+  .dependsOn(profiler)
   .settings(Jmh / version := dependencies.jmhVersion)
 
 // Stress tests (mostly with JCStress):
@@ -744,7 +746,7 @@ lazy val stressMcas = project.in(file("stress") / "stress-mcas")
   .disablePlugins(disabledPluginsForStress: _*)
   .enablePlugins(JCStressPlugin)
   .enablePlugins(NoPublishPlugin)
-  .dependsOn(core.jvm % "compile->compile;test->test")
+  .dependsOn(core.jvm % CCTT)
 
 lazy val stressMcasSlow = project.in(file("stress") / "stress-mcas-slow")
   .settings(name := "choam-stress-mcas-slow")
@@ -754,7 +756,7 @@ lazy val stressMcasSlow = project.in(file("stress") / "stress-mcas-slow")
   .disablePlugins(disabledPluginsForStress: _*)
   .enablePlugins(JCStressPlugin)
   .enablePlugins(NoPublishPlugin)
-  .dependsOn(stressMcas % "compile->compile;test->test")
+  .dependsOn(stressMcas % CCTT)
 
 lazy val stressCore = project.in(file("stress") / "stress-core")
   .settings(name := "choam-stress-core")
@@ -764,8 +766,8 @@ lazy val stressCore = project.in(file("stress") / "stress-core")
   .disablePlugins(disabledPluginsForStress: _*)
   .enablePlugins(JCStressPlugin)
   .enablePlugins(NoPublishPlugin)
-  .dependsOn(core.jvm % "compile->compile;test->test")
-  .dependsOn(stressMcas % "compile->compile;test->test")
+  .dependsOn(core.jvm % CCTT)
+  .dependsOn(stressMcas % CCTT)
 
 lazy val stressData = project.in(file("stress") / "stress-data")
   .settings(name := "choam-stress-data")
@@ -775,8 +777,8 @@ lazy val stressData = project.in(file("stress") / "stress-data")
   .disablePlugins(disabledPluginsForStress: _*)
   .enablePlugins(JCStressPlugin)
   .enablePlugins(NoPublishPlugin)
-  .dependsOn(data.jvm % "compile->compile;test->test")
-  .dependsOn(stressMcas % "compile->compile;test->test")
+  .dependsOn(data.jvm % CCTT)
+  .dependsOn(stressMcas % CCTT)
 
 lazy val stressDataSlow = project.in(file("stress") / "stress-data-slow")
   .settings(name := "choam-stress-data-slow")
@@ -786,8 +788,8 @@ lazy val stressDataSlow = project.in(file("stress") / "stress-data-slow")
   .disablePlugins(disabledPluginsForStress: _*)
   .enablePlugins(JCStressPlugin)
   .enablePlugins(NoPublishPlugin)
-  .dependsOn(data.jvm % "compile->compile;test->test")
-  .dependsOn(stressData % "compile->compile;test->test")
+  .dependsOn(data.jvm % CCTT)
+  .dependsOn(stressData % CCTT)
 
 lazy val stressAsync = project.in(file("stress") / "stress-async")
   .settings(name := "choam-stress-async")
@@ -797,8 +799,8 @@ lazy val stressAsync = project.in(file("stress") / "stress-async")
   .disablePlugins(disabledPluginsForStress: _*)
   .enablePlugins(JCStressPlugin)
   .enablePlugins(NoPublishPlugin)
-  .dependsOn(async.jvm % "compile->compile;test->test")
-  .dependsOn(stressMcas % "compile->compile;test->test")
+  .dependsOn(async.jvm % CCTT)
+  .dependsOn(stressMcas % CCTT)
 
 lazy val stressExperiments = project.in(file("stress") / "stress-experiments")
   .settings(name := "choam-stress-experiments")
@@ -808,8 +810,8 @@ lazy val stressExperiments = project.in(file("stress") / "stress-experiments")
   .disablePlugins(disabledPluginsForStress: _*)
   .enablePlugins(JCStressPlugin)
   .enablePlugins(NoPublishPlugin)
-  .dependsOn(async.jvm % "compile->compile;test->test")
-  .dependsOn(stressMcas % "compile->compile;test->test")
+  .dependsOn(async.jvm % CCTT)
+  .dependsOn(stressMcas % CCTT)
 
 lazy val stressLinchk = project.in(file("stress") / "stress-linchk")
   .settings(name := "choam-stress-linchk")
@@ -817,7 +819,7 @@ lazy val stressLinchk = project.in(file("stress") / "stress-linchk")
   .settings(commonSettingsJvm)
   .disablePlugins(disabledPlugins: _*)
   .enablePlugins(NoPublishPlugin)
-  .dependsOn(async.jvm % "compile->compile;test->test")
+  .dependsOn(async.jvm % CCTT)
   .settings(
     libraryDependencies ++= Seq(
       dependencies.lincheck.value,
@@ -854,7 +856,7 @@ lazy val layout = project.in(file("layout"))
     libraryDependencies += dependencies.jol.value % TestInternal,
     Jol / version := dependencies.jolVersion,
   )
-  .dependsOn(core.jvm % "compile->compile;test->test")
+  .dependsOn(core.jvm % CCTT)
 
 lazy val commonSettingsJvm = Seq[Setting[_]](
   Test / fork := true,
