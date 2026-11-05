@@ -29,6 +29,7 @@ import core.Ref
 import kyo.{ <, STM, TRef, Sync, Async, Abort }
 
 import util._
+import rxn.ExtraWarmup
 
 @Fork(2)
 @Threads(2)
@@ -52,7 +53,7 @@ class SimpleKyoBench {
   }
 
   @Benchmark
-  def contended_rxnOnCe(s: StContendedRxnOnCe, bh: Blackhole): Unit = {
+  def contended_rxnOnCe(s: StContendedRxnOnCe, bh: Blackhole, @unused w: ExtraWarmup.ForCe): Unit = {
     s.runAndBlock(
       (
         s.ref.update(_ + 1) *> s.ref.get
@@ -63,7 +64,7 @@ class SimpleKyoBench {
   }
 
   @Benchmark
-  def contended_rxnOnKyo(s: StContendedRxnOnKyo, bh: Blackhole): Unit = {
+  def contended_rxnOnKyo(s: StContendedRxnOnKyo, bh: Blackhole, @unused w: ExtraWarmupForKyo): Unit = {
     s.runAndBlock(
       KyoUtils.repeat(N) {
         (
@@ -91,7 +92,7 @@ class SimpleKyoBench {
   }
 
   @Benchmark
-  def uncontended_rxnOnCe(s: StUncontendedRxnOnCe, bh: Blackhole): Unit = {
+  def uncontended_rxnOnCe(s: StUncontendedRxnOnCe, bh: Blackhole, @unused w: ExtraWarmup.ForCe): Unit = {
     s.runAndBlock(
       (
         s.ref.update(_ + 1) *> s.ref.get
@@ -102,7 +103,7 @@ class SimpleKyoBench {
   }
 
   @Benchmark
-  def uncontended_rxnOnKyo(s: StUncontendedRxnOnKyo, bh: Blackhole): Unit = {
+  def uncontended_rxnOnKyo(s: StUncontendedRxnOnKyo, bh: Blackhole, @unused w: ExtraWarmupForKyo): Unit = {
     s.runAndBlock(
       KyoUtils.repeat(N) {
         (
@@ -153,5 +154,10 @@ object SimpleKyoBench {
   @State(Scope.Thread)
   class StUncontendedRxnOnKyo
     extends StRxn[<[*, Async & Abort[Throwable]]]
+    with GenMcasImplStateBaseForKyo
+
+  @State(Scope.Benchmark)
+  class ExtraWarmupForKyo
+    extends ExtraWarmup[<[*, Async & Abort[Throwable]]]
     with GenMcasImplStateBaseForKyo
 }

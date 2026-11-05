@@ -21,9 +21,10 @@ package next
 
 import scala.concurrent.duration.FiniteDuration
 
+import cats.StackSafeMonad
 import cats.{ effect => ce }
 
-import kyo.{ <, Sync, Async, Abort, Loop }
+import kyo.{ <, Sync, Async, Abort, Loop, Result }
 
 object KyoUtils {
 
@@ -42,7 +43,8 @@ object KyoUtils {
 
   val weakSync: ce.Sync[<[*, (Async & Abort[Throwable])]] = {
 
-    new ce.Sync[<[*, (Async & Abort[Throwable])]] {
+    new ce.Sync[<[*, (Async & Abort[Throwable])]]
+      with StackSafeMonad[<[*, (Async & Abort[Throwable])]] { // <- we get tailRecM from there (needed for ExtraWarmup)
 
       final override def rootCancelScope: ce.kernel.CancelScope =
         ce.kernel.CancelScope.Cancelable
@@ -62,30 +64,29 @@ object KyoUtils {
       final override def uncancelable[A](body: ce.Poll[<[*, (Async & Abort[Throwable])]] => A < (Async & Abort[Throwable])): A < (Async & Abort[Throwable]) =
         body(nopPoll)
 
-      // We don't need these:
+      // These are for `ExtraWarmup`:
 
       final override def raiseError[A](e: Throwable): A < (Async & Abort[Throwable]) =
-        sys.error("not implemented")
+        Abort.fail(e)
 
       final override def handleErrorWith[A](fa: A < (Async & Abort[Throwable]))(f: Throwable => A < (Async & Abort[Throwable])): A < (Async & Abort[Throwable]) =
-        sys.error("not implemented")
+        Abort.runWith(fa)(_.foldError(a => a, err => f(err.failureOrPanic)))
+
+      final override def onCancel[A](fa: A < (Async & Abort[Throwable]), fin: Unit < (Async & Abort[Throwable])): A < (Async & Abort[Throwable]) =
+        fa // TODO: this is incorrect
 
       final override def monotonic: FiniteDuration < (Async & Abort[Throwable]) =
-        sys.error("not implemented")
+        kyo.Clock.live.nowMonotonic.map(_.toScala.asInstanceOf[FiniteDuration])
 
       final override def realTime: FiniteDuration < (Async & Abort[Throwable]) =
-        sys.error("not implemented")
+        kyo.Clock.live.now.map(_.toDuration.toScala.asInstanceOf[FiniteDuration])
 
-      final override def tailRecM[A, B](a: A)(f: A => Either[A, B] < (Async & Abort[Throwable])): B < (Async & Abort[Throwable]) =
-        sys.error("not implemented")
+      // We don't need these:
 
       final override def forceR[A, B](fa: A < (Async & Abort[Throwable]))(fb: B < (Async & Abort[Throwable])): B < (Async & Abort[Throwable]) =
         sys.error("not implemented")
 
       final override def canceled: Unit < (Async & Abort[Throwable]) =
-        sys.error("not implemented")
-
-      final override def onCancel[A](fa: A < (Async & Abort[Throwable]), fin: Unit < (Async & Abort[Throwable])): A < (Async & Abort[Throwable]) =
         sys.error("not implemented")
     }
   }
