@@ -27,7 +27,7 @@ final class VarHandleTest {
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      VALUE = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(VarHandleTest.class, "value", long.class));
+      VALUE = l.findVarHandle(VarHandleTest.class, "value", long.class).withInvokeExactBehavior();
     } catch (ReflectiveOperationException e) {
       throw new ExceptionInInitializerError(e);
     }

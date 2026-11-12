@@ -20,7 +20,6 @@ package dev.tauri.choam.internal.refs;
 import java.lang.invoke.VarHandle;
 import java.lang.invoke.MethodHandles;
 
-import dev.tauri.choam.internal.VarHandleHelper;
 import dev.tauri.choam.internal.mcas.VersionJ;
 
 abstract class SparseRefArrayBase<A> extends RefArrayBase<A> {
@@ -31,8 +30,8 @@ abstract class SparseRefArrayBase<A> extends RefArrayBase<A> {
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      VERSIONS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(SparseRefArrayBase.class, "versions", long[].class));
-      VERSIONS_ARR = VarHandleHelper.withInvokeExactBehavior(MethodHandles.arrayElementVarHandle(long[].class));
+      VERSIONS = l.findVarHandle(SparseRefArrayBase.class, "versions", long[].class).withInvokeExactBehavior();
+      VERSIONS_ARR = MethodHandles.arrayElementVarHandle(long[].class).withInvokeExactBehavior();
     } catch (ReflectiveOperationException e) {
       throw new ExceptionInInitializerError(e);
     }

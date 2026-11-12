@@ -20,7 +20,6 @@ package dev.tauri.choam.internal.refs;
 import java.lang.invoke.VarHandle;
 import java.lang.invoke.MethodHandles;
 
-import dev.tauri.choam.internal.VarHandleHelper;
 import dev.tauri.choam.internal.mcas.VersionJ;
 
 abstract class RefArrayBase<A> extends RefIdOnlyN {
@@ -28,7 +27,7 @@ abstract class RefArrayBase<A> extends RefIdOnlyN {
   private static final VarHandle ARRAY;
 
   static {
-    ARRAY = VarHandleHelper.withInvokeExactBehavior(MethodHandles.arrayElementVarHandle(Object[].class));
+    ARRAY = MethodHandles.arrayElementVarHandle(Object[].class).withInvokeExactBehavior();
   }
 
   /*

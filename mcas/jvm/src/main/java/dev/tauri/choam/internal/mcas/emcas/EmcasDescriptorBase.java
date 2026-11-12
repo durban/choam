@@ -20,7 +20,6 @@ package dev.tauri.choam.internal.mcas.emcas;
 import java.lang.invoke.VarHandle;
 import java.lang.invoke.MethodHandles;
 
-import dev.tauri.choam.internal.VarHandleHelper;
 import dev.tauri.choam.internal.mcas.VersionJ;
 import dev.tauri.choam.internal.mcas.WdLike;
 
@@ -37,10 +36,10 @@ abstract class EmcasDescriptorBase {
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      STATUS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasDescriptorBase.class, "_status", long.class));
-      WORDS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasDescriptorBase.class, "_words", WdLike[].class));
-      WORDS_ARR = VarHandleHelper.withInvokeExactBehavior(MethodHandles.arrayElementVarHandle(WdLike[].class));
-      FALLBACK = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasDescriptorBase.class, "_fallback", EmcasDescriptor.class));
+      STATUS = l.findVarHandle(EmcasDescriptorBase.class, "_status", long.class).withInvokeExactBehavior();
+      WORDS = l.findVarHandle(EmcasDescriptorBase.class, "_words", WdLike[].class).withInvokeExactBehavior();
+      WORDS_ARR = MethodHandles.arrayElementVarHandle(WdLike[].class).withInvokeExactBehavior();
+      FALLBACK = l.findVarHandle(EmcasDescriptorBase.class, "_fallback", EmcasDescriptor.class).withInvokeExactBehavior();
     } catch (ReflectiveOperationException ex) {
       throw new ExceptionInInitializerError(ex);
     }

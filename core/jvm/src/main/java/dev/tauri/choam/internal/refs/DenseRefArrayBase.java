@@ -20,14 +20,12 @@ package dev.tauri.choam.internal.refs;
 import java.lang.invoke.VarHandle;
 import java.lang.invoke.MethodHandles;
 
-import dev.tauri.choam.internal.VarHandleHelper;
-
 abstract class DenseRefArrayBase<A> extends RefArrayBase<A> {
 
   private static final VarHandle VERSIONS_ARR;
 
   static {
-    VERSIONS_ARR = VarHandleHelper.withInvokeExactBehavior(MethodHandles.arrayElementVarHandle(long[].class));
+    VERSIONS_ARR = MethodHandles.arrayElementVarHandle(long[].class).withInvokeExactBehavior();
   }
 
   private final long[] versions;

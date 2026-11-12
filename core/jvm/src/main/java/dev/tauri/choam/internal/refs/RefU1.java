@@ -21,7 +21,6 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.WeakReference;
 
-import dev.tauri.choam.internal.VarHandleHelper;
 import dev.tauri.choam.internal.mcas.MemoryLocation;
 import dev.tauri.choam.internal.mcas.VersionJ;
 import dev.tauri.choam.core.UnsealedRef;
@@ -35,9 +34,9 @@ final class RefU1<A> extends RefIdOnly<A> implements UnsealedRef<A>, MemoryLocat
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      VALUE = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(RefU1.class, "value", Object.class));
-      VERSION = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(RefU1.class, "version", long.class));
-      MARKER = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(RefU1.class, "marker", WeakReference.class));
+      VALUE = l.findVarHandle(RefU1.class, "value", Object.class).withInvokeExactBehavior();
+      VERSION = l.findVarHandle(RefU1.class, "version", long.class).withInvokeExactBehavior();
+      MARKER = l.findVarHandle(RefU1.class, "marker", WeakReference.class).withInvokeExactBehavior();
     } catch (ReflectiveOperationException e) {
       throw new ExceptionInInitializerError(e);
     }

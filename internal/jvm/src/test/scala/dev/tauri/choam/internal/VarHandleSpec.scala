@@ -27,14 +27,6 @@ final class VarHandleHelperSpec extends munit.FunSuite {
   test("withInvokeExactBehavior") {
     val x = new VarHandleTest
     assert(x.casCorrect(0L, 1L))
-    if (jvmVersion() >= 16) {
-      assert(Either.catchOnly[WrongMethodTypeException] { x.casIncorrect(1L, 2L) }.isLeft)
-    } else {
-      assert(x.casIncorrect(1L, 2L))
-    }
-  }
-
-  private def jvmVersion(): Int = {
-    Runtime.version().feature()
+    assert(Either.catchOnly[WrongMethodTypeException] { x.casIncorrect(1L, 2L) }.isLeft)
   }
 }

@@ -23,7 +23,6 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.nio.ByteOrder;
 
-import dev.tauri.choam.internal.VarHandleHelper;
 import dev.tauri.choam.internal.mcas.Mcas;
 
 // Note: this class/object is duplicated for JVM/JS
@@ -46,9 +45,7 @@ final class RxnUuidGen {
   private static final VarHandle BYTE_ARRAY_VIEW;
 
   static {
-    BYTE_ARRAY_VIEW = VarHandleHelper.withInvokeExactBehavior(
-      MethodHandles.byteArrayViewVarHandle(long[].class, ByteOrder.BIG_ENDIAN)
-    );
+    BYTE_ARRAY_VIEW = MethodHandles.byteArrayViewVarHandle(long[].class, ByteOrder.BIG_ENDIAN).withInvokeExactBehavior();
   }
 
   static final UUID unsafeRandomUuidInternal(Mcas.ThreadContext ctx) {

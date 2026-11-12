@@ -20,8 +20,6 @@ package dev.tauri.choam.internal.mcas;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
-import dev.tauri.choam.internal.VarHandleHelper;
-
 public abstract class RefIdGenBase extends Padding {
 
   /**
@@ -41,7 +39,7 @@ public abstract class RefIdGenBase extends Padding {
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      CTR = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(RefIdGenBase.class, "ctr", long.class));
+      CTR = l.findVarHandle(RefIdGenBase.class, "ctr", long.class).withInvokeExactBehavior();
     } catch (ReflectiveOperationException e) {
       throw new ExceptionInInitializerError(e);
     }

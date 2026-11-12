@@ -21,16 +21,12 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.nio.ByteOrder;
 
-import dev.tauri.choam.internal.VarHandleHelper;
-
 abstract class RandomBasePlatformBase {
 
   private static final VarHandle BYTE_ARRAY_VIEW;
 
   static {
-    BYTE_ARRAY_VIEW = VarHandleHelper.withInvokeExactBehavior(
-      MethodHandles.byteArrayViewVarHandle(long[].class, ByteOrder.LITTLE_ENDIAN)
-    );
+    BYTE_ARRAY_VIEW = MethodHandles.byteArrayViewVarHandle(long[].class, ByteOrder.LITTLE_ENDIAN).withInvokeExactBehavior();
   }
 
   final long getLongAt0P(byte[] arr) {

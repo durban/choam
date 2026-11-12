@@ -21,7 +21,6 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.WeakReference;
 
-import dev.tauri.choam.internal.VarHandleHelper;
 import dev.tauri.choam.internal.mcas.VersionJ;
 import dev.tauri.choam.core.UnsealedRef2;
 import dev.tauri.choam.core.Ref;
@@ -37,9 +36,9 @@ abstract class RefP1P1Base<A, B>
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      VALUE_A = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(RefP1P1Base.class, "valueA", Object.class));
-      VERSION_A = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(RefP1P1Base.class, "versionA", long.class));
-      MARKER_A = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(RefP1P1Base.class, "markerA", WeakReference.class));
+      VALUE_A = l.findVarHandle(RefP1P1Base.class, "valueA", Object.class).withInvokeExactBehavior();
+      VERSION_A = l.findVarHandle(RefP1P1Base.class, "versionA", long.class).withInvokeExactBehavior();
+      MARKER_A = l.findVarHandle(RefP1P1Base.class, "markerA", WeakReference.class).withInvokeExactBehavior();
     } catch (ReflectiveOperationException e) {
       throw new ExceptionInInitializerError(e);
     }

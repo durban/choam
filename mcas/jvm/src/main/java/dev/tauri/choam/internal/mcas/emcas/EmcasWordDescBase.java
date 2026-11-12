@@ -21,7 +21,6 @@ import java.lang.invoke.VarHandle;
 import java.lang.invoke.MethodHandles;
 
 import dev.tauri.choam.internal.mcas.MemoryLocation;
-import dev.tauri.choam.internal.VarHandleHelper;
 
 abstract class EmcasWordDescBase<A> {
 
@@ -31,8 +30,8 @@ abstract class EmcasWordDescBase<A> {
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      OV = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasWordDescBase.class, "_ov", Object.class));
-      NV = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasWordDescBase.class, "_nv", Object.class));
+      OV = l.findVarHandle(EmcasWordDescBase.class, "_ov", Object.class).withInvokeExactBehavior();
+      NV = l.findVarHandle(EmcasWordDescBase.class, "_nv", Object.class).withInvokeExactBehavior();
     } catch (ReflectiveOperationException ex) {
       throw new ExceptionInInitializerError(ex);
     }

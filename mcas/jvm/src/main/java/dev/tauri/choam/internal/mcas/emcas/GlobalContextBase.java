@@ -24,7 +24,6 @@ import java.lang.invoke.VarHandle;
 import java.lang.ref.Reference;
 import java.util.concurrent.atomic.AtomicLong;
 
-import dev.tauri.choam.internal.VarHandleHelper;
 import dev.tauri.choam.internal.mcas.VersionJ;
 import dev.tauri.choam.internal.mcas.Padding;
 
@@ -43,8 +42,8 @@ abstract class GlobalContextBase extends Padding {
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      COMMIT_TS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(GlobalContextBase.class, "commitTs", long.class));
-      THREAD_CTX_COUNT = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(GlobalContextBase.class, "threadCtxCount", long.class));
+      COMMIT_TS = l.findVarHandle(GlobalContextBase.class, "commitTs", long.class).withInvokeExactBehavior();
+      THREAD_CTX_COUNT = l.findVarHandle(GlobalContextBase.class, "threadCtxCount", long.class).withInvokeExactBehavior();
       MethodHandle mh;
       try {
         mh = l.findVirtual(Thread.class, "isVirtual", MethodType.methodType(boolean.class));

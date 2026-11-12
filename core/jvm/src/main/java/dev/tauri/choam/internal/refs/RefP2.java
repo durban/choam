@@ -21,7 +21,6 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.WeakReference;
 
-import dev.tauri.choam.internal.VarHandleHelper;
 import dev.tauri.choam.internal.mcas.VersionJ;
 import dev.tauri.choam.core.UnsealedRef2;
 import dev.tauri.choam.core.Ref;
@@ -40,12 +39,12 @@ final class RefP2<A, B>
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      VALUE_A = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(RefP2.class, "valueA", Object.class));
-      VERSION_A = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(RefP2.class, "versionA", long.class));
-      MARKER_A = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(RefP2.class, "markerA", WeakReference.class));
-      VALUE_B = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(RefP2.class, "valueB", Object.class));
-      VERSION_B = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(RefP2.class, "versionB", long.class));
-      MARKER_B = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(RefP2.class, "markerB", WeakReference.class));
+      VALUE_A = l.findVarHandle(RefP2.class, "valueA", Object.class).withInvokeExactBehavior();
+      VERSION_A = l.findVarHandle(RefP2.class, "versionA", long.class).withInvokeExactBehavior();
+      MARKER_A = l.findVarHandle(RefP2.class, "markerA", WeakReference.class).withInvokeExactBehavior();
+      VALUE_B = l.findVarHandle(RefP2.class, "valueB", Object.class).withInvokeExactBehavior();
+      VERSION_B = l.findVarHandle(RefP2.class, "versionB", long.class).withInvokeExactBehavior();
+      MARKER_B = l.findVarHandle(RefP2.class, "markerB", WeakReference.class).withInvokeExactBehavior();
     } catch (ReflectiveOperationException e) {
       throw new ExceptionInInitializerError(e);
     }

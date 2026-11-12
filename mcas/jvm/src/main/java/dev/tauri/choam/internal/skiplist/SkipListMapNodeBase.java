@@ -20,8 +20,6 @@ package dev.tauri.choam.internal.skiplist;
 import java.lang.invoke.VarHandle;
 import java.lang.invoke.MethodHandles;
 
-import dev.tauri.choam.internal.VarHandleHelper;
-
 abstract class SkipListMapNodeBase<V, N extends SkipListMapNodeBase<V, N>> {
 
   private static final VarHandle VALUE;
@@ -30,8 +28,8 @@ abstract class SkipListMapNodeBase<V, N extends SkipListMapNodeBase<V, N>> {
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      VALUE = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(SkipListMapNodeBase.class, "value", Object.class));
-      NEXT = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(SkipListMapNodeBase.class, "next", SkipListMapNodeBase.class));
+      VALUE = l.findVarHandle(SkipListMapNodeBase.class, "value", Object.class).withInvokeExactBehavior();
+      NEXT = l.findVarHandle(SkipListMapNodeBase.class, "next", SkipListMapNodeBase.class).withInvokeExactBehavior();
     } catch (ReflectiveOperationException ex) {
       throw new ExceptionInInitializerError(ex);
     }

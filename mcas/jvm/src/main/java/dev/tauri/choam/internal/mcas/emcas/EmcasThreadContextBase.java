@@ -23,8 +23,6 @@ import java.lang.invoke.MethodHandles;
 import scala.collection.immutable.Map;
 import scala.collection.immutable.Map$;
 
-import dev.tauri.choam.internal.VarHandleHelper;
-
 abstract class EmcasThreadContextBase {
 
   private static final VarHandle COMMITS;
@@ -42,17 +40,17 @@ abstract class EmcasThreadContextBase {
   static {
     try {
       MethodHandles.Lookup l = MethodHandles.lookup();
-      COMMITS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_commits", long.class));
-      RETRIES = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_retries", long.class));
-      EXTENSIONS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_extensions", long.class));
-      MCAS_ATTEMPTS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_mcasAttempts", long.class));
-      COMMITTED_REFS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_committedRefs", long.class));
-      CYCLES_DETECTED = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_cyclesDetected", int.class));
-      MAX_REUSE_EVER = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_maxReuseEver", int.class));
-      MAX_RETRIES_EVER = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_maxRetriesEver", long.class));
-      MAX_COMMITTED_REFS_EVER = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_maxCommittedRefsEver", int.class));
-      MAX_BLOOM_FILTER_SIZE = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_maxBloomFilterSize", int.class));
-      STATISTICS = VarHandleHelper.withInvokeExactBehavior(l.findVarHandle(EmcasThreadContextBase.class, "_statistics", Map.class));
+      COMMITS = l.findVarHandle(EmcasThreadContextBase.class, "_commits", long.class).withInvokeExactBehavior();
+      RETRIES = l.findVarHandle(EmcasThreadContextBase.class, "_retries", long.class).withInvokeExactBehavior();
+      EXTENSIONS = l.findVarHandle(EmcasThreadContextBase.class, "_extensions", long.class).withInvokeExactBehavior();
+      MCAS_ATTEMPTS = l.findVarHandle(EmcasThreadContextBase.class, "_mcasAttempts", long.class).withInvokeExactBehavior();
+      COMMITTED_REFS = l.findVarHandle(EmcasThreadContextBase.class, "_committedRefs", long.class).withInvokeExactBehavior();
+      CYCLES_DETECTED = l.findVarHandle(EmcasThreadContextBase.class, "_cyclesDetected", int.class).withInvokeExactBehavior();
+      MAX_REUSE_EVER = l.findVarHandle(EmcasThreadContextBase.class, "_maxReuseEver", int.class).withInvokeExactBehavior();
+      MAX_RETRIES_EVER = l.findVarHandle(EmcasThreadContextBase.class, "_maxRetriesEver", long.class).withInvokeExactBehavior();
+      MAX_COMMITTED_REFS_EVER = l.findVarHandle(EmcasThreadContextBase.class, "_maxCommittedRefsEver", int.class).withInvokeExactBehavior();
+      MAX_BLOOM_FILTER_SIZE = l.findVarHandle(EmcasThreadContextBase.class, "_maxBloomFilterSize", int.class).withInvokeExactBehavior();
+      STATISTICS = l.findVarHandle(EmcasThreadContextBase.class, "_statistics", Map.class).withInvokeExactBehavior();
     } catch (ReflectiveOperationException ex) {
       throw new ExceptionInInitializerError(ex);
     }
