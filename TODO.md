@@ -19,17 +19,18 @@
 
 # TODO
 
-## Bugs
+## Known bugs
 
-- Can't run benchmarks with Scala 3
+(None right now.)
 
-## Other improvements
+## Possible improvements
 
 - Testing:
   - JCStress:
     - replacing descriptors (weakref?)
 - Optimization ideas:
   - Exchanger: there is a lot of `Array[Byte]` copying
+    - is Exchanger even worth keeping?
   - Reducing allocations (we're allocating _a lot_)
     - EMCAS (maybe reusing descriptors?)
     - Rxn
